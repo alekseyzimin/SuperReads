@@ -25,7 +25,7 @@
 # -jumplibraryreads : we are generating for jump-library reads; a k-unitigs
 #                                 file must be specified
 # -elim-dupls : eliminate duplicate reads ahead of time (not implemented yet).
-# -h : help
+# -h : help 
 use File::Basename;
 use Cwd;
 $exeDir = dirname ($0);
