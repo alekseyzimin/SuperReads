@@ -29,8 +29,8 @@ findSuperReadGroups.perl						\
 makeListOfSuperReadsAndCounts.fromSuperReadGroupsFile.perl		\
 tryToKillKUnitigsOfLength61.perl
 
-noinst_HEADERS = aligned_simple_array.hpp fastq_parser.hpp misc.hpp	\
-kmer.hpp diskBasedUnitigger.h fasta_read_parser.hpp			\
+noinst_HEADERS = aligned_simple_array.hpp misc.hpp kmer.hpp	\
+diskBasedUnitigger.h fasta_read_parser.hpp			\
 create_k_unitigs_cmdline.hpp
 
 create_k_unitigs_SOURCES = create_k_unitigs.cpp	\

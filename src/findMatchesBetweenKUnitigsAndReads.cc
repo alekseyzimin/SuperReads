@@ -13,7 +13,7 @@
 
 #include <jellyfish/err.hpp>
 #include <jellyfish/mer_counting.hpp>
-//#include <jellyfish/fasta_parser.hpp>
+#include <jellyfish/parse_read.hpp>
 #include <jellyfish/mapped_file.hpp>
 #include <jellyfish/invertible_hash_array.hpp>
 #include <jellyfish/allocators_mmap.hpp>
@@ -21,7 +21,6 @@
 
 #include <iostream>
 
-#include "fasta_read_parser.hpp"
 #include "diskBasedUnitigger.h"
 #define KUNITIG_FILE "/genome8/raid/tri/kUnitigStudy/arg_ant/afterAlekseyAndMikeRedundentKill/guillaumeKUnitigsAtLeast32bases_all.fasta"
 #define READ_DATA_FILE "/genome8/raid/tri/testDirForReadPlacementRoutines/brucellaData/brucella.pass5reads.fasta"
@@ -55,21 +54,21 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 
 
 class ProcessReads : public thread_exec {
-  fasta_read_parser   read_parser;
-  inv_hash_storage_t *hash;
-  const char         *prefix;
+  jellyfish::parse_read  read_parser;
+  inv_hash_storage_t     *hash;
+  const char             *prefix;
 
 public:
   ProcessReads(int argc, char *argv[], inv_hash_storage_t *h, const char *pref) : 
     read_parser(argc, argv, 100), hash(h), prefix(pref) {}
 
   virtual void start(int id) {
-    fasta_read_parser::thread  read_stream(read_parser.new_thread());
-    fasta_read_parser::read   *read;
-    char                       readBases[100000];
-    char                       header[3000];
-    char                       out_file[3000];
-    FILE                      *out;
+    jellyfish::parse_read::thread  read_stream(read_parser.new_thread());
+    jellyfish::parse_read::read_t *read;
+    char                           readBases[100000];
+    char                           header[3000];
+    char                           out_file[3000];
+    FILE                          *out;
     if(!prefix) {
       out = stdout;
     } else {
