@@ -1,0 +1,22 @@
+purpose "Create k-unitigs (unipaths) from a Jellyfish k-mer database."
+package "create_k_unitigs"
+args "--unamed-opts=database.jf --show-required --default-optional -c cpp -H hpp -F create_k_unitigs_cmdline -f create_k_unitigs_cmd_parser -a create_k_unitigs_args_info"
+
+option "both-strands"   C "Both strands"
+  flag off
+option "threads"        t "Number of threads"
+  int default="1"
+option "verbose"        v "Be verbose"
+  flag off
+option "prefix"         o "Output prefix"
+  string default="k_unitigs"
+option "min-len"        l "Minimum length of k-unitig to output"
+  int typestr="k+1"
+option "min-cov"        m "Minimum k-mer coverage to be considered"
+  int default="2"
+option "min-cont"       M "Minimum k-mer coverage to continue"
+  int default="3"
+option "cont-on-low"    - "Continue on unique low k-mer (count < m)"
+  flag off
+option "low-stretch"    - "Max number of low k-mer"
+  int default="3"

@@ -1,0 +1,137 @@
+#ifndef __ERROR_CORRECT_READS_HPP__
+#define __ERROR_CORRECT_READS_HPP__
+
+#include <config.h>
+#include <jellyfish/mapped_file.hpp>
+#include <jellyfish/invertible_hash_array.hpp>
+#include <jellyfish/allocators_mmap.hpp>
+#include <jellyfish/parse_read.hpp>
+#include <iostream>
+#include <fstream>
+#include <assert.h>
+#include <err.hpp>
+#include <thread_exec.hpp>
+#include <misc.hpp>
+#include <kmer.hpp>
+#include <err_log.hpp>
+#include "error_correct_reads_cmdline.hpp"
+
+// A forward moving pointer.
+template<typename T>
+class forward_ptr {
+  T *_p;
+public:
+  forward_ptr(T *p) : _p(p) { }
+  forward_ptr operator++(int) {
+    return forward_ptr(_p++);
+  }
+  forward_ptr &operator++() {
+    ++_p;
+    return *this;
+  }
+  forward_ptr operator--(int) {
+    return forward_ptr(_p--);
+  }
+  forward_ptr &operator--() {
+    --_p;
+    return *this;
+  }
+  forward_ptr operator+(int x) const {
+    return forward_ptr(_p + x);
+  }
+  forward_ptr operator-(int x) const {
+    return forward_ptr(_p - x);
+  }
+  T &operator*() { return *_p; }
+  bool operator<(T *e) const { return _p < e; }
+  bool operator>=(T *e) const { return _p >= e; }
+  ptrdiff_t operator-(T *s) const { return _p - s; }
+  T *ptr() const { return _p; }
+};
+
+// A backward moving pointer. suffix++ behaves like suffix--. < behave
+// likes >. Etc.
+template<typename T>
+class backward_ptr {
+  T *_p;
+public:
+  backward_ptr(T *p) : _p(p) {}
+
+  backward_ptr operator++(int) {
+    return backward_ptr(_p--);
+  }
+  backward_ptr &operator++() {
+    --_p;
+    return *this;
+  }
+  backward_ptr operator--(int) {
+    return backward_ptr(_p++);
+  }
+  backward_ptr &operator--() {
+    ++_p;
+    return *this;
+  }
+  backward_ptr operator+(int x) const {
+    return backward_ptr(_p - x);
+  }
+  backward_ptr operator-(int x) const {
+    return backward_ptr(_p + x);
+  }
+  T &operator*() const { return *_p; }
+  bool operator<(T *e) const { return _p > e; }
+  bool operator>=(T *e) const { return _p <= e; }
+  ptrdiff_t operator-(T *s) const { return _p - s; }
+  T *ptr() const { return _p; }
+};
+
+class forward_counter {
+  int _c;
+public:
+  forward_counter(int c) : _c(c) {}
+  forward_counter &operator++() {
+    ++_c;
+    return *this;
+  }
+  forward_counter &operator--() {
+    --_c;
+    return *this;
+  }
+  forward_counter operator+(const int x) const {
+    return forward_counter(_c + x);
+  }
+  int operator-(const forward_counter &c) const {
+    return _c - c._c;
+  }
+  bool operator>(const forward_counter &c) const {
+    return _c > c._c;
+  }
+  int operator*() const { return _c; }
+  friend std::ostream &operator<<(std::ostream &os, const forward_counter &c);
+};
+
+class backward_counter {
+  int _c;
+public:
+  backward_counter(int c) : _c(c) {}
+  backward_counter &operator++() {
+    --_c;
+    return *this;
+  }
+  backward_counter &operator--() {
+    ++_c;
+    return *this;
+  }
+  bool operator>(const backward_counter &c) const {
+    return _c < c._c;
+  }
+  backward_counter operator+(const int x) const {
+    return backward_counter(_c - x);
+  }
+  int operator-(const backward_counter &c) const {
+    return c._c - _c;
+  }
+  int operator*() const { return _c; }
+  friend std::ostream &operator<<(std::ostream &os, const backward_counter &c);
+};
+
+#endif
