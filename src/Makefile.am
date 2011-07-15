@@ -1,15 +1,15 @@
 AM_CPPFLAGS = -Wall -Werror $(JELLYFISH_CFLAGS) -I$(top_srcdir)
 AM_LDFLAGS = -lpthread $(JELLYFISH_LIBS)
 
-# To add  error_correct_reads
-bin_PROGRAMS = create_k_unitigs findMatchesBetweenKUnitigsAndReads	\
-        groupConsensusRecordsForRead					\
-        extractCoveringKUnitigsFromMinimalCoveringKUnitigSets		\
-        createFastaSuperReadSequences					\
-        getRecordsForTandomRepeatKUnitigs myUniq			\
-        changeReadNumsToReadNamesAtBeginOfLine				\
-        convertReadNamesToReadNumbers					\
-        getMaxReadNumbersByPrefixForFastaFile				\
+bin_PROGRAMS = create_k_unitigs error_correct_reads		\
+        findMatchesBetweenKUnitigsAndReads			\
+        groupConsensusRecordsForRead				\
+        extractCoveringKUnitigsFromMinimalCoveringKUnitigSets	\
+        createFastaSuperReadSequences				\
+        getRecordsForTandomRepeatKUnitigs myUniq		\
+        changeReadNumsToReadNamesAtBeginOfLine			\
+        convertReadNamesToReadNumbers				\
+        getMaxReadNumbersByPrefixForFastaFile			\
         mergeShortMatesIntoSuperReads
 
 dist_bin_SCRIPTS = createSuperReadsForDirectory.perl			\
@@ -29,21 +29,19 @@ findSuperReadGroups.perl						\
 makeListOfSuperReadsAndCounts.fromSuperReadGroupsFile.perl		\
 tryToKillKUnitigsOfLength61.perl
 
-noinst_HEADERS = aligned_simple_array.hpp misc.hpp kmer.hpp	\
-diskBasedUnitigger.h fasta_read_parser.hpp			\
-create_k_unitigs_cmdline.hpp
+noinst_HEADERS = aligned_simple_array.hpp misc.hpp kmer.hpp		\
+diskBasedUnitigger.h create_k_unitigs_cmdline.hpp			\
+error_correct_reads_cmdline.hpp error_correct_reads.hpp err_log.hpp	\
+kmer.hpp
 
 create_k_unitigs_SOURCES = create_k_unitigs.cpp	\
 create_k_unitigs_cmdline.cpp
 
+error_correct_reads_SOURCES = error_correct_reads.cc		\
+error_correct_reads_cmdline.cpp kmer.cc err_log.cc
 
-#error_correct_reads_SOURCES = error_correct_reads.cc		\
-#error_correct_reads_cmdline.cpp kmer.hpp kmer.cc err_log.hpp
-#error_correct_reads_SOURCES += error_correct_reads_cmdline.hpp	\
-#error_correct_reads.hpp err_log.hpp
-
-findMatchesBetweenKUnitigsAndReads_SOURCES =			\
-findMatchesBetweenKUnitigsAndReads.cc fasta_read_parser.cc
+findMatchesBetweenKUnitigsAndReads_SOURCES =	\
+findMatchesBetweenKUnitigsAndReads.cc
 groupConsensusRecordsForRead_SOURCES = groupConsensusRecordsForRead.c
 extractCoveringKUnitigsFromMinimalCoveringKUnitigSets_SOURCES =	\
 extractCoveringKUnitigsFromMinimalCoveringKUnitigSets.c

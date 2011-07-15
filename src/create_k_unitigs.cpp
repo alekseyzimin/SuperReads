@@ -14,14 +14,12 @@
     along with k_unitig.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <signal.h>
 #include <jellyfish/err.hpp>
-#include <jellyfish/fasta_parser.hpp>
 #include <jellyfish/mapped_file.hpp>
 #include <jellyfish/mer_counting.hpp>
 #include <jellyfish/allocators_mmap.hpp>
 #include <jellyfish/thread_exec.hpp>
-#include <argp.h>
+#include <signal.h>
 #include <unistd.h>
 #include <string>
 #include <iostream>

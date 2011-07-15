@@ -2,15 +2,15 @@
 #define __ERROR_CORRECT_READS_HPP__
 
 #include <config.h>
+#include <jellyfish/err.hpp>
 #include <jellyfish/mapped_file.hpp>
 #include <jellyfish/invertible_hash_array.hpp>
 #include <jellyfish/allocators_mmap.hpp>
 #include <jellyfish/parse_read.hpp>
+#include <jellyfish/thread_exec.hpp>
 #include <iostream>
 #include <fstream>
 #include <assert.h>
-#include <err.hpp>
-#include <thread_exec.hpp>
 #include <misc.hpp>
 #include <kmer.hpp>
 #include <err_log.hpp>
