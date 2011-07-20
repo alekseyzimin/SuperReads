@@ -14,15 +14,18 @@
     along with k_unitig.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <src/error_correct_reads.hpp>
+#include <vector>
+
+#include <jellyfish/dbg.hpp>
 #include <jellyfish/atomic_gcc.hpp>
 #include <jellyfish/mer_counting.hpp>
-#include <vector>
+
+#include <src/error_correct_reads.hpp>
 
 typedef uint64_t hkey_t;
 typedef uint64_t hval_t;
 //typedef jellyfish::invertible_hash::array<uint64_t,atomic::gcc,allocators::mmap> inv_hash_storage_t;
-typedef std::vector<inv_hash_storage_t *> hashes_t;
+typedef std::vector<inv_hash_storage_t> hashes_t;
 
 std::ostream &operator<<(std::ostream &os, const forward_counter &c) {
   return os << c._c;
@@ -48,7 +51,7 @@ class error_correct_t : public thread_exec {
 public:
   error_correct_t(jellyfish::parse_read *parser, hashes_t *hashes) :
     _parser(parser), _hashes(hashes), 
-    _mer_len(_hashes->front()->get_key_len() / 2),
+    _mer_len(_hashes->front().get_key_len() / 2),
     _skip(0), _good(1), _min_count(1), _window(0), _error(0) {
   }
 
@@ -294,7 +297,7 @@ private:
     int      count = 0;
     for(uint64_t i = 0; i < (uint64_t)4; ++i) {
       nmer.replace(0, i);
-      if((*chash)->get_val(nmer.canonical(), val, true)) {
+      if((*chash).get_val(nmer.canonical(), val, true)) {
         D3(i, val, nmer);
         counts[i] = val;
         if(val >= (uint64_t)_ec->min_count()) {
@@ -333,7 +336,7 @@ private:
       int found = 0;
       while(input < end) {
         hval_t val = 0;
-        if(!(*chash)->get_val(mer.canonical(), val, true))
+        if(!(*chash).get_val(mer.canonical(), val, true))
           val = 0;
         D3((void*)input, val, mer);
         found = (int)val >= _ec->anchor() ? found + 1 : 0;
@@ -367,11 +370,12 @@ int main(int argc, char *argv[])
     std::cerr << "Load " << args_info.db_arg[i] << " ..." << std::endl;
     //    dbf.load();
     std::cerr << "Done." << std::endl;
-    hashes.push_back(raw_inv_hash_query_t(dbf).get_ary());
+    hashes.push_back(*raw_inv_hash_query_t(dbf).get_ary());
+    
     if(key_len == 0)
-      key_len = hashes.front()->get_key_len();
-    else if(key_len != hashes.back()->get_key_len())
-      die << "Different key length (" << hashes.back()->get_key_len() 
+      key_len = hashes.front().get_key_len();
+    else if(key_len != hashes.back().get_key_len())
+      die << "Different key length (" << hashes.back().get_key_len() 
           << " != " << key_len
           << ") for hash '" << args_info.db_arg[i] << "'";
   }
