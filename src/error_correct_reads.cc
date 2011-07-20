@@ -128,29 +128,33 @@ public:
       kmer_t      mer;
       const char *input = read->seq_s + _ec->skip();
       char       *out   = _buffer + _ec->skip();
-
+      DBG << V(_ec->skip()) << V((void*)read->seq_s) << V((void*)input);
       //Prime system. Find and write starting k-mer
       chash = _ec->begin_hash();
       if(!find_starting_mer(mer, input, read->seq_e, out)) {
         details << "Skipped " << substr(read->header, read->hlen) << "\n";
         continue;
       }
+      DBG << V((void*)read->seq_s) << V((void*)input) << V(kmer_t::k());
       // Extend forward and backward
-      err_log<forward_counter> fwd_log(_ec->window(), _ec->error());
+      forward_log fwd_log(_ec->window(), _ec->error());
       char *end_out = 
         extend(forward_mer(mer), forward_ptr<const char>(input),
-               forward_counter(input - read->seq_s), read->seq_e,
+               forward_counter(input - read->seq_s),
+               forward_ptr<const char>(read->seq_e),
                forward_ptr<char>(out), fwd_log);
+      DBG << V((void*)end_out) << V((void*)read->seq_e);
       assert(input > read->seq_s + kmer_t::k());
       assert(out > _buffer + kmer_t::k());
       assert(input - read->seq_s == out - _buffer);
-      err_log<backward_counter> bwd_log(_ec->window(), _ec->error());
+      backward_log bwd_log(_ec->window(), _ec->error());
       char *start_out =
         extend(backward_mer(mer), 
                backward_ptr<const char>(input - kmer_t::k() - 1),
-               backward_counter(input - kmer_t::k() - read->seq_s + 1),
-               read->seq_s - 1,
+               backward_counter(input - kmer_t::k() - read->seq_s - 1),
+               backward_ptr<const char>(read->seq_s - 1),
                backward_ptr<char>(out - kmer_t::k() - 1), bwd_log);
+      DBG << V((void*)start_out) << V((void*)read->seq_s);
       start_out++;
       assert(start_out >= _buffer);
       assert(_buffer + _buff_size >= end_out);
@@ -170,12 +174,18 @@ private:
   // represent a "good" starting k-mer at the input position.
   // out point to the next character to be written.
   template<typename dir_mer, typename in_dir_ptr, typename out_dir_ptr,
-           typename counter>
+           typename counter, typename elog>
   char * extend(dir_mer mer, in_dir_ptr input, 
-                counter pos, const char *end,
-                out_dir_ptr out, err_log<counter> &log) {
-    while(input < end) {
-      char     base        = *input++;
+                counter pos, in_dir_ptr end,
+                out_dir_ptr out, elog &log) {
+    counter cpos = pos;
+    DBG << V((void*)input.ptr()) << V((void*)end.ptr()) << V(cpos);
+    for( ; input < end; ++input) {
+      char     base        = *input;
+      DBG << V((void*)input.ptr()) << V((void*)end.ptr()) << V(base);
+      if(base == '\n')
+        continue;
+      cpos = pos;
       ++pos;
 
       chash = _ec->begin_hash();
@@ -193,23 +203,20 @@ private:
       while(true) {
         ucode = 0;
         count = get_all_alternatives(mer, counts, ucode);
+        DBG << V(*cpos) << V(count) << V(counts[0]) << V(counts[1]) << V(counts[2]) << V(counts[3]);
 
-        D1(pos);
-        D4(base, ori_code, count, mer);
-        D4(counts[0], counts[1], counts[2], counts[3]);
         if(count == 0) {
           if(++chash == _ec->end_hash()) {
-            log.truncation(*pos);
+            log.truncation(cpos);
             goto done; // No continuation -> stop
           }
-          D1((chash == _ec->end_hash()));
         } else
           break;
       }
       if(count == 1) { // One continuation. Is it an error?
         if(ucode != ori_code) {
           mer.replace(0, ucode);
-          if(log.substitution(*pos, base, mer.base(0)))
+          if(log.substitution(cpos, base, mer.base(0)))
             goto truncate;
         }
         *out++ = mer.base(0);
@@ -219,7 +226,7 @@ private:
       // Check that there is at least one more base in the
       // sequence. If not, leave it along
       if(input >= end) {
-        log.truncation(*pos);
+        log.truncation(cpos);
         goto done;
       }
 
@@ -240,7 +247,6 @@ private:
           max_count  = counts[i];
         }
       }
-      D2(ori_code, check_code);
       if(check_code == ori_code) {
         // Don't need to check that check_code == 5 as an alternative
         // would have been found by now.
@@ -250,9 +256,9 @@ private:
 
       // Check that it continues at least one more base
       dir_mer    nmer   = mer;
-      in_dir_ptr ninput = input;
+      //      in_dir_ptr ninput = input;
       nmer.replace(0, check_code);
-      char       nbase  = *ninput++;
+      // char       nbase  = *ninput++;
       // Does not matter what we shift, check all alternative anyway.
       nmer.shift((uint64_t)0);
 
@@ -260,23 +266,24 @@ private:
       int        ncount;
       uint64_t   nucode = 0;
       ncount = get_all_alternatives(nmer, ncounts, nucode);
+      DBG << V(*cpos) << V(ncount) << V(ncounts[0]) << V(ncounts[1]) << V(ncounts[2]) << V(ncounts[3]);
       if(ncount > 0) {
         mer.replace(0, check_code);
         *out++ = mer.base(0);
         if(check_code != ori_code)
-          if(log.substitution(*pos, base, mer.base(0)))
+          if(log.substitution(cpos, base, mer.base(0)))
             goto truncate;
-        if(ncount == 1) { // While we are at it, there is a uniq continuation
-          mer    = nmer;
-          input  = ninput;
-          ++pos;
-          if(nucode != mer.code(0)) {
-            mer.replace(0, nucode);
-            if(log.substitution(*pos, nbase, mer.base(0)))
-              goto truncate;
-          }
-          *out++ = mer.base(0);
-        }
+        // if(ncount == 1) { // While we are at it, there is a uniq continuation
+        //   mer    = nmer;
+        //   input  = ninput;
+        //   ++pos;
+        //   if(nucode != mer.code(0)) {
+        //     mer.replace(0, nucode);
+        //     if(log.substitution(cpos, nbase, mer.base(0)))
+        //       goto truncate;
+        //   }
+        //   *out++ = mer.base(0);
+        // }
       }
     }
     
@@ -286,7 +293,8 @@ private:
   truncate:
     int diff = log.remove_last_window();
     out = out - diff;
-    log.truncation(*pos - diff);
+    DBG << V(*cpos) << V(diff) << V(*(cpos - diff));
+    log.truncation(cpos - diff);
     goto done;
   }
 
@@ -298,14 +306,12 @@ private:
     for(uint64_t i = 0; i < (uint64_t)4; ++i) {
       nmer.replace(0, i);
       if((*chash).get_val(nmer.canonical(), val, true)) {
-        D3(i, val, nmer);
         counts[i] = val;
         if(val >= (uint64_t)_ec->min_count()) {
           count++;
           ucode = i;
         }
       } else {
-        D2(i, nmer);
         counts[i] = 0;
       }
     }
@@ -326,7 +332,6 @@ private:
 
   bool find_starting_mer(kmer_t &mer, const char * &input, const char *end, char * &out) {
     while(input < end) {
-      D2((void*)input, substr(input,31));
       for(int i = 0; input < end && i < _ec->mer_len(); ++i) {
         char base = *input++;
         *out++ = base;
@@ -338,7 +343,6 @@ private:
         hval_t val = 0;
         if(!(*chash).get_val(mer.canonical(), val, true))
           val = 0;
-        D3((void*)input, val, mer);
         found = (int)val >= _ec->anchor() ? found + 1 : 0;
         if(found >= _ec->good())
           return true;
@@ -367,9 +371,6 @@ int main(int argc, char *argv[])
   for(unsigned int i = 0; i < args_info.db_given; i++) {
     mapped_file dbf(args_info.db_arg[i]);
     dbf.random().will_need();
-    std::cerr << "Load " << args_info.db_arg[i] << " ..." << std::endl;
-    //    dbf.load();
-    std::cerr << "Done." << std::endl;
     hashes.push_back(*raw_inv_hash_query_t(dbf).get_ary());
     
     if(key_len == 0)

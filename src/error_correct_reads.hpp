@@ -44,7 +44,9 @@ public:
   }
   T &operator*() { return *_p; }
   bool operator<(T *e) const { return _p < e; }
+  bool operator<(const forward_ptr<T> &e) const { return _p < e._p; }
   bool operator>=(T *e) const { return _p >= e; }
+  bool operator>=(const forward_ptr<T> &e) const { return _p >= e._p; }
   ptrdiff_t operator-(T *s) const { return _p - s; }
   T *ptr() const { return _p; }
 };
@@ -79,7 +81,9 @@ public:
   }
   T &operator*() const { return *_p; }
   bool operator<(T *e) const { return _p > e; }
+  bool operator<(const backward_ptr<T> &e) const { return _p > e._p; }
   bool operator>=(T *e) const { return _p <= e; }
+  bool operator>=(const backward_ptr<T> &e) const { return _p <= e._p; }
   ptrdiff_t operator-(T *s) const { return _p - s; }
   T *ptr() const { return _p; }
 };
@@ -98,6 +102,9 @@ public:
   }
   forward_counter operator+(const int x) const {
     return forward_counter(_c + x);
+  }
+  forward_counter operator-(const int x) const {
+    return forward_counter(_c - x);
   }
   int operator-(const forward_counter &c) const {
     return _c - c._c;
@@ -127,11 +134,30 @@ public:
   backward_counter operator+(const int x) const {
     return backward_counter(_c - x);
   }
+  backward_counter operator-(const int x) const {
+    return backward_counter(_c + x);
+  }
   int operator-(const backward_counter &c) const {
     return c._c - _c;
   }
   int operator*() const { return _c; }
   friend std::ostream &operator<<(std::ostream &os, const backward_counter &c);
+};
+
+class forward_log : public err_log<forward_counter> {
+public:
+  forward_log(unsigned int window, unsigned int error) :
+    err_log<forward_counter>(window, error, "3_trunc") { }
+};
+
+class backward_log : public err_log<backward_counter> {
+public:
+  backward_log(unsigned int window, unsigned int error) :
+    err_log<backward_counter>(window, error, "5_trunc") { }
+  
+  bool truncation(backward_counter pos) {
+    return err_log<backward_counter>::truncation(pos - 1);
+  }
 };
 
 #endif

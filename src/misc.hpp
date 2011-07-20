@@ -6,20 +6,6 @@
 #include <assert.h>
 #include <algorithm>
 
-#ifdef NDEBUG
-#define D0
-#define D1(a)
-#define D2(a,b)
-#define D3(a,b,c)
-#define D4(a,b,c,d)
-#else
-#define D0 std::cerr << basename(__FILE__) << ":" << __func__ << ":" << __LINE__ << " " << std::endl;
-#define D1(a) std::cerr << basename(__FILE__) << ":" << __func__ << ":" << __LINE__ << " " << #a " " << a << std::endl;
-#define D2(a,b) std::cerr << basename(__FILE__) << ":" << __func__ << ":" << __LINE__ << " " << #a " " << a << " " #b " " << b << std::endl;
-#define D3(a,b,c) std::cerr << basename(__FILE__) << ":" << __func__ << ":" << __LINE__ << " " << #a " " << a << " " #b " " << b << " " #c " " << c << std::endl;
-#define D4(a,b,c,d) std::cerr << basename(__FILE__) << ":" << __func__ << ":" << __LINE__ << " " << #a " " << a << " " #b " " << b << " " #c " " << c << " " #d " " << d << std::endl;
-#endif
-
 // IO manipulator for substrings
 class substr {
 public:

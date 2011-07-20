@@ -36,19 +36,19 @@ private:
     entry(type_t t, T p) : type(t), pos(p) {}
   };
 
-  typedef std::vector<entry> log_t;
-  const unsigned int        _window;
-  const unsigned int        _error;
-  typename log_t::size_type _lwin;
-  log_t                     _log;
+  typedef std::vector<entry>  log_t;
+  const unsigned int          _window;
+  const unsigned int          _error;
+  typename log_t::size_type   _lwin;
+  const char                 *_trunc_string;
+  log_t                       _log;
 public:
-  err_log(unsigned int window, unsigned int error) : 
-    _window(window), _error(error), _lwin(0) { 
+  err_log(unsigned int window, unsigned int error, const char *trunc_string) : 
+    _window(window), _error(error), _lwin(0), _trunc_string(trunc_string) { 
   }
 
   bool substitution(T pos, char from, char to) {
     assert(_log.size() == 0 ? true : pos > _log.back().pos);
-    D3(pos, from, to);
     struct entry e(SUBSTITUTION, pos);
     e.sub.from = from;
     e.sub.to   = to;
@@ -58,7 +58,6 @@ public:
 
   bool truncation(T pos) {
     assert(_log.size() == 0 ? true : pos > _log.back().pos);
-    D1(pos);
     _log.push_back(entry(TRUNCATION, pos));
     return check_nb_error();
   }
@@ -76,6 +75,7 @@ public:
     if(_log.size() == 0)
       return 0;
     int diff = _log.back().pos - _log[_lwin].pos; 
+    DBG << V(*_log.back().pos) << V(*_log[_lwin].pos) << V(diff);
     _log.erase(_log.begin() + _lwin, _log.end());
     _lwin = 0;
     check_nb_error();
@@ -100,7 +100,7 @@ std::ostream &operator<<(std::ostream &os, const err_log<T> &l) {
       break;
 
     case err_log<T>::TRUNCATION:
-      os << it->pos << ":trunc";
+      os << it->pos << ":" << l._trunc_string;
       break;
 
     default:
