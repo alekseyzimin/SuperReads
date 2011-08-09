@@ -275,7 +275,7 @@ print "$cmd\n"; system ($cmd);
 
 $cmd = "time $exeDir/outputSuperReadSeqForJumpLibrary.perl $myProgOutput8 $myProgOutput12 > $finalSuperReadSequenceFile";
 print "$cmd\n"; system ($cmd);
-if (! $mikedebug) { &killFiles ($myProgOutput12); }
+if (! $mikedebug) { &killFiles ($myProgOutput12usingReadNumbers); }
 
 exit(0);
 
