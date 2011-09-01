@@ -95,6 +95,13 @@ print STDERR "total_rho= $total_rho total_count= $total_count GAR= $global_arriv
 foreach $v(keys %count)
 {
 my $astat=($rho{$v}*$global_arrival_rate)-(0.6931471805599453094*$count{$v});
+#if($rho{$v}>2000&&$astat<0)
+#{
+#print "unitig_coverage_stat $v 10\n";
+#}
+#else
+#{
 print "unitig_coverage_stat $v $astat\n";
+#}
 }
 

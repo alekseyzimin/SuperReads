@@ -10,7 +10,7 @@ bin_PROGRAMS = create_k_unitigs error_correct_reads		\
         changeReadNumsToReadNamesAtBeginOfLine			\
         convertReadNamesToReadNumbers				\
         getMaxReadNumbersByPrefixForFastaFile			\
-        mergeShortMatesIntoSuperReads
+        mergeShortMatesIntoSuperReads error_corrected2frg filter_illumina_data_quals homo_trim reverse_complement
 
 dist_bin_SCRIPTS = createSuperReadsForDirectory.perl			\
 getNumBasesInKUnitigsFile.perl mergeShortMatesIntoSuperReads.perl	\
@@ -27,12 +27,17 @@ findMatchRecordsForGivenKUnitig.perl					\
 listInfrequentlyOccurringSuperReads.perl reportSuperReadGroups.perl	\
 findSuperReadGroups.perl						\
 makeListOfSuperReadsAndCounts.fromSuperReadGroupsFile.perl		\
-tryToKillKUnitigsOfLength61.perl
+tryToKillKUnitigsOfLength61.perl close_gaps.sh compute_sr_cov.pl create_sr_frg.pl extractreads.pl extract_unjoined_pairs.pl fasta2frg.pl filter_library.sh fix_unitigs.sh recompute_astat_superreads.sh runSRCA.pl
 
 noinst_HEADERS = aligned_simple_array.hpp misc.hpp kmer.hpp		\
 diskBasedUnitigger.h create_k_unitigs_cmdline.hpp			\
 error_correct_reads_cmdline.hpp error_correct_reads.hpp err_log.hpp	\
 kmer.hpp
+
+error_corrected2frg_SOURCES = error_corrected2frg.c 
+filter_illumina_data_quals_SOURCES = filter_illumina_data_quals.c 
+homo_trim_SOURCES = homo_trim.c 
+reverse_complement_SOURCES = reverse_complement.c
 
 create_k_unitigs_SOURCES = create_k_unitigs.cpp	\
 create_k_unitigs_cmdline.cpp
