@@ -278,13 +278,17 @@ public:
     size_t      low_cont = 0;
     size_t      low_stretch = args.low_stretch_arg;
 
-    unsigned char omax = used_by.set_to_max(start_id, th_id + 1);
-    if(omax) { // Already a thread working on it.
-      // Starting k-mer is visited twice, and that's OK
-      if(direction == dir_forward)
+    unsigned char current = used_by.set_if_empty(start_id, th_id + 1);
+    if(direction == dir_forward) {
+      // Get started only if first k-mer is empty
+      if(current)
         return 0;
-    } else
       (*added)++;
+    } else {
+      // Do backward direction only if starting k-mer still is 'ours'
+      if(current != th_id + 1)
+        return 0;
+    }
 
     while(true) {
       found = unique_continuation(current_key, &next_key, &cannon_next_key, 
@@ -342,8 +346,9 @@ public:
       current_key        = next_key;
       cannon_current_key = cannon_next_key;
 
-
-      omax = used_by.set_to_max(next_id, th_id + 1);
+      // If the next k-mer already belongs to another thread, trump it
+      // if we have a larger thread id. Otherwise bail out.
+      unsigned char omax = used_by.set_to_max(next_id, th_id + 1);
       if((th_id + 1) <= omax)
         return 0;
       if(!omax)

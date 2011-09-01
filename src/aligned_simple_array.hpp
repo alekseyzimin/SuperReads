@@ -31,18 +31,26 @@ namespace simple_array {
       mem_block(sizeof(word) * size),
       data((word *)mem_block.get_ptr()) {}
 
-    inline word cas(size_t id, word old_value, word new_value) {
-      return atomic.cas(&data[id], old_value, new_value);
+    inline word cas(const size_t &id, const word &old_value, const word &new_value) {
+      return atomic.cas(data + id, old_value, new_value);
+    }
+
+    /**
+     * Set entry at position id to val if the entry is empty (i.e. ==
+     * 0). Return the value that was at id before the call.
+     */
+    word set_if_empty(const size_t id, const word &val) {
+      return atomic.cas(data + id, (word)0, val);
     }
 
     /**
      * Set entry at position id to the max of the value at position
      * id and val. It returns the position at id before the call.
      */
-    word set_to_max(const size_t id, const word val) {
+    word set_to_max(const size_t id, const word &val) {
       word ov = data[id];
       while(val > ov) {
-        word nov = atomic.cas(&data[id], ov, val);
+        word nov = cas(id, ov, val);
         if(nov == ov)
           break;
         ov = nov;
