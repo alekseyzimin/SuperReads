@@ -159,6 +159,7 @@ public:
       assert(start_out >= _buffer);
       assert(_buffer + _buff_size >= end_out);
 
+      DBG << V((void*)start_out) << V((void*)end_out) << V(end_out - start_out);
       output << ">" << substr(read->header, read->hlen) 
              << " " << fwd_log << " " << bwd_log << "\n"
              << substr(start_out, end_out) << "\n";
@@ -182,13 +183,12 @@ private:
     DBG << V((void*)input.ptr()) << V((void*)end.ptr()) << V(cpos);
     for( ; input < end; ++input) {
       char     base        = *input;
-      DBG << V((void*)input.ptr()) << V((void*)end.ptr()) << V(base);
+      DBG << V(*cpos) << V((void*)input.ptr()) << V((void*)end.ptr()) << V(base);
       if(base == '\n')
         continue;
       cpos = pos;
       ++pos;
 
-      chash = _ec->begin_hash();
       uint64_t ori_code;
       if(!mer.shift(base)) {
         ori_code = 5; // Invalid base
@@ -197,34 +197,36 @@ private:
         ori_code = mer.code(0);
       }
       uint64_t counts[4];
-      uint64_t ucode;
-      int      count;
-      
-      while(true) {
+      uint64_t ucode = 0;
+      int      count = 0;
+
+      for(chash = _ec->begin_hash(); count == 0 && chash != _ec->end_hash(); ++chash) {
         ucode = 0;
         count = get_all_alternatives(mer, counts, ucode);
         DBG << V(*cpos) << V(count) << V(counts[0]) << V(counts[1]) << V(counts[2]) << V(counts[3]);
-
-        if(count == 0) {
-          if(++chash == _ec->end_hash()) {
-            log.truncation(cpos);
-            goto done; // No continuation -> stop
-          }
-        } else
-          break;
       }
-      if(count == 1) { // One continuation. Is it an error?
+
+      switch(count) {
+      case 0: // No continuation in any of the hashes -> truncate
+        log.truncation(cpos);
+        goto done;
+
+      case 1: // Unique continuation. Is it an error?
         if(ucode != ori_code) {
           mer.replace(0, ucode);
+          DBG << "subsitution1" << V(cpos) << V(base) << V(mer.base(0));
           if(log.substitution(cpos, base, mer.base(0)))
             goto truncate;
         }
         *out++ = mer.base(0);
         continue;
+
+      default: // No unique continuation: treat complicated case
+        break;
       }
 
       // Check that there is at least one more base in the
-      // sequence. If not, leave it along
+      // sequence. If not, leave it alone
       if(input >= end) {
         log.truncation(cpos);
         goto done;
@@ -236,6 +238,7 @@ private:
       // that case, make the switch.
       uint64_t check_code = ori_code;
       uint64_t ori_count  = ori_code < 4 ? counts[ori_code] : 0;
+
       if(ori_count < (uint64_t)_ec->min_count())
         ori_count = 0;
       uint64_t max_count  = 3 * ori_count;
@@ -270,9 +273,11 @@ private:
       if(ncount > 0) {
         mer.replace(0, check_code);
         *out++ = mer.base(0);
-        if(check_code != ori_code)
+        if(check_code != ori_code) {
+          DBG << "subsitution2" << V(cpos) << V(base) << V(mer.base(0));
           if(log.substitution(cpos, base, mer.base(0)))
             goto truncate;
+        }
         // if(ncount == 1) { // While we are at it, there is a uniq continuation
         //   mer    = nmer;
         //   input  = ninput;
@@ -291,9 +296,10 @@ private:
     return out.ptr();
 
   truncate:
+    // Truncate because of two many errors in a window
     int diff = log.remove_last_window();
     out = out - diff;
-    DBG << V(*cpos) << V(diff) << V(*(cpos - diff));
+    DBG << "truncate" << V(*cpos) << V(diff) << V(*(cpos - diff));
     log.truncation(cpos - diff);
     goto done;
   }
@@ -303,6 +309,7 @@ private:
     uint64_t val   = 0;
     dir_mer  nmer(mer);
     int      count = 0;
+    DBG << V(_ec->min_count());
     for(uint64_t i = 0; i < (uint64_t)4; ++i) {
       nmer.replace(0, i);
       if((*chash).get_val(nmer.canonical(), val, true)) {
