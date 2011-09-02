@@ -298,9 +298,9 @@ private:
 
   truncate:
     int diff = log.remove_last_window();
-    out = out - diff + 1;
+    out = out - diff;
     DBG << V(*cpos) << V(diff) << V(*(cpos - diff));
-    log.truncation(cpos - diff + 1);
+    log.truncation(cpos - diff);
     goto done;
   }
 

@@ -454,8 +454,9 @@ print FILE "\n";
 if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta"))
 {
 print FILE "jellyfish count -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa\n";
-print FILE "create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 32 k_u_hash_0 1> /dev/null 2>&1\n";
-print FILE "cat k_unitigs_*.fa |grep -v '^>' | awk '{print length(\$1)\" \"\$1}' |sort -S 10% -grk1,1 | awk 'BEGIN{n=0}{print \">\"n\"\\n\"\$2;n++;}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+print FILE "create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 32 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
+#print FILE "cat k_unitigs_*.fa | awk 'BEGIN{seq=\"\"}{if(\$1 ~ /^>/){if(seq != \"\"){ print length(seq)\" \"seq;seq=\"\"}}else{seq=seq\$1}}END{print length(seq)\" \"seq}' |sort -S 10% -grk1,1 | awk 'BEGIN{n=0}{print \">\"n\" length:\"length(\$2)\" fwd:null bwd:null\\n\"\$2;n++;}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+print FILE "cat k_unitigs_*.fa > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
 print FILE "rm k_unitigs_*.fa  k_unitigs_*.counts\n";
 }
 ######################################################done k-unitigs#################################################################
