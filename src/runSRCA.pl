@@ -478,11 +478,11 @@ print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -kunitigsfi
 print FILE "\n";
 
 #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
-print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$3\" \"\$2\" \"\$1;}else{print \$3\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |sort -k3,3 -S 10% |uniq -D -f 1| awk 'BEGIN{insert=\"\";}{if(\$3!=insert){start=\$1;insert=\$3}else{if(start>\$1){print insert\" \"start-\$1}else{print insert\" \"\$1-start}}}' | perl -ane '{if(\$F[1]<750&&\$F[1]>0){print STDOUT \"\$F[0]\\n\",substr(\$F[0],0,2),int(substr(\$F[0],2))+1,\"\\n\";}}' 1> chimeric_sj.txt \n" if(not(-e "chimeric_sj.txt"));
+print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$3\" \"\$2\" \"\$1;}else{print \$3\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 1| awk 'BEGIN{insert=\"\";}{if(\$3!=insert){start=\$1;insert=\$3}else{if(start>\$1){print insert\" \"start-\$1}else{print insert\" \"\$1-start}}}' | perl -ane '{if(\$F[1]<750&&\$F[1]>0){print STDOUT \"\$F[0]\\n\",substr(\$F[0],0,2),int(substr(\$F[0],2))+1,\"\\n\";}}' 1> chimeric_sj.txt \n" if(not(-e "chimeric_sj.txt"));
 print FILE "\n";
 
 #we also do initial redundancy filtering here, based on positions of reads in suoer reads
-print FILE "sort -k2,4 -S 20% work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 1 |awk '{if(int(substr(\$1,3))%2==0){print \$2\" \"\$3\" \"\$1}else{print \$2\" \"\$3\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' |sort -k3,3 -S 10%|uniq -D -f 2|awk 'BEGIN{flag=0}{if(flag==1){index1=int(substr(c1_1,1,length(c1_1)-1))*20000+c1_2;index2=int(substr(\$1,1,length(\$1)-1))*20000+\$2;if(index1>index2){print c1_1\" \"\$1\" \"c1_2\" \"\$2\" \"c}else{print \$1\" \"c1_1\" \"\$2\" \"c1_2\" \"c}}c=\$3;c1_1=\$1;c1_2=\$2;flag=1-flag;}'|perl -ane '{chomp;\$range=2;\$code=0;for(\$i=-\$range;\$i<=\$range;\$i++){for(\$j=-\$range;\$j<=\$range;\$j++){\$code++ if(defined(\$h{\"\$F[0] \$F[1] \".(\$F[2]+\$i).\" \".(\$F[3]+\$j)}))}}if(\$code==0){\$h{\"\$F[0] \$F[1] \$F[2] \$F[3]\"}=1}else{print \"\$F[4]\\n\",substr(\$F[4],0,2),int(substr(\$F[4],2))+1,\"\\n\"}}' > redundant_sj.txt\n" if(not(-e "redundant_sj.txt")); 
+print FILE "cat work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 1 |awk '{if(int(substr(\$1,3))%2==0){print \$2\" \"\$3\" \"\$1}else{print \$2\" \"\$3\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' |uniq -D -f 2|awk 'BEGIN{flag=0}{if(flag==1){index1=int(substr(c1_1,1,length(c1_1)-1))*20000+c1_2;index2=int(substr(\$1,1,length(\$1)-1))*20000+\$2;if(index1>index2){print c1_1\" \"\$1\" \"c1_2\" \"\$2\" \"c}else{print \$1\" \"c1_1\" \"\$2\" \"c1_2\" \"c}}c=\$3;c1_1=\$1;c1_2=\$2;flag=1-flag;}'|perl -ane '{chomp;\$range=2;\$code=0;for(\$i=-\$range;\$i<=\$range;\$i++){for(\$j=-\$range;\$j<=\$range;\$j++){\$code++ if(defined(\$h{\"\$F[0] \$F[1] \".(\$F[2]+\$i).\" \".(\$F[3]+\$j)}))}}if(\$code==0){\$h{\"\$F[0] \$F[1] \$F[2] \$F[3]\"}=1}else{print \"\$F[4]\\n\",substr(\$F[4],0,2),int(substr(\$F[4],2))+1,\"\\n\"}}' > redundant_sj.txt\n" if(not(-e "redundant_sj.txt")); 
 
 print FILE "echo 'Chimeric/Redundant jump reads:';wc -l  chimeric_sj.txt redundant_sj.txt;\n";
 
@@ -530,7 +530,7 @@ print FILE "createSuperReadsForDirectory.perl -kunitigsfile guillaumeKUnitigsAtL
 print FILE "\n";
 
 #now we extract those PE mates that did not end up in the same super read -- we call them linking mates, they will be useful for scaffolding
-print FILE "extractreads.pl <( awk '{if(int(substr(\$1,3))%2==0){print \$1\" \"\$2\" \"\$1;}else{print \$1\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |sort -k3,3 -S 10% |uniq -D -f 2 | uniq -u -f 1 | awk '{print \$1}' )  pe.cor.fa 1 > pe.linking.fa\n" if(not(-e "pe.linking.fa"));
+print FILE "extractreads.pl <( awk '{if(int(substr(\$1,3))%2==0){print \$1\" \"\$2\" \"\$1;}else{print \$1\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 2 | uniq -u -f 1 | awk '{print \$1}' )  pe.cor.fa 1 > pe.linking.fa\n" if(not(-e "pe.linking.fa"));
 print FILE "\n";
 
 #create frg files for PE data
