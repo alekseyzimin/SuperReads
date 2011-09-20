@@ -5,8 +5,8 @@ $exeDir = dirname ($0);
 $pwd = cwd;
 
 $program0 = "$exeDir/createKUnitigMaxOverlaps";
-$program1 = "$exeDir/getMateStatistics.pt1";
-$program2 = "$exeDir/getMateStatistics.pt2.perl";
+$program1 = "$exeDir/getMateStatistics_pt1";
+$program2 = "$exeDir/getMateStatistics_pt2.perl";
 $program3 = "$exeDir/getStdevOfLibrary.perl";
 $program11 = "$exeDir/convertReadMateInfoIntoKUnitigMateInfoForMateJoining.perl";
 $program12 = "$exeDir/joinKUnitigs";

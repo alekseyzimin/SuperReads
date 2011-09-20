@@ -11,7 +11,7 @@ bin_PROGRAMS = create_k_unitigs error_correct_reads		\
         convertReadNamesToReadNumbers				\
         getMaxReadNumbersByPrefixForFastaFile			\
         mergeShortMatesIntoSuperReads error_corrected2frg filter_illumina_data_quals homo_trim reverse_complement \
-	createKUnitigMaxOverlaps getMateStatistics.pt1 \
+	createKUnitigMaxOverlaps getMateStatistics_pt1 \
 	joinKUnitigs
 
 dist_bin_SCRIPTS = createSuperReadsForDirectory.perl			\
@@ -36,7 +36,7 @@ createCombinedGoodJoinsFile.perl \
 extractMatePairConnectionFromResults.perl \
 convertReadMateInfoIntoKUnitigMateInfoForMateJoining.perl \
 getStdevOfLibrary.perl \
-getMateStatistics.pt2.perl
+getMateStatistics_pt2.perl
 
 noinst_HEADERS = aligned_simple_array.hpp misc.hpp kmer.hpp		\
 diskBasedUnitigger.h create_k_unitigs_cmdline.hpp			\
@@ -66,6 +66,6 @@ changeReadNumsToReadNamesAtBeginOfLine_SOURCES = changeReadNumsToReadNamesAtBegi
 mergeShortMatesIntoSuperReads_SOURCES = mergeShortMatesIntoSuperReads.cc
 convertReadNamesToReadNumbers_SOURCES = convertReadNamesToReadNumbers.c
 getMaxReadNumbersByPrefixForFastaFile_SOURCES = getMaxReadNumbersByPrefixForFastaFile.c
-getMateStatistics.pt1_SOURCES = getMateStatistics.pt1.cc
+getMateStatistics_pt1_SOURCES = getMateStatistics_pt1.cc
 createKUnitigMaxOverlaps_SOURCES = createKUnitigMaxOverlaps.cc
 joinKUnitigs_SOURCES = joinKUnitigs.c redBlackTreesInsertOnly.c priorityHeap.c
