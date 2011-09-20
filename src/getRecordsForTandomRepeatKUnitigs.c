@@ -9,7 +9,7 @@ int ahgLocal[1000], bhgLocal[1000], begin1sLocal[1000],
 char localOris[1000];
 int indicesLocal[1000], keepIndexLocal[1000];
 
-char *flds[100];
+char *flds[1000];
 char *line;
 
 int getFldsFromLine (char *cptr);

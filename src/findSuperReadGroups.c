@@ -3,7 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 
-char *flds[100];
+char *flds[1000];
 int fldNums[100], fldNums2[100];
 char *line;
 

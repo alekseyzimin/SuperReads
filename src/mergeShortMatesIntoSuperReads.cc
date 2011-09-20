@@ -21,7 +21,7 @@ char superReadsFile[1000], numKUnitigsFile[1000], chimericReadsFile[1000], repet
 int *kUnitigLengths;
 unsigned int *kUnitigList1;
 
-char *flds[100];
+char *flds[1000];
 char forwardReadLine2[1000], reverseReadLine2[1000];
 unsigned char *isRepetitive, *isChimeric, *wasOutput, *insertCount, *insertEndForFirstReadOfInsert;
 unsigned int numKUnitigs;

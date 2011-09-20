@@ -10,7 +10,9 @@ bin_PROGRAMS = create_k_unitigs error_correct_reads		\
         changeReadNumsToReadNamesAtBeginOfLine			\
         convertReadNamesToReadNumbers				\
         getMaxReadNumbersByPrefixForFastaFile			\
-        mergeShortMatesIntoSuperReads error_corrected2frg filter_illumina_data_quals homo_trim reverse_complement
+        mergeShortMatesIntoSuperReads error_corrected2frg filter_illumina_data_quals homo_trim reverse_complement \
+	createKUnitigMaxOverlaps getMateStatistics.pt1 \
+	joinKUnitigs
 
 dist_bin_SCRIPTS = createSuperReadsForDirectory.perl			\
 getNumBasesInKUnitigsFile.perl mergeShortMatesIntoSuperReads.perl	\
@@ -27,12 +29,19 @@ findMatchRecordsForGivenKUnitig.perl					\
 listInfrequentlyOccurringSuperReads.perl reportSuperReadGroups.perl	\
 findSuperReadGroups.perl						\
 makeListOfSuperReadsAndCounts.fromSuperReadGroupsFile.perl		\
-tryToKillKUnitigsOfLength61.perl close_gaps.sh compute_sr_cov.pl create_sr_frg.pl extractreads.pl extract_unjoined_pairs.pl fasta2frg.pl filter_library.sh fix_unitigs.sh recompute_astat_superreads.sh runSRCA.pl
+tryToKillKUnitigsOfLength61.perl close_gaps.sh compute_sr_cov.pl create_sr_frg.pl extractreads.pl extract_unjoined_pairs.pl fasta2frg.pl filter_library.sh fix_unitigs.sh recompute_astat_superreads.sh runSRCA.pl \
+postSuperReadPipelineCommandsForJoiningMates.perl \
+createSuperReadGroupsFromMatePairJoinedMates.perl \
+createCombinedGoodJoinsFile.perl \
+extractMatePairConnectionFromResults.perl \
+convertReadMateInfoIntoKUnitigMateInfoForMateJoining.perl \
+getStdevOfLibrary.perl \
+getMateStatistics.pt2.perl
 
 noinst_HEADERS = aligned_simple_array.hpp misc.hpp kmer.hpp		\
 diskBasedUnitigger.h create_k_unitigs_cmdline.hpp			\
 error_correct_reads_cmdline.hpp error_correct_reads.hpp err_log.hpp	\
-kmer.hpp
+kmer.hpp priorityHeap.h redBlackTreesInsertOnly.h
 
 error_corrected2frg_SOURCES = error_corrected2frg.c 
 filter_illumina_data_quals_SOURCES = filter_illumina_data_quals.c 
@@ -57,4 +66,6 @@ changeReadNumsToReadNamesAtBeginOfLine_SOURCES = changeReadNumsToReadNamesAtBegi
 mergeShortMatesIntoSuperReads_SOURCES = mergeShortMatesIntoSuperReads.cc
 convertReadNamesToReadNumbers_SOURCES = convertReadNamesToReadNumbers.c
 getMaxReadNumbersByPrefixForFastaFile_SOURCES = getMaxReadNumbersByPrefixForFastaFile.c
-
+getMateStatistics.pt1_SOURCES = getMateStatistics.pt1.cc
+createKUnitigMaxOverlaps_SOURCES = createKUnitigMaxOverlaps.cc
+joinKUnitigs_SOURCES = joinKUnitigs.c redBlackTreesInsertOnly.c priorityHeap.c

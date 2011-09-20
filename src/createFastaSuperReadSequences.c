@@ -31,6 +31,8 @@ VI)  Make sure you allow for an appropriate set of params
 	     super-read; otherwise it fails (default is 0).
 	D) -nosequence just outputs the names of the passing super-reads
 	     instead of the name and sequence in fasta format
+	E) -error-filename filename sends the error output to the specified
+	     file
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -89,6 +91,7 @@ int main (int argc, char **argv)
      workingDir = (char *) ".";
      sprintf (superReadListFile, "%s/%s", workingDir, DEFAULT_SUPER_READ_LIST_FILE);
      seqDiffMax = 0;
+     errorFilename[0] = 0;
      argNum = 0;
      for (i=1; i<argc; i++) {
 	  if (strcmp (argv[i], "-nosequence") == 0) {
@@ -97,6 +100,10 @@ int main (int argc, char **argv)
 	  if (strcmp (argv[i], "-seqdiffmax") == 0) {
 	       ++i;
 	       seqDiffMax = atoi (argv[i]);
+	       continue; }
+	  if (strcmp (argv[i], "-error-filename") == 0) {
+	       ++i;
+	       strcpy (errorFilename, argv[i]);
 	       continue; }
 	  if (argNum == 0)
 	       workingDir = argv[i];
@@ -107,7 +114,8 @@ int main (int argc, char **argv)
 	       exit (1); }
 	  ++argNum; }
      
-     sprintf (errorFilename, "%s/createFastaSuperReadSequences.errors.txt", workingDir);
+     if (strlen (errorFilename) == 0)
+	  sprintf (errorFilename, "%s/createFastaSuperReadSequences.errors.txt", workingDir);
      mallocOrDie(line, 10000000, char);
      mallocOrDie (reverseComplementSpace, 1000000, char);
      mallocOrDie (outputSeqSpace, 3000000, char);

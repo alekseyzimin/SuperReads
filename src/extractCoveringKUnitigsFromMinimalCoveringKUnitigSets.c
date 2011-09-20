@@ -8,7 +8,7 @@ char lines[1000][1000];
 int kUnitigNums[1000], minOffsets[1000], maxOffsets[1000], overlaps[1000];
 char oris[1000];
 
-char *flds[100];
+char *flds[1000];
 
 int getFldsFromLine (char *cptr);
 

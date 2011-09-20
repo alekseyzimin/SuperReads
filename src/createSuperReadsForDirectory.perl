@@ -17,6 +17,12 @@
 # -kunitigsfile filename : a user-given k-unitigs file; otherwise we calculate
 # -mkudisr numBaseDiffs : max base diffs between overlapping k-unitigs in super-reads (0)
 # -join-mates : join mate pairs
+# -join-shooting : join mate pairs using the shooting method
+# -force-join : force the mates from all libraries to be joined
+#                                (used when -join-shooting is set)
+# -default-mean # : the value used for the mean for -force-join (default 300)
+# -default-stdev # : the value used for the stdev for -force-join
+#                                 (default: 10% of the default mean)
 # -minreadsinsuperread minReads : super-reads containing fewer than numReads
 #                                reads will be eliminated (2)
 # -noclean : don't clean up the files afterwards
@@ -72,9 +78,12 @@ $myProgOutput10 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.ch
 $myProgOutput14 = "$workingDirectory/superReadCounts.count.superRead.txt";
 $myProgOutput15 = "$workingDirectory/infrequentlyOccurringSuperReads.txt";
 $myProgOutput16 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.preMateMerge.txt";
-$myProgOutput12 = "$workingDirectory/readPlacementsInSuperReads.preMateMerge.read.superRead.offset.ori.txt";
-$myProgOutput13 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.final.txt";
-$myProgOutput17 = "$workingDirectory/superReadGroups.onePerLine.withReadInfoIncluded.final.txt";
+$myProgOutput18 = "$workingDirectory/readPlacementsInSuperReads.preMateMerge.read.superRead.offset.ori.txt";
+$myProgOutput22 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.postMateMerge.txt";
+$myProgOutput23 = "$workingDirectory/readPlacementsInSuperReads.postMateMerge.read.superRead.offset.ori.usingReadNumbers.txt";
+$myProgOutput24 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.overlapJoinedMates.txt";
+$myProgOutput91 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.final.txt";
+$myProgOutput92 = "$workingDirectory/superReadGroups.onePerLine.withReadInfoIncluded.final.txt";
 $finalSuperReadSequenceFile = "$workingDirectory/superReadSequences.fasta";
 $finalReadPlacementFileUsingReadNumbers = "$workingDirectory/readPlacementsInSuperReads.final.read.superRead.offset.ori.usingReadNumbers.txt";
 $finalReadPlacementFile = "$workingDirectory/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt";
@@ -109,10 +118,10 @@ print "$cmd\n"; system ($cmd);
 if (! $kUnitigsFile) {
 
   redoJellyfish:
-    $cmd = "time jellyfish count -m $merLen -r -o $jellyfishDataPrefix -c 6 --both-strands -s $tableSize -t $numProcessors @fastaFiles";
+    $cmd = "time jellyfish count -m $merLen -r -o $jellyfishDataPrefix -c 6 -p 126--both-strands -s $tableSize -t $numProcessors @fastaFiles";
     print "$cmd\n"; system ($cmd);
     
-    $tableResizeFactor = &returnTableResizeAmount;
+    $tableResizeFactor = &returnTableResizeAmount ($jellyfishDataPrefix, $jellyfishHashFile);
     if ($tableResizeFactor > 1) {
 	$tableSize *= 2;
 	print "Resizing the table to $tableSize for jellyfish\n";
@@ -152,8 +161,15 @@ print "$cmd\n"; system ($cmd);
 
 $minSizeNeededForTable = &reportMinJellyfishTableSizeForKUnitigs;
 
-$cmd = "time jellyfish count -m $merLen -r -o $jellyfishKUnitigDataPrefix -c 6 --both-strands -s $minSizeNeededForTable -t $numProcessors $totalKUnitigFastaSequence";
+redoKUnitigsJellyfish:
+$cmd = "time jellyfish count -m $merLen -r -o $jellyfishKUnitigDataPrefix -c 6 -p 126 --both-strands -s $minSizeNeededForTable -t $numProcessors $totalKUnitigFastaSequence";
 print "$cmd\n"; system ($cmd);
+    
+$tableResizeFactor = &returnTableResizeAmount ($jellyfishKUnitigDataPrefix, $jellyfishKUnitigHashFile);
+if ($tableResizeFactor > 1) {
+    $tableSize *= 2;
+    print "Resizing the table to $tableSize for the k-unitig jellyfish run\n";
+    goto redoKUnitigsJellyfish; }
 
 print "Making sure the k-unitig hash table is in memory...\n";
 $cmd = "cat $jellyfishKUnitigHashFile > /dev/null";
@@ -229,31 +245,55 @@ $cmd = "time $exeDir/eliminateInfrequentlyOccurringSuperReadsUsingList.perl $myP
 print "$cmd\n"; system ($cmd);
 if (! $mikedebug) { &killFiles ($myProgOutput10); }
 
-$cmd = "time $exeDir/getReadStartsOffsetsAndOrientationsInSuperReads.1stPass.perl $myProgOutput3 $myProgOutput16 $kUnitigLengthsFile $errorOutput8 > $myProgOutput12";
+$cmd = "time $exeDir/getReadStartsOffsetsAndOrientationsInSuperReads.1stPass.perl $myProgOutput3 $myProgOutput16 $kUnitigLengthsFile $errorOutput8 > $myProgOutput18";
 print "$cmd\n"; system ($cmd);
 if (! $mikedebug) { &killFiles ($myProgOutput3); }
 
 if ($joinMates) {
-    $cmd = "time $exeDir/mergeShortMatesIntoSuperReads $myProgOutput16 $numKUnitigsFile $errorOutput9 $repetitiveKUnitigInfoFile $kUnitigLengthsFile $numReadsFile > $myProgOutput13"; }
+    $cmd = "time $exeDir/mergeShortMatesIntoSuperReads $myProgOutput16 $numKUnitigsFile $errorOutput9 $repetitiveKUnitigInfoFile $kUnitigLengthsFile $numReadsFile > $myProgOutput22"; }
 else {
     $myProgOutput16complete = $myProgOutput16;
     if ($myProgOutput16complete !~ /^\//) {
 	$myProgOutput16complete = "$pwd/$myProgOutput16complete"; }
     
-    $cmd = "ln -s $myProgOutput16complete $myProgOutput13"; }
+    $cmd = "ln -s $myProgOutput16complete $myProgOutput22"; }
 print "$cmd\n"; system ($cmd);
 
-$cmd = "time cat $myProgOutput16 | $exeDir/reportSuperReadGroups.perl > $myProgOutput17";
+$cmd = "time $exeDir/reportFinalReadPlacementsInSuperReads.perl $kUnitigLengthsFile $myProgOutput18 $myProgOutput22 > $myProgOutput23";
 print "$cmd\n"; system ($cmd);
-if (! $mikedebug) { &killFiles ($myProgOutput16); }
+
+if ($joinShooting) {
+    $cmd = "$exeDir/postSuperReadPipelineCommandsForJoiningMates.perl -l $merLen -kunitig-files-prefix $kUnitigFastaSequencePrefix -read-placements-file $myProgOutput23";
+    print "$cmd\n"; system ($cmd);
+    $cmd = "$exeDir/mergePostMateMergeAndPriorSuperReadGroupsByReadFiles.perl $myProgOutput24 $myProgOutput22 > $myProgOutput91";
+    print "$cmd\n"; system ($cmd);
+    if (! $mikedebug) { &killFiles ($myProgOutput22, $myProgOutput24); }
+}
+else {
+    $myProgOutput22complete = $myProgOutput22;
+    if ($myProgOutput22complete !~ /^\//) {
+	$myProgOutput22complete = "$pwd/$myProgOutput22complete"; }
+    $cmd = "ln -s $myProgOutput22complete $myProgOutput91";
+    print "$cmd\n"; system ($cmd);
+}
+    
+
+
+
+$cmd = "time cat $myProgOutput16 | $exeDir/reportSuperReadGroups.perl > $myProgOutput92";
+print "$cmd\n"; system ($cmd);
+if (! $mikedebug) {
+    if (-f $myProgOutput91) {
+	&killFiles ($myProgOutput16); }
+}
 
 $cmd = "mv $errorOutput8 $errorOutput8afterMoving";
 print "$cmd\n"; system ($cmd);
 
-$cmd = "time $exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput17 -seqdiffmax $seqDiffMax > $finalSuperReadSequenceFile";
+$cmd = "time $exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput92 -seqdiffmax $seqDiffMax > $finalSuperReadSequenceFile";
 print "$cmd\n"; system ($cmd);
 
-$cmd = "time $exeDir/reportFinalReadPlacementsInSuperReads.perl $kUnitigLengthsFile $myProgOutput12 $myProgOutput13 > $finalReadPlacementFileUsingReadNumbers";
+$cmd = "time $exeDir/reportFinalReadPlacementsInSuperReads.perl $kUnitigLengthsFile $myProgOutput18 $myProgOutput91 > $finalReadPlacementFileUsingReadNumbers";
 print "$cmd\n"; system ($cmd);
 
 $cmd = "time $exeDir/changeReadNumsToReadNamesAtBeginOfLine $myProgOutput0_1 $finalReadPlacementFileUsingReadNumbers > $finalReadPlacementFile";
@@ -301,6 +341,7 @@ sub processArgs
     $minCoverageToContinueAUnitig = 3;
     $minReadsInSuperRead = 2;
     $joinMates = 0;
+    $joinShooting = 0;
     $seqDiffMax = 0;
     $elimDupls = 0;
     $clean = 1;
@@ -340,6 +381,14 @@ sub processArgs
 	    ++$i;
 	    $minReadsInSuperRead = $ARGV[$i];
 	    next; }
+	elsif ($ARGV[$i] eq "-default-mean") {
+	    ++$i;
+	    $defaultMean = $ARGV[$i];
+	    next; }
+	elsif ($ARGV[$i] eq "-default-stdev") {
+	    ++$i;
+	    $defaultStdev = $ARGV[$i];
+	    next; }
 	elsif ($ARGV[$i] eq "-noclean") {
 	    $clean = 0;
 	    next; }
@@ -351,6 +400,12 @@ sub processArgs
 	    next; }
 	elsif ($ARGV[$i] eq "-join-mates") {
 	    $joinMates = 1;
+	    next; }
+	elsif ($ARGV[$i] eq "-join-shooting") {
+	    $joinShooting = 1;
+	    next; }
+	elsif ($ARGV[$i] eq "-force-join") {
+	    $forceJoin = 1;
 	    next; }
 	elsif ($ARGV[$i] eq "-h") {
 	    $help = 1;
@@ -393,11 +448,13 @@ sub giveUsageAndExit
 	
 sub returnTableResizeAmount
 {
+    my ($dataPrefix, $hashFile) = @_;
+
     for ($i=1; 1; $i++) {
-	$fn = $jellyfishDataPrefix . "_$i";
+	$fn = $dataPrefix . "_$i";
 	last unless (-e $fn);
 	unlink ($fn); }
-    unlink ($jellyfishHashFile) if ($i > 1);
+    unlink ($hashFile) if ($i > 1);
     return ($i);
 }
 
