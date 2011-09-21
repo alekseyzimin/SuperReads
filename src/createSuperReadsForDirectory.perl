@@ -69,9 +69,10 @@ $myProgOutput6good = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup
 $myProgOutput6bad = "$workingDirectory/superReadsWKUnitigOvlGeKmerLen.numReads.superReadName.txt";
 $myProgOutput7 = "$workingDirectory/superReadGroups.onePerLine.withReadInfoIncluded.txt";
 $myProgOutput8 = "$workingDirectory/superReadSequences.passList.txt";
-# The following 3 lines are output files not specified on any command line
-$errorOutput8 = "$workingDirectory/createFastaSuperReadSequences.errors.txt";
-$errorOutput8afterMoving = "$workingDirectory/createFastaSuperReadSequences.noSequenceRun.errors.txt";
+$sequenceCreationErrorFile1 = "$workingDirectory/createFastaSuperReadSequences.errors.part1.txt";
+$sequenceCreationErrorFile2 = "$workingDirectory/createFastaSuperReadSequences.errors.part2.txt";
+$sequenceCreationErrorFileCombined = "$workingDirectory/createFastaSuperReadSequences.errors.txt";
+# The following line is an output file not specified on any command line
 $errorOutput9 = "$workingDirectory/chimeric_read.txt";
 $repetitiveKUnitigInfoFile = "$workingDirectory/multiCopyKUnitigs.kUnitig.rptLength.txt";
 $myProgOutput10 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.chimericReadsAndBadSuperReadsKilled.txt";
@@ -82,8 +83,12 @@ $myProgOutput18 = "$workingDirectory/readPlacementsInSuperReads.preMateMerge.rea
 $myProgOutput22 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.postMateMerge.txt";
 $myProgOutput23 = "$workingDirectory/readPlacementsInSuperReads.postMateMerge.read.superRead.offset.ori.usingReadNumbers.txt";
 $myProgOutput24 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.overlapJoinedMates.txt";
-$myProgOutput91 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.final.txt";
-$myProgOutput92 = "$workingDirectory/superReadGroups.onePerLine.withReadInfoIncluded.final.txt";
+$myProgOutput25 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.postOverlapJoinedMates.txt";
+$myProgOutput26 = "$workingDirectory/findEquivalentSuperReads.equivOutput.txt";
+$myProgOutput27 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.semiFinal.txt";
+$myProgOutput28 = "$workingDirectory/superReadGroups.onePerLine.withReadInfoIncluded.semiFinal.txt";
+$myProgOutput27 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.final.txt"; # Re-define here
+$myProgOutput28 = "$workingDirectory/superReadGroups.onePerLine.withReadInfoIncluded.final.txt"; # Re-define here
 $finalSuperReadSequenceFile = "$workingDirectory/superReadSequences.fasta";
 $finalReadPlacementFileUsingReadNumbers = "$workingDirectory/readPlacementsInSuperReads.final.read.superRead.offset.ori.usingReadNumbers.txt";
 $finalReadPlacementFile = "$workingDirectory/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt";
@@ -212,9 +217,7 @@ print "$cmd\n"; system ($cmd);
 if ($jumpLibraryReads) {
     goto jumpLibraryCalculations; }
 
-# The following is an output file not specified on the command line
-$errorOutput8 = "$workingDirectory/createFastaSuperReadSequences.errors.txt";
-$cmd = "$exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput7 -seqdiffmax $seqDiffMax -nosequence > $myProgOutput8";
+$cmd = "$exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput7 -seqdiffmax $seqDiffMax -error-filename $sequenceCreationErrorFile1 -nosequence > $myProgOutput8";
 print "$cmd\n"; system ($cmd);
 if (! $mikedebug) { &killFiles ($myProgOutput7); }
 
@@ -245,9 +248,8 @@ $cmd = "time $exeDir/eliminateInfrequentlyOccurringSuperReadsUsingList.perl $myP
 print "$cmd\n"; system ($cmd);
 if (! $mikedebug) { &killFiles ($myProgOutput10); }
 
-$cmd = "time $exeDir/getReadStartsOffsetsAndOrientationsInSuperReads.1stPass.perl $myProgOutput3 $myProgOutput16 $kUnitigLengthsFile $errorOutput8 > $myProgOutput18";
+$cmd = "time $exeDir/getReadStartsOffsetsAndOrientationsInSuperReads_1stPass $myProgOutput3 $myProgOutput16 $kUnitigLengthsFile $sequenceCreationErrorFile1 > $myProgOutput18";
 print "$cmd\n"; system ($cmd);
-if (! $mikedebug) { &killFiles ($myProgOutput3); }
 
 if ($joinMates) {
     $cmd = "time $exeDir/mergeShortMatesIntoSuperReads $myProgOutput16 $numKUnitigsFile $errorOutput9 $repetitiveKUnitigInfoFile $kUnitigLengthsFile $numReadsFile > $myProgOutput22"; }
@@ -263,9 +265,9 @@ $cmd = "time $exeDir/reportFinalReadPlacementsInSuperReads.perl $kUnitigLengthsF
 print "$cmd\n"; system ($cmd);
 
 if ($joinShooting) {
-    $cmd = "$exeDir/postSuperReadPipelineCommandsForJoiningMates.perl -l $merLen -kunitig-files-prefix $kUnitigFastaSequencePrefix -read-placements-file $myProgOutput23";
+    $cmd = "$exeDir/postSuperReadPipelineCommandsForJoiningMates.perl $forceJoin $defaultMean $defaultStdev -l $merLen -kunitig-files-prefix $kUnitigFastaSequencePrefix -read-placements-file $myProgOutput23";
     print "$cmd\n"; system ($cmd);
-    $cmd = "$exeDir/mergePostMateMergeAndPriorSuperReadGroupsByReadFiles.perl $myProgOutput24 $myProgOutput22 > $myProgOutput91";
+    $cmd = "$exeDir/mergePostMateMergeAndPriorSuperReadGroupsByReadFiles.perl $myProgOutput24 $myProgOutput22 > $myProgOutput25";
     print "$cmd\n"; system ($cmd);
     if (! $mikedebug) { &killFiles ($myProgOutput22, $myProgOutput24); }
 }
@@ -273,40 +275,53 @@ else {
     $myProgOutput22complete = $myProgOutput22;
     if ($myProgOutput22complete !~ /^\//) {
 	$myProgOutput22complete = "$pwd/$myProgOutput22complete"; }
-    $cmd = "ln -s $myProgOutput22complete $myProgOutput91";
+    $cmd = "ln -s $myProgOutput22complete $myProgOutput25";
     print "$cmd\n"; system ($cmd);
 }
     
-
-
-
-$cmd = "time cat $myProgOutput16 | $exeDir/reportSuperReadGroups.perl > $myProgOutput92";
-print "$cmd\n"; system ($cmd);
-if (! $mikedebug) {
-    if (-f $myProgOutput91) {
-	&killFiles ($myProgOutput16); }
-}
-
-$cmd = "mv $errorOutput8 $errorOutput8afterMoving";
+$cmd = "$exeDir/findEquivalentSuperReads.perl $myProgOutput25 -equiv-file $myProgOutput26 -out-file $myProgOutput27";
 print "$cmd\n"; system ($cmd);
 
-$cmd = "time $exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput92 -seqdiffmax $seqDiffMax > $finalSuperReadSequenceFile";
+$cmd = "cat $myProgOutput27 | $exeDir/reportSuperReadGroups.perl > $myProgOutput28";
 print "$cmd\n"; system ($cmd);
 
-$cmd = "time $exeDir/reportFinalReadPlacementsInSuperReads.perl $kUnitigLengthsFile $myProgOutput18 $myProgOutput91 > $finalReadPlacementFileUsingReadNumbers";
+$cmd = "time $exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput28 -seqdiffmax $seqDiffMax -error-filename $sequenceCreationErrorFile2 > $finalSuperReadSequenceFile";
 print "$cmd\n"; system ($cmd);
+
+$cmd = "cat $sequenceCreationErrorFile1 $sequenceCreationErrorFile2 > $sequenceCreationErrorFileCombined";
+print "$cmd\n"; system ($cmd);
+
+$cmd = "$exeDir/getReadStartsOffsetsAndOrientationsInSuperReads_1stPass $myProgOutput3 $myProgOutput27 $kUnitigLengthsFile $sequenceCreationErrorFileCombined > $finalReadPlacementFileUsingReadNumbers";
+print "$cmd\n"; system ($cmd);
+if (! $mikedebug) { &killFiles ($myProgOutput3); }
 
 $cmd = "time $exeDir/changeReadNumsToReadNamesAtBeginOfLine $myProgOutput0_1 $finalReadPlacementFileUsingReadNumbers > $finalReadPlacementFile";
 print "$cmd\n"; system ($cmd);
 
+#
+#
+#
+#$cmd = "time cat $myProgOutput16 | $exeDir/reportSuperReadGroups.perl > $myProgOutput92";
+#print "$cmd\n"; system ($cmd);
+#if (! $mikedebug) {
+#    if (-f $myProgOutput91) {
+#	&killFiles ($myProgOutput16); }
+#}
+#
+#$cmd = "time $exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput92 -seqdiffmax $seqDiffMax > $finalSuperReadSequenceFile";
+#print "$cmd\n"; system ($cmd);
+#
+#$cmd = "time $exeDir/reportFinalReadPlacementsInSuperReads.perl $kUnitigLengthsFile $myProgOutput18 $myProgOutput91 > $finalReadPlacementFileUsingReadNumbers";
+#print "$cmd\n"; system ($cmd);
+#
 exit (0);
 
 jumpLibraryCalculations:
-$cmd = "$exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput7 -seqdiffmax $seqDiffMax > $myProgOutput8";
+$cmd = "$exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput7 -seqdiffmax $seqDiffMax  -error-filename $sequenceCreationErrorFile1 > $myProgOutput8";
 print "$cmd\n"; system ($cmd);
 if (! $mikedebug) { &killFiles ($myProgOutput7); }
 
-$cmd = "time $exeDir/getReadStartsOffsetsAndOrientationsInSuperReads.1stPass.perl $myProgOutput3 $myProgOutput6good $kUnitigLengthsFile $errorOutput8 > $myProgOutput12usingReadNumbers";
+$cmd = "time $exeDir/getReadStartsOffsetsAndOrientationsInSuperReads_1stPass $myProgOutput3 $myProgOutput6good $kUnitigLengthsFile $sequenceCreationErrorFile1 > $myProgOutput12usingReadNumbers";
 print "$cmd\n"; system ($cmd);
 if (! $mikedebug) { &killFiles ($myProgOutput3, $myProgOutput6good); }
 
@@ -383,11 +398,11 @@ sub processArgs
 	    next; }
 	elsif ($ARGV[$i] eq "-default-mean") {
 	    ++$i;
-	    $defaultMean = $ARGV[$i];
+	    $defaultMean = "-default-mean " . $ARGV[$i];
 	    next; }
 	elsif ($ARGV[$i] eq "-default-stdev") {
 	    ++$i;
-	    $defaultStdev = $ARGV[$i];
+	    $defaultStdev = "-default-stdev " . $ARGV[$i];
 	    next; }
 	elsif ($ARGV[$i] eq "-noclean") {
 	    $clean = 0;
@@ -405,7 +420,7 @@ sub processArgs
 	    $joinShooting = 1;
 	    next; }
 	elsif ($ARGV[$i] eq "-force-join") {
-	    $forceJoin = 1;
+	    $forceJoin = "-force-join";
 	    next; }
 	elsif ($ARGV[$i] eq "-h") {
 	    $help = 1;
