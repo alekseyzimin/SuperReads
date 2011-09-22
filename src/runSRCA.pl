@@ -474,7 +474,7 @@ print FILE "rm error_corrected_*\n";
 print FILE "echo -n 'filtering JUMP ';date;\n";
 
 #creating super reads. for filtering
-print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -mkudisr 0 work2 sj.cor.fa 1> super1.out 2>super1.err\n" if(not(-e "work2"));;
+print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work2 sj.cor.fa 1> super1.out 2>super1.err\n" if(not(-e "work2"));;
 print FILE "\n";
 
 #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
@@ -526,7 +526,7 @@ print FILE "\n\n\n";
 print FILE "echo -n 'computing super reads from PE ';date;\n";
 
 #we create super reads from PE
-print FILE "createSuperReadsForDirectory.perl -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -mkudisr 0 work1 pe.cor.fa 1> super.out 2>super.err\n" if(not(-e "work1"));
+print FILE "createSuperReadsForDirectory.perl -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work1 pe.cor.fa 1> super.out 2>super.err\n" if(not(-e "work1"));
 print FILE "\n";
 
 #now we extract those PE mates that did not end up in the same super read -- we call them linking mates, they will be useful for scaffolding
