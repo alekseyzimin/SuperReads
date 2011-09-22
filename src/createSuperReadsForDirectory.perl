@@ -49,9 +49,9 @@ $jellyfishDataPrefix = "$workingDirectory/organismMerCounts";
 $jellyfishHashFile = $jellyfishDataPrefix . "_0";
 $kUnitigFastaSequencePrefix = "$workingDirectory/guillaumeKUnitigsAtLeast32bases";
 $totalKUnitigFastaSequence = "${kUnitigFastaSequencePrefix}_all.fasta";
-$kUnitigFastaSequencePrefixComplete = $kUnitigFastaSequencePrefix;
-if ($kUnitigFastaSequencePrefixComplete !~ /^\//) {
-    $kUnitigFastaSequencePrefixComplete = "$pwd/$kUnitigFastaSequencePrefixComplete"; }
+$totalKUnitigFastaSequenceComplete = $totalKUnitigFastaSequence;
+if ($totalKUnitigFastaSequenceComplete !~ /^\//) {
+    $totalKUnitigFastaSequenceComplete = "$pwd/$totalKUnitigFastaSequenceComplete"; }
 $jellyfishKUnitigDataPrefix = "$workingDirectory/organismMerCountsForKUnitigs";
 $jellyfishKUnitigHashFile = $jellyfishKUnitigDataPrefix . "_0";
 $kUnitigLengthsFile = "$workingDirectory/kUnitigLengths.txt";
@@ -272,7 +272,7 @@ print "$cmd\n"; system ($cmd);
 
 if ($joinShooting) {
     chdir ($workingDirectory);
-    $cmd = "$exeDir/postSuperReadPipelineCommandsForJoiningMates.perl $forceJoin $defaultMean $defaultStdev -l $merLen -kunitig-files-prefix $kUnitigFastaSequencePrefixComplete -read-placements-file $myProgOutput23complete";
+    $cmd = "$exeDir/postSuperReadPipelineCommandsForJoiningMates.perl $forceJoin $defaultMean $defaultStdev -l $merLen -kunitig-files-prefix $totalKUnitigFastaSequenceComplete -read-placements-file $myProgOutput23complete";
     print "$cmd\n"; system ($cmd);
     chdir ($pwd);
     $cmd = "$exeDir/mergePostMateMergeAndPriorSuperReadGroupsByReadFiles.perl $myProgOutput24 $myProgOutput22 > $myProgOutput25";
