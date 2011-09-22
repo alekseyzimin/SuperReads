@@ -74,6 +74,8 @@ while ($line = <FILE>) {
     }
     $wasFound{$read} = 1;
 }
+if ($pass > 1) {
+    &analyzeNucmerLines ($readHold); }
 close (FILE);
 close (SPCL_OUTFILE);
 

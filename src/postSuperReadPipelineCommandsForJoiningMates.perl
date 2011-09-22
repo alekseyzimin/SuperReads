@@ -55,6 +55,9 @@ sub processCommandLine
 	if ($ARGV[$i] eq "-force-join") {
 	    $forceJoin = 1;
 	    next; }
+	if ($ARGV[$i] eq "-mikedebug") {
+	    $mikedebug = 1;
+	    next; }
 	
     }
 }
@@ -72,26 +75,42 @@ $numReadsPerPrefixFile = "numReadsPerPrefix.txt";
 # FILES CREATED DURING THE PIPELINE
 $numKUnitigsFile = "numKUnitigs.txt";
 $completeInputReadDistInfo = "prelimInsertLenInfo.readNum_insertLen_distToEndOfSuperRead_numKUnisInSuperRead.txt";
+push (@filesToKill, $completeInputReadDistInfo);
 $readMatesToBeJoined1 = "readMatesToBeJoinedWMeanAndStdev.txt";
+push (@filesToKill, $readMatesToBeJoined1);
 $kUnitigPairsForReadMatesToBeJoined1 = "kUnitigPairsToBeJoinedDueToReadMates.wMeanAndStdev.txt";
+push (@filesToKill, $kUnitigPairsForReadMatesToBeJoined1);
 $matePairJoiningResultsFile1 = "kUnitigPairResults.txt";
+push (@filesToKill, $matePairJoiningResultsFile1);
 $prefixForOverlapsBetweenKUnitigs = "overlap"; # Prefix for the end-to-end ovls
 $kmerLenMinus1 = $kmerLen - 1;
 $wellJoinedMatePairFile1 = "goodJoinsFile.001.txt";
+push (@filesToKill, $wellJoinedMatePairFile1);
 $readMatesToBeJoinedWUniInfo1 = "failingMatesWUnisToUse.001.txt";
+push (@filesToKill, $readMatesToBeJoinedWUniInfo1);
 $kUnitigPairsForReadMatesToBeJoined2 = "kUnitigPairsToBeJoinedDueToReadMates.pass2.wMeanAndStdev.txt";
+push (@filesToKill, $kUnitigPairsForReadMatesToBeJoined2);
 $matePairJoiningResultsFile2 = "kUnitigPairResults.pass2.txt";
+push (@filesToKill, $matePairJoiningResultsFile2);
 $wellJoinedMatePairFile2 = "goodJoinsFile.002.txt";
+push (@filesToKill, $wellJoinedMatePairFile2);
 $readMatesToBeJoinedWUniInfo2 = "failingMatesWUnisToUse.002.txt";
+push (@filesToKill, $readMatesToBeJoinedWUniInfo2);
 $kUnitigPairsForReadMatesToBeJoined3 = "kUnitigPairsToBeJoinedDueToReadMates.pass3.wMeanAndStdev.txt";
+push (@filesToKill, $kUnitigPairsForReadMatesToBeJoined3);
 $matePairJoiningResultsFile3 = "kUnitigPairResults.pass3.txt";
+push (@filesToKill, $matePairJoiningResultsFile3);
 $wellJoinedMatePairFile3 = "goodJoinsFile.003.txt";
+push (@filesToKill, $wellJoinedMatePairFile3);
 $readMatesToBeJoinedWUniInfo3 = "failingMatesWUnisToUse.003.txt";
+push (@filesToKill, $readMatesToBeJoinedWUniInfo3);
 # The next two files are created by $program11 on passes 2 and 3 respectively
 $mateJoinerPrefixFile = "mateJoinerPrefixFile.txt";
 $mateJoinerSuffixFile = "mateJoinerSuffixFile.txt";
+push (@filesToKill, $mateJoinerPrefixFile, $mateJoinerSuffixFile);
 #
 $combinedWellJoinedMatePairFile = "goodJoinsFile.combined.txt";
+push (@filesToKill, $combinedWellJoinedMatePairFile);
 $mateJoinedSuperReadGroupForEachReadFile = "superReadGroupsForEachReadWhichHasAGroup.overlapJoinedMates.txt";
 
 # goto mainLoop;
@@ -125,6 +144,7 @@ $cmd = "time $cmd\n"; system ($cmd);
 $cmd = "cat $numReadsPerPrefixFile | wc -l > numDiffPrefixes.txt";
 print "$cmd\n";
 $cmd = "time $cmd\n"; system ($cmd);
+push (@filesToKill, "numDiffPrefixes.txt");
 
 open (FILE, "numDiffPrefixes.txt");
 $numDiffPrefixes = <FILE>; close (FILE); chomp ($numDiffPrefixes);
@@ -132,6 +152,7 @@ $numDiffPrefixes = <FILE>; close (FILE); chomp ($numDiffPrefixes);
 for ($i=1; $i<=$numDiffPrefixes; $i++) {
     $infile = "insertSizes.lib${i}.txt";
     next unless (-e $infile);
+    push (@filesToKill, $infile);
     $cmd = "cat $infile | $program3 -stdev 4 > lib${i}.meanAndStdev.txt";
     print "$cmd\n";
     $cmd = "time $cmd\n"; system ($cmd);
@@ -219,4 +240,17 @@ $cmd = "time $cmd\n"; system ($cmd);
 $cmd = "cat $combinedWellJoinedMatePairFile | $program22 > $mateJoinedSuperReadGroupForEachReadFile";
 print "$cmd\n";
 $cmd = "time $cmd\n"; system ($cmd);
+
+if (! $mikedebug) {
+    &killFiles (@filesToKill); }
+
+sub killFiles
+{
+    my (@filesToKill) = @_;
+    my ($file);
+
+    for (@filesToKill) {
+        $file = $_;
+        unlink ($file); }
+}
 

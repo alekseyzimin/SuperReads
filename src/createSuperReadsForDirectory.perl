@@ -36,6 +36,8 @@ use File::Basename;
 use Cwd;
 $exeDir = dirname ($0);
 $pwd = cwd;
+if ($exeDir !~ /^\//) {
+    $exeDir = "$pwd/$exeDir"; }
 
 &processArgs;
 
@@ -235,12 +237,13 @@ if (! $mikedebug) { &killFiles ($myProgOutput7); }
 #      mates into super-reads.
 $cmd = "cat $myProgOutput1_1 | $exeDir/getRecordsForTandomRepeatKUnitigs | $exeDir/reduceRecordsForKillingKUnitigsToConnectMates.perl $workingDirectory";
 print "$cmd\n"; system ($cmd);
-if (! $mikedebug) { &killFiles ($myProgOutput1_1); }
+if (! $mikedebug) { if (! $joinShooting) { &killFiles ($myProgOutput1_1); } }
 
 # =====================================================================
 # PUTTING IN NEW STUFF HERE (3/15/11)
 $cmd = "time cat $myProgOutput6good | $exeDir/killUnwantedDataFromFirstSuperReadInfo.perl $workingDirectory > $myProgOutput10";
 print "$cmd\n"; system ($cmd);
+if (! $mikedebug) { &killFiles ($myProgOutput6good); }
 
 $cmd = "time cat $myProgOutput10 | $exeDir/makeListOfSuperReadsAndCounts.fromSuperReadGroupsFile.perl > $myProgOutput14";
 print "$cmd\n"; system ($cmd);
@@ -273,11 +276,13 @@ print "$cmd\n"; system ($cmd);
 if ($joinShooting) {
     chdir ($workingDirectory);
     $cmd = "$exeDir/postSuperReadPipelineCommandsForJoiningMates.perl $forceJoin $defaultMean $defaultStdev -l $merLen -kunitig-files-prefix $totalKUnitigFastaSequenceComplete -read-placements-file $myProgOutput23complete";
+    if ($mikedebug) {
+	$cmd .= " -mikedebug"; }
     print "$cmd\n"; system ($cmd);
     chdir ($pwd);
     $cmd = "$exeDir/mergePostMateMergeAndPriorSuperReadGroupsByReadFiles.perl $myProgOutput24 $myProgOutput22 > $myProgOutput25";
     print "$cmd\n"; system ($cmd);
-    if (! $mikedebug) { &killFiles ($myProgOutput22, $myProgOutput24); }
+    if (! $mikedebug) { &killFiles ($myProgOutput22, $myProgOutput24, $myProgOutput1_1); }
 }
 else {
     $myProgOutput22complete = $myProgOutput22;
@@ -289,6 +294,7 @@ else {
     
 $cmd = "$exeDir/findEquivalentSuperReads.perl $myProgOutput25 -equiv-file $myProgOutput26 -out-file $myProgOutput27";
 print "$cmd\n"; system ($cmd);
+if (! $mikedebug) { &killFiles ($myProgOutput26, $myProgOutput16, $myProgOutput22, $myProgOutput24, $myProgOutput25); }
 
 $cmd = "cat $myProgOutput27 | $exeDir/reportSuperReadGroups.perl > $myProgOutput28";
 print "$cmd\n"; system ($cmd);
@@ -298,13 +304,15 @@ print "$cmd\n"; system ($cmd);
 
 $cmd = "cat $sequenceCreationErrorFile1 $sequenceCreationErrorFile2 > $sequenceCreationErrorFileCombined";
 print "$cmd\n"; system ($cmd);
+if (! $mikedebug) { &killFiles ($sequenceCreationErrorFile1, $sequenceCreationErrorFile2); }
 
 $cmd = "$exeDir/getReadStartsOffsetsAndOrientationsInSuperReads_1stPass $myProgOutput3 $myProgOutput27 $kUnitigLengthsFile $sequenceCreationErrorFileCombined > $finalReadPlacementFileUsingReadNumbers";
 print "$cmd\n"; system ($cmd);
-if (! $mikedebug) { &killFiles ($myProgOutput3); }
+if (! $mikedebug) { &killFiles ($myProgOutput3, $myProgOutput18, $myProgOutput23); }
 
 $cmd = "time $exeDir/changeReadNumsToReadNamesAtBeginOfLine $myProgOutput0_1 $finalReadPlacementFileUsingReadNumbers > $finalReadPlacementFile";
 print "$cmd\n"; system ($cmd);
+if (! $mikedebug) { &killFiles ($myProgOutput0_1, $myProgOutput8); }
 
 #
 #
@@ -521,6 +529,7 @@ sub killFiles
 
     for (@filesToKill) {
 	$file = $_;
-	unlink ($file); }
+	if (-e $file) {
+	    unlink ($file); } }
 }
 
