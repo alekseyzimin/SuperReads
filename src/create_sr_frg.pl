@@ -1,11 +1,19 @@
 #!/usr/bin/env perl
 $rn="";
+$shooting_index=0;
 while($line=<STDIN>)
 {
 if($line =~ /^>/)
 {
 if(not($rn eq ""))
 {
+
+if(length($rn)>110)
+{
+$rn="SHOOTING_LONG_NAME_".($shooting_index);
+$shooting_index++;
+}
+
 $l=length($seq);
 $rev_seq=reverse_complement($seq);
 $seq=$rev_seq lt $seq ? $rev_seq : $seq;
