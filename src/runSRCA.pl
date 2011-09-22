@@ -569,7 +569,7 @@ if(scalar(@jump_info_array)>0)
 
 print FILE "let TOTAL_READS=`wc -l pe.cor.fa| awk '{print \$1}'`\n";
 
-print FILE "runCA jellyfishHashSize=\$JF_SIZE utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=300 bogBreakAtIntersections=0 doOverlapBasedTrimming=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
+print FILE "runCA jellyfishHashSize=$JF_SIZE utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=300 bogBreakAtIntersections=0 doOverlapBasedTrimming=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
 
 #here we filter libraries for chimerism and redundancy
 #we also reduce the insert coverage by jump libraries if necessary: no more than 100x insert coverage by all libraries
@@ -605,7 +605,7 @@ print FILE "gatekeeper --edit gkp.edits.msg ../genome.gkpStore 1>gatekeeper.err 
 print FILE "cd ../\nrm -rf *.tigStore\nrm -rf *.ovlStore\nrm -rf 0-* 1-* 2-* 3-*\ncd ../\n\n";
 print FILE "\n";
 print FILE "if [[ \$TOTAL_READS -lt 20000000 ]];then \n";#run the assember to completion, for better filtering
-print FILE "runCA $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE stopAfter=consensusAfterUnitigger doOverlapBasedTrimming=0 unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+print FILE "runCA $CA_PARAMETERS jellyfishHashSize=$JF_SIZE stopAfter=consensusAfterUnitigger doOverlapBasedTrimming=0 unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
 #now we check if the unitig consensus which is sometimes problematic, failed, and fix the unitigs
 print FILE "if [[ -e \"CA/5-consensus/consensus.success\" ]];then\n";
 print FILE "echo \"unitig consensus OK\"\n";
@@ -619,7 +619,7 @@ print FILE "cd ../../\n";
 print FILE "fi\n";
 #we now recompute the A-stat for the unitigs based on positions of PE reads in the super-reads
 print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
-print FILE "runCA $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=0 doExtendClearRanges=0 1>runCA2.out 2>&1\n";
+print FILE "runCA $CA_PARAMETERS jellyfishHashSize=$JF_SIZE unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=0 doExtendClearRanges=0 1>runCA2.out 2>&1\n";
 print FILE "if [[ -e \"CA/9-terminator/genome.qc\" ]];then\n";
 print FILE "echo \"CA success, checking for chimeric mates\"\n";
 print FILE "else\n";
@@ -637,11 +637,11 @@ print FILE "\n\n";
 #this if statement is here because if OTHER frg is specified, we will have to do OBT, it will slow us down, but it has to be done :(
 if(scalar(@other_info_array)>0)
 {
-print FILE "runCA $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE stopAfter=consensusAfterUnitigger doOverlapBasedTrimming=1 unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+print FILE "runCA $CA_PARAMETERS jellyfishHashSize=$JF_SIZE stopAfter=consensusAfterUnitigger doOverlapBasedTrimming=1 unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
 }
 else
 {
-print FILE "runCA $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE stopAfter=consensusAfterUnitigger doOverlapBasedTrimming=0 unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+print FILE "runCA $CA_PARAMETERS jellyfishHashSize=$JF_SIZE stopAfter=consensusAfterUnitigger doOverlapBasedTrimming=0 unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
 }
 #now we check if the unitig consensus which is sometimes problematic, failed, and fix the unitigs
 print FILE "if [[ -e \"CA/5-consensus/consensus.success\" ]];then\n";
