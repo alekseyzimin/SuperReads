@@ -49,6 +49,9 @@ $jellyfishDataPrefix = "$workingDirectory/organismMerCounts";
 $jellyfishHashFile = $jellyfishDataPrefix . "_0";
 $kUnitigFastaSequencePrefix = "$workingDirectory/guillaumeKUnitigsAtLeast32bases";
 $totalKUnitigFastaSequence = "${kUnitigFastaSequencePrefix}_all.fasta";
+$kUnitigFastaSequencePrefixComplete = $kUnitigFastaSequencePrefix;
+if ($kUnitigFastaSequencePrefixComplete !~ /^\//) {
+    $kUnitigFastaSequencePrefixComplete = "$pwd/$kUnitigFastaSequencePrefixComplete"; }
 $jellyfishKUnitigDataPrefix = "$workingDirectory/organismMerCountsForKUnitigs";
 $jellyfishKUnitigHashFile = $jellyfishKUnitigDataPrefix . "_0";
 $kUnitigLengthsFile = "$workingDirectory/kUnitigLengths.txt";
@@ -82,6 +85,9 @@ $myProgOutput16 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.pr
 $myProgOutput18 = "$workingDirectory/readPlacementsInSuperReads.preMateMerge.read.superRead.offset.ori.txt";
 $myProgOutput22 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.postMateMerge.txt";
 $myProgOutput23 = "$workingDirectory/readPlacementsInSuperReads.postMateMerge.read.superRead.offset.ori.usingReadNumbers.txt";
+$myProgOutput23complete = $myProgOutput23;
+if ($myProgOutput23complete !~ /^\//) {
+    $myProgOutput23complete = "$pwd/$myProgOutput23complete"; }
 $myProgOutput24 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.overlapJoinedMates.txt";
 $myProgOutput25 = "$workingDirectory/superReadGroupsForEachReadWhichHasAGroup.postOverlapJoinedMates.txt";
 $myProgOutput26 = "$workingDirectory/findEquivalentSuperReads.equivOutput.txt";
@@ -265,8 +271,10 @@ $cmd = "time $exeDir/reportFinalReadPlacementsInSuperReads.perl $kUnitigLengthsF
 print "$cmd\n"; system ($cmd);
 
 if ($joinShooting) {
-    $cmd = "$exeDir/postSuperReadPipelineCommandsForJoiningMates.perl $forceJoin $defaultMean $defaultStdev -l $merLen -kunitig-files-prefix $kUnitigFastaSequencePrefix -read-placements-file $myProgOutput23";
+    chdir ($workingDirectory);
+    $cmd = "$exeDir/postSuperReadPipelineCommandsForJoiningMates.perl $forceJoin $defaultMean $defaultStdev -l $merLen -kunitig-files-prefix $kUnitigFastaSequencePrefixComplete -read-placements-file $myProgOutput23complete";
     print "$cmd\n"; system ($cmd);
+    chdir ($pwd);
     $cmd = "$exeDir/mergePostMateMergeAndPriorSuperReadGroupsByReadFiles.perl $myProgOutput24 $myProgOutput22 > $myProgOutput25";
     print "$cmd\n"; system ($cmd);
     if (! $mikedebug) { &killFiles ($myProgOutput22, $myProgOutput24); }
