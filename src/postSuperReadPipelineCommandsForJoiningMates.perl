@@ -114,9 +114,6 @@ push (@filesToKill, $combinedWellJoinedMatePairFile);
 $mateJoinedSuperReadGroupForEachReadFile = "superReadGroupsForEachReadWhichHasAGroup.overlapJoinedMates.txt";
 
 # goto mainLoop;
-$cmd = "$program0 $kUnitigFilesPrefix -kmervalue $kmerLen $prefixForOverlapsBetweenKUnitigs";
-print "$cmd\n"; $cmd = "time $cmd\n"; system ($cmd);
-
 # Pre-programs:
 
 open (FILE, $kUnitigLengthsFile);
@@ -132,6 +129,9 @@ $numKUnitigs = $#kUniLen + 1;
 open (OUTFILE, ">$numKUnitigsFile");
 print OUTFILE "$numKUnitigs\n";
 close (OUTFILE);
+
+$cmd = "$program0 $kUnitigFilesPrefix -kmervalue $kmerLen $prefixForOverlapsBetweenKUnitigs -largest-kunitig-number $numKUnitigs";
+print "$cmd\n"; $cmd = "time $cmd\n"; system ($cmd);
 
 $cmd = "$program1 $kUnitigLengthsFile $readPlacementsInSuperReadsFile > $completeInputReadDistInfo";
 print "$cmd\n";
