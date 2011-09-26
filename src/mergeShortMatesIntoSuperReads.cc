@@ -66,6 +66,7 @@ fputc ('\n', outfile)
 #define READ_NUM_TO_STUDY 1021713
 // #define DE if (readName == READ_NUM_TO_STUDY)
 #define DE if (0)
+#define OUTPUT_FILE stdout
 
 int main (int argc, char **argv)
 {
@@ -78,6 +79,7 @@ int main (int argc, char **argv)
      int itemp;
      int j, k;
      struct superReadStruct fwdSrsData, revSrsData, reversedRevSrsData;
+     struct superReadStruct reversedFwdSrsData;
      int someKUnitigIsNotRepetitive, isSubstring;
      int numFwdFields, numRevFields;
      int forwardLen, reverseLen;
@@ -88,14 +90,15 @@ int main (int argc, char **argv)
      setStatsFilename (argv[0]);
 //     mallocOrDie (srsData1.kUnitigList, 10, unsigned int);
 //     mallocOrDie (srsData1.offsetAndOriList, 10, unsigned char);
-     initializeSrsData (srsData1, 10);
-     initializeSrsData (srsData2, 10);
-     initializeSrsData (srsData3, 10);
-     initializeSrsData (srsData4, 10);
-     initializeSrsData (fwdSrsData, 10);
-     initializeSrsData (revSrsData, 10);
-     initializeSrsData (reversedRevSrsData, 10);
-     mallocOrDie (kUnitigList1, 100, unsigned int);
+     initializeSrsData (srsData1, 1000);
+     initializeSrsData (srsData2, 1000);
+     initializeSrsData (srsData3, 1000);
+     initializeSrsData (srsData4, 1000);
+     initializeSrsData (fwdSrsData, 1000);
+     initializeSrsData (revSrsData, 1000);
+     initializeSrsData (reversedRevSrsData, 1000);
+     initializeSrsData (reversedFwdSrsData, 1000);
+     mallocOrDie (kUnitigList1, 1000, unsigned int);
      mallocOrDie (startIndex, MAX_ARRAY_ELEMENTS_TEMP, unsigned long long);
      mallocOrDie (srsGlobalData.kUnitigList, 2*MAX_ARRAY_ELEMENTS_TEMP, unsigned int);
      mallocOrDie (srsGlobalData.offsetAndOriList, 2*MAX_ARRAY_ELEMENTS_TEMP, unsigned char);
@@ -158,16 +161,16 @@ int main (int argc, char **argv)
 	  cptr = strstr (line, "readName = ");
 	  cptr += strlen ("readName = ");
 	  sscanf (cptr, "%llu", &readName);
-	  DE fprintf (stderr, "We got to 2\n");
+	  DE fprintf (OUTPUT_FILE, "We got to 2\n");
 	  if (isChimeric[readName]) {
 	       wasOutput[readName] = 1;
 	       continue; }
-	  DE fprintf (stderr, "We got to 3\n");
+	  DE fprintf (OUTPUT_FILE, "We got to 3\n");
 	  cptr = strchr (cptr, ':');
 	  cptr += 2;
 	  readInsertNum = readName / 2;
 	  readInsertEnd = readName % 2;
-	  DE fprintf (stderr, "We got to 10\n");
+	  DE fprintf (OUTPUT_FILE, "We got to 10\n");
 
 	  numFlds = getFldsFromLine (cptr);
 	  for (j=0; j<numFlds; j+=3) {
@@ -182,10 +185,10 @@ int main (int argc, char **argv)
 		    (srsData1.offsetAndOriList)[index]+=1;
 	       DE printf ("index = %d, unitig = %d, offsetAndOri = %d\n", index, srsData1.kUnitigList[index], (srsData1.offsetAndOriList)[index]);
 	  }
-	  DE fprintf (stderr, "We got to 20\n");
+	  DE fprintf (OUTPUT_FILE, "We got to 20\n");
 	  k = (j+1)/3;
 	  ++insertCount[readInsertNum];
-	  DE fprintf (stderr, "readInsertNum = %llu, insertCount = %d\n", readInsertNum, insertCount[readInsertNum]);
+	  DE fprintf (OUTPUT_FILE, "readInsertNum = %llu, insertCount = %d\n", readInsertNum, insertCount[readInsertNum]);
 	  if (insertCount[readInsertNum] == 1) {
 	       insertEndForFirstReadOfInsert[readInsertNum] = readInsertEnd;
 	       startIndex[readInsertNum] = currentIndex; // Nothing defined or initialized for this yet
@@ -193,7 +196,7 @@ int main (int argc, char **argv)
 	       currentIndex += k;
 	       continue;
 	  }
-	  DE fprintf (stderr, "We got to 30\n");
+	  DE fprintf (OUTPUT_FILE, "We got to 30\n");
 	  // If we get here it's the 2nd read for the insert
 	  if (readName % 2 == 0) {
 	       otherRead = readName + 1;
@@ -208,10 +211,10 @@ int main (int argc, char **argv)
 	       numRevFields = setSrsStruct (&srsData1, 0, &revSrsData, 0);
 	  }
 	  DE printf ("otherRead = %llu, readInsertNum = %llu, startIndex[readInsertNum] = %llu\n", otherRead, readInsertNum, startIndex[readInsertNum]);
-	  DE fprintf (stdout, "We got to 40\n");
+	  DE fprintf (OUTPUT_FILE, "We got to 40\n");
 	  revReadName = fwdReadName + 1;
 	  returnReversedSuperReadData (&revSrsData, &reversedRevSrsData);
-	  DE fprintf (stdout, "We got to 45, numFwdFields = %d, numRevFields = %d\n", numFwdFields, numRevFields);
+	  DE fprintf (OUTPUT_FILE, "We got to 45, numFwdFields = %d, numRevFields = %d\n", numFwdFields, numRevFields);
 	  if (numFwdFields == numRevFields) {
 	       int isEqual = 1;
 	       for (k=0; k<numFwdFields; k++) {
@@ -222,9 +225,9 @@ int main (int argc, char **argv)
 		    if (! isEqual)
 			 break;
 	       }
-	       DE fprintf (stdout, "We got to 48\n");
+	       DE fprintf (OUTPUT_FILE, "We got to 48\n");
 	       if (isEqual) {
-		    DE fprintf (stdout, "We got to 49\n");
+		    DE fprintf (OUTPUT_FILE, "We got to 49\n");
 		    // Do the output
 		    outputReadLines (fwdReadName, fwdSrsData, stdout);
 		    outputReadLines (revReadName, revSrsData, stdout);
@@ -233,7 +236,7 @@ int main (int argc, char **argv)
 		    continue;
 	       }
 	  }
-	  DE fprintf (stdout, "We got to 50\n");
+	  DE fprintf (OUTPUT_FILE, "We got to 50\n");
 
 	  if (numFwdFields > numRevFields) {
 	       DE printf ("We got to 52\n");
@@ -268,7 +271,7 @@ int main (int argc, char **argv)
 	       }
 	       DE printf ("isSubstring = %d\n", isSubstring);
 	       if (isSubstring) {
-		    DE fprintf (stdout, "We got to 56\n");
+		    DE fprintf (OUTPUT_FILE, "We got to 56\n");
 		    getKUnitigsFromSuperRead (&reversedRevSrsData, kUnitigList1);
 		    someKUnitigIsNotRepetitive = reportIfSomeKUnitigInArrayIsNonRepetitive (kUnitigList1);
 		    outputReadLines (fwdReadName, fwdSrsData, stdout);
@@ -276,7 +279,9 @@ int main (int argc, char **argv)
 			 outputReadLines (revReadName, revSrsData, stdout); }
 		    else {
 			 ++numContainedSuperReadsAt1;
-			 outputReadLines (revReadName, fwdSrsData, stdout); }
+			 // Figure out how to reverse fwdSrsData
+			 returnReversedSuperReadData (&fwdSrsData, &reversedFwdSrsData);
+			 outputReadLines (revReadName, reversedFwdSrsData, stdout); }
 		    wasOutput[fwdReadName] = wasOutput[revReadName] = 1;
 		    continue;
 	       }
@@ -307,7 +312,7 @@ int main (int argc, char **argv)
 		    if (isSubstring)
 			 break;
 	       }
-	       DE fprintf (stdout, "We got to 70\n");
+	       DE fprintf (OUTPUT_FILE, "We got to 70\n");
 	       if (isSubstring) {
 		    getKUnitigsFromSuperRead (&fwdSrsData, kUnitigList1);
 		    someKUnitigIsNotRepetitive = reportIfSomeKUnitigInArrayIsNonRepetitive (kUnitigList1);
@@ -348,7 +353,7 @@ int main (int argc, char **argv)
 	       // The next 2 lines are diff from perl version and now correct
 	       else
 		    ++diffAndFailToMerge;
-	       DE fprintf (stdout, "readName = %llu : ", fwdReadName);
+	       DE fprintf (OUTPUT_FILE, "readName = %llu : ", fwdReadName);
 	       if (changeLine != 1) {
 		    outputReadLines (fwdReadName, fwdSrsData, stdout); }
 	       else {
@@ -495,7 +500,7 @@ void returnReversedSuperReadData (struct superReadStruct *inputSrsPtr, struct su
      }
      // printf ("At rR20\n");
      for (j=i, k=0; j>=0; j--, k++) {
-	  // fprintf (stderr, "j = %d, k = %d\n", j, k);
+	  // fprintf (OUTPUT_FILE, "j = %d, k = %d\n", j, k);
 	  (outputSrsPtr->kUnitigList)[k] = (inputSrsPtr->kUnitigList)[j];
 	  if (j>0)
 	       ucVal = inputSrsPtr->offsetAndOriList[j-1] >> 1;
@@ -620,11 +625,11 @@ struct superReadStruct *calculateInsertSuperRead (struct superReadStruct *inputS
      int matchingIndex, i, k1, k2, k3;
      int someKUnitigIsNotRepetitive;
      unsigned char lastOri1;
-//     printf ("In calculateInsertSuperRead\n");
+     DE fprintf (OUTPUT_FILE, "In calculateInsertSuperRead\n");   //
      numFlds1 = getNumKUnitigsInSuperReadStruct (inputSrsPtr1);
      lastKUnitig1 = (inputSrsPtr1->kUnitigList)[numFlds1-1];
      lastOri1 = (inputSrsPtr1->offsetAndOriList)[numFlds1-1] % 2;
-//     printf ("numFlds1 = %d, lastKUnitig1 = %d, lastOri1 = %d", numFlds1, lastKUnitig1, lastOri1);
+     DE fprintf (OUTPUT_FILE, "numFlds1 = %d, lastKUnitig1 = %d, lastOri1 = %d", numFlds1, lastKUnitig1, lastOri1);  //
      numFlds2 = getNumKUnitigsInSuperReadStruct (inputSrsPtr2);
      matchingIndex = -1;
      for (i=0; i<numFlds2; i++) {
@@ -632,28 +637,29 @@ struct superReadStruct *calculateInsertSuperRead (struct superReadStruct *inputS
 	       if ((inputSrsPtr2->offsetAndOriList)[i] % 2 == lastOri1) {
 		    matchingIndex = i;
 		    break; } } }
-//     printf ("matchingIndex = %d\n", matchingIndex);
+     DE fprintf (OUTPUT_FILE, "matchingIndex = %d\n", matchingIndex); //
      if (matchingIndex < 0)
 	  return (badSrsDataSentinel);
-//     printf ("Got to 100\n");
+     DE fprintf (OUTPUT_FILE, "Got to 100\n"); //
      for (k1=numFlds1-1, k2=matchingIndex, k3=0; (k1 >= 0) && (k2 >= 0); k1--, k2--, k3++) {
-//	  printf ("Got to 105\n");
+	  DE fprintf (OUTPUT_FILE, "Got to 105\n"); //
 	  if ((inputSrsPtr1->kUnitigList)[k1] != (inputSrsPtr2->kUnitigList)[k2])
 	       return (badSrsDataSentinel);
-//	  printf ("Got to 107\n");
+	  DE fprintf (OUTPUT_FILE, "Got to 107\n"); //
 	  kUnitigList1[k3] = (inputSrsPtr1->kUnitigList)[k1];
 	  if (((inputSrsPtr1->offsetAndOriList)[k1] != (inputSrsPtr2->offsetAndOriList)[k2]) && (k3 != 0))
 	       return (badSrsDataSentinel);
      }
-//     printf ("Got to 110, k3 = %d\n", k3);
+     DE fprintf (OUTPUT_FILE, "Got to 110, k3 = %d\n", k3); //
      kUnitigList1[k3] = numKUnitigs+1;
-//     for (i=0; i<k3; i++) 
-//	  printf ("i = %d, kUnitig = %d\n", i, kUnitigList1[i]);
+     DE
+	  for (i=0; i<k3; i++)  //
+	       fprintf (OUTPUT_FILE, "i = %d, kUnitig = %d\n", i, kUnitigList1[i]); //
      someKUnitigIsNotRepetitive = reportIfSomeKUnitigInArrayIsNonRepetitive (kUnitigList1);
-//     printf ("someKUnitigIsNotRepetitive = %d\n", someKUnitigIsNotRepetitive);
+     DE fprintf (OUTPUT_FILE, "someKUnitigIsNotRepetitive = %d\n", someKUnitigIsNotRepetitive); //
      if (! someKUnitigIsNotRepetitive)
 	  return (badSrsDataSentinel);
-//     printf ("Got to 120\n");
+     DE fprintf (OUTPUT_FILE, "Got to 120\n"); //
      k3 = 0;
      for (i=0; i<numFlds1-1; i++) {
 	  (outputSrsPtr->kUnitigList)[k3] = (inputSrsPtr1->kUnitigList)[i];
