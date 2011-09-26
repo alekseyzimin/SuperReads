@@ -3,7 +3,7 @@
 int main(int argc, char *argv[])
 {
   size_t nbytes = 10000000;
-  ssize_t bytes_read,sequence_len,qual_len;
+  ssize_t sequence_len,qual_len;
   int i;
   char *my_string;
   char *sequence;

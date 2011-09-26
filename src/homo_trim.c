@@ -4,7 +4,7 @@ int main(int argc, char *argv[])
 {
   int i;
   size_t nbytes = 1000000;
-  ssize_t bytes_read,sequence_len;
+  ssize_t sequence_len;
   char *my_string;
   char *sequence;
   int max_val=0,max_ind=0;
