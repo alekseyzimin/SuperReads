@@ -21,16 +21,39 @@ int main(int argc, char *argv[])
 
   while(1)
     {
-      bytes_read = getline (&my_string, &nbytes, stdin);
-      if(bytes_read==-1)
+      if(fgets(my_string, nbytes, stdin)==NULL)
 	break;
       else
 	{
 	  if(my_string[0]=='@')
 	    {
-	      sequence_len = getline (&sequence, &nbytes, stdin);
-	      qual_len = getline (&quals, &nbytes, stdin);
-	      qual_len = getline (&quals, &nbytes, stdin);
+	      if(fgets(sequence, nbytes, stdin)==NULL)
+		{
+		return(1);
+		}
+              for(i=0;i<nbytes;i++)
+		{
+		if(sequence[i]=='\0')
+			break;
+		}
+		sequence_len=i;
+
+              if(fgets(quals, nbytes, stdin)==NULL)
+                {
+                return(1);
+                }
+              if(fgets(quals, nbytes, stdin)==NULL)
+                {
+                return(1);
+                }
+                for(i=0;i<nbytes;i++)
+                {
+                if(quals[i]=='\0')
+                        break;
+                }
+                qual_len=i;
+
+
 	      if(sequence_len!=qual_len)
 		{
 		  printf("Number of bases and number of quals are different in read %s!!!",my_string+1);

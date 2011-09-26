@@ -24,8 +24,7 @@ int main(int argc, char *argv[])
 
   while(1)
     {
-      bytes_read = getline (&my_string, &nbytes, stdin);
-      if(bytes_read==-1)
+      if(fgets(my_string, nbytes, stdin)==NULL)
 	break;
       else
 	{
@@ -34,7 +33,17 @@ int main(int argc, char *argv[])
 	      max_val=0;
 	      max_ind=0;
 	      num_cg=0;
-	      sequence_len = getline (&sequence, &nbytes, stdin);
+              if(fgets(sequence, nbytes, stdin)==NULL)
+                {
+                return(1);
+                }
+              for(i=0;i<nbytes;i++)
+                {
+                if(sequence[i]=='\0')
+                        break;
+                }
+                sequence_len=i;
+
 	      last_letter=(char)sequence[sequence_len-2];
    	      for(i=sequence_len-3;i>=0;i--)
 		    {
