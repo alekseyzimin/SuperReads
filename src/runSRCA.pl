@@ -487,7 +487,7 @@ print FILE "cat work2/readPlacementsInSuperReads.final.read.superRead.offset.ori
 print FILE "echo 'Chimeric/Redundant jump reads:';wc -l  chimeric_sj.txt redundant_sj.txt;\n";
 
 #remove all chimeric and all redundant reads from sj.cor.fa
-print FILE "extractreads.pl <(cat chimeric_sj.txt redundant_sj.txt <(awk '{print \$1}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt) |sort -S 10% |uniq -u) sj.cor.fa 1 |reverse_complement > sj.cor.clean.fa\n" if(not(-e "sj.cor.clean.fa"));
+print FILE "extractreads.pl <(cat chimeric_sj.txt redundant_sj.txt | perl -e '{while(\$line=<STDIN>){chomp(\$line);\$h{\$line}=1}open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);print \$line,\"\\n\" if(not(defined(\$h{\$line})));}}' <(awk '{print \$1}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 |reverse_complement > sj.cor.clean.fa\n" if(not(-e "sj.cor.clean.fa"));
 
 #we extend the filtered and reverse complemented jump reads if asked -- the reason to do that is that sometimes the jump library reads are shorter than 64 bases and CA cannot use them
 if($EXTEND_JUMP_READS==1)
