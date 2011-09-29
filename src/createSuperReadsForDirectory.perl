@@ -39,6 +39,8 @@ $pwd = cwd;
 if ($exeDir !~ /^\//) {
     $exeDir = "$pwd/$exeDir"; }
 
+$successFile = "$exeDir/superReads.success";
+unlink ($successFile) if (-e $successFile);
 &processArgs;
 
 $maxHashFillFactor = .8;
@@ -334,6 +336,9 @@ if (! $mikedebug) { &killFiles ($myProgOutput0_1, $myProgOutput8); }
 #$cmd = "time $exeDir/reportFinalReadPlacementsInSuperReads.perl $kUnitigLengthsFile $myProgOutput18 $myProgOutput91 > $finalReadPlacementFileUsingReadNumbers";
 #print "$cmd\n"; system ($cmd);
 #
+$cmd = "touch $successFile";
+system ($cmd);
+
 exit (0);
 
 jumpLibraryCalculations:
@@ -351,6 +356,9 @@ $cmd = "$exeDir/changeReadNumsToReadNamesAtBeginOfLine $myProgOutput0_1 $myProgO
 $cmd = "$exeDir/outputSuperReadSeqForJumpLibrary.perl $myProgOutput8 $myProgOutput12 > $finalSuperReadSequenceFile";
 &runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1);
 if (! $mikedebug) { &killFiles ($myProgOutput12usingReadNumbers); }
+
+$cmd = "touch $successFile";
+system ($cmd);
 
 sub processArgs
 {
