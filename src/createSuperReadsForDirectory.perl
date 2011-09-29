@@ -119,19 +119,21 @@ if ($jumpLibraryReads) {
 
 # goto startHere;
 
-$cmd = "time $exeDir/getMaxReadNumbersByPrefixForFastaFile @fastaFiles > $myProgOutput0_1";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/getMaxReadNumbersByPrefixForFastaFile @fastaFiles > $myProgOutput0_1";
+&runCommandAndExitIfBad ($cmd, $myProgOutput0_1, 1);
 
-$cmd = "time $exeDir/convertReadNamesToReadNumbers @fastaFiles $myProgOutput0_1 > $totReadFile";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/convertReadNamesToReadNumbers @fastaFiles $myProgOutput0_1 > $totReadFile";
+&runCommandAndExitIfBad ($cmd, $totReadFile, 1);
 
-$cmd = "time $exeDir/getNumReadsFromReadPrefixCountsFile.perl $myProgOutput0_1 > $numReadsFile";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/getNumReadsFromReadPrefixCountsFile.perl $myProgOutput0_1 > $numReadsFile";
+&runCommandAndExitIfBad ($cmd, $numReadsFile, 1);
+
 
 if (! $kUnitigsFile) {
 
   redoJellyfish:
     $cmd = "time jellyfish count -m $merLen -r -o $jellyfishDataPrefix -c 6 -p 126--both-strands -s $tableSize -t $numProcessors @fastaFiles";
+    
     print "$cmd\n"; system ($cmd);
     
     $tableResizeFactor = &returnTableResizeAmount ($jellyfishDataPrefix, $jellyfishHashFile);
@@ -140,12 +142,13 @@ if (! $kUnitigsFile) {
 	print "Resizing the table to $tableSize for jellyfish\n";
 	goto redoJellyfish; }
     
+    &runCommandAndExitIfBad ("", $jellyfishHashFile, 1);
     print "Making sure the hash table is in memory...\n";
     $cmd = "cat $jellyfishHashFile > /dev/null";
     print "$cmd\n"; system ($cmd);
     
-    $cmd = "time create_k_unitigs -C -m $minCoverageToCreateAFork -M $minCoverageToContinueAUnitig -l $minKUnitigLen -o $kUnitigFastaSequencePrefix -t $numProcessors $jellyfishHashFile";
-    print "$cmd\n"; system ($cmd);
+    $cmd = "create_k_unitigs -C -m $minCoverageToCreateAFork -M $minCoverageToContinueAUnitig -l $minKUnitigLen -o $kUnitigFastaSequencePrefix -t $numProcessors $jellyfishHashFile";
+    &runCommandAndExitIfBad ($cmd, "${kUnitigFastaSequencePrefix}_${i}.fa", 1); 
 
     for ($i=0; 1; $i++) {
 	$fn = "${kUnitigFastaSequencePrefix}_${i}.fa";
@@ -166,17 +169,17 @@ else { # A k-unitigs file was passed on the command line
 if (! $mikedebug) { &killFiles ($jellyfishHashFile, @guillaumeKUnitigFiles); }
     
 $cmd = "cat $totalKUnitigFastaSequence | $exeDir/getNumBasesInKUnitigsFile.perl > $kUnitigLengthsFile";
-print "$cmd\n"; system ($cmd);
+&runCommandAndExitIfBad ($cmd, $kUnitigLengthsFile, 1);
 
 $numKUnitigs = &getNumLines ($kUnitigLengthsFile);
 $cmd = "echo $numKUnitigs > $numKUnitigsFile";
-print "$cmd\n"; system ($cmd);
+&runCommandAndExitIfBad ($cmd, $numKUnitigsFile, 1);
 
 $minSizeNeededForTable = &reportMinJellyfishTableSizeForKUnitigs;
 
 redoKUnitigsJellyfish:
-$cmd = "time jellyfish count -m $merLen -r -o $jellyfishKUnitigDataPrefix -c 6 -p 126 --both-strands -s $minSizeNeededForTable -t $numProcessors $totalKUnitigFastaSequence";
-print "$cmd\n"; system ($cmd);
+$cmd = "jellyfish count -m $merLen -r -o $jellyfishKUnitigDataPrefix -c 6 -p 126 --both-strands -s $minSizeNeededForTable -t $numProcessors $totalKUnitigFastaSequence";
+&runCommandAndExitIfBad ($cmd, $jellyfishKUnitigHashFile, 1);
     
 $tableResizeFactor = &returnTableResizeAmount ($jellyfishKUnitigDataPrefix, $jellyfishKUnitigHashFile);
 if ($tableResizeFactor > 1) {
@@ -189,44 +192,44 @@ $cmd = "cat $jellyfishKUnitigHashFile > /dev/null";
 print "$cmd\n"; system ($cmd);
 
 if ($debug) {
-    $cmd = "time $exeDir/findMatchesBetweenKUnitigsAndReads -l $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1prefix $totalKUnitigFastaSequence $numKUnitigsFile $totReadFile";
-    print "$cmd\n"; system ($cmd);
+    $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads -l $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1prefix $totalKUnitigFastaSequence $numKUnitigsFile $totReadFile";
+    &runCommandAndExitIfBad ($cmd, "${myProgOutput1prefix}_0", 1);
     $cmd = "grep -h \"^myNucmerLine\" ${myProgOutput1prefix}_* | $exeDir/myUniq > $myProgOutput1_1";
-    print "$cmd\n"; system ($cmd); }
+    &runCommandAndExitIfBad ($cmd, $myProgOutput1_1, 1); }
 else {
-    $cmd = "time $exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $totalKUnitigFastaSequence $numKUnitigsFile $totReadFile";
-    print "$cmd\n"; system ($cmd);
-    $cmd = "time cat ${myProgOutput1_1prefix}_* | $exeDir/myUniq > $myProgOutput1_1";
-    print "$cmd\n"; system ($cmd); }
+    $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $totalKUnitigFastaSequence $numKUnitigsFile $totReadFile";
+    &runCommandAndExitIfBad ($cmd, "${myProgOutput1_1prefix}_0", 1);
+    $cmd = "cat ${myProgOutput1_1prefix}_* | $exeDir/myUniq > $myProgOutput1_1";
+    &runCommandAndExitIfBad ($cmd, $myProgOutput1_1, 1); }
 $cmd = "\\rm ${myProgOutput1_1prefix}_*"; print "$cmd\n"; system ($cmd);
 if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile, $totReadFile); }
     
-$cmd = "time $exeDir/groupConsensusRecordsForRead $myProgOutput1_1 > $myProgOutput2";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/groupConsensusRecordsForRead $myProgOutput1_1 > $myProgOutput2";
+&runCommandAndExitIfBad ($cmd, $myProgOutput2, 1);
 
-$cmd = "time $exeDir/extractMinimalKUnitigSetToCoverReads.perl $myProgOutput2 > $myProgOutput3";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/extractMinimalKUnitigSetToCoverReads.perl $myProgOutput2 > $myProgOutput3";
+&runCommandAndExitIfBad ($cmd, $myProgOutput3, 1);
 if (! $mikedebug) { &killFiles ($myProgOutput2); }
 
-$cmd = "time $exeDir/extractCoveringKUnitigsFromMinimalCoveringKUnitigSets $myProgOutput3 > $myProgOutput4";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/extractCoveringKUnitigsFromMinimalCoveringKUnitigSets $myProgOutput3 > $myProgOutput4";
+&runCommandAndExitIfBad ($cmd, $myProgOutput4, 1);
 
-$cmd = "time cat $myProgOutput4 | $exeDir/findSuperReadGroups.perl > $myProgOutput5";
-print "$cmd\n"; system ($cmd);
+$cmd = "cat $myProgOutput4 | $exeDir/findSuperReadGroups.perl > $myProgOutput5";
+&runCommandAndExitIfBad ($cmd, $myProgOutput5, 1);
 if (! $mikedebug) { &killFiles ($myProgOutput4); }
 
-$cmd = "time $exeDir/findAndKillSuperReadsWithKUnitigOverlapsGeTheMerLength.perl $myProgOutput5 $merLen $myProgOutput6good $myProgOutput6bad";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/findAndKillSuperReadsWithKUnitigOverlapsGeTheMerLength.perl $myProgOutput5 $merLen $myProgOutput6good $myProgOutput6bad";
+&runCommandAndExitIfBad ($cmd, $myProgOutput6good, 1);
 if (! $mikedebug) { &killFiles ($myProgOutput5); }
 
-$cmd = "time cat $myProgOutput6good | $exeDir/reportSuperReadGroups.perl > $myProgOutput7";
-print "$cmd\n"; system ($cmd);
+$cmd = "cat $myProgOutput6good | $exeDir/reportSuperReadGroups.perl > $myProgOutput7";
+&runCommandAndExitIfBad ($cmd, $myProgOutput7, 1);
 
 if ($jumpLibraryReads) {
     goto jumpLibraryCalculations; }
 
 $cmd = "$exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput7 -seqdiffmax $seqDiffMax -error-filename $sequenceCreationErrorFile1 -nosequence > $myProgOutput8";
-print "$cmd\n"; system ($cmd);
+&runCommandAndExitIfBad ($cmd, $myProgOutput8, 0);
 if (! $mikedebug) { &killFiles ($myProgOutput7); }
 
 # The following generate the following files in $workingDirectory:
@@ -236,52 +239,53 @@ if (! $mikedebug) { &killFiles ($myProgOutput7); }
 #      have multiple copies overlapping a given read; don't use for merging
 #      mates into super-reads.
 $cmd = "cat $myProgOutput1_1 | $exeDir/getRecordsForTandomRepeatKUnitigs | $exeDir/reduceRecordsForKillingKUnitigsToConnectMates.perl $workingDirectory";
-print "$cmd\n"; system ($cmd);
+&runCommandAndExitIfBad ($cmd, "", 0);
 if (! $mikedebug) { if (! $joinShooting) { &killFiles ($myProgOutput1_1); } }
 
 # =====================================================================
 # PUTTING IN NEW STUFF HERE (3/15/11)
-$cmd = "time cat $myProgOutput6good | $exeDir/killUnwantedDataFromFirstSuperReadInfo.perl $workingDirectory > $myProgOutput10";
-print "$cmd\n"; system ($cmd);
+$cmd = "cat $myProgOutput6good | $exeDir/killUnwantedDataFromFirstSuperReadInfo.perl $workingDirectory > $myProgOutput10";
+&runCommandAndExitIfBad ($cmd, $myProgOutput10, 1);
 if (! $mikedebug) { &killFiles ($myProgOutput6good); }
 
-$cmd = "time cat $myProgOutput10 | $exeDir/makeListOfSuperReadsAndCounts.fromSuperReadGroupsFile.perl > $myProgOutput14";
-print "$cmd\n"; system ($cmd);
+$cmd = "cat $myProgOutput10 | $exeDir/makeListOfSuperReadsAndCounts.fromSuperReadGroupsFile.perl > $myProgOutput14";
+&runCommandAndExitIfBad ($cmd, $myProgOutput14, 1);
 
 $maxReadCountToEliminateSuperRead = $minReadsInSuperRead-1;
 $cmd = "cat $myProgOutput14 | $exeDir/listInfrequentlyOccurringSuperReads.perl $maxReadCountToEliminateSuperRead > $myProgOutput15";
-print "$cmd\n"; system ($cmd);
+&runCommandAndExitIfBad ($cmd, $myProgOutput15, 0);
 if (! $mikedebug) { &killFiles ($myProgOutput14); }
 
-$cmd = "time $exeDir/eliminateInfrequentlyOccurringSuperReadsUsingList.perl $myProgOutput10 $myProgOutput15 > $myProgOutput16";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/eliminateInfrequentlyOccurringSuperReadsUsingList.perl $myProgOutput10 $myProgOutput15 > $myProgOutput16";
+&runCommandAndExitIfBad ($cmd, $myProgOutput16, 1);
 if (! $mikedebug) { &killFiles ($myProgOutput10); }
 
-$cmd = "time $exeDir/getReadStartsOffsetsAndOrientationsInSuperReads_1stPass $myProgOutput3 $myProgOutput16 $kUnitigLengthsFile $sequenceCreationErrorFile1 > $myProgOutput18";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/getReadStartsOffsetsAndOrientationsInSuperReads_1stPass $myProgOutput3 $myProgOutput16 $kUnitigLengthsFile $sequenceCreationErrorFile1 > $myProgOutput18";
+&runCommandAndExitIfBad ($cmd, $myProgOutput18, 1);
 
 if ($joinMates) {
-    $cmd = "time $exeDir/mergeShortMatesIntoSuperReads $myProgOutput16 $numKUnitigsFile $errorOutput9 $repetitiveKUnitigInfoFile $kUnitigLengthsFile $numReadsFile > $myProgOutput22"; }
+    $cmd = "$exeDir/mergeShortMatesIntoSuperReads $myProgOutput16 $numKUnitigsFile $errorOutput9 $repetitiveKUnitigInfoFile $kUnitigLengthsFile $numReadsFile > $myProgOutput22"; }
 else {
     $myProgOutput16complete = $myProgOutput16;
     if ($myProgOutput16complete !~ /^\//) {
 	$myProgOutput16complete = "$pwd/$myProgOutput16complete"; }
     
     $cmd = "ln -s $myProgOutput16complete $myProgOutput22"; }
-print "$cmd\n"; system ($cmd);
+&runCommandAndExitIfBad ($cmd, $myProgOutput22, 1);
 
-$cmd = "time $exeDir/reportFinalReadPlacementsInSuperReads.perl $kUnitigLengthsFile $myProgOutput18 $myProgOutput22 > $myProgOutput23";
-print "$cmd\n"; system ($cmd);
+# $cmd = "$exeDir/reportFinalReadPlacementsInSuperReads.perl $kUnitigLengthsFile $myProgOutput18 $myProgOutput22 > $myProgOutput23";
+$cmd = "$exeDir/getReadStartsOffsetsAndOrientationsInSuperReads_1stPass $myProgOutput3 $myProgOutput22 $kUnitigLengthsFile $sequenceCreationErrorFile1 > $myProgOutput23";
+&runCommandAndExitIfBad ($cmd, $myProgOutput23, 1);
 
 if ($joinShooting) {
     chdir ($workingDirectory);
     $cmd = "$exeDir/postSuperReadPipelineCommandsForJoiningMates.perl $forceJoin $defaultMean $defaultStdev -l $merLen -kunitig-files-prefix $totalKUnitigFastaSequenceComplete -read-placements-file $myProgOutput23complete";
     if ($mikedebug) {
 	$cmd .= " -mikedebug"; }
-    print "$cmd\n"; system ($cmd);
+    &runCommandAndExitIfBad ($cmd, "", 0);
     chdir ($pwd);
     $cmd = "$exeDir/mergePostMateMergeAndPriorSuperReadGroupsByReadFiles.perl $myProgOutput24 $myProgOutput22 > $myProgOutput25";
-    print "$cmd\n"; system ($cmd);
+    &runCommandAndExitIfBad ($cmd, $myProgOutput25, 1);
     if (! $mikedebug) { &killFiles ($myProgOutput22, $myProgOutput24, $myProgOutput1_1); }
 }
 else {
@@ -289,29 +293,29 @@ else {
     if ($myProgOutput22complete !~ /^\//) {
 	$myProgOutput22complete = "$pwd/$myProgOutput22complete"; }
     $cmd = "ln -s $myProgOutput22complete $myProgOutput25";
-    print "$cmd\n"; system ($cmd);
+    &runCommandAndExitIfBad ($cmd, $myProgOutput22complete, 1);
 }
     
 $cmd = "$exeDir/findEquivalentSuperReads.perl $myProgOutput25 -equiv-file $myProgOutput26 -out-file $myProgOutput27";
-print "$cmd\n"; system ($cmd);
+&runCommandAndExitIfBad ($cmd, $myProgOutput27, 1);
 if (! $mikedebug) { &killFiles ($myProgOutput26, $myProgOutput16, $myProgOutput22, $myProgOutput24, $myProgOutput25); }
 
 $cmd = "cat $myProgOutput27 | $exeDir/reportSuperReadGroups.perl > $myProgOutput28";
-print "$cmd\n"; system ($cmd);
+&runCommandAndExitIfBad ($cmd, $myProgOutput28, 1);
 
-$cmd = "time $exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput28 -seqdiffmax $seqDiffMax -error-filename $sequenceCreationErrorFile2 > $finalSuperReadSequenceFile";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput28 -seqdiffmax $seqDiffMax -error-filename $sequenceCreationErrorFile2 > $finalSuperReadSequenceFile";
+&runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1);
 
 $cmd = "cat $sequenceCreationErrorFile1 $sequenceCreationErrorFile2 > $sequenceCreationErrorFileCombined";
-print "$cmd\n"; system ($cmd);
+&runCommandAndExitIfBad ($cmd, $sequenceCreationErrorFileCombined, 0);
 if (! $mikedebug) { &killFiles ($sequenceCreationErrorFile1, $sequenceCreationErrorFile2); }
 
 $cmd = "$exeDir/getReadStartsOffsetsAndOrientationsInSuperReads_1stPass $myProgOutput3 $myProgOutput27 $kUnitigLengthsFile $sequenceCreationErrorFileCombined > $finalReadPlacementFileUsingReadNumbers";
-print "$cmd\n"; system ($cmd);
+&runCommandAndExitIfBad ($cmd, $finalReadPlacementFileUsingReadNumbers, 1);
 if (! $mikedebug) { &killFiles ($myProgOutput3, $myProgOutput18, $myProgOutput23); }
 
-$cmd = "time $exeDir/changeReadNumsToReadNamesAtBeginOfLine $myProgOutput0_1 $finalReadPlacementFileUsingReadNumbers > $finalReadPlacementFile";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/changeReadNumsToReadNamesAtBeginOfLine $myProgOutput0_1 $finalReadPlacementFileUsingReadNumbers > $finalReadPlacementFile";
+&runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1);
 if (! $mikedebug) { &killFiles ($myProgOutput0_1, $myProgOutput8); }
 
 #
@@ -334,34 +338,19 @@ exit (0);
 
 jumpLibraryCalculations:
 $cmd = "$exeDir/createFastaSuperReadSequences $workingDirectory $myProgOutput7 -seqdiffmax $seqDiffMax  -error-filename $sequenceCreationErrorFile1 > $myProgOutput8";
-print "$cmd\n"; system ($cmd);
+&runCommandAndExitIfBad ($cmd, $myProgOutput8, 1);
 if (! $mikedebug) { &killFiles ($myProgOutput7); }
 
-$cmd = "time $exeDir/getReadStartsOffsetsAndOrientationsInSuperReads_1stPass $myProgOutput3 $myProgOutput6good $kUnitigLengthsFile $sequenceCreationErrorFile1 > $myProgOutput12usingReadNumbers";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/getReadStartsOffsetsAndOrientationsInSuperReads_1stPass $myProgOutput3 $myProgOutput6good $kUnitigLengthsFile $sequenceCreationErrorFile1 > $myProgOutput12usingReadNumbers";
+&runCommandAndExitIfBad ($cmd, $myProgOutput12usingReadNumbers, 1);
 if (! $mikedebug) { &killFiles ($myProgOutput3, $myProgOutput6good); }
 
-$cmd = "time $exeDir/changeReadNumsToReadNamesAtBeginOfLine $myProgOutput0_1 $myProgOutput12usingReadNumbers > $myProgOutput12";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/changeReadNumsToReadNamesAtBeginOfLine $myProgOutput0_1 $myProgOutput12usingReadNumbers > $myProgOutput12";
+&runCommandAndExitIfBad ($cmd, $myProgOutput12, 1);
 
-$cmd = "time $exeDir/outputSuperReadSeqForJumpLibrary.perl $myProgOutput8 $myProgOutput12 > $finalSuperReadSequenceFile";
-print "$cmd\n"; system ($cmd);
+$cmd = "$exeDir/outputSuperReadSeqForJumpLibrary.perl $myProgOutput8 $myProgOutput12 > $finalSuperReadSequenceFile";
+&runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1);
 if (! $mikedebug) { &killFiles ($myProgOutput12usingReadNumbers); }
-
-exit(0);
-
-# =====================================================================
-# REDONE TO HERE
-
-@guillaumeKUnitigCountFiles = @guillaumeKUnitigFiles;
-for ($i=0; $i<=$#guillaumeKUnitigCountFiles; $i++) {
-    $guillaumeKUnitigCountFiles[$i] =~ s/fa$/counts/; }
-@filesToKill = (@guillaumeKUnitigFiles, $jellyfishKUnitigHashFile, @guillaumeKUnitigCountFiles, $totReadFile, $myProgOutput1, $myProgOutput2, $myProgOutput3, $myProgOutput4);
-if ($clean) {
-    print "Cleaning up...\n";
-    for (@filesToKill) {
-	$file = $_;
-	unlink ($file); } }
 
 sub processArgs
 {
@@ -531,5 +520,44 @@ sub killFiles
 	$file = $_;
 	if (-e $file) {
 	    unlink ($file); } }
+}
+
+# If localCmd is set, it captures the return code and makes
+# sure it ran properly. Otherwise it exits.
+# If one sets the fileName then we assume it must exist
+# With minSize one can set the minimum output file size
+sub runCommandAndExitIfBad
+{
+    my ($localCmd, $fileName, $minSize) = @_;
+    my ($retCode, $exitValue, $sz);
+
+    if ($localCmd =~ /\S/) {
+        print "$localCmd\n";
+        system ("time $localCmd");
+        $retCode = $?;
+        if ($retCode == -1) {
+            print STDERR "failed to execute: $!\n";
+            exit ($retCode); }
+        elsif ($retCode & 127) {
+            fprintf STDERR "child died with signal %d, %s coredump\n",
+            ($retCode & 127), ($retCode & 128) ? 'with' : 'without';
+            exit ($retCode); }
+        else {
+            $exitValue = $retCode >> 8;
+            if ($exitValue == 255) { $exitValue = -1; }
+            if ($exitValue != 0) {
+                printf STDERR "child exited with value %d\n", $exitValue;
+                print STDERR "Command \"$localCmd\" failed. Bye!\n";
+                exit ($exitValue); }
+        }
+    }
+    return unless ($fileName =~ /\S/);
+    if (! -e $fileName) {
+        print STDERR "Output file \"$fileName\" doesn't exist. Bye!\n";
+        exit (1); }
+    $sz = -s $fileName;
+    if ($sz < $minSize) {
+        print STDERR "Output file \"$fileName\" is of size $sz, must be at least of size $minSize. Bye!\n";
+        exit (1); }
 }
 
