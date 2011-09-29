@@ -494,9 +494,13 @@ print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 2 -kunitigsfi
 print FILE "\n";
 
 #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
+if(not(-e "chimeric_sj.txt"))
+{
 print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$3\" \"\$2\" \"\$1;}else{print \$3\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 1| awk 'BEGIN{insert=\"\";}{if(\$3!=insert){start=\$1;insert=\$3}else{if(start>\$1){print insert\" \"start-\$1}else{print insert\" \"\$1-start}}}' | perl -ane '{if(\$F[1]<750&&\$F[1]>0){print STDOUT \"\$F[0]\\n\",substr(\$F[0],0,2),int(substr(\$F[0],2))+1,\"\\n\";}}' 1> chimeric_sj.txt \n" if(not(-e "chimeric_sj.txt"));
 print FILE "\n";
-
+print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$4\" \"\$2\" \"\$1;}else{print \$4\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -d | perl -ane '{print STDOUT \"\$F[2]\\n\",substr(\$F[2],0,2),int(substr(\$F[2],2))+1,\"\\n\";}' 1>> chimeric_sj.txt \n";
+print FILE "\n";
+}
 #we also do initial redundancy filtering here, based on positions of reads in suoer reads
 print FILE "cat work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt | awk '{if(int(substr(\$1,3))%2==0){print \$2\" \"\$3\" \"\$1}else{print \$2\" \"\$3\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' |uniq -D -f 2|awk 'BEGIN{flag=0}{if(flag==1){index1=int(substr(c1_1,1,length(c1_1)-1))*20000+c1_2;index2=int(substr(\$1,1,length(\$1)-1))*20000+\$2;if(index1>index2){print c1_1\" \"\$1\" \"c1_2\" \"\$2\" \"c}else{print \$1\" \"c1_1\" \"\$2\" \"c1_2\" \"c}}c=\$3;c1_1=\$1;c1_2=\$2;flag=1-flag;}'|perl -ane '{chomp;\$range=2;\$code=0;for(\$i=-\$range;\$i<=\$range;\$i++){for(\$j=-\$range;\$j<=\$range;\$j++){\$code++ if(defined(\$h{\"\$F[0] \$F[1] \".(\$F[2]+\$i).\" \".(\$F[3]+\$j)}))}}if(\$code==0){\$h{\"\$F[0] \$F[1] \$F[2] \$F[3]\"}=1}else{print \"\$F[4]\\n\",substr(\$F[4],0,2),int(substr(\$F[4],2))+1,\"\\n\"}}' > redundant_sj.txt\n" if(not(-e "redundant_sj.txt")); 
 
@@ -613,7 +617,7 @@ print FILE "echo -n \"Deleted reads due to redundancy/chimerism: \"\nwc -l gkp.e
 #here we reduce jump library coverage: we know the genome size (from unitigger.err) and JUMP_BASES_COVERED contains total jump library coverage :)
 print FILE "ESTIMATED_GENOME_SIZE=`grep 'size=' unitigger.err |awk -F '=' '{print \$NF}'`\n";
 print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
-print FILE "perl -e '{\$cov='\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'; print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=75;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.uid\");while(\$line=<FILE>){chomp(\$line);if(int(substr(\$line,2))%2==0) {print STDERR \"frg uid \$line isdeleted 1\\nfrg uid \",substr(\$line,0,2),int(substr(\$line,2))+1,\" isdeleted 1\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>> gkp.edits.msg\n";
+print FILE "perl -e '{\$cov='\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'; print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=100;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.uid\");while(\$line=<FILE>){chomp(\$line);if(int(substr(\$line,2))%2==0) {print STDERR \"frg uid \$line isdeleted 1\\nfrg uid \",substr(\$line,0,2),int(substr(\$line,2))+1,\" isdeleted 1\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>> gkp.edits.msg\n";
 print FILE "echo -n \"Deleted reads total, inlcuding coverage reduction: \"\nwc -l gkp.edits.msg\n";
 #and finally delete the extra mates
 
