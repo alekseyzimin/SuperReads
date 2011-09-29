@@ -448,19 +448,7 @@ print FILE "rm error_corrected_*\n";
 print FILE "PE_AVG_READ_LENGTH=`head -n 1000000 pe.cor.fa |tail -n 500000| grep -v '^>' | awk 'BEGIN{n=0;m=0;}{m+=length(\$0);n++;}END{print int(m/n)}'`\n";
 print FILE "echo \"Average PE read length after error correction: \$PE_AVG_READ_LENGTH\"\n"; 
 ######################################################done error correcct PE##########################################################
-print FILE "\n\n\n";
-#######################################################build k-unitigs##############################################################
 print FILE "\n";
-if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta"))
-{
-print FILE "jellyfish count -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa\n";
-print FILE "create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 32 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
-#print FILE "cat k_unitigs_*.fa | awk 'BEGIN{seq=\"\"}{if(\$1 ~ /^>/){if(seq != \"\"){ print length(seq)\" \"seq;seq=\"\"}}else{seq=seq\$1}}END{print length(seq)\" \"seq}' |sort -S 10% -grk1,1 | awk 'BEGIN{n=0}{print \">\"n\" length:\"length(\$2)\" fwd:null bwd:null\\n\"\$2;n++;}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
-print FILE "cat k_unitigs_*.fa > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
-print FILE "rm k_unitigs_*.fa  k_unitigs_*.counts\n";
-}
-######################################################done k-unitigs#################################################################
-print FILE "\n\n\n";
 ########################################################error correct, super reads for JUMP#################################
 if(scalar(@jump_info_array)>0)
 {
@@ -471,10 +459,25 @@ print FILE "\nerror_correct_reads -d pe_trim_0 -d pe_all_0 -C -m 1 -s 1 -g 2 -t 
 print FILE "cat error_corrected_*.fa  | homo_trim $TRIM_PARAM > sj.cor.fa\n";
 print FILE "rm error_corrected_*\n";
 }
+#############################################################done error correct JUMP#############################################
+#
+print FILE "\n\n\n";
+#######################################################build k-unitigs##############################################################
+print FILE "\n";
+if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta"))
+{
+print FILE "jellyfish count -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa sj.cor.fa\n";
+print FILE "create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 32 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
+print FILE "cat k_unitigs_*.fa > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+print FILE "rm k_unitigs_*.fa  k_unitigs_*.counts\n";
+}
+######################################################done k-unitigs#################################################################
+print FILE "\n\n\n";
+########################################super reads for jump#######################################################################
 print FILE "echo -n 'filtering JUMP ';date;\n";
 
 #creating super reads. for filtering
-print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work2 sj.cor.fa 1> super1.out 2>super1.err\n" if(not(-e "work2"));;
+print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 2 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work2 sj.cor.fa 1> super1.out 2>super1.err\n" if(not(-e "work2"));;
 print FILE "\n";
 
 #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
