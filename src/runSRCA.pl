@@ -541,7 +541,7 @@ print FILE "rm $f[0].tmp\n";
 print FILE "JUMP_BASES_COVERED=`awk 'BEGIN{b=0}{b+=\$1*\$2;}END{print b}' compute_jump_coverage.txt`\n";
 }
 #here we reduce jump library coverage: we know the genome size (from k-unitigs) and JUMP_BASES_COVERED contains total jump library coverage :)
-print FILE "perl -e '{\$cov='\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'; print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=100;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.uid\");while(\$line=<FILE>){chomp(\$line);if(int(substr(\$line,2))%2==0) {print STDERR \"\$line\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>mates_to_break.txt\n";
+print FILE "perl -e '{\$cov='\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'; print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=100;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.cor.clean.fa\");while(\$line=<FILE>){next if(not(\$line =~ /^>/));chomp(\$line);if(int(substr(\$line,3))%2==0) {print STDERR substr(\$line,1),\"\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>mates_to_break.txt\n";
 
 for($i=0;$i<scalar(@jump_info_array);$i++)
 {
