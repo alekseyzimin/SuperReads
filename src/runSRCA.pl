@@ -467,7 +467,7 @@ print FILE "\n";
 if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta"))
 {
 print FILE "jellyfish count -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa sj.cor.fa\n";
-print FILE "create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 32 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
+print FILE "create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
 print FILE "cat k_unitigs_*.fa > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
 print FILE "rm k_unitigs_*.fa  k_unitigs_*.counts\n";
 }
@@ -482,6 +482,8 @@ print FILE "cat k_unitigs_*.fa > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
 print FILE "rm k_unitigs_*.fa  k_unitigs_*.counts\n";
 }
 }
+print FILE "ESTIMATED_GENOME_SIZE=`perl -ane '{if(\$F[0]=~/^>/){print \"\\n\"}else{print \$F[0]}}'  guillaumeKUnitigsAtLeast32bases_all.fasta | wc|awk '{print int(\$3)-(30*(int(\$1)-1));}'`\n";
+print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
 ######################################################done k-unitigs#################################################################
 print FILE "\n\n\n";
 ########################################super reads for jump#######################################################################
@@ -538,7 +540,17 @@ print FILE "rm $f[0].tmp\n";
 }
 print FILE "JUMP_BASES_COVERED=`awk 'BEGIN{b=0}{b+=\$1*\$2;}END{print b}' compute_jump_coverage.txt`\n";
 }
+#here we reduce jump library coverage: we know the genome size (from k-unitigs) and JUMP_BASES_COVERED contains total jump library coverage :)
+print FILE "perl -e '{\$cov='\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'; print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=100;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.uid\");while(\$line=<FILE>){chomp(\$line);if(int(substr(\$line,2))%2==0) {print STDERR \"\$line\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>mates_to_break.txt\n";
 
+for($i=0;$i<scalar(@jump_info_array);$i++)
+{
+@f=split(/\s+/,$jump_info_array[$i]);
+###if one of the reads 
+print FILE "mv $f[0].cor.clean.frg $f[0].cor.clean.frg.tmp\n";
+print FILE "perl -e '{open(FILE,\"mates_to_break.txt\");while(\$line=<FILE>){chomp(\$line);\$h{\$line}=1;}while(\$line=<STDIN>){if(\$line=~/^\\{LKG/){\$flag=0;\@lines=();while(\$line=<STDIN>){last if(\$line=~/^\\}/);push(\@lines,\$line);chomp(\$line);if(defined(\$h{substr(\$line,4)})){\$flag++}}if(\$flag==0){print \"{LKG\\n\",\@lines,\"}\\n\";}}else{print \$line;}}}' < $f[0].cor.clean.frg.tmp > $f[0].cor.clean.frg\n"; 
+print FILE "rm $f[0].cor.clean.frg.tmp\n";
+}
 
 ###############################################################done with JUMP library################################################################
 print FILE "\n\n\n";
@@ -604,23 +616,15 @@ print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngr
 #we should not check for redundancy on the extended jump reads -- it will wipe them all out
 if($EXTEND_JUMP_READS==0)
 {
-print FILE "cat genome.redundant.uid genome.chimeric.uid |awk '{print \"frg uid \"\$1\" isdeleted 1\"}' |sort -S 20%|uniq > gkp.edits.msg\n";
+print FILE "cat genome.redundant.uid |awk '{print \"frg uid \"\$1\" isdeleted 1\"}' > gkp.edits.msg\n";
+print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" mateiid 0\"}' >> gkp.edits.msg\n";
+
 }
 else
 {
-print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" isdeleted 1\"}' |sort -S 20%|uniq > gkp.edits.msg\n";
+print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" mateiid 0\"}'  > gkp.edits.msg\n";
 }
-
 print FILE "echo -n \"Deleted reads due to redundancy/chimerism: \"\nwc -l gkp.edits.msg\n";
-
-
-#here we reduce jump library coverage: we know the genome size (from unitigger.err) and JUMP_BASES_COVERED contains total jump library coverage :)
-print FILE "ESTIMATED_GENOME_SIZE=`grep 'size=' unitigger.err |awk -F '=' '{print \$NF}'`\n";
-print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
-print FILE "perl -e '{\$cov='\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'; print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=100;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.uid\");while(\$line=<FILE>){chomp(\$line);if(int(substr(\$line,2))%2==0) {print STDERR \"frg uid \$line isdeleted 1\\nfrg uid \",substr(\$line,0,2),int(substr(\$line,2))+1,\" isdeleted 1\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>> gkp.edits.msg\n";
-print FILE "echo -n \"Deleted reads total, inlcuding coverage reduction: \"\nwc -l gkp.edits.msg\n";
-#and finally delete the extra mates
-
 print FILE "gatekeeper --edit gkp.edits.msg ../genome.gkpStore 1>gatekeeper.err 2>&1\n";
 print FILE "cd ../\nrm -rf *.tigStore\nrm -rf *.ovlStore\nrm -rf 0-* 1-* 2-* 3-*\ncd ../\n\n";
 print FILE "\n";
