@@ -29,7 +29,7 @@ int main (int argc, char **argv)
      FILE *infile;
      int maxKUniNum, kUniNum;
      long long maxReadNum, readNum, otherReadNum;
-     int superReadNameSpaceNeeded = 0;
+     long long superReadNameSpaceNeeded = 0;
      struct readPlacementDataStruct *pRPDS1, *pRPDS2;
      char *cptr;
      int unjoinedMateDist = -1000000000, mateDist, beginOffset, lengthFromEnd;
