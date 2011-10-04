@@ -42,15 +42,15 @@ mergePostMateMergeAndPriorSuperReadGroupsByReadFiles.perl
 noinst_HEADERS = aligned_simple_array.hpp misc.hpp kmer.hpp		\
 diskBasedUnitigger.h create_k_unitigs_cmdline.hpp			\
 error_correct_reads_cmdline.hpp error_correct_reads.hpp err_log.hpp	\
-kmer.hpp priorityHeap.h redBlackTreesInsertOnly.h
+kmer.hpp priorityHeap.h redBlackTreesInsertOnly.h			\
+create_k_unitigs_cmdline.hpp yaggo.hpp
 
 error_corrected2frg_SOURCES = error_corrected2frg.c 
 filter_illumina_data_quals_SOURCES = filter_illumina_data_quals.c 
 homo_trim_SOURCES = homo_trim.c 
 reverse_complement_SOURCES = reverse_complement.c
 
-create_k_unitigs_SOURCES = create_k_unitigs.cpp	\
-create_k_unitigs_cmdline.cpp
+create_k_unitigs_SOURCES = create_k_unitigs.cpp yaggo.cpp
 
 error_correct_reads_SOURCES = error_correct_reads.cc		\
 error_correct_reads_cmdline.cpp kmer.cc err_log.cc

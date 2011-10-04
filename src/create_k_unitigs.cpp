@@ -113,17 +113,17 @@ public:
 };
 
 class collapse_kmers : public thread_exec {
-  const struct create_k_unitigs_args_info args;
-  const inv_hash_storage_t *hash;
-  const hkey_t              mask, forward_mask, backward_mask;
-  const uint_t              backward_shift;
-  uint64_t                  uid_start;
-  uint_t                    mer_len;
-  atomic_array              used_by;
-  bool                      canonical;
-  unsigned long             min_nb_kmers;
-  counter_t                 slice_counter;
-  counter_t                 fragment_counter;
+  const create_k_unitigs_args  args;
+  const inv_hash_storage_t    *hash;
+  const hkey_t                 mask, forward_mask, backward_mask;
+  const uint_t                 backward_shift;
+  uint64_t                     uid_start;
+  uint_t                       mer_len;
+  atomic_array                 used_by;
+  bool                         canonical;
+  unsigned long                min_nb_kmers;
+  counter_t                    slice_counter;
+  counter_t                    fragment_counter;
 
   const static int dir_backward = -1;
   const static int dir_forward  = 1;
@@ -138,7 +138,7 @@ class collapse_kmers : public thread_exec {
 
 public:
   collapse_kmers(const inv_hash_storage_t *_hash, 
-                 const struct create_k_unitigs_args_info &_args) :
+                 const create_k_unitigs_args &_args) :
     args(_args), hash(_hash),
     mask(((hkey_t)1 << hash->get_key_len()) - 1),
     forward_mask(mask - 3), backward_mask(mask >> 2),
@@ -146,7 +146,7 @@ public:
     mer_len(hash->get_key_len() / 2),
     used_by(hash->get_size()),
     canonical(args.both_strands_flag),
-    min_nb_kmers(args.min_len_arg > (int)mer_len ? args.min_len_arg + 1 - mer_len : 0)
+    min_nb_kmers(args.min_len_arg > mer_len ? args.min_len_arg + 1 - mer_len : 0)
   { }
 
   static void alarm_handler(int sig) {
@@ -270,7 +270,7 @@ public:
                              const uint64_t start_id,
                              seq_t *vec, const int direction, 
                              volatile uint64_t *added) {
-    hkey_t      current_key = start_key, cannon_current_key = start_key;
+    hkey_t      current_key = start_key;
     hkey_t      next_key = 0, cannon_next_key, bnext_key = 0, key_unused;
     hval_t      next_val = 0, val_unused;
     uint64_t    next_id = 0, id_unused;
@@ -344,7 +344,6 @@ public:
 
       vec->push_back(next_key, next_val);
       current_key        = next_key;
-      cannon_current_key = cannon_next_key;
 
       // If the next k-mer already belongs to another thread, trump it
       // if we have a larger thread id. Otherwise bail out.
@@ -372,9 +371,9 @@ public:
     uint64_t min_cov  = args.min_cov_arg;
     uint64_t min_cont = args.min_cont_arg;
 
-    hkey_t   lc_key, lc_cannon_key;
-    uint64_t lc_id;
-    hval_t   lc_val;
+    hkey_t   lc_key = 0, lc_cannon_key = 0;
+    uint64_t lc_id = 0;
+    hval_t   lc_val = 0;
 
     for(hkey_t i = 0; i < 4; i++) {
       if(direction == dir_forward)
@@ -488,15 +487,9 @@ const char * const collapse_kmers::rul = "unique_low";
 
 int main(int argc, char *argv[])
 {
-  struct create_k_unitigs_args_info args;
+  create_k_unitigs_args args(argc, argv);
 
-  if(create_k_unitigs_cmd_parser(argc, argv, &args) != 0)
-    die << "Command line parser failed";
-
-  if(args.inputs_num != 1)
-    die << "Need 1 jellyfish database";
-
-  mapped_file dbf(args.inputs[0]);
+  mapped_file dbf(args.file_arg);
   dbf.random().will_need();
   raw_inv_hash_query_t hash(dbf);
 
