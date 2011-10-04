@@ -27,6 +27,8 @@ int main (int argc, char **argv)
 	  for (j=0; j<256; j++) {
 	       if (numReadNumsNeededForBin[i][j] == 0)
 		    continue;
+	       if (numReadNumsNeededForBin[i][j] % 2 == 1)
+		    ++ numReadNumsNeededForBin[i][j];
 	       printf ("%c%c %d %llu\n", i, j, numReadNumsNeededForBin[i][j], startOffset);
 	       startOffset += numReadNumsNeededForBin[i][j];
 	  }
