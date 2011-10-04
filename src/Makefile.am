@@ -1,4 +1,14 @@
-AM_CPPFLAGS = -Wall -Werror $(JELLYFISH_CFLAGS) -I$(top_srcdir)
+# Enforce -Werror for development and remove for distribution
+CWERROR = -Werror
+dist-hook:
+	for i in am in; do \
+	  sed -e 's/^CWERROR = -Werror/CWERROR =/' $(distdir)/Makefile.$${i} > $(distdir)/Makefile.$${i}_new; \
+	  touch -r $(distdir)/Makefile.$${i} $(distdir)/Makefile.$${i}_new; \
+	  mv -f $(distdir)/Makefile.$${i}_new $(distdir)/Makefile.$${i}; \
+	done
+
+
+AM_CPPFLAGS = -Wall $(JELLYFISH_CFLAGS) -I$(top_srcdir) $(CWERROR)
 AM_LDFLAGS = -lpthread $(JELLYFISH_LIBS)
 
 bin_PROGRAMS = create_k_unitigs error_correct_reads		\
