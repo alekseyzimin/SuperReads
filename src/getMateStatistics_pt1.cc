@@ -6,14 +6,13 @@
 char *flds[100];
 char *line;
 int *kUniLengths;
-char *superReadNameSpace;
+char *superReadName;
 int numSuperReadPieces;
 
 struct readPlacementDataStruct {
      int offset;
-     char *superReadName;
      char ori;
-} *readPlacementInfo;
+} readPlacementInfo[2];
 
 int getFldsFromLine (char *cptrHold);
 FILE *Fopen (const char *fn, const char *mode);
@@ -28,15 +27,11 @@ int main (int argc, char **argv)
      char *kUnitigLengthsFile = argv[1], *readPlacementFile = argv[2];
      FILE *infile;
      int maxKUniNum, kUniNum;
-     long long maxReadNum, readNum, otherReadNum;
-     long long superReadNameSpaceNeeded = 0;
-     struct readPlacementDataStruct *pRPDS1, *pRPDS2;
-     char *cptr;
+     long long readNum, readNumHold=-2, insertEndForRead;
      int unjoinedMateDist = -1000000000, mateDist, beginOffset, lengthFromEnd;
      int superReadLength, isFirstLine;
      int numFlds;
      
-
      mallocOrDie (line, 1000000, char);
      infile = Fopen (kUnitigLengthsFile, "r");
      maxKUniNum = 0; isFirstLine = 1;
@@ -72,67 +67,52 @@ int main (int argc, char **argv)
      fclose (infile);
 
      infile = Fopen (readPlacementFile, "r");
-     maxReadNum = 0LL;
+     mallocOrDie (superReadName, 50000, char);
      while (fgets (line, 1000000, infile)) {
 	  getFldsFromLine (line);
 	  readNum = atoll (flds[0]);
-	  if (readNum > maxReadNum)
-	       maxReadNum = readNum;
-	  superReadNameSpaceNeeded += (strlen(flds[1]) + 1);
-     }
-     rewind (infile);
-     mallocOrDie (superReadNameSpace, superReadNameSpaceNeeded, char);
-     mallocOrDie (readPlacementInfo, maxReadNum, struct readPlacementDataStruct);
-     cptr = superReadNameSpace;
-     while (fgets (line, 1000000, infile)) {
-	  getFldsFromLine (line);
-	  readNum = atoll (flds[0]);
-	  readPlacementInfo[readNum].ori = flds[3][0];
-	  readPlacementInfo[readNum].offset = atoi (flds[2]);
-	  strcpy (cptr, flds[1]);
-	  readPlacementInfo[readNum].superReadName = cptr;
-	  cptr += (strlen(cptr)+1);
-     }
-     fclose (infile);
-
-     for (readNum=0; readNum<maxReadNum; readNum+=2) {
-	  otherReadNum = readNum+1;
-	  if (! readPlacementInfo[readNum].ori)
+	  insertEndForRead = readNum % 2;
+	  readPlacementInfo[insertEndForRead].ori = flds[3][0];
+	  readPlacementInfo[insertEndForRead].offset = atoi (flds[2]);
+	  if (insertEndForRead == 0) {
+	       readNumHold = readNum;
+	       strcpy (superReadName, flds[1]);
 	       continue;
-	  if (! readPlacementInfo[otherReadNum].ori)
+	  }
+	  // Only get here if we are the second read of an insert
+	  if (readNum != readNumHold+1)
 	       continue;
-	  pRPDS1 = readPlacementInfo+readNum;
-	  pRPDS2 = readPlacementInfo+otherReadNum;
-	  if (strcmp (pRPDS1->superReadName, pRPDS2->superReadName) == 0) {
-	       if ((pRPDS1->ori != pRPDS2->ori) &&
-		   (pRPDS1->offset >= 0) &&
-		   (pRPDS2->offset >= 0)) {
-		    if (pRPDS1->ori == 'F') {
-			 beginOffset = pRPDS1->offset;
-			 mateDist = pRPDS2->offset - beginOffset; }
+	  // If we get here, both reads of the mate pair were placed
+	  if (strcmp (superReadName, flds[1]) == 0) {
+	       if ((readPlacementInfo[0].ori != readPlacementInfo[1].ori) &&
+		   (readPlacementInfo[0].offset >= 0) &&
+		   (readPlacementInfo[1].offset >= 0)) {
+		    if (readPlacementInfo[0].ori == 'F') {
+			 beginOffset = readPlacementInfo[0].offset;
+			 mateDist = readPlacementInfo[1].offset - beginOffset; }
 		    else {
-			 beginOffset = pRPDS2->offset;
-			 mateDist = pRPDS1->offset - beginOffset; }
+			 beginOffset = readPlacementInfo[1].offset;
+			 mateDist = readPlacementInfo[0].offset - beginOffset; }
 		    // The following also sets numSuperReadPieces
-		    superReadLength = getSuperReadLength (pRPDS1->superReadName);
+		    superReadLength = getSuperReadLength (superReadName);
 		    lengthFromEnd = superReadLength - beginOffset;
-		    printf ("%lld %d %d %d\n", readNum, mateDist, lengthFromEnd, numSuperReadPieces);
+		    printf ("%lld %d %d %d\n", readNumHold, mateDist, lengthFromEnd, numSuperReadPieces);
 	       }
 	  }
 	  else {
-	       if ((pRPDS1->ori == 'F') && (pRPDS1->offset >= 0)) {
-		    beginOffset = pRPDS1->offset;
-		    superReadLength = getSuperReadLength (pRPDS1->superReadName);
+	       if ((readPlacementInfo[0].ori == 'F') && (readPlacementInfo[0].offset >= 0)) {
+		    beginOffset = readPlacementInfo[0].offset;
+		    superReadLength = getSuperReadLength (superReadName);
+		    lengthFromEnd = superReadLength - beginOffset;
+		    mateDist = unjoinedMateDist;
+		    printf ("%lld %d %d %d\n", readNumHold, mateDist, lengthFromEnd, numSuperReadPieces);
+	       }
+	       if ((readPlacementInfo[1].ori == 'F') && (readPlacementInfo[1].offset >= 0)) {
+		    beginOffset = readPlacementInfo[1].offset;
+		    superReadLength = getSuperReadLength (flds[1]);
 		    lengthFromEnd = superReadLength - beginOffset;
 		    mateDist = unjoinedMateDist;
 		    printf ("%lld %d %d %d\n", readNum, mateDist, lengthFromEnd, numSuperReadPieces);
-	       }
-	       if ((pRPDS2->ori == 'F') && (pRPDS2->offset >= 0)) {
-		    beginOffset = pRPDS2->offset;
-		    superReadLength = getSuperReadLength (pRPDS2->superReadName);
-		    lengthFromEnd = superReadLength - beginOffset;
-		    mateDist = unjoinedMateDist;
-		    printf ("%lld %d %d %d\n", otherReadNum, mateDist, lengthFromEnd, numSuperReadPieces);
 	       }
 	  }
      }
@@ -178,12 +158,12 @@ FILE *Fopen (const char *fn, const char *mode)
      return (result);
 }
 
-int getSuperReadLength (char *superReadName)
+int getSuperReadLength (char *localSuperReadName)
 {
      char *cptr;
      int kUnitig, superReadLength;
 
-     cptr = superReadName;
+     cptr = localSuperReadName;
      numSuperReadPieces = 0;
      kUnitig = atoi (cptr);
      ++numSuperReadPieces;
