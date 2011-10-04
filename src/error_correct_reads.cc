@@ -67,6 +67,7 @@ public:
   error_correct_t & good(int g) { _good = g; return *this; }
   error_correct_t & anchor(int a) { _anchor = a; return *this; }
   error_correct_t & prefix(const char *s) { _prefix = s; return *this; }
+  error_correct_t & prefix(const std::string s) { _prefix = s; return *this; }
   error_correct_t & mer_len(int l) { _mer_len = l; return *this; }
   error_correct_t & min_count(int m) { _min_count = m; return *this; }
   //  error_correct_t & advance(int a) { _advance = a; return *this; }
@@ -368,18 +369,13 @@ private:
 
 int main(int argc, char *argv[])
 {
-  gengetopt_args_info args_info;
-  if(cmdline_parser(argc, argv, &args_info) != 0)
-    die << "Command line parser failed!";
-
-  if(args_info.inputs_num < 1)
-    die << "Need at least one input fastq file. See --help";
+  args_t args(argc, argv);
 
   // Open Jellyfish databases
   hashes_t hashes;
   unsigned int key_len = 0;
-  for(unsigned int i = 0; i < args_info.db_given; i++) {
-    mapped_file dbf(args_info.db_arg[i]);
+  for(args_t::db_arg_const_it it = args.db_arg.begin(); it != args.db_arg.end(); ++it) {
+    mapped_file dbf(*it);
     dbf.random().will_need();
     hashes.push_back(*raw_inv_hash_query_t(dbf).get_ary());
     
@@ -388,19 +384,23 @@ int main(int argc, char *argv[])
     else if(key_len != hashes.back().get_key_len())
       die << "Different key length (" << hashes.back().get_key_len() 
           << " != " << key_len
-          << ") for hash '" << args_info.db_arg[i] << "'";
+          << ") for hash '" << *it << "'";
   }
-
-  jellyfish::parse_read parser(args_info.inputs_num, args_info.inputs, 100);
+  
+  // Work around until parse_read takes input iterators
+  char *inputs[args.file_arg.size()];
+  for(size_t i = 0; i < args.file_arg.size(); ++i)
+    inputs[i] = (char *)args.file_arg[i];
+  jellyfish::parse_read parser(args.file_arg.size(), inputs, 100);
 
   kmer_t::k(key_len / 2);
   error_correct_instance::ec_t correct(&parser, &hashes);
-  correct.skip(args_info.skip_arg).good(args_info.good_arg)
-    .anchor(args_info.anchor_count_given ? args_info.anchor_count_arg : args_info.min_count_arg)
-    .prefix(args_info.output_arg).min_count(args_info.min_count_arg)
-    .window(args_info.window_given ? args_info.window_arg : key_len / 2)
-    .error(args_info.error_given ? args_info.error_arg : key_len / 4);
-  correct.do_it(args_info.thread_arg);
+  correct.skip(args.skip_arg).good(args.good_arg)
+    .anchor(args.anchor_count_given ? args.anchor_count_arg : args.min_count_arg)
+    .prefix(args.output_arg).min_count(args.min_count_arg)
+    .window(args.window_given ? args.window_arg : key_len / 2)
+    .error(args.error_given ? args.error_arg : key_len / 4);
+  correct.do_it(args.thread_arg);
 
   return 0;
 }

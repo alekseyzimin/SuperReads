@@ -52,8 +52,8 @@ reverse_complement_SOURCES = reverse_complement.c
 
 create_k_unitigs_SOURCES = create_k_unitigs.cpp yaggo.cpp
 
-error_correct_reads_SOURCES = error_correct_reads.cc		\
-error_correct_reads_cmdline.cpp kmer.cc err_log.cc
+error_correct_reads_SOURCES = error_correct_reads.cc kmer.cc	\
+err_log.cc yaggo.cpp
 
 findMatchesBetweenKUnitigsAndReads_SOURCES =	\
 findMatchesBetweenKUnitigsAndReads.cc

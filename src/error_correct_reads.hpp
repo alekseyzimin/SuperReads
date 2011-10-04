@@ -14,7 +14,7 @@
 #include <misc.hpp>
 #include <kmer.hpp>
 #include <err_log.hpp>
-#include "error_correct_reads_cmdline.hpp"
+#include <error_correct_reads_cmdline.hpp>
 
 // A forward moving pointer.
 template<typename T>
