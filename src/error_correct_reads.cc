@@ -338,9 +338,6 @@ private:
   }
 
   bool find_starting_mer(kmer_t &mer, const char * &input, const char *end, char * &out) {
-    int min_anchor_count=_ec->anchor();
-    if(min_anchor_count<3)
-	min_anchor_count=3;
     while(input < end) {
       for(int i = 0; input < end && i < _ec->mer_len(); ++i) {
         char base = *input++;
@@ -354,7 +351,7 @@ private:
         if(!(*chash).get_val(mer.canonical(), val, true))
           val = 0;
      
-        found = (int)val >= min_anchor_count ? found + 1 : 0;
+        found = (int)val >= _ec->anchor() ? found + 1 : 0;
         if(found >= _ec->good())
           return true;
         char base = *input++;
