@@ -135,8 +135,7 @@ if (! $kUnitigsFile) {
 
   redoJellyfish:
     $cmd = "time jellyfish count -m $merLen -r -o $jellyfishDataPrefix -c 6 -p 126--both-strands -s $tableSize -t $numProcessors @fastaFiles";
-    
-    print "$cmd\n"; system ($cmd);
+    &runCommandAndExitIfBad ($cmd, "", 0);
     
     $tableResizeFactor = &returnTableResizeAmount ($jellyfishDataPrefix, $jellyfishHashFile);
     if ($tableResizeFactor > 1) {
@@ -195,12 +194,12 @@ print "$cmd\n"; system ($cmd);
 
 if ($debug) {
     $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads -l $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1prefix $totalKUnitigFastaSequence $numKUnitigsFile $totReadFile";
-    &runCommandAndExitIfBad ($cmd, "${myProgOutput1prefix}_0", 1);
+    &runCommandAndExitIfBad ($cmd, "", 0);
     $cmd = "grep -h \"^myNucmerLine\" ${myProgOutput1prefix}_* | $exeDir/myUniq > $myProgOutput1_1";
     &runCommandAndExitIfBad ($cmd, $myProgOutput1_1, 1); }
 else {
     $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $totalKUnitigFastaSequence $numKUnitigsFile $totReadFile";
-    &runCommandAndExitIfBad ($cmd, "${myProgOutput1_1prefix}_0", 1);
+    &runCommandAndExitIfBad ($cmd, "", 0);
     $cmd = "cat ${myProgOutput1_1prefix}_* | $exeDir/myUniq > $myProgOutput1_1";
     &runCommandAndExitIfBad ($cmd, $myProgOutput1_1, 1); }
 $cmd = "\\rm ${myProgOutput1_1prefix}_*"; print "$cmd\n"; system ($cmd);
