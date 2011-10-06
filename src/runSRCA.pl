@@ -352,6 +352,7 @@ $list_pe_files="";
 $list_jump_files="";
 ##################################################renaming reads####################################################
 print FILE "echo -n 'processing PE library reads ';date;\n";
+
 foreach $v(@pe_info_array)
 {
 @f=split(/\s+/,$v);
@@ -492,7 +493,7 @@ if(scalar(@jump_info_array)>0)
 print FILE "echo -n 'filtering JUMP ';date;\n";
 
 #creating super reads. for filtering
-print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 2 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work2 sj.cor.fa 1> super1.out 2>super1.err\n" if(not(-e "work2"));;
+print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 2 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work2 sj.cor.fa 1> super2.err 2>&1\n" if(not(-e "work2"));;
 print FILE "\n";
 
 #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
@@ -514,7 +515,7 @@ print FILE "extractreads.pl <(cat chimeric_sj.txt redundant_sj.txt | perl -e '{w
 #we extend the filtered and reverse complemented jump reads if asked -- the reason to do that is that sometimes the jump library reads are shorter than 64 bases and CA cannot use them
 if($EXTEND_JUMP_READS==1)
 {
-print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -jumplibraryreads -mkudisr 0 work3 sj.cor.clean.fa 1> super2.out 2>super2.err\n" if(not(-e "work3"));;
+print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -jumplibraryreads -mkudisr 0 work3 sj.cor.clean.fa 1>super3.err 2>&1\n" if(not(-e "work3"));
 print FILE "ln -sf work3/superReadSequences.jumpLibrary.fasta sj.cor.ext.fa\n";
 }
 else
@@ -558,7 +559,7 @@ print FILE "\n\n\n";
 print FILE "echo -n 'computing super reads from PE ';date;\n";
 
 #we create super reads from PE
-print FILE "createSuperReadsForDirectory.perl -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work1 pe.cor.fa 1> super.out 2>super.err\n" if(not(-e "work1"));
+print FILE "createSuperReadsForDirectory.perl -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work1 pe.cor.fa 1>super1.err 2>&1\n" if(not(-e "work1"));
 print FILE "\n";
 
 #now we extract those PE mates that did not end up in the same super read -- we call them linking mates, they will be useful for scaffolding
