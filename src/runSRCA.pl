@@ -441,7 +441,7 @@ print FILE "\n\n\n";
 if(not(-e "pe.cor.fa"))
 {
 print FILE "echo -n 'error correct PE ';date;\n";
-print FILE "\nerror_correct_reads -d pe_trim_0 -d pe_all_0 -C -m 1 -s 1 -g 1 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files\n";
+print FILE "\nerror_correct_reads -d pe_trim_0 -d pe_all_0 -C -m 1 -s 1 -g 1 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files\n";
 print FILE "cat error_corrected_*.fa  | homo_trim $TRIM_PARAM > pe.cor.fa\n";
 print FILE "rm error_corrected_*\n";
 }
@@ -456,7 +456,7 @@ if(scalar(@jump_info_array)>0)
 if(not(-e "sj.cor.fa"))
 {
 print FILE "echo -n 'error correct JUMP ';date;\n";
-print FILE "\nerror_correct_reads -d pe_trim_0 -d pe_all_0 -C -m 1 -s 1 -g 2 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files\n";
+print FILE "\nerror_correct_reads -d pe_trim_0 -d pe_all_0 -C -m 1 -s 1 -g 2 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files\n";
 print FILE "cat error_corrected_*.fa  | homo_trim $TRIM_PARAM > sj.cor.fa\n";
 print FILE "rm error_corrected_*\n";
 }
