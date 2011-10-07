@@ -546,7 +546,7 @@ sub runCommandAndExitIfBad
             print STDERR "failed to execute: $!\n";
             exit ($retCode); }
         elsif ($retCode & 127) {
-            fprintf STDERR "child died with signal %d, %s coredump\n",
+            printf STDERR "child died with signal %d, %s coredump\n",
             ($retCode & 127), ($retCode & 128) ? 'with' : 'without';
             exit ($retCode); }
         else {
