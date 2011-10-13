@@ -20,7 +20,7 @@ bin_PROGRAMS = create_k_unitigs error_correct_reads		\
         changeReadNumsToReadNamesAtBeginOfLine			\
         convertReadNamesToReadNumbers				\
         getMaxReadNumbersByPrefixForFastaFile			\
-        mergeShortMatesIntoSuperReads error_corrected2frg filter_illumina_data_quals homo_trim reverse_complement \
+        mergeShortMatesIntoSuperReads error_corrected2frg homo_trim reverse_complement \
 	createKUnitigMaxOverlaps getMateStatistics_pt1 \
 	joinKUnitigs getReadStartsOffsetsAndOrientationsInSuperReads_1stPass
 
@@ -39,7 +39,7 @@ findMatchRecordsForGivenKUnitig.perl					\
 listInfrequentlyOccurringSuperReads.perl reportSuperReadGroups.perl	\
 findSuperReadGroups.perl						\
 makeListOfSuperReadsAndCounts.fromSuperReadGroupsFile.perl		\
-tryToKillKUnitigsOfLength61.perl close_gaps.sh compute_sr_cov.pl create_sr_frg.pl extractreads.pl extract_unjoined_pairs.pl fasta2frg.pl filter_library.sh fix_unitigs.sh recompute_astat_superreads.sh runSRCA.pl \
+reduce_sr.pl close_gaps.sh create_end_pairs.pl tryToKillKUnitigsOfLength61.perl close_gaps.sh compute_sr_cov.pl create_sr_frg.pl extractreads.pl extract_unjoined_pairs.pl fasta2frg.pl filter_library.sh fix_unitigs.sh recompute_astat_superreads.sh runSRCA.pl \
 postSuperReadPipelineCommandsForJoiningMates.perl \
 createSuperReadGroupsFromMatePairJoinedMates.perl \
 createCombinedGoodJoinsFile.perl \
@@ -56,7 +56,6 @@ kmer.hpp priorityHeap.h redBlackTreesInsertOnly.h			\
 create_k_unitigs_cmdline.hpp yaggo.hpp
 
 error_corrected2frg_SOURCES = error_corrected2frg.c 
-filter_illumina_data_quals_SOURCES = filter_illumina_data_quals.c 
 homo_trim_SOURCES = homo_trim.c 
 reverse_complement_SOURCES = reverse_complement.c
 

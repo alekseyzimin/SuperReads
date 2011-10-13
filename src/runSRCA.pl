@@ -419,13 +419,11 @@ print FILE "MAX_$f[0]=`tail $f[0].renamed.fastq |grep '^\@$f[0]' |tail -n 1|awk 
 ########################################################Jellyfish#################################
 
 print FILE "echo -n 'running Jellyfish ';date;\n";
-print FILE "Q2_CHAR=`cat $list_pe_files |head -n 4000 | awk 'BEGIN{flag=0}{if(\$0 ~ /^\+/){flag=1}else if(flag==1){print \$0;flag=0}}'  | perl -ne 'BEGIN{\$q0_char=\"\@\";}{chomp;\@f=split \"\";foreach \$v(\@f){if(ord(\$v)<ord(\$q0_char)){\$q0_char=\$v;}}}END{print chr(ord(\$q0_char)+2)}'`\n";
-print FILE "echo Q2_CHAR: \$Q2_CHAR\n";
-
-print FILE "\ncat $list_pe_files | filter_illumina_data_quals '\$Q2_CHAR'  > pe_trim.fa\n" if(not(-e "pe_trim.fa"));
+print FILE "MIN_Q_CHAR=`cat $list_pe_files |head -n 4000 | awk 'BEGIN{flag=0}{if(\$0 ~ /^\+/){flag=1}else if(flag==1){print \$0;flag=0}}'  | perl -ne 'BEGIN{\$q0_char=\"\@\";}{chomp;\@f=split \"\";foreach \$v(\@f){if(ord(\$v)<ord(\$q0_char)){\$q0_char=\$v;}}}END{print ord(\$q0_char)}'`\n";
+print FILE "echo MIN_Q_CHAR: \$MIN_Q_CHAR\n";
 
 #for our error correctin we run jellyfish twice: once on all pe bases and once on pe bases with quality >2 
-print FILE "jellyfish count -t $NUM_THREADS -C -r -o pe_trim -s $JF_SIZE -m 24 pe_trim.fa\n"  if(not(-e "pe_trim_0"));
+print FILE "jellyfish count -t $NUM_THREADS -C -r -o pe_trim -s $JF_SIZE -m 24 pe_trim.fa --quality-start $MIN_Q_CHAR --min-quality 4 $list_pe_files\n"  if(not(-e "pe_trim_0"));
 print FILE "jellyfish count -t $NUM_THREADS -C -r -o pe_all -s $JF_SIZE -m 24 $list_pe_files\n"  if(not(-e "pe_all_0"));
 
 #check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
@@ -561,6 +559,16 @@ print FILE "echo -n 'computing super reads from PE ';date;\n";
 #we create super reads from PE
 print FILE "createSuperReadsForDirectory.perl -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work1 pe.cor.fa 1>super1.err 2>&1\n" if(not(-e "work1"));
 print FILE "\n";
+
+print FILE "paste <(grep '^>' work1/superReadSequences.fasta | awk '{print substr(\$1,2)}' ) <(~/myprogs/getNumBasesPerReadInFastaFile.perl work1/superReadSequences.fasta) > sr_sizes.tmp\n";
+print FILE "cat sr_sizes.tmp |reduce_sr.pl  > reduce.tmp\n";
+print FILE "perl -ane '{\$sr{\$F[0]}=\$F[1]}END{open(FILE,\"work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\");while(\$line=<FILE>){chomp(\$line); \@l=split(/\s+/,\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\n\";}else{print \"\$line\n\";}}}' reduce.tmp > readPlacementsInSuperReads.final.read.superRead.offset.ori.txt.reduced\n";
+print FILE "extractreads.pl <(cat sr_sizes.tmp reduce.tmp | awk '{print \$1}' |sort -S 10%|uniq -u ) work1/superReadSequences.fasta 1 > superReadSequences.reduced.fasta\n";
+print FILE "mv work1/superReadSequences.fasta work1/superReadSequences.fasta.bak\n";
+print FILE "mv work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt.bak\n";
+print FILE "mv superReadSequences.reduced.fasta work1/superReadSequences.fasta\n";
+print FILE "mv readPlacementsInSuperReads.final.read.superRead.offset.ori.txt.reduced  work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
+
 
 #now we extract those PE mates that did not end up in the same super read -- we call them linking mates, they will be useful for scaffolding
 print FILE "extractreads.pl <( awk '{if(int(substr(\$1,3))%2==0){print \$1\" \"\$2\" \"\$1;}else{print \$1\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 2 | uniq -u -f 1 | awk '{print \$1}' )  pe.cor.fa 1 > pe.linking.fa\n" if(not(-e "pe.linking.fa"));
