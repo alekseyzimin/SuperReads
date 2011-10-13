@@ -39,7 +39,7 @@ findMatchRecordsForGivenKUnitig.perl					\
 listInfrequentlyOccurringSuperReads.perl reportSuperReadGroups.perl	\
 findSuperReadGroups.perl						\
 makeListOfSuperReadsAndCounts.fromSuperReadGroupsFile.perl		\
-reduce_sr.pl close_gaps.sh create_end_pairs.pl tryToKillKUnitigsOfLength61.perl close_gaps.sh compute_sr_cov.pl create_sr_frg.pl extractreads.pl extract_unjoined_pairs.pl fasta2frg.pl filter_library.sh fix_unitigs.sh recompute_astat_superreads.sh runSRCA.pl \
+reduce_sr.pl create_end_pairs.pl tryToKillKUnitigsOfLength61.perl close_gaps.sh compute_sr_cov.pl create_sr_frg.pl extractreads.pl extract_unjoined_pairs.pl fasta2frg.pl filter_library.sh fix_unitigs.sh recompute_astat_superreads.sh runSRCA.pl \
 postSuperReadPipelineCommandsForJoiningMates.perl \
 createSuperReadGroupsFromMatePairJoinedMates.perl \
 createCombinedGoodJoinsFile.perl \
