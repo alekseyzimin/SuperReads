@@ -39,11 +39,12 @@ $pwd = cwd;
 if ($exeDir !~ /^\//) {
     $exeDir = "$pwd/$exeDir"; }
 
-$successFile = "$exeDir/superReads.success";
-unlink ($successFile) if (-e $successFile);
 &processArgs;
 
 $maxHashFillFactor = .8;
+
+$successFile = "$workingDirectory/superReads.success";
+unlink ($successFile) if (-e $successFile);
 
 $minKUnitigLen = $merLen+1;
 if (! -d $workingDirectory) {
