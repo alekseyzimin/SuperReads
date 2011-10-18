@@ -373,7 +373,7 @@ int main(int argc, char *argv[])
   unsigned int key_len = 0;
   for(args_t::db_arg_const_it it = args.db_arg.begin(); it != args.db_arg.end(); ++it) {
     mapped_file dbf(*it);
-    dbf.random().will_need();
+    dbf.random().will_need().load();
     hashes.push_back(*raw_inv_hash_query_t(dbf).get_ary());
     
     if(key_len == 0)
