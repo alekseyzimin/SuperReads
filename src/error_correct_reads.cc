@@ -384,11 +384,7 @@ int main(int argc, char *argv[])
           << ") for hash '" << *it << "'";
   }
   
-  // Work around until parse_read takes input iterators
-  char *inputs[args.file_arg.size()];
-  for(size_t i = 0; i < args.file_arg.size(); ++i)
-    inputs[i] = (char *)args.file_arg[i];
-  jellyfish::parse_read parser(args.file_arg.size(), inputs, 100);
+  jellyfish::parse_read parser(args.file_arg.begin(), args.file_arg.end(), 100);
 
   kmer_t::k(key_len / 2);
   error_correct_instance::ec_t correct(&parser, &hashes);
