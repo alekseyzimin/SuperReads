@@ -143,6 +143,7 @@ int main(int argc, char *argv[])
   mapped_file dbf(filenames[0]);
   if(memcmp(dbf.base(), "JFRHSHDN", 8))
     die << "Invalid database format, expected 'JFRHSHDN'";
+  dbf.random().load();
   raw_inv_hash_query_t qhash(dbf);
   //  inv_hash_storage_t hash(dbf.base() + 8, dbf.length() - 8);
   inv_hash_storage_t *hash = qhash.get_ary();

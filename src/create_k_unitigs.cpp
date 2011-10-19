@@ -490,7 +490,7 @@ int main(int argc, char *argv[])
   create_k_unitigs_args args(argc, argv);
 
   mapped_file dbf(args.file_arg);
-  dbf.random().will_need();
+  dbf.random().will_need().load();
   raw_inv_hash_query_t hash(dbf);
 
   // By default, the minimum length is k+1

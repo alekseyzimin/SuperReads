@@ -145,9 +145,6 @@ if (! $kUnitigsFile) {
 	goto redoJellyfish; }
     
     &runCommandAndExitIfBad ("", $jellyfishHashFile, 1);
-    print "Making sure the hash table is in memory...\n";
-    $cmd = "cat $jellyfishHashFile > /dev/null";
-    print "$cmd\n"; system ($cmd);
     
     $cmd = "create_k_unitigs -C -m $minCoverageToCreateAFork -M $minCoverageToContinueAUnitig -l $minKUnitigLen -o $kUnitigFastaSequencePrefix -t $numProcessors $jellyfishHashFile";
     &runCommandAndExitIfBad ($cmd, "${kUnitigFastaSequencePrefix}_${i}.fa", 1); 
@@ -188,10 +185,6 @@ if ($tableResizeFactor > 1) {
     $tableSize *= 2;
     print "Resizing the table to $tableSize for the k-unitig jellyfish run\n";
     goto redoKUnitigsJellyfish; }
-
-print "Making sure the k-unitig hash table is in memory...\n";
-$cmd = "cat $jellyfishKUnitigHashFile > /dev/null";
-print "$cmd\n"; system ($cmd);
 
 if ($debug) {
     $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads -l $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1prefix $totalKUnitigFastaSequence $numKUnitigsFile $totReadFile";
