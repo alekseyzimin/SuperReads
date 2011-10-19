@@ -423,8 +423,8 @@ print FILE "MIN_Q_CHAR=`cat $list_pe_files |head -n 4000 | awk 'BEGIN{flag=0}{if
 print FILE "echo MIN_Q_CHAR: \$MIN_Q_CHAR\n";
 
 #for our error correctin we run jellyfish twice: once on all pe bases and once on pe bases with quality >2 
-print FILE "jellyfish count -t $NUM_THREADS -C -r -o pe_trim -s $JF_SIZE -m 24 pe_trim.fa --quality-start $MIN_Q_CHAR --min-quality 4 $list_pe_files\n"  if(not(-e "pe_trim_0"));
-print FILE "jellyfish count -t $NUM_THREADS -C -r -o pe_all -s $JF_SIZE -m 24 $list_pe_files\n"  if(not(-e "pe_all_0"));
+print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_trim -s $JF_SIZE -m 24 --quality-start \$MIN_Q_CHAR --min-quality 4 $list_pe_files\n"  if(not(-e "pe_trim_0"));
+print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_all -s $JF_SIZE -m 24 $list_pe_files\n"  if(not(-e "pe_all_0"));
 
 #check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
 print FILE "if [[ -e pe_trim_1 || -e pe_all_1 ]];then\n";
@@ -465,7 +465,7 @@ print FILE "\n\n\n";
 print FILE "\n";
 if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta"))
 {
-print FILE "jellyfish count -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa sj.cor.fa\n";
+print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa sj.cor.fa\n";
 print FILE "create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
 print FILE "cat k_unitigs_*.fa > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
 print FILE "rm k_unitigs_*.fa  k_unitigs_*.counts\n";
@@ -475,7 +475,7 @@ else
 {
 if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta"))
 {
-print FILE "jellyfish count -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa\n";
+print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa\n";
 print FILE "create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
 print FILE "cat k_unitigs_*.fa > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
 print FILE "rm k_unitigs_*.fa  k_unitigs_*.counts\n";
@@ -562,7 +562,7 @@ print FILE "\n";
 
 print FILE "paste <(grep '^>' work1/superReadSequences.fasta | awk '{print substr(\$1,2)}' ) <(~/myprogs/getNumBasesPerReadInFastaFile.perl work1/superReadSequences.fasta) > sr_sizes.tmp\n";
 print FILE "cat sr_sizes.tmp |reduce_sr.pl  > reduce.tmp\n";
-print FILE "perl -ane '{\$sr{\$F[0]}=\$F[1]}END{open(FILE,\"work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\");while(\$line=<FILE>){chomp(\$line); \@l=split(/\s+/,\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\n\";}else{print \"\$line\n\";}}}' reduce.tmp > readPlacementsInSuperReads.final.read.superRead.offset.ori.txt.reduced\n";
+print FILE "perl -ane '{\$sr{\$F[0]}=\$F[1]}END{open(FILE,\"work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\");while(\$line=<FILE>){chomp(\$line); \@l=split(/\\s+/,\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\\n\";}else{print \"\$line\\n\";}}}' reduce.tmp > readPlacementsInSuperReads.final.read.superRead.offset.ori.txt.reduced\n";
 print FILE "extractreads.pl <(cat sr_sizes.tmp reduce.tmp | awk '{print \$1}' |sort -S 10%|uniq -u ) work1/superReadSequences.fasta 1 > superReadSequences.reduced.fasta\n";
 print FILE "mv work1/superReadSequences.fasta work1/superReadSequences.fasta.bak\n";
 print FILE "mv work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt.bak\n";

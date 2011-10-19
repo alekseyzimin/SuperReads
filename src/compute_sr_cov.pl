@@ -66,6 +66,19 @@ $r=-1;
 $utg=$l[1];
 }
 }
+elsif($line =~ /^cns/)
+{
+chomp($line);
+@s=split(//,substr($line,4));
+$cg=0;
+$base_count=0;
+foreach $v(@s)
+{
+$cg++ if($v eq "G" || $v eq "C");
+$base_count++;
+} 
+$cg_content{$utg}=$cg/$base_count;
+}
 elsif($line =~ /^FRG/)
 {
 @l=split(/\s+/,$line);
@@ -94,6 +107,7 @@ my $global_arrival_rate=$total_count/$total_rho;
 print STDERR "total_rho= $total_rho total_count= $total_count GAR= $global_arrival_rate\n";
 foreach $v(keys %count)
 {
+print STDERR "$v $cg_content{$v}\n";
 my $astat=($rho{$v}*$global_arrival_rate)-(0.6931471805599453094*$count{$v});
 #if($rho{$v}>2000&&$astat<0)
 #{
