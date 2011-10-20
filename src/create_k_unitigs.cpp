@@ -431,12 +431,6 @@ public:
     char mer_string[33];
     char trans[4] = {'A', 'C', 'G', 'T'};
 
-    mer_string[32] = '\0';
-    *fasta << ">" <<  id 
-           << " length:" << (mer_len - 1 + backward->size() + forward->size()) 
-           << " bwd:" << backward_term << " fwd:" << forward_term << "\n";
-    *counts << ">" << id << "\n";
-
     int fwd_start_id = 0;
     hkey_t first_mer;
     hval_t first_count;
@@ -448,6 +442,20 @@ public:
       first_count = forward->val(0);
       ++fwd_start_id;
     }
+
+    // Compute the sum of the qual values
+    uint64_t sumq = first_count;
+    for(int i = backward->size() - 2; i >= 0; --i)
+      sumq += backward->val(i);
+    for(uint_t i = fwd_start_id; i < forward->size(); ++i)
+      sumq += forward->val(i);
+
+    mer_string[32] = '\0';
+    *fasta << ">" <<  id 
+           << " length:" << (mer_len - 1 + backward->size() + forward->size()) 
+           << " bwd:" << backward_term << " fwd:" << forward_term 
+           << " sumq:" << sumq << "\n";
+    *counts << ">" << id << "\n";
 
     jellyfish::parse_dna::mer_binary_to_string(first_mer, mer_len, mer_string);
     *fasta << mer_string;
