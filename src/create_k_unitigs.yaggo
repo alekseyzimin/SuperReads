@@ -16,6 +16,9 @@ option("verbose", "v") {
 option("prefix", "o") {
   description "Output prefix"
   string; default "k_unitigs" }
+option("counts", "c") {
+  description "Output counts file as well"
+  flag; off }
 option("min-len", "l") {
   description "Minimum length of k-unitig to output"
   uint64; typestr "k+1" }

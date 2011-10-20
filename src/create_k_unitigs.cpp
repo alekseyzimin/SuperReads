@@ -211,7 +211,10 @@ public:
     volatile struct counters *my_counters = &stats[th_id];
     std::stringstream output_file_fasta, output_file_counts;
     output_file_fasta << args.prefix_arg << "_" << th_id << ".fa";
-    output_file_counts << args.prefix_arg << "_" << th_id << ".counts";
+    if(args.counts_flag)
+      output_file_counts << args.prefix_arg << "_" << th_id << ".counts";
+    else
+      output_file_counts << "/dev/null";
     std::ofstream out_fasta, out_counts;
     out_fasta.exceptions(std::ifstream::eofbit|std::ifstream::failbit|std::ifstream::badbit);
     out_counts.exceptions(std::ifstream::eofbit|std::ifstream::failbit|std::ifstream::badbit);
