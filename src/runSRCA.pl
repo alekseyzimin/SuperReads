@@ -560,7 +560,7 @@ print FILE "echo -n 'computing super reads from PE ';date;\n";
 print FILE "createSuperReadsForDirectory.perl -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work1 pe.cor.fa 1>super1.err 2>&1\n" if(not(-e "work1"));
 print FILE "\n";
 
-print FILE "paste <(grep '^>' work1/superReadSequences.fasta | awk '{print substr(\$1,2)}' ) <(~/myprogs/getNumBasesPerReadInFastaFile.perl work1/superReadSequences.fasta) > sr_sizes.tmp\n";
+print FILE "paste <(grep '^>' work1/superReadSequences.fasta | awk '{print substr(\$1,2)}' ) <(getNumBasesPerReadInFastaFile.perl work1/superReadSequences.fasta) > sr_sizes.tmp\n";
 print FILE "cat sr_sizes.tmp |reduce_sr.pl  > reduce.tmp\n";
 print FILE "perl -ane '{\$sr{\$F[0]}=\$F[1]}END{open(FILE,\"work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\");while(\$line=<FILE>){chomp(\$line); \@l=split(/\\s+/,\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\\n\";}else{print \"\$line\\n\";}}}' reduce.tmp > readPlacementsInSuperReads.final.read.superRead.offset.ori.txt.reduced\n";
 print FILE "extractreads.pl <(cat sr_sizes.tmp reduce.tmp | awk '{print \$1}' |sort -S 10%|uniq -u ) work1/superReadSequences.fasta 1 > superReadSequences.reduced.fasta\n";
