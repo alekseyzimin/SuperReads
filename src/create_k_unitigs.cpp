@@ -177,25 +177,30 @@ public:
   }
 
   void do_it(int _nb_threads) {
-    this_progress = this;
-    struct sigaction act;
-    memset(&act, '\0', sizeof(act));
-    act.sa_handler = alarm_handler;
-    sigaction(SIGALRM, &act, NULL);
-    alarm(2);
+    if(args.progress_flag) {
+      this_progress = this;
+      struct sigaction act;
+      memset(&act, '\0', sizeof(act));
+      act.sa_handler = alarm_handler;
+      sigaction(SIGALRM, &act, NULL);
+      alarm(2);
+    }
 
     nb_threads = _nb_threads;
     nb_slices = nb_threads * 100;
     stats = new struct counters[nb_threads];
-    std::cerr << "do_it threads " << nb_threads << " slices " << nb_slices << std::endl;
+    if(args.progress_flag)
+      std::cerr << "threads " << nb_threads << " slices " << nb_slices << std::endl;
     for(int i = 0; i < nb_threads; i++)
       memset((void *)&stats[i], '\0', sizeof(struct counters));
     exec_join(nb_threads);
 
-    alarm(0);
-    this_progress = 0;
-    display_progress();
-    std::cerr << "\n";
+    if(args.progress_flag) {
+      alarm(0);
+      this_progress = 0;
+      display_progress();
+      std::cerr << "\n";
+    }
   }
 
   // What can happen if there is no unique continuation
@@ -211,7 +216,10 @@ public:
     volatile struct counters *my_counters = &stats[th_id];
     std::stringstream output_file_fasta, output_file_counts;
     output_file_fasta << args.prefix_arg << "_" << th_id << ".fa";
-    output_file_counts << args.prefix_arg << "_" << th_id << ".counts";
+    if(args.counts_flag)
+      output_file_counts << args.prefix_arg << "_" << th_id << ".counts";
+    else
+      output_file_counts << "/dev/null";
     std::ofstream out_fasta, out_counts;
     out_fasta.exceptions(std::ifstream::eofbit|std::ifstream::failbit|std::ifstream::badbit);
     out_counts.exceptions(std::ifstream::eofbit|std::ifstream::failbit|std::ifstream::badbit);
@@ -428,12 +436,6 @@ public:
     char mer_string[33];
     char trans[4] = {'A', 'C', 'G', 'T'};
 
-    mer_string[32] = '\0';
-    *fasta << ">" <<  id 
-           << " length:" << (mer_len - 1 + backward->size() + forward->size()) 
-           << " bwd:" << backward_term << " fwd:" << forward_term << "\n";
-    *counts << ">" << id << "\n";
-
     int fwd_start_id = 0;
     hkey_t first_mer;
     hval_t first_count;
@@ -445,6 +447,20 @@ public:
       first_count = forward->val(0);
       ++fwd_start_id;
     }
+
+    // Compute the sum of the qual values
+    uint64_t sumq = first_count;
+    for(int i = backward->size() - 2; i >= 0; --i)
+      sumq += backward->val(i);
+    for(uint_t i = fwd_start_id; i < forward->size(); ++i)
+      sumq += forward->val(i);
+
+    mer_string[32] = '\0';
+    *fasta << ">" <<  id 
+           << " length:" << (mer_len - 1 + backward->size() + forward->size()) 
+           << " bwd:" << backward_term << " fwd:" << forward_term 
+           << " sumq:" << sumq << "\n";
+    *counts << ">" << id << "\n";
 
     jellyfish::parse_dna::mer_binary_to_string(first_mer, mer_len, mer_string);
     *fasta << mer_string;
