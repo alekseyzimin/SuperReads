@@ -23,6 +23,7 @@ public:
   bool                           cont_on_low_flag;
   uint64_t                       low_stretch_arg;
   bool                           low_stretch_given;
+  bool                           progress_flag;
   const char *                   file_arg;
 
   enum {
@@ -41,7 +42,8 @@ public:
     min_cov_arg(2), min_cov_given(false),
     min_cont_arg(3), min_cont_given(false),
     cont_on_low_flag(false),
-    low_stretch_arg(3), low_stretch_given(false)
+    low_stretch_arg(3), low_stretch_given(false),
+    progress_flag(false)
   {
     static struct option long_options[] = {
       {"both-strands", 0, 0, 'C'},
@@ -54,12 +56,13 @@ public:
       {"min-cont", 1, 0, 'M'},
       {"cont-on-low", 0, 0, CONT_ON_LOW_OPT},
       {"low-stretch", 1, 0, LOW_STRETCH_OPT},
+      {"progress", 0, 0, 'p'},
       {"help", 0, 0, 'h'},
       {"usage", 0, 0, USAGE_OPT},
       {"version", 0, 0, 'V'},
       {0, 0, 0, 0}
     };
-    static const char *short_options = "hVCt:vo:cl:m:M:";
+    static const char *short_options = "hVCt:vo:cl:m:M:p";
 
     std::string err;
 #define CHECK_ERR(type,val,which) if(!err.empty()) { std::cerr << "Invalid " #type " '" << val << "' for [" which "]: " << err << "\n"; exit(1); }
@@ -126,6 +129,9 @@ public:
         low_stretch_arg = yaggo::conv_uint<uint64_t>((const char *)optarg, err, false);
         CHECK_ERR(uint64_t, optarg, "    --low-stretch=uint64")
         break;
+      case 'p':
+        progress_flag = true;
+        break;
       }
     }
     if(argc - optind != 1)
@@ -153,6 +159,7 @@ public:
   " -M, --min-cont=uint32                    Minimum k-mer coverage to continue (3)\n" \
   "     --cont-on-low                        Continue on unique low k-mer (count < m) (false)\n" \
   "     --low-stretch=uint64                 Max number of low k-mer (3)\n" \
+  " -p, --progress                           Display progress (false)\n" \
   "     --usage                              Usage\n" \
   " -h, --help                               This message\n" \
   " -V, --version                            Version"
@@ -178,6 +185,7 @@ public:
     os << "min_cont_given:" << min_cont_given << " min_cont_arg:" << min_cont_arg << "\n";
     os << "cont_on_low_flag:" << cont_on_low_flag << "\n";
     os << "low_stretch_given:" << low_stretch_given << " low_stretch_arg:" << low_stretch_arg << "\n";
+    os << "progress_flag:" << progress_flag << "\n";
     os << "file_arg:" << file_arg << "\n";
   }
 private:
