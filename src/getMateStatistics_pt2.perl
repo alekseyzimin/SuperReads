@@ -28,8 +28,11 @@ while ($line = <FILE1>) {
     while ($line2 = <FILE2>) {
 	$atEof = 0;
 	@flds2 = split (" ", $line2);
-	last if ($flds2[0] >= $last);
-	if ($flds2[1] > -1000) {
+#	last if ($flds2[0] >= $last);
+	next if ($flds2[0] < $first);
+	next if ($flds2[0] >= $last);
+#	if ($flds2[1] > -1000) {
+	if ($flds2[1] >= 0) {
 	    push (@distsToEnd, $flds2[2]);
 	    push (@insertSizes, $flds2[1]);
 	    ++$numOfEachDistToEnd[$flds2[2]];
