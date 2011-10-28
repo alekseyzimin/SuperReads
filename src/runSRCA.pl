@@ -358,7 +358,7 @@ if(scalar(@jump_info_array)>0){
 ########################################################Jellyfish#################################
 
 print FILE "echo -n 'running Jellyfish ';date;\n";
-print FILE "MIN_Q_CHAR=`cat $list_pe_files |head -n 50000 | awk 'BEGIN{flag=0}{if(\$0 ~ /^\+/){flag=1}else if(flag==1){print \$0;flag=0}}'  | perl -ne 'BEGIN{\$q0_char=\"\@\";}{chomp;\@f=split \"\";foreach \$v(\@f){if(ord(\$v)<ord(\$q0_char)){\$q0_char=\$v;}}}END{\$ans=ord(\$q0_char);if(\$ans<64){print "33\\n"}else{print "64\\n"}}'`\n";
+print FILE "MIN_Q_CHAR=`cat $list_pe_files |head -n 50000 | awk 'BEGIN{flag=0}{if(\$0 ~ /^\+/){flag=1}else if(flag==1){print \$0;flag=0}}'  | perl -ne 'BEGIN{\$q0_char=\"\@\";}{chomp;\@f=split \"\";foreach \$v(\@f){if(ord(\$v)<ord(\$q0_char)){\$q0_char=\$v;}}}END{\$ans=ord(\$q0_char);if(\$ans<64){print \"33\\n\"}else{print \"64\\n\"}}'`\n";
 print FILE "echo MIN_Q_CHAR: \$MIN_Q_CHAR\n";
 
 #for our error correctin we run jellyfish twice: once on all pe bases and once on pe bases with quality >2 
