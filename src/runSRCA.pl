@@ -423,7 +423,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "echo -n 'filtering JUMP ';date;\n";
 
 #creating super reads. for filtering
-    print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work2 sj.cor.fa 1> super2.err 2>&1\n" if(not(-e "work2"));;
+    print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 2 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work2 sj.cor.fa 1> super2.err 2>&1\n" if(not(-e "work2"));;
     print FILE "\n";
 
 #check if the super reads pipeline finished successfully
