@@ -128,14 +128,22 @@ int main (int argc, char **argv)
      mallocOrDie (kUnitigSpace, fsize, char);
      // (II) above
      infile = Fopen (fname, "r");
-     fread (kUnitigSpace, 1, kUnitigSeqFileSize, infile);
+     size_t bytes_read = fread (kUnitigSpace, 1, kUnitigSeqFileSize, infile);
+     if(bytes_read != kUnitigSeqFileSize) {
+       fprintf(stderr, "Failed to read the entire file '%s'. Bye!\n", fname);
+       exit(2);
+     }
      fclose (infile);
 
      // (III) above
      // Find out the last kUnitig number
      sprintf (kUnitigFilename, "%s/%s", workingDir, NUM_KUNITIGS_FILENAME);
      infile = Fopen (kUnitigFilename, "r");
-     fscanf (infile, "%d\n", &lastKUnitigNumber);
+     int fields_read = fscanf (infile, "%d\n", &lastKUnitigNumber);
+     if(fields_read != 1) {
+       fprintf(stderr, "Failed to read one int from '%s'. Bye!\n", kUnitigFilename);
+       exit(2);
+     }
      fclose (infile);
      fprintf (stderr, "The last kUnitigNumber was %d\n", lastKUnitigNumber);
      mallocOrDie (kUnitigSeq, lastKUnitigNumber+1, char *);

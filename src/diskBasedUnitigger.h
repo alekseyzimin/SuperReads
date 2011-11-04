@@ -104,7 +104,11 @@ int getInt (char *fname)
      int tval;
 
      infile = Fopen (fname, "r");
-     fscanf (infile, "%d\n", &tval);
+     int fields_read = fscanf (infile, "%d\n", &tval);
+     if(fields_read != 1) {
+       fprintf(stderr, "Failed to read one int. Bye!\n");
+       exit(2);
+     }
      fclose (infile);
      return (tval);
 }
