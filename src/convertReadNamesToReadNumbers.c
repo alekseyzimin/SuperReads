@@ -10,7 +10,7 @@
 unsigned long long firstReadNumForBin[256][256];
 char line[1000000];
 
-#define outputFauxRead(num) printf (">%llu faux\nN\n", num);
+#define outputFauxRead(num) printf (">%llu faux\nACGT\n", num);
 
 int main (int argc, char **argv)
 {

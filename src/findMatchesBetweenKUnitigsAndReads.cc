@@ -72,8 +72,8 @@ public:
     if(!prefix) {
       out = stdout;
     } else {
-      sprintf(out_file, "%s_%d", prefix, id);
-      out = fopen(out_file, "w");
+      sprintf(out_file, " gzip -1 > %s_%d", prefix, id);
+      out = popen(out_file, "w");
       if(!out)
         die << "Can't open output file '" << out_file << "'" << err::no;
     }
@@ -91,6 +91,7 @@ public:
       }
       getMatchesForRead(readBases, optr, header, hash, out);
     }
+pclose(out);
   }
 };
 

@@ -189,33 +189,23 @@ if ($tableResizeFactor > 1) {
 if ($debug) {
     $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads -l $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1prefix $totalKUnitigFastaSequence $numKUnitigsFile $totReadFile";
     &runCommandAndExitIfBad ($cmd, "", 0);
-    $cmd = "grep -h \"^myNucmerLine\" ${myProgOutput1prefix}_* | $exeDir/myUniq > $myProgOutput1_1";
-    &runCommandAndExitIfBad ($cmd, $myProgOutput1_1, 1); }
+#    $cmd = "zcat ${myProgOutput1prefix}_* |$exeDir/myUniq | grep -h \"^myNucmerLine\"  > $myProgOutput1_1";
+#    &runCommandAndExitIfBad ($cmd, $myProgOutput1_1, 1); 
+     }
 else {
     $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $totalKUnitigFastaSequence $numKUnitigsFile $totReadFile";
     &runCommandAndExitIfBad ($cmd, "", 0);
-    $cmd = "cat ${myProgOutput1_1prefix}_* | $exeDir/myUniq > $myProgOutput1_1";
-    &runCommandAndExitIfBad ($cmd, $myProgOutput1_1, 1); }
-$cmd = "\\rm ${myProgOutput1_1prefix}_*"; print "$cmd\n"; system ($cmd);
+#    $cmd = "zcat ${myProgOutput1_1prefix}_* | $exeDir/myUniq > $myProgOutput1_1";
+#    &runCommandAndExitIfBad ($cmd, $myProgOutput1_1, 1); 
+}
+#$cmd = "\\rm ${myProgOutput1_1prefix}_*"; print "$cmd\n"; system ($cmd);
 if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile, $totReadFile); }
     
-$cmd = "$exeDir/groupConsensusRecordsForRead $myProgOutput1_1 > $myProgOutput2";
-&runCommandAndExitIfBad ($cmd, $myProgOutput2, 1);
-
-$cmd = "$exeDir/extractMinimalKUnitigSetToCoverReads.perl $myProgOutput2 > $myProgOutput3";
+$cmd = "zcat ${myProgOutput1_1prefix}_* | $exeDir/myUniq |$exeDir/groupConsensusRecordsForRead /dev/fd/0 | $exeDir/extractMinimalKUnitigSetToCoverReads.perl /dev/fd/0 > $myProgOutput3";
 &runCommandAndExitIfBad ($cmd, $myProgOutput3, 1);
-if (! $mikedebug) { &killFiles ($myProgOutput2); }
 
-$cmd = "$exeDir/extractCoveringKUnitigsFromMinimalCoveringKUnitigSets $myProgOutput3 > $myProgOutput4";
-&runCommandAndExitIfBad ($cmd, $myProgOutput4, 1);
-
-$cmd = "cat $myProgOutput4 | $exeDir/findSuperReadGroups.perl > $myProgOutput5";
-&runCommandAndExitIfBad ($cmd, $myProgOutput5, 1);
-if (! $mikedebug) { &killFiles ($myProgOutput4); }
-
-$cmd = "$exeDir/findAndKillSuperReadsWithKUnitigOverlapsGeTheMerLength.perl $myProgOutput5 $merLen $myProgOutput6good $myProgOutput6bad";
+$cmd = "$exeDir/extractCoveringKUnitigsFromMinimalCoveringKUnitigSets $myProgOutput3 | $exeDir/findSuperReadGroups.perl | $exeDir/findAndKillSuperReadsWithKUnitigOverlapsGeTheMerLength.perl /dev/fd/0 $merLen $myProgOutput6good $myProgOutput6bad";
 &runCommandAndExitIfBad ($cmd, $myProgOutput6good, 1);
-if (! $mikedebug) { &killFiles ($myProgOutput5); }
 
 $cmd = "cat $myProgOutput6good | $exeDir/reportSuperReadGroups.perl > $myProgOutput7";
 &runCommandAndExitIfBad ($cmd, $myProgOutput7, 1);
@@ -233,9 +223,9 @@ if (! $mikedebug) { &killFiles ($myProgOutput7); }
 # 2) multiCopyKUnitigs.kUnitig.rptLength.txt: A list of k-unitigs which
 #      have multiple copies overlapping a given read; don't use for merging
 #      mates into super-reads.
-$cmd = "cat $myProgOutput1_1 | $exeDir/getRecordsForTandomRepeatKUnitigs | $exeDir/reduceRecordsForKillingKUnitigsToConnectMates.perl $workingDirectory";
+$cmd = "zcat ${myProgOutput1prefix}_* |$exeDir/myUniq | $exeDir/getRecordsForTandomRepeatKUnitigs | $exeDir/reduceRecordsForKillingKUnitigsToConnectMates.perl $workingDirectory";
 &runCommandAndExitIfBad ($cmd, "", 0);
-if (! $mikedebug) { if (! $joinShooting) { &killFiles ($myProgOutput1_1); } }
+#if (! $mikedebug) { if (! $joinShooting) { &killFiles ($myProgOutput1_1); } }
 
 # =====================================================================
 # PUTTING IN NEW STUFF HERE (3/15/11)
@@ -281,7 +271,7 @@ if ($joinShooting) {
     chdir ($pwd);
     $cmd = "$exeDir/mergePostMateMergeAndPriorSuperReadGroupsByReadFiles.perl $myProgOutput24 $myProgOutput22 > $myProgOutput25";
     &runCommandAndExitIfBad ($cmd, $myProgOutput25, 1);
-    if (! $mikedebug) { &killFiles ($myProgOutput22, $myProgOutput24, $myProgOutput1_1); }
+    if (! $mikedebug) { &killFiles ($myProgOutput22, $myProgOutput24,); }
 }
 else {
     $myProgOutput22complete = $myProgOutput22;

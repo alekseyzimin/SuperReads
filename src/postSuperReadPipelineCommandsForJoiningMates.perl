@@ -223,7 +223,7 @@ for ($pass=1; $pass<=3; $pass++) {
     $matePairJoiningResultsFile = ${"matePairJoiningResultsFile$pass"};
     $wellJoinedMatePairFile = ${"wellJoinedMatePairFile$pass"};
     $readMatesToBeJoinedWUniInfoOutputFile = ${"readMatesToBeJoinedWUniInfo$pass"};
-    $cmd = "$program11 $readMatesToBeJoinedFile $readToKUnitigMatchFile $pass > $kUnitigPairsForReadMatesToBeJoinedFile";
+    $cmd = "zcat newTestOutput.nucmerLinesOnly_* |$exeDir/myUniq | $program11 $readMatesToBeJoinedFile /dev/fd/0 $pass > $kUnitigPairsForReadMatesToBeJoinedFile";
     &runCommandAndExitIfBad ($cmd, $kUnitigPairsForReadMatesToBeJoinedFile, 1);
     
     $cmd = "$program12 $kUnitigOverlapsFile $kUnitigPairsForReadMatesToBeJoinedFile -min-overlap-length $kmerLenMinus1 -report-paths > $matePairJoiningResultsFile";
