@@ -70,7 +70,6 @@ int main (int argc, char **argv)
 //     printf ("Got to 3\n"); fflush (stdout);
 
      numReads = getNumReads (superReadGroupFile);
-
 //     printf ("Got to 4\n"); fflush (stdout);
 
      mallocOrDie (wasReversed, numReads, unsigned char);
@@ -158,6 +157,10 @@ int main (int argc, char **argv)
 	       isFirstLine = 0;
 	       ahgHold = bhgHold = 1000000000; // NEWTEST
 	       readName = atoi(flds[7]);
+	       if (readName >= numReads) {
+		    numNewSuperReadNameInfoFlds = 0;
+		    continue;
+	       }
 	       if (newSuperReadNameInfo[readName] == NULL)
 		    newSuperReadNameInfo[readName] = (char *) "";
 //	       printf ("Got to 100, readName = %d, newSuperReadNameInfo address = %p\n", readName, newSuperReadNameInfo[readName]); fflush (stdout);

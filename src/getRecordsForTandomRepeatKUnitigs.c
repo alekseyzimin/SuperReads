@@ -48,7 +48,10 @@ int main (int argc, char **argv)
     }
 
     mallocOrDie (line, 1000000, char);
-    fgets (line, 1000000, stdin);
+    if(!fgets (line, 1000000, stdin)) {
+      fprintf(stderr, "Failed to read header line.");
+      exit(2);
+    }
     numFlds = getFldsFromLine(line);
     sscanf (flds[3], "(%d,%d", &ahg, &bhg);
     kUnitig = atoi (flds[numFlds-2]);

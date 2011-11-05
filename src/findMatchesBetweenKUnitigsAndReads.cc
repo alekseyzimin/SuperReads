@@ -170,15 +170,25 @@ int main(int argc, char *argv[])
     mask = (mask << 2) + 0x3;
   // Find out the last kUnitig number
   infile = fopen (numKUnitigsFile, "r");
-  fscanf (infile, "%d\n", &lastKUnitigNumber);
+  if(!infile)
+    die << "Failed to open file '" << numKUnitigsFile << "'" << err::no;
+  int fields_read = fscanf (infile, "%d\n", &lastKUnitigNumber);
+  if(fields_read != 1)
+    die << "Failed to read the last k-unitig number from file '"
+        << numKUnitigsFile << "'" << err::no;
   fclose (infile);
   fprintf (stderr, "The largest kUnitigNumber was %d\n", lastKUnitigNumber);
   mallocOrDie (kUnitigLengths, (lastKUnitigNumber+2), uint64_t);
      
   fprintf (stderr, "Opening file %s...\n", kUnitigFilename);
   infile = fopen (kUnitigFilename, "r");
-  fgets (line, 1000000, infile); // This is a header line
-  sscanf (line, ">%d length:%d", &kUnitigNumber, &kUnitigLength);
+  if(!fgets (line, sizeof(line), infile)) // This is a header line
+    die << "Failed to read header line from file '"
+        << kUnitigFilename << "'" << err::no;
+  fields_read = sscanf (line, ">%d length:%d", &kUnitigNumber, &kUnitigLength);
+  if(fields_read != 2)
+    die << "Header of file '" << kUnitigFilename
+        << "' does not match pattern '>UnitigiNumber length:UnitigLength'";
   kUnitigLengths[kUnitigNumber] = kUnitigLength;
   if (kUnitigNumber % 100 == 0)
     fprintf (stderr, "\rkUnitigNumber = %d", kUnitigNumber);
@@ -186,7 +196,7 @@ int main(int argc, char *argv[])
   cptr = kUnitigBases;
   while (1) {
     int atEof = 0;
-    if (! fgets(line, 1000000, infile)) {
+    if (! fgets(line, sizeof(line), infile)) {
       atEof = 1;
       goto processTheKUnitig; }
     if (line[0] == '>')

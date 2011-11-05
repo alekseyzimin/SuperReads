@@ -23,18 +23,29 @@ int main (int argc, char **argv)
      int i;
      int atEof=0;
 
-     if (argc >= 2)
-	  infile = fopen (argv[1], "r");
-     else
-	  infile = stdin;
-     if (argc >= 3)
-	  outfile = fopen (argv[2], "w");
-     else
-	  outfile = stdout;
+     if (argc >= 2) {
+       infile = fopen (argv[1], "r");
+       if(!infile) {
+         fprintf(stderr, "Failed to open file '%s' for reading. Bye!\n", argv[1]);
+         exit(1);
+       }
+     } else
+       infile = stdin;
+     if (argc >= 3) {
+       outfile = fopen (argv[2], "w");
+       if(!outfile) {
+         fprintf(stderr, "Failed to open file '%s' for writing. Bye!\n", argv[2]);
+         exit(1);
+       }
+     } else
+       outfile = stdout;
 
      readNum = 0;
      recordNumForRead = 0;
-     fgets (line, 1000, infile);
+     if(!fgets (line, sizeof(line), infile)) {
+       fprintf(stderr, "Failed to get header line from file. Bye!\n");
+       exit(2);
+     }
      cptr = strchr (line, ':');
      ++cptr;
 
