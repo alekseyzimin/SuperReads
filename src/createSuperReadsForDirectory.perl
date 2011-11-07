@@ -223,7 +223,7 @@ if (! $mikedebug) { &killFiles ($myProgOutput7); }
 # 2) multiCopyKUnitigs.kUnitig.rptLength.txt: A list of k-unitigs which
 #      have multiple copies overlapping a given read; don't use for merging
 #      mates into super-reads.
-$cmd = "zcat ${myProgOutput1prefix}_* |$exeDir/myUniq | $exeDir/getRecordsForTandomRepeatKUnitigs | $exeDir/reduceRecordsForKillingKUnitigsToConnectMates.perl $workingDirectory";
+$cmd = "zcat ${myProgOutput1prefix}_* |$exeDir/myUniq | $exeDir/getRecordsForTandomRepeatKUnitigs | $exeDir/reduceRecordsForKillingKUnitigsToConnectMates.perl -l $merLen $workingDirectory";
 &runCommandAndExitIfBad ($cmd, "", 0);
 #if (! $mikedebug) { if (! $joinShooting) { &killFiles ($myProgOutput1_1); } }
 

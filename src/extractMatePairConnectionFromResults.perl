@@ -1,9 +1,22 @@
 #!/usr/bin/perl
-$inputFileWithReadPairsToBeJoined = $ARGV[0];
-$inputFileWithKUnitigPairsToBeJoined = $ARGV[1];
-$matePairJoinerResultsFile = $ARGV[2];
-$outputJoinFile = $ARGV[3];
-$outputFileWithKUnitigsToKeep = $ARGV[4];
+$kmerLen = 31;
+$fileNum = 0;
+for ($i=0; $i<=$#ARGV; $i++) {
+    if ($ARGV[$i] eq "-l") {
+	++$i;
+	$kmerLen = $ARGV[$i];
+	next; }
+    if ($fileNum == 0) { $inputFileWithReadPairsToBeJoined = $ARGV[$i]; }
+    elsif ($fileNum == 1) { $inputFileWithKUnitigPairsToBeJoined = $ARGV[$i]; }
+    elsif ($fileNum == 2) { $matePairJoinerResultsFile = $ARGV[$i]; }
+    elsif ($fileNum == 3) { $outputJoinFile = $ARGV[$i]; }
+    elsif ($fileNum == 4) { $outputFileWithKUnitigsToKeep = $ARGV[$i]; }
+    else {
+	print STDERR "Exec $0 was called with too many args. Bye!\n";
+	exit (1); }
+    ++$fileNum;
+}
+$kmerLenMinus1 = $kmerLen - 1;
 
 open (FILE1, $inputFileWithReadPairsToBeJoined);
 open (FILE2, $inputFileWithKUnitigPairsToBeJoined);
@@ -92,7 +105,7 @@ sub reportResults
     itsGood:
     print OUTPUT_JOIN_FILE $readPairLine;
     for ($i=0; $i<=$#kUnis; $i++) {
-	if ($i > 0) { print OUTPUT_JOIN_FILE " 30"; }
+	if ($i > 0) { print OUTPUT_JOIN_FILE " $kmerLenMinus1"; }
 	print OUTPUT_JOIN_FILE " $kUnis[$i] $oris[$i]"; }
     print OUTPUT_JOIN_FILE "\n";
 }

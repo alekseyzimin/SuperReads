@@ -229,7 +229,7 @@ for ($pass=1; $pass<=3; $pass++) {
     $cmd = "$program12 $kUnitigOverlapsFile $kUnitigPairsForReadMatesToBeJoinedFile -min-overlap-length $kmerLenMinus1 -report-paths > $matePairJoiningResultsFile";
     &runCommandAndExitIfBad ($cmd, $matePairJoiningResultsFile, 1);
     
-    $cmd = "$program13 $readMatesToBeJoinedFile $kUnitigPairsForReadMatesToBeJoinedFile $matePairJoiningResultsFile $wellJoinedMatePairFile $readMatesToBeJoinedWUniInfoOutputFile";
+    $cmd = "$program13 -l $kmerLen $readMatesToBeJoinedFile $kUnitigPairsForReadMatesToBeJoinedFile $matePairJoiningResultsFile $wellJoinedMatePairFile $readMatesToBeJoinedWUniInfoOutputFile";
     &runCommandAndExitIfBad ($cmd, $readMatesToBeJoinedWUniInfoOutputFile, 0);
 }
 

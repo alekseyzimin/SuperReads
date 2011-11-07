@@ -1,7 +1,13 @@
 #!/usr/bin/perl
-if ($#ARGV >= 0) {
-    $outputDir = $ARGV[0]; }
 $kmerLen = 31;
+for ($i=0; $i<=$#ARGV; $i++) {
+    if ($ARGV[$i] eq "-l") {
+	++$i;
+	$kmerLen = $ARGV[$i];
+	next; }
+    $outputDir = $ARGV[$i];
+}
+
 while ($line = <STDIN>) {
     chomp ($line);
     push (@lines, $line);
