@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MIN_MATCH_LENGTH 32
+#define MIN_MATCH_LENGTH 0
 
 int beginUnitigOffsets[1000], endUnitigOffsets[1000], beginReadOffsets[1000], endReadOffsets[1000], unitigLengths[1000], readLengths[1000], unitigNumbers[1000];
 int minForLine[1000], maxForLine[1000];
