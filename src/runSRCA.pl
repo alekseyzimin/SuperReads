@@ -401,7 +401,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "\n";
     if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")){
 	print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa sj.cor.fa\n";
-	print FILE "create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
+	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
 	print FILE "cat k_unitigs_*.fa > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
 	print FILE "rm -f k_unitigs_*.fa\n";
     }
@@ -409,7 +409,7 @@ if(scalar(@jump_info_array)>0){
 else{
     if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")){
 	print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa\n";
-	print FILE "create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
+	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
 	print FILE "cat k_unitigs_*.fa > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
 	print FILE "rm -f k_unitigs_*.fa\n";
     }
