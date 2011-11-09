@@ -1,10 +1,16 @@
 #!/usr/bin/env perl
 #
+$i=0;
 while($line=<STDIN>){
 chomp($line);
 @l=split(/\s+/,$line);
 push (@sr,$l[0]);
+@f=split('_',$l[0]);
+for($j=0;$j<scalar(@f);$j+=2){
+$ku_sr{substr($f[$j],0,length($f[$j])-1)}.="$i ";
+}
 $len{$l[0]}=$l[1];
+$i++;
 }
 
 
@@ -15,17 +21,25 @@ $valid_indices{$j}=1;
 
 for($i=1;$i<50;$i+=2){
 #print "Size: $i\n";
-
 for($j=0;$j<scalar(@sr);$j++){
-
 next if(not(defined($valid_indices{$j})));
 @s=split(/_/,$sr[$j]);
 next if(scalar(@s)!=$i);
 delete $valid_indices{$j};
 
+%candidate_k_u=();
+@l=split('_',$sr[$j]);
+for($m=0;$m<scalar(@l);$m+=2){
+@f=split(' ',$ku_sr{substr($l[$m],0,length($l[$m])-1)});
+foreach $kun(@f){
+$candidate_k_u{$kun}=1;
+}
+}
+
 #printf "Trying to merge $sr[$j]\n";
-#print "fwd: $sr_tmp rev: $sr_tmp_rev\n";
-foreach $k(keys %valid_indices){
+#print "fwd: $sr[$j] rev: $sr_rev[$j]\n";
+foreach $k(keys %candidate_k_u){
+next if(not(defined($valid_indices{$k})));
 #print "candidate $sr[$k]\n";
 if($sr[$k] =~ /^($sr[$j])/||$sr[$k] =~ ("_".$sr[$j]) || $sr[$k] =~ /^($sr_rev[$j])/||$sr[$k] =~ ("_".$sr_rev[$j])){
 #print "found match $sr[$j] $sr[$k]\n";
