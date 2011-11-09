@@ -47,7 +47,7 @@ int main(int argc, char **argv)
 		   ++numLines;
 		   continue; } }
 	 // Use numLines to specify the number of lines in the group
-	 if (numLines > 3) {
+	 if (numLines > 200) {
 	      numLines = 0;
 	      continue; }
 

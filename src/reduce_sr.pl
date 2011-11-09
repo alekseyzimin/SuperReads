@@ -19,7 +19,8 @@ push(@sr_rev,reverse_sr($sr[$j]));
 $valid_indices{$j}=1;
 }
 
-for($i=1;$i<50;$i+=2){
+for($i=1;$i<200;$i+=2){
+last if(scalar(keys %valid_indices)==1);
 #print "Size: $i\n";
 for($j=0;$j<scalar(@sr);$j++){
 next if(not(defined($valid_indices{$j})));
