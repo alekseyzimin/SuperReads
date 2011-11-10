@@ -29,6 +29,7 @@
 #include <utility>
 
 #include <src/create_k_unitigs_cmdline.hpp>
+#include <src/gzip_stream.hpp>
 #include <aligned_simple_array.hpp>
 
 typedef uint64_t hkey_t;
@@ -220,11 +221,16 @@ public:
       output_file_counts << args.prefix_arg << "_" << th_id << ".counts";
     else
       output_file_counts << "/dev/null";
-    std::ofstream out_fasta, out_counts;
-    out_fasta.exceptions(std::ifstream::eofbit|std::ifstream::failbit|std::ifstream::badbit);
-    out_counts.exceptions(std::ifstream::eofbit|std::ifstream::failbit|std::ifstream::badbit);
-    out_fasta.open(output_file_fasta.str().c_str());
-    out_counts.open(output_file_counts.str().c_str());
+    std::ostream *out_fasta, *out_counts;
+    if(args.gzip_flag) {
+      out_fasta = new gzipstream(output_file_fasta.str().c_str());
+      out_counts = new gzipstream(output_file_counts.str().c_str());
+    } else {
+      out_fasta = new std::ofstream(output_file_fasta.str().c_str());
+      out_counts = new std::ofstream(output_file_counts.str().c_str());
+    }
+    out_fasta->exceptions(std::ifstream::eofbit|std::ifstream::failbit|std::ifstream::badbit);
+    out_counts->exceptions(std::ifstream::eofbit|std::ifstream::failbit|std::ifstream::badbit);
 
     counter_t::block frag_id = fragment_counter.get_block();
     const char *forward_term, *backward_term;
@@ -261,13 +267,13 @@ public:
         }
         if((backward.size() + forward.size()) >= min_nb_kmers) {
           my_counters->outputed++;
-          output_sequence(&out_fasta, &out_counts, frag_id++, &forward, &backward,
+          output_sequence(out_fasta, out_counts, frag_id++, &forward, &backward,
                           forward_term, backward_term);
         }
       }
     }
-    out_fasta.close();
-    out_counts.close();
+    delete out_fasta;
+    delete out_counts;
   }
   
   /* Return true if sequence has grown. Return (char *)0 if encounter a
