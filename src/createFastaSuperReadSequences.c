@@ -76,7 +76,7 @@ int main (int argc, char **argv)
      FILE *infile, *errorFile;
      int lastKUnitigNumber, kUnitigNumber=0, kUnitigNumberHold, i, argNum;
      int state;
-     char *cptr, *cptr2, superReadName[1000], superReadNamePart[1000];
+     char *cptr, *cptr2, superReadName[8192], superReadNamePart[8192];
      char ori, oriHold;
      int overlap;
      int outputSeqLen;
