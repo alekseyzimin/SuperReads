@@ -11,18 +11,19 @@ dist-hook:
 AM_CPPFLAGS = -Wall $(JELLYFISH_CFLAGS) -I$(top_srcdir) $(CWERROR)
 AM_LDFLAGS = -lpthread $(JELLYFISH_LIBS)
 
-bin_PROGRAMS = create_k_unitigs error_correct_reads		\
-        findMatchesBetweenKUnitigsAndReads			\
-        groupConsensusRecordsForRead				\
-        extractCoveringKUnitigsFromMinimalCoveringKUnitigSets	\
-        createFastaSuperReadSequences				\
-        getRecordsForTandomRepeatKUnitigs myUniq		\
-        changeReadNumsToReadNamesAtBeginOfLine			\
-        convertReadNamesToReadNumbers				\
-        getMaxReadNumbersByPrefixForFastaFile			\
-        mergeShortMatesIntoSuperReads error_corrected2frg homo_trim reverse_complement \
-	createKUnitigMaxOverlaps getMateStatistics_pt1 \
-	joinKUnitigs getReadStartsOffsetsAndOrientationsInSuperReads_1stPass
+bin_PROGRAMS = create_k_unitigs error_correct_reads			\
+        findMatchesBetweenKUnitigsAndReads				\
+        groupConsensusRecordsForRead					\
+        extractCoveringKUnitigsFromMinimalCoveringKUnitigSets		\
+        createFastaSuperReadSequences					\
+        getRecordsForTandomRepeatKUnitigs myUniq			\
+        changeReadNumsToReadNamesAtBeginOfLine				\
+        convertReadNamesToReadNumbers					\
+        getMaxReadNumbersByPrefixForFastaFile				\
+        mergeShortMatesIntoSuperReads error_corrected2frg homo_trim	\
+        reverse_complement createKUnitigMaxOverlaps			\
+        getMateStatistics_pt1 joinKUnitigs				\
+        getReadStartsOffsetsAndOrientationsInSuperReads_1stPass
 
 dist_bin_SCRIPTS = createSuperReadsForDirectory.perl			\
 getNumBasesInKUnitigsFile.perl mergeShortMatesIntoSuperReads.perl	\
@@ -39,21 +40,25 @@ findMatchRecordsForGivenKUnitig.perl					\
 listInfrequentlyOccurringSuperReads.perl reportSuperReadGroups.perl	\
 findSuperReadGroups.perl						\
 makeListOfSuperReadsAndCounts.fromSuperReadGroupsFile.perl		\
-getNumBasesPerReadInFastaFile.perl reduce_sr.pl create_end_pairs.pl tryToKillKUnitigsOfLength61.perl close_gaps.sh compute_sr_cov.pl create_sr_frg.pl extractreads.pl extract_unjoined_pairs.pl fasta2frg.pl filter_library.sh fix_unitigs.sh recompute_astat_superreads.sh runSRCA.pl \
-postSuperReadPipelineCommandsForJoiningMates.perl \
-createSuperReadGroupsFromMatePairJoinedMates.perl \
-createCombinedGoodJoinsFile.perl \
-extractMatePairConnectionFromResults.perl \
-convertReadMateInfoIntoKUnitigMateInfoForMateJoining.perl \
-getStdevOfLibrary.perl getMateStatistics_pt2.perl \
-findEquivalentSuperReads.perl \
+getNumBasesPerReadInFastaFile.perl reduce_sr.pl create_end_pairs.pl	\
+tryToKillKUnitigsOfLength61.perl close_gaps.sh compute_sr_cov.pl	\
+create_sr_frg.pl extractreads.pl extract_unjoined_pairs.pl		\
+fasta2frg.pl filter_library.sh fix_unitigs.sh				\
+recompute_astat_superreads.sh runSRCA.pl				\
+postSuperReadPipelineCommandsForJoiningMates.perl			\
+createSuperReadGroupsFromMatePairJoinedMates.perl			\
+createCombinedGoodJoinsFile.perl					\
+extractMatePairConnectionFromResults.perl				\
+convertReadMateInfoIntoKUnitigMateInfoForMateJoining.perl		\
+getStdevOfLibrary.perl getMateStatistics_pt2.perl			\
+findEquivalentSuperReads.perl						\
 mergePostMateMergeAndPriorSuperReadGroupsByReadFiles.perl
 
 noinst_HEADERS = aligned_simple_array.hpp misc.hpp kmer.hpp		\
 diskBasedUnitigger.h create_k_unitigs_cmdline.hpp			\
 error_correct_reads_cmdline.hpp error_correct_reads.hpp err_log.hpp	\
 kmer.hpp priorityHeap.h redBlackTreesInsertOnly.h			\
-create_k_unitigs_cmdline.hpp yaggo.hpp
+create_k_unitigs_cmdline.hpp yaggo.hpp gzip_stream.hpp
 
 error_corrected2frg_SOURCES = error_corrected2frg.c 
 homo_trim_SOURCES = homo_trim.c 
