@@ -87,3 +87,13 @@ TEST(CharbBasic, fgets) {
   EXPECT_EQ((char *)0, res);
   EXPECT_EQ(0, strcmp(l2, b));
 }
+
+TEST(CharbBasic, sprintf) {
+  charb b(10);
+  const char *fmt = "Hello %d times";
+  const char *str_res = "Hello 1000 times";
+  int res = sprintf(b, fmt, 1000);
+  EXPECT_EQ(strlen(str_res), res);
+  EXPECT_EQ(0, strcmp(str_res, b));
+  EXPECT_EQ(strlen(str_res), b.len());
+}

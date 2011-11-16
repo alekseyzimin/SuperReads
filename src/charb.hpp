@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <cstdio>
+#include <cstdarg>
 #include <stdexcept>
 #include <string>
 
@@ -65,6 +66,8 @@ public:
       return;
     if(s <= 2 * clen)
       s = 2 * clen;
+    if(s == 0)
+      s = 1024;
     char *nbase = (char *)realloc(_base, s);
     if(!nbase)
       throw std::runtime_error("Error allocating memory");
@@ -75,6 +78,7 @@ public:
   void enlarge() { ensure(capacity() * 2); }
 
   friend char *fgets(charb &b, FILE *stream);
+  friend int vsprintf(charb &b, const char *format, va_list ap);
 };
 
 /** fgets for char buffer. Expand the size of the buffer if the line
@@ -109,4 +113,51 @@ char *fgets(charb &b, FILE *stream) {
  */
 char *fgets(charb &b, int size, FILE *stream) { return fgets(b, stream); }
 
+/** Sprintf for buffer. The buffer grows as needed. The return value
+ * is < 0 in case of error, or the number of characters written to the
+ * char buffer.
+ */
+int sprintf(charb &b, const char *format, ...) {
+  va_list ap;
+
+  va_start(ap, format);
+  int res = vsprintf(b, format, ap);
+  va_end(ap);
+
+  return res;
+}
+
+/** Snprintf for backward compatibility.
+ */
+int snprintf(charb &b, const char *format, ...) {
+  va_list ap;
+  va_start(ap, format);
+  int res = vsprintf(b, format, ap);
+  va_end(ap);
+
+  return res;
+}
+
+/** Vsnprintf for backward compatibility.
+ */
+int vsnprintf(charb &b, size_t size, const char *format, va_list ap) {
+  return vsprintf(b, format, ap);
+}
+
+int vsprintf(charb &b, const char *format, va_list _ap) {
+  int res;
+  while(true) {
+    va_list ap;
+    va_copy(ap, _ap);
+    res = vsnprintf(b._base, b.capacity(), format, ap);
+    va_end(ap);
+    if(res < 0)
+      return res;
+    if((size_t)res < b.capacity())
+      break;
+    b.ensure(res + 1);
+  }
+  b._ptr = b._base + res;
+  return res;
+}
 #endif /* __CHARB_HPP__ */
