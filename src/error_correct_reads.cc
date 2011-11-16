@@ -241,7 +241,7 @@ private:
         ori_count = 0;
 
       uint64_t max_count = 10000000000;
-      if(ori_count <_ec->anchor())
+      if(ori_count < (uint64_t)_ec->anchor())
         {
         max_count  = 3 * ori_count;
         }
