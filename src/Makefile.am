@@ -61,8 +61,8 @@ kmer.hpp priorityHeap.h redBlackTreesInsertOnly.h			\
 create_k_unitigs_cmdline.hpp yaggo.hpp gzip_stream.hpp charb.hpp
 
 error_corrected2frg_SOURCES = error_corrected2frg.c 
-homo_trim_SOURCES = homo_trim.c 
-reverse_complement_SOURCES = reverse_complement.c
+homo_trim_SOURCES = homo_trim.cc 
+reverse_complement_SOURCES = reverse_complement.cc
 
 create_k_unitigs_SOURCES = create_k_unitigs.cpp yaggo.cpp
 

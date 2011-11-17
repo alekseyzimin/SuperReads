@@ -1,13 +1,16 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include <string.h>
+
 int main(int argc, char *argv[])
 {
-  int bytes_read=0,i,j;
-  int nbytes=10000000;
+  ssize_t bytes_read,i,j;
+  size_t nbytes=10000000;
   char *my_string;
   char *rev_sequence;
   
-  my_string = malloc (nbytes);
+  my_string = (char *)malloc (nbytes);
+  rev_sequence = (char *)malloc (nbytes);
   
   while(1)
     {
@@ -21,17 +24,9 @@ int main(int argc, char *argv[])
 	    }
 	  else
 	    {
-	     for(i=0;i<nbytes;i++)
-	     {
-		if(my_string[i]=='\0')
-		{
-		bytes_read=i-2;
-		break;
-		}
-	     }
-	      rev_sequence = malloc( bytes_read+2 );
+             bytes_read=strlen(my_string);
 	      j=0;
-	      for(i=bytes_read;i>=0;i--)
+	      for(i=bytes_read-2;i>=0;i--)
 		{
 		  switch (my_string[i])
 		    {
@@ -47,6 +42,7 @@ int main(int argc, char *argv[])
 		    }
 		  j++;
 		}
+              rev_sequence[j]='\0';
 	      printf("%s\n",rev_sequence);
 	    }
 	}
