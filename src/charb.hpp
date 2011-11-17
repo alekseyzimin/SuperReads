@@ -90,6 +90,8 @@ public:
 
   friend char *fgets(charb &b, FILE *stream);
   friend int vsprintf(charb &b, const char *format, va_list ap);
+  friend ssize_t getline(charb &b, FILE *stream);
+  friend ssize_t getdelim(charb &b, int delim, FILE *stream);
 };
 
 /** fgets for char buffer. Expand the size of the buffer if the line
@@ -131,6 +133,41 @@ char *fgets(charb &b, FILE *stream) {
  */
 template<typename T>
 char *fgets(charb &b, T size, FILE *stream) { return fgets(b, stream); }
+
+/** Getline for char buffer.
+ */
+ssize_t getline(charb &b, FILE *stream) {
+  size_t n = b.capacity();
+  ssize_t res = getline(&b._base, &n, stream);
+  if(res == -1)
+    return res;
+  b._ptr = b._base + res;
+  if(n != b.capacity())
+    b._end = b._base + n;
+
+  return res;
+}
+
+template<typename T>
+ssize_t getline(charb &b, T *n, int delim, FILE *stream) { return getline(b, stream); }
+
+/** Getdelim for char buffer.
+ */
+ssize_t getdelim(charb &b, int delim, FILE *stream) {
+  size_t n = b.capacity();
+  ssize_t res = getdelim(&b._base, &n, delim, stream);
+  if(res == -1)
+    return res;
+  b._ptr = b._base + res;
+  if(n != b.capacity())
+    b._end = b._base + n;
+
+  return res;
+}
+
+template<typename T>
+ssize_t getdelim(charb &b, T *n, int delim, FILE *stream) { return getdelim(b, delim, stream); }
+
 
 /** Sprintf for buffer. The buffer grows as needed. The return value
  * is < 0 in case of error, or the number of characters written to the

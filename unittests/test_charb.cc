@@ -47,6 +47,10 @@ TEST(CharbBasic, Copy) {
   EXPECT_EQ(str_len, from_string.len());
   for(size_t i = 0; i < str_len; ++i)
     EXPECT_EQ(str[i], from_string[i]);
+
+  charb x("Hello");
+  x[3] = '_';
+  EXPECT_EQ(0, strcmp("Hel_o", x));
 }
 
 TEST(CharbBasic, Cast) {
@@ -60,16 +64,25 @@ TEST(CharbBasic, Cast) {
   EXPECT_EQ(0, strcmp(str, b));
 }
 
-TEST(CharbBasic, fgets) {
-  FILE *tf = tmpfile();
-  if(!tf)
-    throw std::runtime_error("Can't create tmp file");
-  const char *l1 = "Hello there\n";
-  const char *l2 = "A very long and meaningless sentence-line.";
-  fputs(l1, tf); 
-  fputs(l2, tf);
-  rewind(tf);
+class IOTest : public ::testing::Test {
+protected:
+  virtual void SetUp() {
+    tf = tmpfile();
+    if(!tf)
+      throw std::runtime_error("Can't create tmp file");
+    l1 = "Hello there\n";
+    l2 = "A very long and meaningless sentence-line.";
+    fputs(l1, tf); 
+    fputs(l2, tf);
+    rewind(tf);
+  }
 
+  FILE *tf;
+  const char *l1;
+  const char *l2;
+};
+
+TEST_F(IOTest, fgets) {
   charb b(5);
   char *res = fgets(b, 3, tf); // 3 ignored!
   EXPECT_EQ(0, strcmp(l1, res));
@@ -88,6 +101,24 @@ TEST(CharbBasic, fgets) {
   EXPECT_EQ(0, strcmp(l2, b));
 }
 
+TEST_F(IOTest, getline) {
+  charb b(5);
+  ssize_t res;
+
+  res = getline(b, tf);
+  EXPECT_EQ(strlen(l1), res);
+  EXPECT_EQ(0, strcmp(l1, b));
+  EXPECT_LE(strlen(l1), b.len());
+
+  res = getline(b, tf);
+  EXPECT_EQ(strlen(l2), res);
+  EXPECT_EQ(0, strcmp(l2, b));
+  EXPECT_LE(strlen(l2), b.len());
+  
+  res = getline(b, tf);
+  EXPECT_EQ(-1, res);
+}
+
 TEST(CharbBasic, sprintf) {
   charb b(10);
   const char *fmt = "Hello %d times";
@@ -97,3 +128,4 @@ TEST(CharbBasic, sprintf) {
   EXPECT_EQ(0, strcmp(str_res, b));
   EXPECT_EQ(strlen(str_res), b.len());
 }
+
