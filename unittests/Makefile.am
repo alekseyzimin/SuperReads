@@ -16,7 +16,7 @@ AM_CPPFLAGS = -I$(srcdir)/gtest/include -I$(srcdir)/gtest -I$(top_srcdir)
 # Do not edit.
 ##############################
 # Build rules for libraries.
-lib_LTLIBRARIES = libgtest.la libgtest_main.la
+check_LTLIBRARIES = libgtest.la libgtest_main.la
 
 libgtest_la_SOURCES = gtest/src/gtest-all.cc
 libgtest_main_la_SOURCES = gtest/src/gtest_main.cc
