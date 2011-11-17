@@ -6,6 +6,7 @@
 #include <cstdarg>
 #include <stdexcept>
 #include <string>
+#include <cstring>
 
 class charb {
   char *_base;
@@ -59,6 +60,14 @@ public:
   char operator*() const { return *_base; }
   operator char *() const { return _base; }
   operator const char *() const { return _base; }
+  operator void *() const { return (void*)_base; }
+  bool operator==(const charb &rhs) const { return _base == rhs._base; }
+  bool operator!=(const charb &rhs) const { return _base != rhs._base; }
+  template<typename T>
+  bool operator==(T *rhs) const { return (T*)_base == rhs; }
+  template<typename T>
+  bool operator!=(T *rhs) const { return (T*)_base != rhs; }
+  bool operator!() const { return _base != 0; }
 
   void ensure(size_t s) {
     size_t clen = _end - _base;
@@ -87,19 +96,26 @@ public:
 char *fgets(charb &b, FILE *stream) {
   char *cptr = b._base;
   long  pos  = ftell(stream);
+  long  npos = pos;
   
   while(true) {
     char *res = fgets(cptr, b.capacity() - (cptr - b._base), stream);
     if(!res)
       break;
-    long npos = ftell(stream);
-    cptr      += npos - pos;
+    size_t char_read;
+    if(pos == -1) {
+      char_read = strlen(res);
+    } else {
+      npos = ftell(stream);
+      char_read = npos - pos;
+      pos = npos;
+    }
+    cptr      += char_read;
     if(cptr < b._end - 1 || *(cptr - 1) == '\n')
       break;
     size_t off = cptr - b._base;
     b.enlarge();
     cptr = b._base + off;
-    pos = npos;
   }
   
   if(cptr == b._base)
@@ -111,7 +127,8 @@ char *fgets(charb &b, FILE *stream) {
 /** Backward compatible fgets for char buffer. The size argument is ignored and present
  * only for backward compatibility.
  */
-char *fgets(charb &b, int size, FILE *stream) { return fgets(b, stream); }
+template<typename T>
+char *fgets(charb &b, T size, FILE *stream) { return fgets(b, stream); }
 
 /** Sprintf for buffer. The buffer grows as needed. The return value
  * is < 0 in case of error, or the number of characters written to the
@@ -129,7 +146,8 @@ int sprintf(charb &b, const char *format, ...) {
 
 /** Snprintf for backward compatibility.
  */
-int snprintf(charb &b, const char *format, ...) {
+template<typename T>
+int snprintf(charb &b, T size, const char *format, ...) {
   va_list ap;
   va_start(ap, format);
   int res = vsprintf(b, format, ap);
@@ -140,7 +158,8 @@ int snprintf(charb &b, const char *format, ...) {
 
 /** Vsnprintf for backward compatibility.
  */
-int vsnprintf(charb &b, size_t size, const char *format, va_list ap) {
+template<typename T>
+int vsnprintf(charb &b, T size, const char *format, va_list ap) {
   return vsprintf(b, format, ap);
 }
 
