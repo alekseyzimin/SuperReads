@@ -54,8 +54,10 @@ public:
     memcpy(_base, rhs._base, capacity());
   }
 
-  char& operator[](size_t i) { return _base[i]; }
-  char operator[](size_t i) const { return _base[i]; }
+  template<typename T>
+  char& operator[](T i) { return _base[i]; }
+  template<typename T>
+  char operator[](T i) const { return _base[i]; }
   char& operator*() { return *_base; }
   char operator*() const { return *_base; }
   operator char *() const { return _base; }
