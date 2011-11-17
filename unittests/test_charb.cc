@@ -47,6 +47,10 @@ TEST(CharbBasic, Copy) {
   EXPECT_EQ(str_len, from_string.len());
   for(size_t i = 0; i < str_len; ++i)
     EXPECT_EQ(str[i], from_string[i]);
+
+  charb x("Hello");
+  x[3] = '_';
+  EXPECT_EQ(0, strcmp("Hel_o", x));
 }
 
 TEST(CharbBasic, Cast) {
