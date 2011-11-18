@@ -1,75 +1,56 @@
 #!/usr/bin/env perl
-#
+#assume that super reads are sorted by size, longest to shortest
 $i=0;
+@sr=();
+@ku_sr_number=();
 while($line=<STDIN>){
 chomp($line);
 @l=split(/\s+/,$line);
-push (@sr,$l[0]);
+#here we check the k-unitigs and find which super read the current one could be reduced to
+#print "Processing sr $line\n";
+%candidate_sr_counts=();
 @f=split('_',$l[0]);
 for($j=0;$j<scalar(@f);$j+=2){
-$ku_sr{substr($f[$j],0,length($f[$j])-1)}.="$i ";
+my $ku=substr($f[$j],0,length($f[$j])-1);
+if(defined($ku_sr_number[$ku])){
+@c=split(' ',$ku_sr_number[$ku]);
+#print "Preliminary candidates $ku_sr_number[$ku]\n";
+foreach $v(@c){
+#print "Preliminary candidate $sr[$v] $v\n";
+$candidate_sr_counts{$v}++;
 }
-$len{$l[0]}=$l[1];
+}
+}
+%candidate_sr=();
+foreach $v(keys %candidate_sr_counts){
+if($candidate_sr_counts{$v}>=int((scalar(@f)+1)/2+0.1)){
+#print "Final candidate $v\n";
+$candidate_sr{$v}=1;
+}
+}
+
+if(scalar(keys %candidate_sr)>0){
+#print "Found ",scalar(keys %candidate_sr)," candidates for merging\n";
+@candidate_sr_sorted = sort {$a>$b} (keys %candidate_sr);
+#look for the match
+$fwd_sr=$l[0];
+$rev_sr=reverse_sr($l[0]);
+for($j=0;$j<scalar(@candidate_sr_sorted);$j++){
+#print "trying candidate $sr[$candidate_sr_sorted[$j]], number $candidate_sr_sorted[$j]\n";
+last if($sr[$candidate_sr_sorted[$j]] =~ /^($fwd_sr)/||$sr[$candidate_sr_sorted[$j]] =~ ("_".$fwd_sr) || $sr[$candidate_sr_sorted[$j]] =~ /^($rev_sr)/||$sr[$candidate_sr_sorted[$j]] =~ ("_".$rev_sr));
+}
+if($j<scalar(@candidate_sr_sorted)){
+print "$fwd_sr $sr[$candidate_sr_sorted[$j]]\n";
+next;
+}
+}
+#print "Maximal sr $line, i=$i\n";
+push(@sr,$l[0]);
+for($j=0;$j<scalar(@f);$j+=2){ 
+my $ku=substr($f[$j],0,length($f[$j])-1);
+$ku_sr_number[$ku].="$i ";
+}
 $i++;
-}
-
-
-for($j=0;$j<scalar(@sr);$j++){
-push(@sr_rev,reverse_sr($sr[$j]));
-$valid_indices{$j}=1;
-}
-
-for($i=1;$i<200;$i+=2){
-last if(scalar(keys %valid_indices)==1);
-#print "Size: $i\n";
-for($j=0;$j<scalar(@sr);$j++){
-next if(not(defined($valid_indices{$j})));
-@s=split(/_/,$sr[$j]);
-next if(scalar(@s)!=$i);
-delete $valid_indices{$j};
-
-%candidate_k_u=();
-@l=split('_',$sr[$j]);
-for($m=0;$m<scalar(@l);$m+=2){
-@f=split(' ',$ku_sr{substr($l[$m],0,length($l[$m])-1)});
-foreach $kun(@f){
-$candidate_k_u{$kun}=1;
-}
-}
-
-#printf "Trying to merge $sr[$j]\n";
-#print "fwd: $sr[$j] rev: $sr_rev[$j]\n";
-foreach $k(keys %candidate_k_u){
-next if(not(defined($valid_indices{$k})));
-#print "candidate $sr[$k]\n";
-if($sr[$k] =~ /^($sr[$j])/||$sr[$k] =~ ("_".$sr[$j]) || $sr[$k] =~ /^($sr_rev[$j])/||$sr[$k] =~ ("_".$sr_rev[$j])){
-#print "found match $sr[$j] $sr[$k]\n";
-if((not defined($replace{$sr[$j]}))||$len{$replace{$sr[$j]}}<$len{$sr[$k]}){
-$replace{$sr[$j]}=$sr[$k];
-}
-}
-}
-if(defined($replace{$sr[$j]})){
-#print "merged $sr[$j] into $replace{$sr[$j]}\n";
-push(@merged,$sr[$j]);
-}
-}
-}
-
-my $temp_ref;
-
-for($j=0;$j<scalar(@merged);$j++){
-$temp_ref=$merged[$j];
-while(1){
-if(defined($replace{$temp_ref})){
-$temp_ref=$replace{$temp_ref};
-}
-else
-{
-last;
-}
-}
-print "$merged[$j] $temp_ref\n";
 }
 
 sub reverse_sr
