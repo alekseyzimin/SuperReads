@@ -8,7 +8,8 @@ dist-hook:
 	done
 
 
-AM_CPPFLAGS = -Wall $(JELLYFISH_CFLAGS) -I$(top_srcdir) $(CWERROR)
+AM_CPPFLAGS = -Wall $(JELLYFISH_CFLAGS) -I$(top_srcdir)	\
+-I$(top_srcdir)/include $(CWERROR)
 AM_LDFLAGS = -lpthread $(JELLYFISH_LIBS)
 
 bin_PROGRAMS = create_k_unitigs error_correct_reads			\

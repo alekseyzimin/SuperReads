@@ -20,6 +20,7 @@
 #include <jellyfish/atomic_gcc.hpp>
 #include <jellyfish/mer_counting.hpp>
 
+#include <jflib/multiplexed_io.hpp>
 #include <src/error_correct_reads.hpp>
 
 typedef uint64_t hkey_t;
@@ -48,6 +49,8 @@ class error_correct_t : public thread_exec {
   int                     _min_count;
   int                     _window;
   int                     _error;
+  jflib::o_multiplexer   *_output;
+  jflib::o_multiplexer   *_log;
 public:
   error_correct_t(jellyfish::parse_read *parser, hashes_t *hashes) :
     _parser(parser), _hashes(hashes), 
@@ -56,7 +59,35 @@ public:
   }
 
   void do_it(int nb_threads) {
+    std::ofstream details, output;
+
+    {
+      std::string details_file(_prefix);
+      details_file += ".log";
+      details.open(details_file.c_str());
+      if(!details.good())
+        eraise(std::runtime_error)
+          << "Failed to open file '" << details_file << "'" << err::no;
+    }
+    {
+      std::string output_file(_prefix);
+      output_file += ".fa";
+      output.open(output_file.c_str());
+      if(!output.good())
+        eraise(std::runtime_error)
+          << "Failed opening file '" << output_file << err::no;
+    }
+
+    details.exceptions(std::ios::eofbit|std::ios::failbit|std::ios::badbit);
+    output.exceptions(std::ios::eofbit|std::ios::failbit|std::ios::badbit);
+
+    _log    = new jflib::o_multiplexer(&details, 3 * nb_threads, 1024);
+    _output = new jflib::o_multiplexer(&output, 3 * nb_threads, 1024);
+
     exec_join(nb_threads);
+
+    delete _log;
+    delete _output;
   }
   
   virtual void start(int id) {
@@ -87,6 +118,8 @@ public:
   //  int advance() const { return _advance; }
   int window() const { return _window ? _window : _mer_len; }
   int error() const { return _error ? _error : _mer_len / 2; }
+  jflib::o_multiplexer &output() { return *_output; }
+  jflib::o_multiplexer &log() { return *_log; }
 };
 
 class error_correct_instance {
@@ -102,24 +135,16 @@ private:
   
 public:
   error_correct_instance(ec_t *ec, int id) :
-    _ec(ec), _id(id), _buff_size(0), _buffer(0) {}
+    _ec(ec), _id(id), _buff_size(0), _buffer(0) {
+    
+  }
 
   void start() {
     jellyfish::parse_read::thread parser = _ec->parser()->new_thread();
     const jellyfish::read_parser::read_t *read;
-    std::ostringstream output_file;
 
-    output_file << _ec->prefix() << "_" << _id;
-    std::ofstream details((output_file.str() + ".log").c_str());
-    if(!details.good())
-      eraise(std::runtime_error)
-        << "Failed to open file '" << output_file << ".log'" << err::no;
-    std::ofstream output((output_file.str() + ".fa").c_str());
-    if(!output.good())
-      eraise(std::runtime_error)
-        << "Failed opening file '" << output_file << ".fa'" << err::no;
-    details.exceptions(std::ios::eofbit|std::ios::failbit|std::ios::badbit);
-    output.exceptions(std::ios::eofbit|std::ios::failbit|std::ios::badbit);
+    jflib::omstream output(_ec->output());
+    jflib::omstream details(_ec->log());
 
     uint64_t nb_reads = 0;
     while((read = parser.next_read())) {
