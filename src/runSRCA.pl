@@ -505,10 +505,9 @@ print FILE "fi\n";
 print FILE "\n";
 
 #here we reduce the super reads removing containees
-print FILE "paste <(grep '^>' work1/superReadSequences.fasta | awk '{print substr(\$1,2)}' ) <(getNumBasesPerReadInFastaFile.perl work1/superReadSequences.fasta) > sr_sizes.tmp\n";
-print FILE "cat sr_sizes.tmp |reduce_sr.pl  > reduce.tmp\n";
+print FILE "paste <(grep '^>' work1/superReadSequences.fasta | awk '{print substr(\$1,2)}' ) <(getNumBasesPerReadInFastaFile.perl work1/superReadSequences.fasta) |sort -grk2,2 -S 10% |reduce_sr.pl  > reduce.tmp\n";
 print FILE "perl -ane '{\$sr{\$F[0]}=\$F[1]}END{open(FILE,\"work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\");while(\$line=<FILE>){chomp(\$line); \@l=split(/\\s+/,\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\\n\";}else{print \"\$line\\n\";}}}' reduce.tmp > readPlacementsInSuperReads.final.read.superRead.offset.ori.txt.reduced\n";
-print FILE "extractreads.pl <(cat sr_sizes.tmp reduce.tmp | awk '{print \$1}' |sort -S 10%|uniq -u ) work1/superReadSequences.fasta 1 > superReadSequences.reduced.fasta\n";
+print FILE "extractreads.pl <(cat <(grep '^>' work1/superReadSequences.fasta | awk '{print substr(\$1,2)}' ) reduce.tmp | awk '{print \$1}' |sort -S 10%|uniq -u ) work1/superReadSequences.fasta 1 > superReadSequences.reduced.fasta\n";
 print FILE "mv work1/superReadSequences.fasta work1/superReadSequences.fasta.bak\n";
 print FILE "mv work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt.bak\n";
 print FILE "mv superReadSequences.reduced.fasta work1/superReadSequences.fasta\n";
