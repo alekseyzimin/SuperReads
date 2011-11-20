@@ -48,6 +48,7 @@ VI)  Make sure you allow for an appropriate set of params
 #define AFTER_NEWLINE 1
 #define AFTER_HEADER_NEWLINE 2
 #define IN_SEQUENCE 3
+#define MAX_READ_LEN 100000000
 
 char *kUnitigSpace, **kUnitigSeq;
 int *kUnitigLengths;
@@ -116,7 +117,7 @@ int main (int argc, char **argv)
      
      if (strlen (errorFilename) == 0)
 	  sprintf (errorFilename, "%s/createFastaSuperReadSequences.errors.txt", workingDir);
-     mallocOrDie(line, 10000000, char);
+     mallocOrDie(line,MAX_READ_LEN, char);
      mallocOrDie (reverseComplementSpace, 1000000, char);
      mallocOrDie (outputSeqSpace, 3000000, char);
 
@@ -188,7 +189,7 @@ int main (int argc, char **argv)
      strcpy (fname, superReadListFile);
      infile = Fopen (fname, "r");
      errorFile = Fopen (errorFilename, "w");
-     while (fgets (line, 10000000, infile)) {
+     while (fgets (line, MAX_READ_LEN, infile)) {
 	  numReads = 1;
 	  cptr = line;
 	  while ((cptr = strstr (cptr, " ; "))) {
@@ -263,6 +264,7 @@ int main (int argc, char **argv)
 	  if (! noSequence)
 	       fputc ('>', stdout);
 	  fputs (superReadName, stdout); fputc ('\n', stdout);
+          fflush(stdout);
 	  if (! noSequence) {
 	       fputs (outputSeqSpace, stdout); fputc ('\n', stdout); }
      }
