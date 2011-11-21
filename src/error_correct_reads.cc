@@ -189,7 +189,6 @@ public:
              << " " << fwd_log << " " << bwd_log << "\n"
              << substr(start_out, end_out) << "\n";
     }
-    details << "Nb reads " << nb_reads << std::endl;
     details.close();
     output.close();
   }
