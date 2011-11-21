@@ -15,6 +15,7 @@
 */
 
 #include <vector>
+#include <memory>
 
 #include <jellyfish/dbg.hpp>
 #include <jellyfish/atomic_gcc.hpp>
@@ -22,6 +23,7 @@
 
 #include <jflib/multiplexed_io.hpp>
 #include <src/error_correct_reads.hpp>
+#include <src/gzip_stream.hpp>
 
 typedef uint64_t hkey_t;
 typedef uint64_t hval_t;
@@ -39,7 +41,7 @@ std::ostream &operator<<(std::ostream &os, const backward_counter &c) {
 
 template<class instance_t>
 class error_correct_t : public thread_exec {
-  jellyfish::parse_read *_parser;
+  jellyfish::parse_read  *_parser;
   hashes_t               *_hashes;
   int                     _mer_len;
   int                     _skip;
@@ -49,8 +51,9 @@ class error_correct_t : public thread_exec {
   int                     _min_count;
   int                     _window;
   int                     _error;
-  jflib::o_multiplexer   *_output;
-  jflib::o_multiplexer   *_log;
+  bool                    _gzip;
+  jflib::o_multiplexer *  _output;
+  jflib::o_multiplexer *  _log;
 public:
   error_correct_t(jellyfish::parse_read *parser, hashes_t *hashes) :
     _parser(parser), _hashes(hashes), 
@@ -58,36 +61,38 @@ public:
     _skip(0), _good(1), _min_count(1), _window(0), _error(0) {
   }
 
+private:
+  std::ostream *open_file(const char *suffix) {
+    std::ostream *res;
+    std::string file(_prefix);
+    file += suffix;
+    if(_gzip) {
+      file += ".gz";
+      res = new gzipstream(file.c_str());
+    } else {
+      res = new std::ofstream(file.c_str());
+    }
+      
+    if(!res->good())
+      eraise(std::runtime_error)
+        << "Failed to open file '" << file << "'" << err::no;
+    res->exceptions(std::ios::eofbit|std::ios::failbit|std::ios::badbit);
+    return res;
+  }
+
+public:
   void do_it(int nb_threads) {
-    std::ofstream details, output;
+    std::auto_ptr<std::ostream> details(open_file(".log"));
+    std::auto_ptr<std::ostream> output(open_file(".fa"));
 
-    {
-      std::string details_file(_prefix);
-      details_file += ".log";
-      details.open(details_file.c_str());
-      if(!details.good())
-        eraise(std::runtime_error)
-          << "Failed to open file '" << details_file << "'" << err::no;
-    }
-    {
-      std::string output_file(_prefix);
-      output_file += ".fa";
-      output.open(output_file.c_str());
-      if(!output.good())
-        eraise(std::runtime_error)
-          << "Failed opening file '" << output_file << err::no;
-    }
-
-    details.exceptions(std::ios::eofbit|std::ios::failbit|std::ios::badbit);
-    output.exceptions(std::ios::eofbit|std::ios::failbit|std::ios::badbit);
-
-    _log    = new jflib::o_multiplexer(&details, 3 * nb_threads, 1024);
-    _output = new jflib::o_multiplexer(&output, 3 * nb_threads, 1024);
+    std::auto_ptr<jflib::o_multiplexer> 
+      log_m(new jflib::o_multiplexer(details.get(), 3 * nb_threads, 1024));
+    std::auto_ptr<jflib::o_multiplexer>
+      output_m(new jflib::o_multiplexer(output.get(), 3 * nb_threads, 1024));
+    _log    = log_m.get();
+    _output = output_m.get();
 
     exec_join(nb_threads);
-
-    delete _log;
-    delete _output;
   }
   
   virtual void start(int id) {
@@ -104,6 +109,7 @@ public:
   //  error_correct_t & advance(int a) { _advance = a; return *this; }
   error_correct_t & window(int w) { _window = w; return *this; }
   error_correct_t & error(int e) { _error = e; return *this; }
+  error_correct_t & gzip(bool g) { _gzip = g; return *this; }
 
   inline hashes_t::const_iterator begin_hash() { return _hashes->begin(); }
   inline hashes_t::const_iterator end_hash() { return _hashes->end(); }
@@ -118,6 +124,7 @@ public:
   //  int advance() const { return _advance; }
   int window() const { return _window ? _window : _mer_len; }
   int error() const { return _error ? _error : _mer_len / 2; }
+  bool gzip() const { return _gzip; }
   jflib::o_multiplexer &output() { return *_output; }
   jflib::o_multiplexer &log() { return *_log; }
 };
@@ -159,6 +166,7 @@ public:
       chash = _ec->begin_hash();
       if(!find_starting_mer(mer, input, read->seq_e, out)) {
         details << "Skipped " << substr(read->header, read->hlen) << "\n";
+        details << jflib::endr;
         continue;
       }
       DBG << V((void*)read->seq_s) << V((void*)input) << V(kmer_t::k());
@@ -188,8 +196,8 @@ public:
       output << ">" << substr(read->header, read->hlen) 
              << " " << fwd_log << " " << bwd_log << "\n"
              << substr(start_out, end_out) << "\n";
+      output << jflib::endr;
     }
-    details << "Nb reads " << nb_reads << std::endl;
     details.close();
     output.close();
   }
@@ -417,7 +425,8 @@ int main(int argc, char *argv[])
     .anchor(args.anchor_count_given ? args.anchor_count_arg : args.min_count_arg)
     .prefix(args.output_arg).min_count(args.min_count_arg)
     .window(args.window_given ? args.window_arg : key_len / 2)
-    .error(args.error_given ? args.error_arg : key_len / 4);
+    .error(args.error_given ? args.error_arg : key_len / 4)
+    .gzip(args.gzip_flag);
   correct.do_it(args.thread_arg);
 
   return 0;

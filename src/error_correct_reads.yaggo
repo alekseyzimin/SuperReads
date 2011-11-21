@@ -34,6 +34,9 @@ option("error", "e") {
 option("output", "o") {
   description "Output file prefix"
   string; default "error_corrected"; typestr "prefix" }
+option("gzip") {
+  description "Gzip output file"
+  flag; off }
 arg("file") {
   description "Input sequence"
   c_string; typestr "path"; multiple; at_least 1 }
