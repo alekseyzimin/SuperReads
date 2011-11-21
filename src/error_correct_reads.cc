@@ -41,19 +41,19 @@ std::ostream &operator<<(std::ostream &os, const backward_counter &c) {
 
 template<class instance_t>
 class error_correct_t : public thread_exec {
-  jellyfish::parse_read               *_parser;
-  hashes_t                            *_hashes;
-  int                                  _mer_len;
-  int                                  _skip;
-  int                                  _good;
-  int                                  _anchor;
-  std::string                          _prefix;
-  int                                  _min_count;
-  int                                  _window;
-  int                                  _error;
-  bool                                 _gzip;
-  std::auto_ptr<jflib::o_multiplexer>  _output;
-  std::auto_ptr<jflib::o_multiplexer>  _log;
+  jellyfish::parse_read  *_parser;
+  hashes_t               *_hashes;
+  int                     _mer_len;
+  int                     _skip;
+  int                     _good;
+  int                     _anchor;
+  std::string             _prefix;
+  int                     _min_count;
+  int                     _window;
+  int                     _error;
+  bool                    _gzip;
+  jflib::o_multiplexer *  _output;
+  jflib::o_multiplexer *  _log;
 public:
   error_correct_t(jellyfish::parse_read *parser, hashes_t *hashes) :
     _parser(parser), _hashes(hashes), 
@@ -85,8 +85,12 @@ public:
     std::auto_ptr<std::ostream> details(open_file(".log"));
     std::auto_ptr<std::ostream> output(open_file(".fa"));
 
-    _log.reset(new jflib::o_multiplexer(details.get(), 3 * nb_threads, 1024));
-    _output.reset(new jflib::o_multiplexer(output.get(), 3 * nb_threads, 1024));
+    std::auto_ptr<jflib::o_multiplexer> 
+      log_m(new jflib::o_multiplexer(details.get(), 3 * nb_threads, 1024));
+    std::auto_ptr<jflib::o_multiplexer>
+      output_m(new jflib::o_multiplexer(output.get(), 3 * nb_threads, 1024));
+    _log    = log_m.get();
+    _output = output_m.get();
 
     exec_join(nb_threads);
   }
@@ -121,8 +125,8 @@ public:
   int window() const { return _window ? _window : _mer_len; }
   int error() const { return _error ? _error : _mer_len / 2; }
   bool gzip() const { return _gzip; }
-  jflib::o_multiplexer &output() { return *_output.get(); }
-  jflib::o_multiplexer &log() { return *_log.get(); }
+  jflib::o_multiplexer &output() { return *_output; }
+  jflib::o_multiplexer &log() { return *_log; }
 };
 
 class error_correct_instance {
@@ -162,6 +166,7 @@ public:
       chash = _ec->begin_hash();
       if(!find_starting_mer(mer, input, read->seq_e, out)) {
         details << "Skipped " << substr(read->header, read->hlen) << "\n";
+        details << jflib::endr;
         continue;
       }
       DBG << V((void*)read->seq_s) << V((void*)input) << V(kmer_t::k());
@@ -191,6 +196,7 @@ public:
       output << ">" << substr(read->header, read->hlen) 
              << " " << fwd_log << " " << bwd_log << "\n"
              << substr(start_out, end_out) << "\n";
+      output << jflib::endr;
     }
     details.close();
     output.close();
