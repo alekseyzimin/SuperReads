@@ -10,28 +10,37 @@ chomp($line);
 #print "Processing sr $line\n";
 %candidate_sr_counts=();
 @f=split('_',$l[0]);
+$candidate_sr_list="";
 for($j=0;$j<scalar(@f);$j+=2){
 my $ku=substr($f[$j],0,length($f[$j])-1);
 if(defined($ku_sr_number[$ku])){
-@c=split(' ',$ku_sr_number[$ku]);
-#print "Preliminary candidates $ku_sr_number[$ku]\n";
-foreach $v(@c){
-#print "Preliminary candidate $sr[$v] $v\n";
-$candidate_sr_counts{$v}++;
+$candidate_sr_list.="$ku_sr_number[$ku] ";
 }
-}
-}
-%candidate_sr=();
-foreach $v(keys %candidate_sr_counts){
-if($candidate_sr_counts{$v}>=int((scalar(@f)+1)/2+0.1)){
-#print "Final candidate $v\n";
-$candidate_sr{$v}=1;
+else{
+$candidate_sr_list="";
+last;
 }
 }
 
-if(scalar(keys %candidate_sr)>0){
+if(length($candidate_sr_list)>0){
+@c=split(/\s+/,$candidate_sr_list);
+foreach $v(@c){
+$candidate_sr_counts{$v}++;
+}
+
+@candidate_sr=();
+foreach $v(keys %candidate_sr_counts){
+#print "Candidate $v $sr[$v] count $candidate_sr_counts{$v}\n";
+if($candidate_sr_counts{$v}>=int((scalar(@f)+1)/2+.001)){
+push(@candidate_sr,$v);
+#print "Final candidate $v $sr[$v]\n";
+}
+}
+
+
+if(scalar(@candidate_sr)>0){
 #print "Found ",scalar(keys %candidate_sr)," candidates for merging\n";
-@candidate_sr_sorted = sort {$a>$b} (keys %candidate_sr);
+@candidate_sr_sorted = sort {$a>$b} (@candidate_sr);
 #look for the match
 $fwd_sr=$l[0];
 $rev_sr=reverse_sr($l[0]);
@@ -42,6 +51,7 @@ last if($sr[$candidate_sr_sorted[$j]] =~ /^($fwd_sr)/||$sr[$candidate_sr_sorted[
 if($j<scalar(@candidate_sr_sorted)){
 print "$fwd_sr $sr[$candidate_sr_sorted[$j]]\n";
 next;
+}
 }
 }
 #print "Maximal sr $line, i=$i\n";

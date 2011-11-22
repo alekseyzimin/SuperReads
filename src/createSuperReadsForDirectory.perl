@@ -288,7 +288,7 @@ if (! $mikedebug) { &killFiles ($myProgOutput26, $myProgOutput16, $myProgOutput2
 $cmd = "cat $myProgOutput27 | $exeDir/reportSuperReadGroups.perl > $myProgOutput28";
 &runCommandAndExitIfBad ($cmd, $myProgOutput28, 1);
 
-$cmd = "grep -v '^ :   ;   ;' $myProgOutput28 | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -error-filename $sequenceCreationErrorFile2 > $finalSuperReadSequenceFile";
+$cmd = "grep -v '^ :' $myProgOutput28 | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -error-filename $sequenceCreationErrorFile2 > $finalSuperReadSequenceFile";
 &runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1);
 
 $cmd = "cat $sequenceCreationErrorFile1 $sequenceCreationErrorFile2 > $sequenceCreationErrorFileCombined";
