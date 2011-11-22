@@ -17,11 +17,11 @@ TEST(CharbBasic, Init) {
   EXPECT_EQ((size_t)42, init_len.capacity());
 
   charb copy_const(init_len);
-  EXPECT_EQ(init_len.capacity(), copy_const.capacity());
+  EXPECT_EQ(init_len.len(), copy_const.len());
   EXPECT_EQ('\0', copy_const[0]);
   charb copy_op;
   copy_op = init_len;
-  EXPECT_EQ(init_len.capacity(), copy_op.capacity());
+  EXPECT_EQ(init_len.len(), copy_op.len());
   EXPECT_EQ('\0', copy_op[0]);
 }
 
@@ -66,6 +66,17 @@ TEST(CharbBasic, Copy) {
   EXPECT_STREQ(str, from_copy);
   EXPECT_EQ('H', from_copy.front());
   EXPECT_EQ('d', from_copy.back());
+
+  charb from_copy_str;
+  from_copy_str = str;
+  EXPECT_EQ(str_len + 1, from_copy_str.capacity());
+  EXPECT_EQ(str_len, from_copy_str.len());
+  for(size_t i = 0; i < str_len; ++i)
+    EXPECT_EQ(str[i], from_copy_str[i]);
+  EXPECT_STREQ(str, from_copy_str);
+  EXPECT_EQ('H', from_copy_str.front());
+  EXPECT_EQ('d', from_copy_str.back());
+  
 
   charb x("Hello");
   x[3] = '_';

@@ -25,8 +25,8 @@ public:
   explicit basic_charb(size_t s) : super(s + 1) {
     *super::ptr_ = '\0';
   }
-  basic_charb(const basic_charb &rhs) : super(rhs.base_, rhs.capacity()) {
-    *super::ptr_ = '\0';
+  basic_charb(const basic_charb &rhs) : super(rhs.base_, rhs.len() + 1) {
+    *--super::ptr_ = '\0';
   }
   basic_charb(const char *str) : super(str, strlen(str) + 1) {
     *--super::ptr_ = '\0';
@@ -39,11 +39,11 @@ public:
   }
   virtual ~basic_charb() { }
 
-  basic_charb& operator=(const basic_charb &rhs) {
-    super::operator=(rhs);
-    *super::ptr_ = '\0';
+  basic_charb& operator=(basic_charb rhs) {
+    this->swap(rhs);
+    return *this;
   }
-  size_t len() { return super::size(); }
+  size_t len() const { return super::size(); }
   friend char *fgets <> (basic_charb<R> &b, FILE *stream, char *cptr);
   friend int vsprintf <> (basic_charb<R> &b, const char *format, va_list ap);
   friend ssize_t getline <> (basic_charb<R> &b, FILE *stream);
