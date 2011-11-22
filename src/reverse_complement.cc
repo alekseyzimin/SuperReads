@@ -1,26 +1,22 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include <string.h>
+#include <src/charb.hpp>
 
 int main(int argc, char *argv[])
 {
   ssize_t bytes_read,i,j;
-  size_t nbytes=10000000;
-  char *my_string;
-  char *rev_sequence;
-  
-  my_string = (char *)malloc (nbytes);
-  rev_sequence = (char *)malloc (nbytes);
+  charb my_string(100000),rev_sequence(100000);
   
   while(1)
     {
-      if(fgets (my_string, nbytes, stdin)==NULL)
+      if(fgets (my_string, 1, stdin)==NULL)
 	break;
       else
 	{
 	  if(my_string[0]=='>')
 	    {
-	      printf("%s",my_string);
+	      printf("%s",(char*)my_string);
 	    }
 	  else
 	    {
@@ -43,7 +39,7 @@ int main(int argc, char *argv[])
 		  j++;
 		}
               rev_sequence[j]='\0';
-	      printf("%s\n",rev_sequence);
+	      printf("%s\n",(char*)rev_sequence);
 	    }
 	}
     }

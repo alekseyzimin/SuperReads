@@ -41,6 +41,7 @@ VI)  Make sure you allow for an appropriate set of params
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <src/charb.hpp>
 
 #define NUM_KUNITIGS_FILENAME "numKUnitigs.txt"
 #define KUNITIG_FILE_COMPLETE "guillaumeKUnitigsAtLeast32bases_all.fasta"
@@ -48,11 +49,12 @@ VI)  Make sure you allow for an appropriate set of params
 #define AFTER_NEWLINE 1
 #define AFTER_HEADER_NEWLINE 2
 #define IN_SEQUENCE 3
-#define MAX_READ_LEN 100000000
+#define MAX_READ_LEN 1
 
 char *kUnitigSpace, **kUnitigSeq;
 int *kUnitigLengths;
-char *line, *reverseComplementSpace, *outputSeqSpace;
+charb line(1000000);
+char *reverseComplementSpace, *outputSeqSpace;
 
 void generateReverseComplement (char *seq, int seqLen);
 FILE *Fopen (const char *fn, const char *mode);
@@ -69,7 +71,8 @@ if (name == NULL) { fprintf (stderr, "Couldn't allocate space for '%s'\nBye!\n",
 
 int main (int argc, char **argv)
 {
-     char *workingDir, superReadListFile[500], fname[500], kUnitigFilename[500];
+     char *workingDir;
+     charb superReadListFile(512), fname(512), kUnitigFilename(512);
      struct stat statbuf;
      uint64_t kUnitigSeqFileSize, fsize;
      uint64_t i64, j64=0;
@@ -77,13 +80,14 @@ int main (int argc, char **argv)
      FILE *infile, *errorFile;
      int lastKUnitigNumber, kUnitigNumber=0, kUnitigNumberHold, i, argNum;
      int state;
-     char *cptr, *cptr2, superReadName[32768], superReadNamePart[32768];
+     char *cptr, *cptr2;
+     charb superReadName(32768), superReadNamePart(32768);
      char ori, oriHold;
      int overlap;
      int outputSeqLen;
      int seqDiffMax;
      int fail;
-     char errorMessage[1000], errorMessageLine[1000];
+     charb errorMessage(2000), errorMessageLine(2000);
      int numReads;
      char pluralStr[2];
      int noSequence = 0;
@@ -117,7 +121,6 @@ int main (int argc, char **argv)
      
      if (strlen (errorFilename) == 0)
 	  sprintf (errorFilename, "%s/createFastaSuperReadSequences.errors.txt", workingDir);
-     mallocOrDie(line,MAX_READ_LEN, char);
      mallocOrDie (reverseComplementSpace, 1000000, char);
      mallocOrDie (outputSeqSpace, 3000000, char);
 
@@ -131,7 +134,7 @@ int main (int argc, char **argv)
      infile = Fopen (fname, "r");
      size_t bytes_read = fread (kUnitigSpace, 1, kUnitigSeqFileSize, infile);
      if(bytes_read != kUnitigSeqFileSize) {
-       fprintf(stderr, "Failed to read the entire file '%s'. Bye!\n", fname);
+       fprintf(stderr, "Failed to read the entire file '%s'. Bye!\n", (char*)fname);
        exit(2);
      }
      fclose (infile);
@@ -142,7 +145,7 @@ int main (int argc, char **argv)
      infile = Fopen (kUnitigFilename, "r");
      int fields_read = fscanf (infile, "%d\n", &lastKUnitigNumber);
      if(fields_read != 1) {
-       fprintf(stderr, "Failed to read one int from '%s'. Bye!\n", kUnitigFilename);
+       fprintf(stderr, "Failed to read one int from '%s'. Bye!\n", (char*)kUnitigFilename);
        exit(2);
      }
      fclose (infile);
@@ -242,7 +245,8 @@ int main (int argc, char **argv)
 		    else 
 			 strcpy (pluralStr, "s");
 		    sprintf (errorMessageLine, "The %d-base overlap between %d%c and %d%c has %d difference%s.\n", overlap, kUnitigNumberHold, oriHold, kUnitigNumber, ori, numdiffs, pluralStr);
-		    strcat (errorMessage, errorMessageLine); }
+                    strcat (errorMessage, errorMessageLine); 
+		    }
 	       strcat (outputSeqSpace, cptr2);
 	       strcat (superReadName, superReadNamePart); 
 	       kUnitigNumberHold = kUnitigNumber;
@@ -257,14 +261,13 @@ int main (int argc, char **argv)
 		    strcpy (pluralStr, "");
 	       else
 		    strcpy (pluralStr, "s");
-	       sprintf (errorMessageLine, "%s (with %d read%s) fails\n", superReadName, numReads, pluralStr);
+	       sprintf (errorMessageLine, "%s (with %d read%s) fails\n", (char *)superReadName, numReads, pluralStr);
 	       fputs (errorMessageLine, errorFile);
 	       fputs (errorMessage, errorFile); fputc ('\n', errorFile);
 	       continue; }
 	  if (! noSequence)
 	       fputc ('>', stdout);
 	  fputs (superReadName, stdout); fputc ('\n', stdout);
-          fflush(stdout);
 	  if (! noSequence) {
 	       fputs (outputSeqSpace, stdout); fputc ('\n', stdout); }
      }
