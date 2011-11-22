@@ -23,33 +23,33 @@ class basic_charb : public ExpBuffer<char, R> {
 public:
   basic_charb() : super() { }
   explicit basic_charb(size_t s) : super(s + 1) {
-    *super::_ptr = '\0';
+    *super::ptr_ = '\0';
   }
-  basic_charb(const basic_charb &rhs) : super(rhs._base, rhs.capacity()) {
-    *super::_ptr = '\0';
+  basic_charb(const basic_charb &rhs) : super(rhs.base_, rhs.capacity()) {
+    *super::ptr_ = '\0';
   }
   basic_charb(const char *str) : super(str, strlen(str) + 1) {
-    *--super::_ptr = '\0';
+    *--super::ptr_ = '\0';
   }
   basic_charb(const char *str, size_t len) : super(str, len + 1) {
-    *--super::_ptr = '\0';
+    *--super::ptr_ = '\0';
   }
   basic_charb(const std::string &s) : super(s.c_str(), s.size() + 1) {
-    *--super::_ptr = '\0';
+    *--super::ptr_ = '\0';
   }
   virtual ~basic_charb() { }
 
   basic_charb& operator=(const basic_charb &rhs) {
     super::operator=(rhs);
-    *super::_ptr = '\0';
+    *super::ptr_ = '\0';
   }
-
+  size_t len() { return super::size(); }
   friend char *fgets <> (basic_charb<R> &b, FILE *stream, char *cptr);
   friend int vsprintf <> (basic_charb<R> &b, const char *format, va_list ap);
   friend ssize_t getline <> (basic_charb<R> &b, FILE *stream);
   friend ssize_t getdelim <> (basic_charb<R> &b, int delim, FILE *stream);
 };
-typedef basic_charb<reallocator> charb;
+typedef basic_charb<reallocator<char> > charb;
 
 /** fgets for char buffer. Expand the size of the buffer if the line
  * does not fit.
@@ -61,7 +61,7 @@ char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
   char *start = cptr;
 
   while(true) {
-    char *res = fgets(cptr, b.capacity() - (cptr - b._base), stream);
+    char *res = fgets(cptr, b.capacity() - (cptr - b.base_), stream);
     if(!res)
       break;
     size_t char_read;
@@ -73,18 +73,18 @@ char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
       pos = npos;
     }
     cptr      += char_read;
-    if(cptr < b._end - 1 || *(cptr - 1) == '\n')
+    if(cptr < b.end_ - 1 || *(cptr - 1) == '\n')
       break;
-    size_t off  = cptr  - b._base;
-    size_t soff = start - b._base;
+    size_t off  = cptr  - b.base_;
+    size_t soff = start - b.base_;
     b.enlarge();
-    cptr  = b._base + off;
-    start = b._base + soff;
+    cptr  = b.base_ + off;
+    start = b.base_ + soff;
   }
   
-  if(cptr == b._base)
+  if(cptr == b.base_)
     return 0;
-  b._ptr = cptr;
+  b.ptr_ = cptr;
   return start;
 }
 
@@ -105,12 +105,12 @@ char *fgets(basic_charb<R> &b, T size, FILE *stream) { return fgets(b, stream); 
 template<typename R>
 ssize_t getline(basic_charb<R> &b, FILE *stream) {
   size_t n = b.capacity();
-  ssize_t res = getline(&b._base, &n, stream);
+  ssize_t res = getline(&b.base_, &n, stream);
   if(res == -1)
     return res;
-  b._ptr = b._base + res;
+  b.ptr_ = b.base_ + res;
   if(n != b.capacity())
-    b._end = b._base + n;
+    b.end_ = b.base_ + n;
 
   return res;
 }
@@ -125,12 +125,12 @@ ssize_t getline(basic_charb<T> &b, T *n, int delim, FILE *stream) {
 template<typename R>
 ssize_t getdelim(basic_charb<R> &b, int delim, FILE *stream) {
   size_t n = b.capacity();
-  ssize_t res = getdelim(&b._base, &n, delim, stream);
+  ssize_t res = getdelim(&b.base_, &n, delim, stream);
   if(res == -1)
     return res;
-  b._ptr = b._base + res;
+  b.ptr_ = b.base_ + res;
   if(n != b.capacity())
-    b._end = b._base + n;
+    b.end_ = b.base_ + n;
 
   return res;
 }
@@ -181,15 +181,15 @@ int vsprintf(basic_charb<R> &b, const char *format, va_list _ap) {
   while(true) {
     va_list ap;
     va_copy(ap, _ap);
-    res = vsnprintf(b._base, b.capacity(), format, ap);
+    res = vsnprintf(b.base_, b.capacity(), format, ap);
     va_end(ap);
     if(res < 0)
       return res;
     if((size_t)res < b.capacity())
       break;
-    b.ensure(res + 1);
+    b.reserve(res + 1);
   }
-  b._ptr = b._base + res;
+  b.ptr_ = b.base_ + res;
   return res;
 }
 #endif /* __CHARB_HPP__ */

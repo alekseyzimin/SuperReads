@@ -11,9 +11,9 @@ TEST(CharbBasic, Init) {
   EXPECT_EQ((size_t)0, init_len.len());
   EXPECT_EQ('\0', init_len[0]);
   EXPECT_EQ('\0', *init_len);
-  init_len.ensure(10);
+  init_len.reserve(10);
   EXPECT_EQ((size_t)21, init_len.capacity());
-  init_len.ensure(30);
+  init_len.reserve(30);
   EXPECT_EQ((size_t)42, init_len.capacity());
 
   charb copy_const(init_len);
@@ -36,6 +36,8 @@ TEST(CharbBasic, Copy) {
   for(size_t i = 0; i < str_len; ++i)
     EXPECT_EQ(str[i], from_str[i]);
   EXPECT_STREQ(str, from_str);
+  EXPECT_EQ('H', from_str.front());
+  EXPECT_EQ('d', from_str.back());
 
   charb from_str_len(str, str_len);
   EXPECT_EQ(str_len + 1, from_str_len.capacity());
@@ -43,6 +45,8 @@ TEST(CharbBasic, Copy) {
   for(size_t i = 0; i < str_len; ++i)
     EXPECT_EQ(str[i], from_str_len[i]);
   EXPECT_STREQ(str, from_str_len);
+  EXPECT_EQ('H', from_str_len.front());
+  EXPECT_EQ('d', from_str_len.back());
 
   charb from_string(string);
   EXPECT_EQ(str_len + 1, from_string.capacity());
@@ -50,6 +54,8 @@ TEST(CharbBasic, Copy) {
   for(size_t i = 0; i < str_len; ++i)
     EXPECT_EQ(str[i], from_string[i]);
   EXPECT_STREQ(str, from_string);
+  EXPECT_EQ('H', from_string.front());
+  EXPECT_EQ('d', from_string.back());
 
   charb from_copy;
   from_copy = from_string;
@@ -58,6 +64,8 @@ TEST(CharbBasic, Copy) {
   for(size_t i = 0; i < str_len; ++i)
     EXPECT_EQ(str[i], from_copy[i]);
   EXPECT_STREQ(str, from_copy);
+  EXPECT_EQ('H', from_copy.front());
+  EXPECT_EQ('d', from_copy.back());
 
   charb x("Hello");
   x[3] = '_';
