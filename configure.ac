@@ -21,7 +21,7 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([rt], [clock_gettime])
 
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h stddef.h stdint.h stdlib.h string.h strings.h sys/time.h sys/timeb.h unistd.h wchar.h wctype.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h stddef.h stdint.h stdlib.h string.h strings.h sys/time.h sys/timeb.h sys/mman.h unistd.h wchar.h wctype.h])
 
 # Checks for Jellyfish module
 PKG_CHECK_MODULES([JELLYFISH], [jellyfish-1.1])
@@ -50,7 +50,7 @@ AC_FUNC_MMAP
 AC_FUNC_REALLOC
 AC_FUNC_STRERROR_R
 AC_FUNC_STRTOD
-AC_CHECK_FUNCS([alarm clock_gettime dup2 getcwd getdelim getpagesize gettimeofday isascii memset mkdir munmap regcomp rmdir socket strcasecmp strchr strdup strerror strrchr strstr strtol strtoull])
+AC_CHECK_FUNCS([alarm clock_gettime dup2 getcwd getdelim getpagesize gettimeofday isascii memset mkdir munmap regcomp rmdir socket strcasecmp strchr strdup strerror strrchr strstr strtol strtoull mmap munmap mremap])
 
 # Debugging flag
 AC_ARG_ENABLE([debug], AS_HELP_STRING([--enable-debug], [Enable debugging]))
