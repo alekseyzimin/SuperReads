@@ -59,7 +59,8 @@ noinst_HEADERS = aligned_simple_array.hpp misc.hpp kmer.hpp		\
 diskBasedUnitigger.h create_k_unitigs_cmdline.hpp			\
 error_correct_reads_cmdline.hpp error_correct_reads.hpp err_log.hpp	\
 kmer.hpp priorityHeap.h redBlackTreesInsertOnly.h			\
-create_k_unitigs_cmdline.hpp yaggo.hpp gzip_stream.hpp charb.hpp
+create_k_unitigs_cmdline.hpp yaggo.hpp gzip_stream.hpp charb.hpp	\
+exp_buffer.hpp
 
 error_corrected2frg_SOURCES = error_corrected2frg.c 
 homo_trim_SOURCES = homo_trim.cc 
