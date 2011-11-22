@@ -1,8 +1,9 @@
 #include <gtest/gtest.h>
 #include <src/exp_buffer.hpp>
 
+typedef ExpandingBuffer<int, remaper> int_buf;
+
 TEST(Remaper, Init) {
-  typedef ExpandingBuffer<int, remaper> int_buf;
   int_buf b;
 
   EXPECT_EQ((size_t)0, b.capacity());
@@ -28,4 +29,21 @@ TEST(Remaper, Init) {
   EXPECT_EQ(5000, *(b.ptr() - 1));
   for(int_buf::iterator it = b.begin(); it != b.end(); ++it)
     EXPECT_TRUE(*it == 0 || *it == (it - b.begin()));
+}
+
+TEST(Remaper, swap) {
+  int_buf b(10);
+
+  for(int i = 0; i < b.capacity(); ++i)
+    b[i] = 2 * i;
+  
+  EXPECT_EQ((size_t)10, b.len());
+  
+  int_buf bs;
+  std::swap(b, bs);
+  
+  EXPECT_EQ((size_t)0, b.capacity());
+  EXPECT_EQ((size_t)10, bs.capacity());
+  for(int i = 0; i < bs.capacity(); ++i)
+    EXPECT_EQ(2 * i, bs[i]);
 }

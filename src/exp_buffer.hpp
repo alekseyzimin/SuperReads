@@ -6,6 +6,17 @@
 #include <sys/mman.h>
 #include <config.h>
 
+/** A growable array (and expanding buffer) but only suitable for
+ * types than can be memcpy. Similar std::vector (should we use it
+ * instead?) but intended to be a drop in replacement of some
+ * statically allocated buffers.
+ *
+ * Potentially the one interest is with the remaper allocator. With
+ * very large containers, is allows growing the size without any
+ * copying (which may not be achievable with std::vector. Is this
+ * true?)
+ */
+
 struct reallocator {
   void *operator()(void *ptr, size_t size) {
     return ::realloc(ptr, size);
@@ -47,8 +58,17 @@ protected:
   R realloc;
 
 public:
-  typedef T   value_type;
-  typedef T * iterator;
+  typedef T&        reference;
+  typedef const T& const_reference;
+  typedef T*        iterator;
+  typedef const T*  const_iterator;
+  typedef size_t    size_type;
+  typedef ptrdiff_t difference_type;
+  typedef T         value_type;
+  typedef T*        pointer;
+  typedef const T*  const_pointer;
+  // no reverse iterator type
+  // no allocator type (it does not satisfy the std::Allocator interface).
 
   ExpBuffer() : _base(0), _end(0), _ptr(0) { }
   explicit ExpBuffer(size_t s) : _base(0), _end(0), _ptr(0) {
@@ -61,24 +81,20 @@ public:
   }
   ExpBuffer(const ExpBuffer &rhs) : _base(0), _end(0), _ptr(0) {
     ensure(rhs.capacity());
-    memcpy(_base, rhs._base, sizeof(T) * rhs.size());
-    _ptr = _base + rhs.size();
+    memcpy(_base, rhs._base, sizeof(T) * rhs.len());
+    _ptr = _base + rhs.len();
   }
   virtual ~ExpBuffer() {
-    if(_base)
-      realloc(_base, 0);
-    _base = 0;
+    realloc(_base, 0);
   }
 
   size_t capacity() const { return _end - _base; }
   size_t len() const { return _ptr - _base; }
 
-  ExpBuffer &operator=(const ExpBuffer &rhs) {
-    if(this != &rhs) {
-      ensure(rhs.capacity());
-      memcpy(_base, rhs._base, sizeof(T) * rhs.len());
-      _ptr = _base + rhs.len();
-    }
+  ExpBuffer &operator=(ExpBuffer rhs) {
+    std::swap(_base, rhs._base);
+    std::swap(_ptr, rhs._ptr);
+    std::swap(_end, rhs._end);
     return *this;
   }
 
@@ -112,6 +128,16 @@ public:
   }
   void enlarge() { ensure(capacity() * 2); }
 };
+
+// TODO: This overloading does not seem to work. This version is not
+// called but rather the standard swap by assignment is called. Why
+// not?
+template<typename T, typename R>
+void std::swap(ExpBuffer<T, R> &a, ExpBuffer<T, R> &b) {
+  std::swap(a._base, b._base);
+  std::swap(a._ptr, b._ptr);
+  std::swap(a._end, b._end);
+}
 
 // template<typename T, typename VT>
 // class extending_subscript {
@@ -148,6 +174,5 @@ public:
     return super::base()[i];
   }
 };
-
 
 #endif /* _EXP_BUFFER_H_ */
