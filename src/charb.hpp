@@ -45,6 +45,7 @@ public:
     super::reserve(rhs_len + 1);
     strcpy(super::base_, rhs);
     super::ptr_ = super::base_ + rhs_len;
+    return *this;
   }
 
   basic_charb& operator=(basic_charb rhs) {
