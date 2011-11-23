@@ -1,4 +1,4 @@
-SUBDIRS = src unittests
+SUBDIRS = src src2 unittests
 
 JFLIB_INC = include/jflib
 noinst_HEADERS = $(JFLIB_INC)/circular_buffer.hpp			\

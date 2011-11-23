@@ -58,5 +58,6 @@ AS_IF([test "x$enable_debug" = "x"], AC_DEFINE([NDEBUG], [1], [Defined if no deb
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile
+                 src2/Makefile
                  unittests/Makefile])
 AC_OUTPUT
