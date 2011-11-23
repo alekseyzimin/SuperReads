@@ -7,6 +7,14 @@ $pass = 1;
 if ($#ARGV >= 2) {
     $pass = $ARGV[2]; }
 
+
+#readinfo hash contains:
+#(readOri,insertSize,insertStdDev,isNeeded,kUniSeq,firstReadsKUniSeq)
+%readInfo=();
+#kUniInfo hash contains:
+#(wasFound,kUni,lengthAdjustment,kUniOri)
+%kUniInfo=();
+
 open (FILE, $readMateFile);
 while ($line = <FILE>) {
     chomp ($line);
@@ -15,19 +23,22 @@ while ($line = <FILE>) {
     if ($ori1 =~ /\d/) { $read1 .= $ori1; $ori1 = "F"; }
     ($read2, $ori2) = ($flds[1] =~ /^(.+)(.)$/);
     if ($ori2 =~ /\d/) { $read2 .= $ori2; $ori2 = "R"; }
+    my @readinfo1_container;
+    my @readinfo2_container;
+    @readinfo1_container=($ori1,$flds[2],$flds[3],1);
+    $readinfo2_container[0]=$ori2;
+    $readinfo2_container[3]=2;
+    
     push (@read1s, $read1);
-    $readOri{$read1} = $ori1;
     push (@read2s, $read2);
-    $readOri{$read2} = $ori2;
-    $insertSize{$read1} = $flds[2];
-    $insertStdDev{$read1} = $flds[3];
-    $isNeeded{$read1} = 1;
-    $isNeeded{$read2} = 2;
     if ($pass > 1) {
-	$kUniSeq{$read1} = $kUniSeq{$read2} = " @flds[5..$#flds] ";
+        $readinfo1_container[4]=" @flds[5..$#flds] ";
+        $readinfo2_container[4]=" @flds[5..$#flds] ";
 	if ($pass > 2) {
-	    $firstReadsKUniSeq{$read1} = $flds[4]; }
+            $readinfo1_container[5]=$flds[4];}
     }
+    $readInfo{$read1}=\@readinfo1_container;
+    $readInfo{$read2}=\@readinfo2_container;
 }
 close (FILE);
 
@@ -40,9 +51,9 @@ open (FILE, $kUnitigVsReadNucmerFile);
 while ($line = <FILE>) {
     chomp ($line);
     @flds = split (" ", $line);
-    next unless ($isNeeded{$flds[-1]});
+    next unless (${$readInfo{$flds[-1]}}[3]);
     $read = $flds[-1];
-    next if ($wasFound{$read} && ($isNeeded{$read} >= $pass));
+    next if (${$kUniInfo{$read}}[0] && (${$readInfo{$read}}[3] >= $pass));
     $kUni = $flds[-2];
     if ($read ne $readHold) {
 	# Do the prior output for $readHold
@@ -52,27 +63,29 @@ while ($line = <FILE>) {
 	$readHold = $read;
 	@heldNucmerLines = ();
     }
+    my @kUniInfo_container;
     push (@heldNucmerLines, $line);
-    if (($pass > 1) && $wasFound{$read}) {
-	if ($pass - $isNeeded{$read} == 1) {
-	    next unless (index ($kUniSeq{$read}, " $kUni ") >= 0); }
-	if ($pass - $isNeeded{$read} == 2) {
-	    next unless ($kUni eq $firstReadsKUniSeq{$read}); }
+    if (($pass > 1) && ${$kUniInfo{$read}}[0]) {
+	if ($pass - ${$readInfo{$read}}[3] == 1) {
+	    next unless (index (${$readInfo{$read}}[4], " $kUni ") >= 0); }
+	if ($pass - ${$readInfo{$read}}[3] == 2) {
+	    next unless ($kUni eq ${$readInfo{$read}}[5]); }
     }
-    $kUni{$read} = $kUni;
+    $kUniInfo_container[1] = $kUni;
     if ($flds[6] < $flds[7]) {
-	$lengthAdjustment{$read} = $flds[4] - $flds[6]; }
+	$kUniInfo_container[2] = $flds[4] - $flds[6]; }
     else {
-	$lengthAdjustment{$read} = ($flds[4]-1) - $flds[6]; }
+	$kUniInfo_container[2] = ($flds[4]-1) - $flds[6]; }
     if ($flds[6] < $flds[7]) {
-	$kUniOri{$read} = $readOri{$read}; }
+	$kUniInfo_container[3] = ${$readInfo{$read}}[0]; }
     else {
-	if ($isNeeded{$read} == 1) { # The first read of a pair
-	    $kUniOri{$read} = "R"; }
+	if (${$readInfo{$read}}[3] == 1) { # The first read of a pair
+	    $kUniInfo_container[3] = "R"; }
 	else { # The second read of a pair
-	    $kUniOri{$read} = "F"; }
+	    $kUniInfo_container[3] = "F"; }
     }
-    $wasFound{$read} = 1;
+    $kUniInfo_container[0]=1;
+    $kUniInfo{$read}=\@kUniInfo_container;
 }
 if ($pass > 1) {
     &analyzeNucmerLines ($readHold); }
@@ -82,13 +95,13 @@ close (SPCL_OUTFILE);
 for ($i=0; $i<=$#read1s; $i++) {
     $read1 = $read1s[$i];
     $read2 = $read2s[$i];
-    $kUni1 = $kUni{$read1};
-    $kUni2 = $kUni{$read2};
-    $insertSize = $insertSize{$read1};
-    $insertStdDev = $insertStdDev{$read1};
-    $ori1 = $kUniOri{$read1};
-    $ori2 = $kUniOri{$read2};
-    $insertSize += ($lengthAdjustment{$read1} + $lengthAdjustment{$read2});
+    $kUni1 = ${$kUniInfo{$read1}}[1];
+    $kUni2 = ${$kUniInfo{$read2}}[1];
+    $insertSize = ${$readInfo{$read1}}[1];
+    $insertStdDev = ${$readInfo{$read1}}[2];
+    $ori1 = ${$kUniInfo{$read1}}[3];
+    $ori2 = ${$kUniInfo{$read2}}[3];
+    $insertSize += (${$kUniInfo{$read1}}[2] + ${$kUniInfo{$read2}}[2]);
     print "${kUni1}$ori1 ${kUni2}$ori2 $insertSize $insertStdDev\n";
 }
 
@@ -126,13 +139,13 @@ sub analyzeNucmerLines
     print SPCL_OUTFILE $localRead;
     if ($pass == 2) {
 	for ($i=0; 1; $i++) {
-	    last if ($kUnitigNums[$i] eq $kUni{$localRead});
+	    last if ($kUnitigNums[$i] eq ${$kUniInfo{$localRead}}[1]);
 	    print SPCL_OUTFILE " $kUnitigNums[$i] $oris[$i] $overlaps[$i]"; }
     }
     elsif ($pass == 3) {
 	$isStarted = 0;
 	for ($i=$#kUnitigNums; $i>=0; $i--) {
-	    if ($kUnitigNums[$i] eq $kUni{$localRead}) {
+	    if ($kUnitigNums[$i] eq ${$kUniInfo{$localRead}}[1]) {
 		$isStarted = 1;
 		next; }
 	    if ($isStarted) {
