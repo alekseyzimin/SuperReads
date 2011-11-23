@@ -94,6 +94,39 @@ TEST(CharbBasic, Cast) {
   EXPECT_STREQ(str, b);
 }
 
+class CharbStd : public ::testing::Test {
+public:
+  virtual void SetUp() {
+    s1 = "Hello you";
+    s2 = "How are you";
+  }
+  const char *s1, *s2;
+};
+
+TEST_F(CharbStd, Strcat) {
+  charb b;
+  char *res;
+
+  res = strcat(b, s1);
+  EXPECT_STREQ(s1, b);
+  EXPECT_EQ(strlen(s1), b.len());
+  
+  std::string sres(s1);
+  sres += s2;
+  res = strcat(b, s2);
+  EXPECT_STREQ(sres.c_str(), b);
+  EXPECT_EQ(sres.size(), b.len());
+}
+
+TEST_F(CharbStd, Strcpy) {
+  charb b;
+  char *res;
+
+  res = strcpy(b, s1);
+  EXPECT_STREQ(s1, b);
+  EXPECT_EQ(strlen(s1), b.len());
+}
+
 class IOTest : public ::testing::Test {
 protected:
   virtual void SetUp() {

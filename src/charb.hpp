@@ -16,6 +16,7 @@ template<typename R> char *fgets(basic_charb<R> &b, FILE *stream, char *cptr);
 template<typename R> int vsprintf(basic_charb<R> &b, const char *format, va_list ap);
 template<typename R> ssize_t getline(basic_charb<R> &b, FILE *stream);
 template<typename R> ssize_t getdelim(basic_charb<R> &b, int delim, FILE *stream);
+template<typename R> char *strcat(basic_charb<R> &b, const char *src);
 
 template<typename R>
 class basic_charb : public ExpBuffer<char, R> {
@@ -39,6 +40,13 @@ public:
   }
   virtual ~basic_charb() { }
 
+  basic_charb &operator=(const char *rhs) {
+    size_t rhs_len = strlen(rhs);
+    super::reserve(rhs_len + 1);
+    strcpy(super::base_, rhs);
+    super::ptr_ = super::base_ + rhs_len;
+  }
+
   basic_charb& operator=(basic_charb rhs) {
     this->swap(rhs);
     return *this;
@@ -48,6 +56,7 @@ public:
   friend int vsprintf <> (basic_charb<R> &b, const char *format, va_list ap);
   friend ssize_t getline <> (basic_charb<R> &b, FILE *stream);
   friend ssize_t getdelim <> (basic_charb<R> &b, int delim, FILE *stream);
+  friend char *strcat <> (basic_charb<R> &b, const char *src);
 };
 typedef basic_charb<reallocator<char> > charb;
 
@@ -191,5 +200,33 @@ int vsprintf(basic_charb<R> &b, const char *format, va_list _ap) {
   }
   b.ptr_ = b.base_ + res;
   return res;
+}
+
+/** strcat
+ */
+template<typename R>
+char *strcat(basic_charb<R> &b, const char *src) {
+  size_t src_len = strlen(src);
+  b.reserve(src_len + b.len() + 1);
+  strncpy(b.ptr_, src, src_len + 1);
+  b.ptr_ += src_len;
+  return b.base_;
+}
+template<typename T, typename R>
+char *strncat(basic_charb<R> &b, T size, const char *src) {
+  return strcat(b, src);
+}
+
+/** strcpy
+ */
+template<typename R>
+char *strcpy(basic_charb<R> &b, const char *src) {
+  b = src;
+  return b.begin();
+}
+template<typename T, typename R>
+char *strncpy(basic_charb<R> &b, const char *src) {
+  b = src;
+  return b.begin();
 }
 #endif /* __CHARB_HPP__ */
