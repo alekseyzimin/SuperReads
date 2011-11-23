@@ -94,6 +94,20 @@ TEST(CharbBasic, Cast) {
   EXPECT_STREQ(str, b);
 }
 
+TEST(CharbBasic, Strerror_r) {
+  charb b;
+  errno = EINVALID;
+#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE 
+  int res = strerror_r(errno, b);
+  EXPECT_EQ(0, res);
+  EXPECT_GT(0, strlen(b));
+#else
+  char *res = strerror_r(errno, b);
+  EXPECT_EQ(res, (char*)b);
+  EXPECT_GT(0, strlen(b));
+#end
+}
+
 class CharbStd : public ::testing::Test {
 public:
   virtual void SetUp() {
