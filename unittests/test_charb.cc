@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <gtest/gtest.h>
 #include <src/charb.hpp>
 
@@ -96,16 +97,16 @@ TEST(CharbBasic, Cast) {
 
 TEST(CharbBasic, Strerror_r) {
   charb b;
-  errno = EINVALID;
+  errno = EINVAL;
 #if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE 
   int res = strerror_r(errno, b);
   EXPECT_EQ(0, res);
-  EXPECT_GT(0, strlen(b));
+  EXPECT_LT(0, strlen(b));
 #else
   char *res = strerror_r(errno, b);
   EXPECT_EQ(res, (char*)b);
-  EXPECT_GT(0, strlen(b));
-#end
+  EXPECT_LT(0, strlen(b));
+#endif
 }
 
 class CharbStd : public ::testing::Test {
