@@ -1,6 +1,7 @@
 AC_PREREQ([2.63])
 AC_INIT([SuperReads], [0.0.1], [gmarcais@umd.edu])
 AM_INIT_AUTOMAKE([SuperReads], [0.0.1])
+AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_LIBTOOL
