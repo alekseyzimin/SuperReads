@@ -24,13 +24,21 @@
 #include <string>
 #include <iostream>
 #include <fstream>
-#include <sstream>
 #include <vector>
 #include <utility>
 
+#include <src/charbuf.hpp>
 #include <src/create_k_unitigs_cmdline.hpp>
+#include <jflib/pool.hpp>
 #include <src/gzip_stream.hpp>
 #include <aligned_simple_array.hpp>
+
+// Structure and thread for writing out results
+struct output_pair {
+  charstream seq;
+  charstream counts;
+};
+typedef jflib::pool<output_pair> output_pool;
 
 typedef uint64_t hkey_t;
 typedef uint64_t hval_t;
@@ -125,6 +133,11 @@ class collapse_kmers : public thread_exec {
   unsigned long                min_nb_kmers;
   counter_t                    slice_counter;
   counter_t                    fragment_counter;
+  jflib::locks::barrier        done_barrier;
+
+  std::ostream                *out_fasta;
+  std::ostream                *out_counts;
+  output_pool                  pool;
 
   const static int dir_backward = -1;
   const static int dir_forward  = 1;
@@ -147,8 +160,35 @@ public:
     mer_len(hash->get_key_len() / 2),
     used_by(hash->get_size()),
     canonical(args.both_strands_flag),
-    min_nb_kmers(args.min_len_arg > mer_len ? args.min_len_arg + 1 - mer_len : 0)
-  { }
+    min_nb_kmers(args.min_len_arg > mer_len ? args.min_len_arg + 1 - mer_len : 0),
+    done_barrier(args.threads_arg),
+    out_fasta(0), out_counts(0), pool(3 * args.threads_arg)
+  {
+    std::stringstream output_file_fasta, output_file_counts;
+    output_file_fasta << args.prefix_arg << ".fa";
+    output_file_counts << args.prefix_arg << ".counts";
+    if(args.gzip_flag) {
+      output_file_fasta << ".gz";
+      output_file_counts << ".gz";
+    }
+    if(args.gzip_flag) {
+      out_fasta = new gzipstream(output_file_fasta.str().c_str());
+      if(args.counts_flag)
+        out_counts = new gzipstream(output_file_counts.str().c_str());
+    } else {
+      out_fasta = new std::ofstream(output_file_fasta.str().c_str());
+      if(args.counts_flag)
+        out_counts = new std::ofstream(output_file_counts.str().c_str());
+    }
+    out_fasta->exceptions(std::ifstream::eofbit|std::ifstream::failbit|std::ifstream::badbit);
+    if(args.counts_flag)
+      out_counts->exceptions(std::ifstream::eofbit|std::ifstream::failbit|std::ifstream::badbit);
+  }
+
+  ~collapse_kmers() {
+    delete out_fasta;
+    delete out_counts;
+  }
 
   static void alarm_handler(int sig) {
     if(this_progress) {
@@ -194,7 +234,7 @@ public:
       std::cerr << "threads " << nb_threads << " slices " << nb_slices << std::endl;
     for(int i = 0; i < nb_threads; i++)
       memset((void *)&stats[i], '\0', sizeof(struct counters));
-    exec_join(nb_threads);
+    exec_join(nb_threads + 1);
 
     if(args.progress_flag) {
       alarm(0);
@@ -202,6 +242,7 @@ public:
       display_progress();
       std::cerr << "\n";
     }
+    delete stats;
   }
 
   // What can happen if there is no unique continuation
@@ -213,24 +254,26 @@ public:
   static const char * const ful; // forward unique low count
   static const char * const rul;
 
-  void start(int th_id) {
-    volatile struct counters *my_counters = &stats[th_id];
-    std::stringstream output_file_fasta, output_file_counts;
-    output_file_fasta << args.prefix_arg << "_" << th_id << ".fa";
-    if(args.counts_flag)
-      output_file_counts << args.prefix_arg << "_" << th_id << ".counts";
-    else
-      output_file_counts << "/dev/null";
-    std::ostream *out_fasta, *out_counts;
-    if(args.gzip_flag) {
-      out_fasta = new gzipstream(output_file_fasta.str().c_str());
-      out_counts = new gzipstream(output_file_counts.str().c_str());
-    } else {
-      out_fasta = new std::ofstream(output_file_fasta.str().c_str());
-      out_counts = new std::ofstream(output_file_counts.str().c_str());
+  void output_thread() {
+    while(true) {
+      output_pool::elt e(pool.get_B());
+      if(e.is_empty())
+        break;
+      out_fasta->write(e->seq.str(), e->seq.size());
+      if(out_counts)
+        out_counts->write(e->counts.str(), e->counts.size());
     }
-    out_fasta->exceptions(std::ifstream::eofbit|std::ifstream::failbit|std::ifstream::badbit);
-    out_counts->exceptions(std::ifstream::eofbit|std::ifstream::failbit|std::ifstream::badbit);
+  }
+
+
+  // Start the threads. If th_id == nb_threads, this is the output thread.
+  void start(int th_id) {
+    if(th_id == nb_threads) {
+      output_thread();
+      return;
+    }
+      
+    volatile struct counters *my_counters = &stats[th_id];
 
     counter_t::block frag_id = fragment_counter.get_block();
     const char *forward_term, *backward_term;
@@ -267,13 +310,13 @@ public:
         }
         if((backward.size() + forward.size()) >= min_nb_kmers) {
           my_counters->outputed++;
-          output_sequence(out_fasta, out_counts, frag_id++, &forward, &backward,
+          output_sequence(frag_id++, &forward, &backward,
                           forward_term, backward_term);
         }
       }
     }
-    delete out_fasta;
-    delete out_counts;
+    if(done_barrier.wait() == PTHREAD_BARRIER_SERIAL_THREAD)
+      pool.close_A_to_B();
   }
   
   /* Return true if sequence has grown. Return (char *)0 if encounter a
@@ -436,8 +479,7 @@ public:
     return dry;
   }
 
-  void output_sequence(std::ostream *fasta, std::ostream *counts, uint64_t id, 
-                       seq_t *forward, seq_t *backward, 
+  void output_sequence(uint64_t id, seq_t *forward, seq_t *backward, 
                        const char *forward_term, const char *backward_term) {
     char mer_string[33];
     char trans[4] = {'A', 'C', 'G', 'T'};
@@ -462,38 +504,42 @@ public:
       sumq += forward->val(i);
 
     mer_string[32] = '\0';
-    *fasta << ">" <<  id 
+    
+    output_pool::elt e(pool.get_A());
+    e->seq.rewind();
+    e->counts.rewind();
+    (e->seq) << ">" <<  id 
            << " length:" << (mer_len - 1 + backward->size() + forward->size()) 
            << " bwd:" << backward_term << " fwd:" << forward_term 
            << " sumq:" << sumq << "\n";
-    *counts << ">" << id << "\n";
+    e->counts << ">" << id << "\n";
 
     jellyfish::parse_dna::mer_binary_to_string(first_mer, mer_len, mer_string);
-    *fasta << mer_string;
+    e->seq << mer_string;
 
     for(uint_t i = 1; i < mer_len; ++i)
-      *counts << ". ";
-    *counts << first_count << " ";
+      e->counts << ". ";
+    e->counts << first_count << " ";
     size_t total = mer_len + 1;
     for(int i = backward->size() - 2; i >= 0; --i, ++total) {
-      *fasta << trans[backward->key(i) & 0x3];
-      *counts << backward->val(i) << " ";
+      e->seq << trans[backward->key(i) & 0x3];
+      e->counts << backward->val(i) << " ";
       if(total % 70 == 0) {
-        *fasta << "\n";
-        *counts << "\n";
+        e->seq << "\n";
+        e->counts << "\n";
       }
     }
     for(uint_t i = fwd_start_id; i < forward->size(); ++i, ++total) {
-      *fasta << trans[forward->key(i) & 0x3];
-      *counts << forward->val(i) << " ";
+      e->seq << trans[forward->key(i) & 0x3];
+      e->counts << forward->val(i) << " ";
       if(total % 70 == 0) {
-        *fasta << "\n";
-        *counts << "\n";
+        e->seq << "\n";
+        e->counts << "\n";
       }
     }
     if(total % 70 != 1) {
-      *fasta << "\n";
-      *counts << "\n";
+      e->seq << "\n";
+      e->counts << "\n";
     }
   }
 };
@@ -520,6 +566,5 @@ int main(int argc, char *argv[])
     args.min_len_arg = hash.get_mer_len() + 1;
 
   collapse_kmers(hash.get_ary(), args).do_it(args.threads_arg);
-
   return 0;
 }

@@ -27,34 +27,39 @@ namespace jflib {
    */
   template<typename T, typename CV = locks::cond>
   class pool {
-    class                           side;
+    class side;
 
   public:
-    typedef typename std::vector<T> Tvec;
-    
-    pool(size_t size, const T &value = T()) 
-      : elts(size, value), B2A(size, &elts), A2B(size, &elts)
-    { 
-      B2A._other = &A2B;
-      A2B._other = &B2A;
-      for(uint32_t i = 0; i != elts.size(); ++i)
-        B2A._fifo.enqueue(i);
+    //    typedef typename std::vector<T> Tvec;
+    typedef T* iterator;
+    pool(size_t size) :
+      size_(size), elts_(new T[size]), B2A(size, elts_), A2B(size, elts_)
+    {
+      B2A.other_ = &A2B;
+      A2B.other_ = &B2A;
+      for(uint32_t i = 0; i < size_; ++i)
+        B2A.fifo_.enqueue(i);
     }
-    virtual ~pool() { }
+
+    virtual ~pool() { 
+      delete [] elts_;
+    }
+
+    size_t size() const { return size_; }
 
     /** Get the side A. Used to get an element from side A. */
     side &get_A() { return B2A; }
     /** Get the side B. Used to get an element from side B. */
     side &get_B() { return A2B; }
-    void close_A_to_B() { A2B._fifo.close(); A2B.signal(true); }
-    void close_B_to_A() { B2A._fifo.close(); B2A.signal(true); }
-    bool is_closed_A_to_B() const { return A2B._fifo.is_closed(); }
-    bool is_closed_B_to_A() const { return B2A._fifo.is_closed(); }
+    void close_A_to_B() { A2B.fifo_.close(); A2B.signal(true); }
+    void close_B_to_A() { B2A.fifo_.close(); B2A.signal(true); }
+    bool is_closed_A_to_B() const { return A2B.fifo_.is_closed(); }
+    bool is_closed_B_to_A() const { return B2A.fifo_.is_closed(); }
 
     /** Iterators on the elements. Unlike other 
      */
-    typename Tvec::iterator begin() { return elts.begin(); }
-    typename Tvec::iterator end() { return elts.end(); }
+    T* begin() { return elts_; }
+    T* end() { return elts_ + size_; }
 
     /** A wrapper around an element of type T. The element can be
      * obtained with operator* or operator->. release() is called by
@@ -64,34 +69,34 @@ namespace jflib {
      */
     class elt {
     public:
-      elt() : _i(cbT::guard), _v(0), _s(0) { }
-      elt(side &s) : _i(s.get()), _v(s[_i]), _s(s._other) { }
+      elt() : i_(cbT::guard), v_(0), s_(0) { }
+      elt(side &s) : i_(s.get()), v_(s[i_]), s_(s.other_) { }
       ~elt() { release(); }
       elt &operator=(side &s) {
         release();
-        _i = s.get();
-        _v = s[_i];
-        _s = s._other;
+        i_ = s.get();
+        v_ = s[i_];
+        s_ = s.other_;
         return *this;
       }
 
       void release() { 
-        if(_v)
-          _s->release(_i);
-        _v = 0;
+        if(v_)
+          s_->release(i_);
+        v_ = 0;
       }
-      bool is_empty() { return _v == 0; }
-      T &operator*() { return *_v; }
-      T *operator->() { return _v; }
+      bool is_empty() { return v_ == 0; }
+      T &operator*() { return *v_; }
+      T *operator->() { return v_; }
 
       friend class pool;
     private:
       elt(const elt &rhs) { }
       elt &operator=(const elt &rhs) { }
 
-      uint32_t  _i;             // Index of stored value
-      T        *_v;             // Stored value
-      side     *_s;             // Side to release to
+      uint32_t  i_;             // Index of stored value
+      T        *v_;             // Stored value
+      side     *s_;             // Side to release to
     };
     static const elt closed;
 
@@ -107,63 +112,64 @@ namespace jflib {
       friend class pool;
       friend class elt;
       enum State { NONE, WAITING, CLOSED };
-      side(size_t size, Tvec *elts) : 
-        _fifo(2*size), _state(NONE), _other(0), _elts(elts) { }
+      side(size_t size, T* elts) : 
+        fifo_(2*size), state_(NONE), other_(0), elts_(elts) { }
 
       uint32_t get();
       T *operator[](uint32_t i);
       void release(uint32_t i);
       void signal(bool force = false);
 
-      cbT   _fifo;
-      CV    _cond;
-      State _state;
-      side *_other;
-      Tvec *_elts;
+      cbT   fifo_;
+      CV    cond_;
+      State state_;
+      side *other_;
+      T    *elts_;
     };
 
-    Tvec elts;
-    side B2A;                     // Manages queue from B->A
-    side A2B;                     // Manages queue from A->B
+    size_t size_;
+    T*     elts_;
+    side   B2A;                 // Manages queue from B->A
+    side   A2B;                 // Manages queue from A->B
   };
 }
 
 template<typename T, typename CV>
 uint32_t jflib::pool<T, CV>::side::get() {
   bool     last_attempt = false;
-  uint32_t res          = _fifo.dequeue();
+  uint32_t res          = fifo_.dequeue();
   while(res == cbT::guard) {
-    _cond.lock();
+    cond_.lock();
 
-    switch(a_get(_state)) {
+    switch(a_get(state_)) {
     case CLOSED:
       if(last_attempt) {
-        _cond.unlock();
+        cond_.unlock();
         return cbT::guard;
       } else {
         last_attempt = true;
         break;
       }
     case NONE:
-      a_set(_state, WAITING);
+      a_set(state_, WAITING);
       break;
     case WAITING:
       break;
     }
-    res = _fifo.dequeue();
+    res = fifo_.dequeue();
     if(res == cbT::guard) {
       if(last_attempt) {
-        _cond.unlock();
+        cond_.unlock();
         break;
       }
     } else {
-      _cond.unlock();
+      cond_.unlock();
       break;
     }
     do {
-      _cond.timedwait(5);
-    } while(a_get(_state) == WAITING);
-    _cond.unlock();
+      cond_.timedwait(5);
+    } while(a_get(state_) == WAITING);
+    cond_.unlock();
   }
 
   return res;
@@ -173,22 +179,22 @@ template<typename T, typename CV>
 T * jflib::pool<T, CV>::side::operator[](uint32_t i) {
   if(i == cbT::guard)
     return 0;
-  return &(*_elts)[i];
+  return &elts_[i];
 }
 
 template<typename T, typename CV>
 void jflib::pool<T, CV>::side::release(uint32_t i) {
-  while(!_fifo.enqueue(i)) ;
+  while(!fifo_.enqueue(i)) ;
   signal();
 }
 
 template<typename T, typename CV>
 void jflib::pool<T, CV>::side::signal(bool close) {
-  if(a_get(_state) != NONE || close) {
-    _cond.lock();
-    a_set(_state, close ? CLOSED : NONE);
-    _cond.broadcast();
-    _cond.unlock();
+  if(a_get(state_) != NONE || close) {
+    cond_.lock();
+    a_set(state_, close ? CLOSED : NONE);
+    cond_.broadcast();
+    cond_.unlock();
   }
 }
 

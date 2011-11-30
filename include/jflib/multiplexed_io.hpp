@@ -47,7 +47,7 @@ namespace jflib {
     o_multiplexer(std::ostream *os, size_t nb_buffers, size_t buffer_size)
       : _os(os), _pool(nb_buffers), _info(_os, &_pool), _writer_started(false)
     {
-      for(buffer_pool::Tvec::iterator it = _pool.begin(); it != _pool.end();
+      for(buffer_pool::iterator it = _pool.begin(); it != _pool.end();
           ++it) {
         if(!it->resize(buffer_size))
           throw std::runtime_error("Failed to allocate memory for buffers");
