@@ -154,7 +154,9 @@ public:
     jflib::omstream details(_ec->log());
 
     uint64_t nb_reads = 0;
+    bool parity = true;
     while((read = parser.next_read())) {
+      parity = !parity;
       nb_reads++;
       insure_length_buffer(read->seq_e - read->seq_s);
       
@@ -167,6 +169,7 @@ public:
       if(!find_starting_mer(mer, input, read->seq_e, out)) {
         details << "Skipped " << substr(read->header, read->hlen) << "\n";
         details << jflib::endr;
+        output << jflib::endr;
         continue;
       }
       DBG << V((void*)read->seq_s) << V((void*)input) << V(kmer_t::k());
@@ -196,7 +199,8 @@ public:
       output << ">" << substr(read->header, read->hlen) 
              << " " << fwd_log << " " << bwd_log << "\n"
              << substr(start_out, end_out) << "\n";
-      output << jflib::endr;
+      if(parity)
+        output << jflib::endr;
     }
     details.close();
     output.close();
