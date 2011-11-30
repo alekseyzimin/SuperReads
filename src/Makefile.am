@@ -17,9 +17,8 @@ bin_PROGRAMS = create_k_unitigs error_correct_reads			\
         reverse_complement
 
 
-dist_bin_SCRIPTS = createSuperReadsForDirectory.perl                    \
-getNumBasesPerReadInFastaFile.perl reduce_sr.pl create_end_pairs.pl     \
-tryToKillKUnitigsOfLength61.perl close_gaps.sh compute_sr_cov.pl        \
+dist_bin_SCRIPTS = getNumBasesPerReadInFastaFile.perl reduce_sr.pl create_end_pairs.pl     \
+close_gaps.sh compute_sr_cov.pl        \
 create_sr_frg.pl extractreads.pl extract_unjoined_pairs.pl              \
 fasta2frg.pl filter_library.sh fix_unitigs.sh                           \
 recompute_astat_superreads.sh runSRCA.pl                                

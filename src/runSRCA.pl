@@ -303,9 +303,11 @@ $list_jump_files="";
 ##################################################renaming reads####################################################
 print FILE "echo -n 'processing PE library reads ';date;\n";
 
+print FILE "rm -rf meanAndStdevByPrefix.pe.txt\n";
 foreach $v(@pe_info_array){
     @f=split(/\s+/,$v);
     $list_pe_files.="$f[0].renamed.fastq ";
+    print FILE "echo '$f[0] $f[1] $f[2]' >> meanAndStdevByPrefix.pe.txt\n";
     next if(-e "$f[0].renamed.fastq");
     if($f[3] eq $f[4]){
 	print FILE "cat $f[3] | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";\$readnumber+=2;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
@@ -326,12 +328,13 @@ foreach $v(@pe_info_array){
     print FILE "MAX_$f[0]=`tail $f[0].renamed.fastq |grep '^\@$f[0]' |tail -n 1|awk '{print substr(\$1,4)}'`\n"
 }
 
-
+print FILE "rm -rf meanAndStdevByPrefix.sj.txt\n";
 if(scalar(@jump_info_array)>0){
     print FILE "echo -n 'processing JUMP library reads ';date;\n";
     $i=0;
     foreach $v(@jump_info_array){
 	@f=split(/\s+/,$v);
+	print FILE "echo '$f[0] 300 50' >> meanAndStdevByPrefix.sj.txt\n";
 	$list_jump_files.="$f[0].renamed.fastq ";
 	next if(-e "$f[0].renamed.fastq");
 	if($f[3] eq $f[4]){
@@ -423,7 +426,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "echo -n 'filtering JUMP ';date;\n";
 
 #creating super reads. for filtering
-    print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 2 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work2 sj.cor.fa 1> super2.err 2>&1\n" if(not(-e "work2"));;
+    print FILE "createSuperReadsForDirectory.perl -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n" if(not(-e "work2"));;
     print FILE "\n";
 
 #check if the super reads pipeline finished successfully
@@ -448,7 +451,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "extractreads.pl <(cat chimeric_sj.txt redundant_sj.txt | perl -e '{while(\$line=<STDIN>){chomp(\$line);\$h{\$line}=1}open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);print \$line,\"\\n\" if(not(defined(\$h{\$line})));}}' <(awk '{print \$1}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 |reverse_complement > sj.cor.clean.fa\n" if(not(-e "sj.cor.clean.fa"));
 
 #we extend the filtered and reverse complemented jump reads if asked -- the reason to do that is that sometimes the jump library reads are shorter than 64 bases and CA cannot use them
-    if($EXTEND_JUMP_READS==1){
+    if($EXTEND_JUMP_READS==1 && 0){#this is not supported
 	print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -jumplibraryreads -mkudisr 0 work3 sj.cor.clean.fa 1>super3.err 2>&1\n" if(not(-e "work3"));
 	print FILE "ln -sf work3/superReadSequences.jumpLibrary.fasta sj.cor.ext.fa\n";
 #check if the super reads pipeline finished successfully
@@ -494,8 +497,9 @@ print FILE "\n\n\n";
 ########################################################error correct, super reads for PE#################################
 print FILE "echo -n 'computing super reads from PE ';date;\n";
 
-#we create super reads from PE
-print FILE "createSuperReadsForDirectory.perl -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -join-mates -join-shooting -mkudisr 0 work1 pe.cor.fa 1>super1.err 2>&1\n" if(not(-e "work1"));
+#we create super reads from PE    
+print FILE "createSuperReadsForDirectory.perl -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1"));;
+
 #check if the super reads pipeline finished successfully
 print FILE "if [[ ! -e work1/superReads.success ]];then\n";
 print FILE "echo \"Super reads failed, check super1.err and files in ./work1/\"\n";
