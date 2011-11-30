@@ -64,6 +64,7 @@ $prefixForOverlapsBetweenKUnitigs = "$workingDirectory/overlap";
 $kUnitigOverlapsFile = "${prefixForOverlapsBetweenKUnitigs}.overlaps";
 
 $myProgOutput1prefix = "$workingDirectory/newTestOutput";
+$joinerOutputPrefix = "$workingDirectory/readPositionsInSuperReads";
 $myProgOutput1_1 = "$workingDirectory/testOutput.nucmerLinesOnly.txt";
 $myProgOutput1_1prefix = "$workingDirectory/newTestOutput.nucmerLinesOnly";
 $sequenceCreationErrorFile = "$workingDirectory/createFastaSuperReadSequences.errors.txt";
@@ -115,23 +116,19 @@ open (FILE, $maxKUnitigNumberFile); $maxKUnitigNumber = <FILE>; chomp ($maxKUnit
 $cmd = "$exeDir/createKUnitigMaxOverlaps $kUnitigsFile -kmervalue $merLen -largest-kunitig-number $maxKUnitigNumber $prefixForOverlapsBetweenKUnitigs";
 &runCommandAndExitIfBad($cmd, $kUnitigOverlapsFile, 1);
 
-# Currently must create $myProgOutput1_1 by hand from $myProgOutput1_1prefix files
-# The following will be replaced
-$cmd = "zcat -f ${myProgOutput1_1prefix}_* | gzip -c --fast > $myProgOutput1_1";
-&runCommandAndExitIfBad ($cmd, $myProgOutput1_1, 1);
-
 # Do the shooting method here
-$cmd = "$exeDir/joinKUnitigs_v3 -mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile -unitig-lengths-file $kUnitigLengthsFile -num-kunitigs-file $maxKUnitigNumberFile -overlaps-file $kUnitigOverlapsFile -min-overlap-length $merLenMinus1 -report-paths $myProgOutput1_1 > $myProgOutput2";
-&runCommandAndExitIfBad ($cmd, $myProgOutput2, 1);
+$cmd = "$exeDir/joinKUnitigs_v3 -mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile -unitig-lengths-file $kUnitigLengthsFile -num-kunitigs-file $maxKUnitigNumberFile -overlaps-file $kUnitigOverlapsFile -min-overlap-length $merLenMinus1 -report-paths -prefix $joinerOutputPrefix -num-file-names $numProcessors $myProgOutput1_1prefix";
+print "$cmd\n";
+system("time $cmd");
     
-$cmd = "cat $myProgOutput2 | $exeDir/getSuperReadInsertCountsFromReadPlacementFile > $myProgOutput3";
+$cmd = "cat ${joinerOutputPrefix}_* | $exeDir/getSuperReadInsertCountsFromReadPlacementFile > $myProgOutput3";
 &runCommandAndExitIfBad ($cmd, $myProgOutput3, 1);
 
 $cmd = "cat $myProgOutput3 | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -error-filename $sequenceCreationErrorFile -kunitigsfile $kUnitigsFile  > $finalSuperReadSequenceFile";
 &runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1);
 
 # Must put in the command to eliminate records from read placement file
-$cmd = "$exeDir/eliminateBadSuperReadsUsingList $myProgOutput2 $sequenceCreationErrorFile > $finalReadPlacementFile";
+$cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $sequenceCreationErrorFile > $finalReadPlacementFile";
 &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1);
 
 $cmd = "touch $successFile";

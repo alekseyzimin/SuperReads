@@ -298,9 +298,10 @@ int main (int argc, char **argv)
 		    return (-1);
 	       }
 	  }
-	  else if (numFilenames == 0) {
+	  else{
 	       readVsKUnitigFile = argv[i];
-	       ++numFilenames; }
+	       if(numFilenames==0)
+			numFilenames=1; }
      }
 #if DEBUG
      if (argc > 3) unitigForDebugging = atoi (argv[3]); // Must fix
@@ -514,13 +515,12 @@ int main (int argc, char **argv)
 	       exit(1);
 	  }
 	  if(WIFEXITED(status)) {
-	       printf("sub %d status %d normal execution %d\n", i, WEXITSTATUS(status),
-		      WEXITSTATUS(status) == 0);
+	       fprintf(stderr,"sub %d exit status %d\n", i, WEXITSTATUS(status));
 	  } else if(WIFSIGNALED(status)) {
-	       printf("sub %d signaled %d coredumped %d\n",
+	       fprintf(stderr,"sub %d signaled %d coredumped %d\n",
 		      i, WTERMSIG(status), WCOREDUMP(status));
 	  } else {
-	       printf("sub %d at a loss\n", i);
+	       fprintf(stderr,"sub %d at a loss\n", i);
 	  }
      }
      
@@ -535,11 +535,12 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
      charb cmd(500), line(2000);
      FILE *infile;
      int numFlds;
-     outputFile=Fopen(outputFileName,"w");
+   
      sprintf (cmd, "zcat -f %s", readVsKUnitigFile);
      infile = Popen (cmd, "r");
      if (! fgets (line, 2000, infile))
 	  return (1); // A critical file doesn't exist
+     outputFile=Fopen(outputFileName,"w");
      // Load the appropriate stuff
      numFlds = getFldsFromLine(line);
      cptr = flds[numFlds-1];
