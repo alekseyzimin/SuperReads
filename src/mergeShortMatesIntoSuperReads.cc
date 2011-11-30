@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cstdio>
 #include "diskBasedUnitigger.h"
+#include "charb.hpp"
 using namespace std;
 
 #define OFFSET_MEANING_END 126
@@ -70,7 +71,8 @@ fputc ('\n', outfile)
 
 int main (int argc, char **argv)
 {
-     char line[1000000], line2[1000000], outputLine[1000000];
+     char line2[1000000], outputLine[1000000];
+     charb line(10);
      unsigned char tOri, tOri2, ucChar2;
      int numFlds;
      long long lltemp;
@@ -158,7 +160,7 @@ int main (int argc, char **argv)
 	  unsigned char readInsertEnd;
 //	  fprintf (stderr, "We got to 1\n");
 	  fgets (line2, 1000000, infile);
-	  cptr = strstr (line, "readName = ");
+	  cptr = strstr ((char *)line, "readName = ");
 	  cptr += strlen ("readName = ");
 	  sscanf (cptr, "%llu", &readName);
 	  DE fprintf (OUTPUT_FILE, "We got to 2\n");

@@ -33,10 +33,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 #define KMER_LENGTH 31
+#define EST_OVLS_PER_KUNITIG 5
 
 struct endKUnitigKmerStruct {
      unsigned long long kMerValue;
@@ -45,6 +51,15 @@ struct endKUnitigKmerStruct {
      unsigned char ori; // 0 or 1
 } *kMerMinusOneValuesAtEndOfKUnitigs, **ptrsToEndKUnitigKmerStructs;
 
+struct overlapDataStruct
+{
+     int kUni1;
+     int kUni2; 
+     int ahg;
+     int bhg;
+     char netOri;
+} *overlapData;
+
 char *line;
 char **kUnitigSequences;
 unsigned char **kUnitigSequenceCounts;
@@ -52,6 +67,8 @@ unsigned char *endIsDone;
 int *kUnitigLengths, largestKUnitigNumber;
 int kmerLen;
 char *inputPrefix, *outputPrefix;
+int *startOverlapByUnitig;
+struct overlapDataStruct *overlapDataToSave;
 
 void reportKUnitigEndMatches (void);
 int kmerStructCompare (struct endKUnitigKmerStruct **ptr1, struct endKUnitigKmerStruct **ptr2);
@@ -85,6 +102,8 @@ int main (int argc, char *argv[])
 
      mallocOrDie (kUnitigSequences, largestKUnitigNumber+1, char *);
      mallocOrDie (kUnitigLengths, largestKUnitigNumber+1, int);
+     mallocOrDie (overlapData, (largestKUnitigNumber+1) * EST_OVLS_PER_KUNITIG, struct overlapDataStruct);
+     mallocOrDie (startOverlapByUnitig, largestKUnitigNumber+1, int);
      loadKUnitigSequences (inputPrefix, numInputFiles);
 
      mallocOrDie (kMerMinusOneValuesAtEndOfKUnitigs, 4*(largestKUnitigNumber+1), struct endKUnitigKmerStruct);
@@ -108,6 +127,7 @@ void reportKUnitigEndMatches (void)
      int i, j, totKUniStartSep;
      int kUni1, kUni2, ahg, bhg, begin1, end1, begin2, end2;
      int isGoodOverlap, skipThis;
+     uint64_t numOvlsOutput=0;
      char netOri;
      char filename[500];
      FILE *coordsFile, *overlapsFile;
@@ -115,7 +135,7 @@ void reportKUnitigEndMatches (void)
      sprintf (filename, "%s.coords", outputPrefix);
      coordsFile = Fopen (filename, "w");
      sprintf (filename, "%s.overlaps", outputPrefix);
-     overlapsFile = Fopen (filename, "w");
+     overlapsFile = Fopen (filename, "wb");
 
      beginIndex=0;
      while (beginIndex<4*(largestKUnitigNumber+1)) {
@@ -189,14 +209,84 @@ void reportKUnitigEndMatches (void)
 			 end2 = (totKUniStartSep - end1) + 1;
 		    }
 		    fprintf (coordsFile, "%d %d %d %d 100.00 %d %d %d %d\n", begin1, end1, begin2, end2, kUnitigLengths[kUni1], kUnitigLengths[kUni2], kUni1, kUni2);
-		    if (isGoodOverlap)
-			 fprintf (overlapsFile, "%d %d %c %d %d 0.0 0.0\n", kUni1, kUni2, netOri, ahg, bhg);
+		    if (isGoodOverlap) {
+			 if(kUni1 !=kUni2){//temporary dirty fix by Aleksey
+			      overlapData[numOvlsOutput].kUni1 = kUni1;
+			      overlapData[numOvlsOutput].kUni2 = kUni2;
+			      overlapData[numOvlsOutput].ahg = ahg;
+			      overlapData[numOvlsOutput].bhg = bhg;
+			      overlapData[numOvlsOutput].netOri = netOri;
+			      ++numOvlsOutput;
+//			 fprintf (overlapsFile, "%d %d %c %d %d 0.0 0.0\n", kUni1, kUni2, netOri, ahg, bhg);
+			 }
+		    }
 	       }
 	  }
      endOfLoop:
 	  beginIndex = endIndex;
      }
 
+     mallocOrDie (overlapDataToSave, numOvlsOutput, struct overlapDataStruct);
+     for (uint64_t j=0; j<numOvlsOutput; j++)
+     {
+	  int unitig1 = overlapData[j].kUni1, unitig2 = overlapData[j].kUni2;
+	  
+#if 0
+	  if (unitig1 > unitig2) 
+	       continue;
+	  else if ((unitig1 == unitig2) && (overlapData[j].ahg < 0))
+	       continue;
+#endif
+	  if (unitig1 >= unitig2)
+	       continue;
+	  startOverlapByUnitig[unitig1]++;
+	  startOverlapByUnitig[unitig2]++;
+     }
+     for (int64_t unitigNum = 1; unitigNum < largestKUnitigNumber + 2; unitigNum++)
+	  startOverlapByUnitig[unitigNum] += startOverlapByUnitig[unitigNum - 1];
+     
+     for (uint64_t j=0; j<numOvlsOutput; j++)
+     {
+	  int unitig1 = overlapData[j].kUni1, unitig2 = overlapData[j].kUni2;
+	  int ahg = overlapData[j].ahg, bhg = overlapData[j].bhg;
+	  char ori = overlapData[j].netOri;
+	  int itemp, itempHold;
+	  
+#if 0
+	  if (unitig1 > unitig2) 
+	       continue;
+	  else if ((unitig1 == unitig2) && (ahg < 0))
+	       continue;
+#endif
+	  if (unitig1 >= unitig2)
+	       continue;
+	  startOverlapByUnitig[unitig1]--;
+	  itemp = startOverlapByUnitig[unitig1];
+	  overlapDataToSave[itemp].kUni1 = unitig1;
+	  overlapDataToSave[itemp].kUni2 = unitig2;
+	  overlapDataToSave[itemp].netOri = ori;
+	  overlapDataToSave[itemp].ahg = ahg;
+	  overlapDataToSave[itemp].bhg = bhg;
+	  startOverlapByUnitig[unitig2]--;
+	  itempHold = itemp;
+	  itemp = startOverlapByUnitig[unitig2];
+	  overlapDataToSave[itemp].kUni1 = unitig2;
+	  overlapDataToSave[itemp].kUni2 = unitig1;
+	  overlapDataToSave[itemp].netOri = ori;
+	  if (ori == 'N')
+	  {
+	       overlapDataToSave[itemp].ahg = -ahg;
+	       overlapDataToSave[itemp].bhg = -bhg;
+	  }
+	  else
+	  {
+	       overlapDataToSave[itemp].ahg = bhg;
+	       overlapDataToSave[itemp].bhg = ahg;
+	  }
+     }
+
+     fwrite (overlapDataToSave, sizeof (struct overlapDataStruct), numOvlsOutput, overlapsFile);
+     
      fclose (coordsFile);
      fclose (overlapsFile);
 }

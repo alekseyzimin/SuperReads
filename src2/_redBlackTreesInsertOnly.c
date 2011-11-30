@@ -7,10 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <src2/redBlackTreesInsertOnly.h>
+#include "_redBlackTreesInsertOnly.h"
 
 // INORDER-TREE-WALK (Only to print out in case of ints for now)
-void inOrderTreeWalk (struct RBTreeStruct *T, int x, void (*func)(char *))
+void inOrderTreeWalk (struct RBTreeStruct *T, int x, void (*func)(void *))
 {
      void *vptr;
 
@@ -23,22 +23,22 @@ void inOrderTreeWalk (struct RBTreeStruct *T, int x, void (*func)(char *))
 }
 
 // RB-TREE-INSERT-IF-NOT-FOUND
-void RBTreeInsertIfNotFound (struct RBTreeStruct *T, char *element)
+void RBTreeInsertIfNotFound (struct RBTreeStruct *T, void *element)
 {
      if (treeFindElement (T, element) == TREE_NIL)
 	  RBTreeInsertElement (T, element);
 }
 
 // TREE-FIND-ELEMENT
-int treeFindElement (struct RBTreeStruct *T, char *element)
+int treeFindElement (struct RBTreeStruct *T, void *element)
 {
      return (iterativeTreeSearch (T, T->root, element));
 }
 
 // ITERATIVE-TREE-SEARCH (x, k)
-int iterativeTreeSearch (struct RBTreeStruct *T, int x, char *element)
+int iterativeTreeSearch (struct RBTreeStruct *T, int x, void *element)
 {
-     char *vptr;
+     void *vptr;
      int ret;
 
      while (x != TREE_NIL) {
@@ -113,7 +113,7 @@ int treePredecessor (struct RBTreeStruct *T, int x)
 void treeInsert (struct RBTreeStruct *T, int z)
 {
      int x, y;
-     char *vptrx, *vptry, *vptrz;
+     void *vptrx, *vptry, *vptrz;
 
      y = TREE_NIL;
      x = T->root;
@@ -239,10 +239,10 @@ void RBTreeInsertNode (struct RBTreeStruct *T, int x)
 }
 
 // RB-TREE-INSERT-ELEMENT
-void RBTreeInsertElement (struct RBTreeStruct *T, char *element)
+void RBTreeInsertElement (struct RBTreeStruct *T, void *element)
 {
      struct dataArrayStruct *dasptr = T->dataArrayPtr;
-     char *vptr;
+     void *vptr;
      int numElemsHold, amountToAllocate;
      struct RBTreeNodeStruct *rbtptr;
 

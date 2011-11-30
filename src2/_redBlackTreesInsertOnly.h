@@ -37,9 +37,9 @@ struct dataArrayStruct {
      int numElementsAllocated;
      int elementSize;
      struct RBTreeNodeStruct *nodeStructs; // The connection data
-     char *data; // The actual data
-     int (*compareToSort) (char *, char *);
-     int (*compareToSearch) (char *, char *);
+     void *data; // The actual data
+     void *compareToSort;
+     void *compareToSearch;
 };
 
 #define setTreeValPtr(ptr, T, ind) { ptr = ((T)->dataArrayPtr)->data; ptr += (ind * (((T)->dataArrayPtr)->elementSize)); }
@@ -55,9 +55,9 @@ if (name == NULL) { fprintf (stderr, "Couldn't allocate space for '%s'\nBye!\n",
    dataArrayInfo.numElementsAllocated = TREE_DATA_START_SIZE; \
    dataArrayInfo.elementSize = sizeof (dataType); \
    mallocOrDie (dataArrayInfo.nodeStructs, TREE_DATA_START_SIZE, struct RBTreeNodeStruct); \
-   mallocOrDie (dataArrayInfo.data, (TREE_DATA_START_SIZE * sizeof (dataType)), char); \
-   dataArrayInfo.compareToSort = (int (*)(char *, char *)) sortCompare;	\
-   dataArrayInfo.compareToSearch = (int (*)(char *, char *)) searchCompare; \
+   mallocOrDie (dataArrayInfo.data, TREE_DATA_START_SIZE, dataType); \
+   dataArrayInfo.compareToSort = sortCompare; \
+   dataArrayInfo.compareToSearch = searchCompare; \
    mallocOrDie (treeArrayName, numTrees, struct RBTreeStruct); \
    for (i1234567=0; i1234567<numTrees; i1234567++) { \
       treeArrayName[i1234567].root = TREE_NIL; \
@@ -70,9 +70,9 @@ if (name == NULL) { fprintf (stderr, "Couldn't allocate space for '%s'\nBye!\n",
    dataArrayInfo.numElementsAllocated = dataSize; \
    dataArrayInfo.elementSize = sizeof (dataType); \
    mallocOrDie (dataArrayInfo.nodeStructs, dataSize, struct RBTreeNodeStruct); \
-   mallocOrDie (dataArrayInfo.data, (dataSize * sizeof (dataType)), char); \
-   dataArrayInfo.compareToSort = (int (*)(char *, char *)) sortCompare; \
-   dataArrayInfo.compareToSearch = (int (*)(char *, char *)) searchCompare; \
+   mallocOrDie (dataArrayInfo.data, dataSize, dataType); \
+   dataArrayInfo.compareToSort = sortCompare; \
+   dataArrayInfo.compareToSearch = searchCompare; \
    mallocOrDie (treeArrayName, numTrees, struct RBTreeStruct); \
    for (i1234567=0; i1234567<numTrees; i1234567++) { \
       treeArrayName[i1234567].root = TREE_NIL; \
@@ -80,10 +80,10 @@ if (name == NULL) { fprintf (stderr, "Couldn't allocate space for '%s'\nBye!\n",
    } \
 }
  
-void inOrderTreeWalk (struct RBTreeStruct *T, int x, void (*)(char *));
-void RBTreeInsertIfNotFound (struct RBTreeStruct *T, char *element);
-int treeFindElement (struct RBTreeStruct *T, char *element);
-int iterativeTreeSearch (struct RBTreeStruct *T, int x, char *element);
+void inOrderTreeWalk (struct RBTreeStruct *T, int x, void (*)(void *));
+void RBTreeInsertIfNotFound (struct RBTreeStruct *T, void *element);
+int treeFindElement (struct RBTreeStruct *T, void *element);
+int iterativeTreeSearch (struct RBTreeStruct *T, int x, void *element);
 int treeMinimum (struct RBTreeStruct *T, int x);
 int treeMaximum (struct RBTreeStruct *T, int x);
 int treeSuccessor (struct RBTreeStruct *T, int x);
@@ -92,5 +92,5 @@ void treeInsert (struct RBTreeStruct *T, int z);
 void treeLeftRotate (struct RBTreeStruct *T, int x);
 void treeRightRotate (struct RBTreeStruct *T, int x);
 void RBTreeInsertNode (struct RBTreeStruct *T, int x);
-void RBTreeInsertElement (struct RBTreeStruct *T, char *element);
+void RBTreeInsertElement (struct RBTreeStruct *T, void *element);
 

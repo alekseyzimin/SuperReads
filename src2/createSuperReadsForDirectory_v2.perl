@@ -121,7 +121,7 @@ $cmd = "zcat -f ${myProgOutput1_1prefix}_* | gzip -c --fast > $myProgOutput1_1";
 &runCommandAndExitIfBad ($cmd, $myProgOutput1_1, 1);
 
 # Do the shooting method here
-$cmd = "$exeDir/joinKUnitigs_v2 -mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile -unitig-lengths-file $kUnitigLengthsFile -num-kunitigs-file $maxKUnitigNumberFile -overlaps-file $kUnitigOverlapsFile -min-overlap-length $merLenMinus1 -report-paths $myProgOutput1_1 > $myProgOutput2";
+$cmd = "$exeDir/joinKUnitigs_v3 -mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile -unitig-lengths-file $kUnitigLengthsFile -num-kunitigs-file $maxKUnitigNumberFile -overlaps-file $kUnitigOverlapsFile -min-overlap-length $merLenMinus1 -report-paths $myProgOutput1_1 > $myProgOutput2";
 &runCommandAndExitIfBad ($cmd, $myProgOutput2, 1);
     
 $cmd = "cat $myProgOutput2 | $exeDir/getSuperReadInsertCountsFromReadPlacementFile > $myProgOutput3";
