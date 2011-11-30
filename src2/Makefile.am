@@ -21,7 +21,7 @@ bin_PROGRAMS = createFastaSuperReadSequences    \
 	joinKUnitigs_v3 \
 	joinKUnitigs_v2
 
-dist_bin_SCRIPTS = getLengthStatisticsForKUnitigsFile.perl createSuperReadsForDirectory_v2.perl
+dist_bin_SCRIPTS = getLengthStatisticsForKUnitigsFile.perl createSuperReadsForDirectory.perl
 
 noinst_HEADERS = charb.hpp diskBasedUnitigger.h \
 	priorityHeap.h redBlackTreesInsertOnly.h \
