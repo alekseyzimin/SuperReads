@@ -365,7 +365,7 @@ print FILE "MIN_Q_CHAR=`cat $list_pe_files |head -n 50000 | awk 'BEGIN{flag=0}{i
 print FILE "echo MIN_Q_CHAR: \$MIN_Q_CHAR\n";
 
 #for our error correctin we run jellyfish twice: once on all pe bases and once on pe bases with quality >2 
-print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_trim -s $JF_SIZE -m 24 --quality-start \$MIN_Q_CHAR --min-quality 4 $list_pe_files\n"  if(not(-e "pe_trim_0"));
+print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_trim -s $JF_SIZE -m 24 --quality-start \$MIN_Q_CHAR --min-quality 5 $list_pe_files\n"  if(not(-e "pe_trim_0"));
 print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_all -s $JF_SIZE -m 24 $list_pe_files\n"  if(not(-e "pe_all_0"));
 
 #check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
