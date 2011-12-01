@@ -381,8 +381,7 @@ print FILE "\n\n\n";
 if(not(-e "pe.cor.fa")){
     print FILE "echo -n 'error correct PE ';date;\n";
     print FILE "\nerror_correct_reads -d pe_trim_0 -d pe_all_0 -C -m 1 -s 1 -g 1 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files\n";
-    print FILE "cat error_corrected_*.fa  | homo_trim $TRIM_PARAM > pe.cor.fa\n";
-    print FILE "rm error_corrected_*\n";
+    print FILE "cat error_corrected.fa  | homo_trim $TRIM_PARAM > pe.cor.fa\n";
 }
 #compute average PE read length -- we will need this for Astat later
 print FILE "PE_AVG_READ_LENGTH=`head -n 1000000 pe.cor.fa |tail -n 500000| grep -v '^>' | awk 'BEGIN{n=0;m=0;}{m+=length(\$0);n++;}END{print int(m/n)}'`\n";
@@ -394,8 +393,7 @@ if(scalar(@jump_info_array)>0){
     if(not(-e "sj.cor.fa")){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
 	print FILE "\nerror_correct_reads -d pe_trim_0 -d pe_all_0 -C -m 1 -s 1 -g 2 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files\n";
-	print FILE "cat error_corrected_*.fa  | homo_trim $TRIM_PARAM > sj.cor.fa\n";
-	print FILE "rm error_corrected_*\n";
+	print FILE "cat error_corrected.fa  | homo_trim $TRIM_PARAM > sj.cor.fa\n";
     }
 #############################################################done error correct JUMP#############################################
 #
@@ -405,16 +403,14 @@ if(scalar(@jump_info_array)>0){
     if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")){
 	print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa sj.cor.fa\n";
 	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
-	print FILE "cat k_unitigs_*.fa > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
-	print FILE "rm -f k_unitigs_*.fa\n";
+	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
     }
 }
 else{
     if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")){
 	print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa\n";
 	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
-	print FILE "cat k_unitigs_*.fa > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
-	print FILE "rm -f k_unitigs_*.fa\n";
+	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
     }
 }
 print FILE "ESTIMATED_GENOME_SIZE=`perl -ane '{if(\$F[0]=~/^>/){print \"\\n\"}else{print \$F[0]}}'  guillaumeKUnitigsAtLeast32bases_all.fasta | wc|awk '{print int(\$3)-(30*(int(\$1)-1));}'`\n";
