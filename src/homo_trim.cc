@@ -5,10 +5,11 @@ int main(int argc, char *argv[])
 {
   ssize_t i,sequence_len;
   charb my_string(100),sequence(100);
-  size_t index_array[10000];
-  size_t max_val=0,max_ind=0;
+  ssize_t *index_array;
+  ssize_t max_val=0,max_ind=0;
   double num_cg=0;
   char last_letter;
+  index_array = (ssize_t*)malloc(sizeof(ssize_t)*1000000);
   
   if(argc==1)
     {
@@ -33,9 +34,10 @@ int main(int argc, char *argv[])
                 return(1);
                 }
               sequence_len=strlen(sequence);
-
-	      last_letter=sequence[sequence_len-1];
-   	      for(i=sequence_len-2;i>=0;i--)
+//              printf("sequence_len=%d\n",sequence_len);
+	      last_letter=sequence[sequence_len-2];
+//	      printf("last_letter=%c\n",last_letter);
+   	      for(i=sequence_len-3;i>=0;i--)
 		    {
 		    if(sequence[i] != last_letter)
 			{
@@ -46,9 +48,9 @@ int main(int argc, char *argv[])
 			{
 			num_cg++;
 			}
-			index_array[sequence_len-2-i]=num_cg;
+			index_array[sequence_len-3-i]=num_cg;
 		    }
-	      for(i=0;i<sequence_len-1;i++)
+	      for(i=0;i<sequence_len-2;i++)
 		{
 		if(index_array[i]>max_val)
 			{
@@ -56,9 +58,10 @@ int main(int argc, char *argv[])
 			max_ind=i+1;
 			}
 		}
+//                printf("max_val=%d max_ind=%d\n",max_val,max_ind);
 		if(max_val<(size_t)atoi(argv[1]))
 			max_ind=0;
-		sequence[sequence_len-max_ind]='\0';
+		sequence[sequence_len-max_ind-1]='\0';
 		printf("%s%s\n",(char*)my_string,(char *)sequence);
 	}
 	}
