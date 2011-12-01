@@ -1,5 +1,6 @@
 AC_PREREQ([2.63])
 AC_INIT([SuperReads], [0.0.1], [gmarcais@umd.edu])
+AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([SuperReads], [0.0.1])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src])
@@ -15,7 +16,6 @@ AC_PROG_CPP
 AC_PROG_MKDIR_P
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
-AC_PROG_RANLIB
 
 # Checks for libraries.
 AC_CHECK_LIB([pthread], [pthread_create])

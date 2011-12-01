@@ -1,3 +1,4 @@
+ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = src src2 unittests
 
 JFLIB_INC = include/jflib
