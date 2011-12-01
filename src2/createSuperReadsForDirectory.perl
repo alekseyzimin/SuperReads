@@ -113,7 +113,7 @@ if ($jumpLibraryReads) {
     goto jumpLibraryCalculations; }
 
 open (FILE, $maxKUnitigNumberFile); $maxKUnitigNumber = <FILE>; chomp ($maxKUnitigNumber); close (FILE);
-$cmd = "$exeDir/createKUnitigMaxOverlaps $kUnitigsFile -kmervalue $merLen -largest-kunitig-number $maxKUnitigNumber $prefixForOverlapsBetweenKUnitigs";
+$cmd = "$exeDir/createKUnitigMaxOverlaps $kUnitigsFile -kmervalue $merLen -largest-kunitig-number ".(int($maxKUnitigNumber)+1)." $prefixForOverlapsBetweenKUnitigs";
 &runCommandAndExitIfBad($cmd, $kUnitigOverlapsFile, 1);
 
 # Do the shooting method here
