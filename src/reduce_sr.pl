@@ -20,11 +20,25 @@ while($line=<STDIN>){
 #print "Processing sr $line\n";
     %candidate_sr_counts=();
     @f=split('_',$l[0]);
-    for($j=0;$j<scalar(@f);$j+=2){
-	my $ku=substr($f[$j],0,length($f[$j])-1);
+    $first_k_u=0;
+    $ku=substr($f[$#f],0,length($f[$#f])-1);
+    if(defined($ku_sr_number[$ku])){
+           foreach $v(@{$ku_sr_number[$ku]}){
+                $candidate_sr_counts{$v}=1;
+                }
+	}
+        else{
+            %candidate_sr_counts=();
+            $first_k_u=scalar(@f);
+        }
+
+    for($j=$first_k_u;$j<scalar(@f)-2;$j+=2){
+	$ku=substr($f[$j],0,length($f[$j])-1);
 	if(defined($ku_sr_number[$ku])){
 	    foreach $v(@{$ku_sr_number[$ku]}){
+		if(defined($candidate_sr_counts{$v})){
 		$candidate_sr_counts{$v}++;
+		}
 		}
 	}
 	else{

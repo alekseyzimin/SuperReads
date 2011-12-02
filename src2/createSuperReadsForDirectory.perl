@@ -73,6 +73,7 @@ $myProgOutput3 = "$workingDirectory/superReadCounts.count.superRead.txt";
 $finalSuperReadSequenceFile = "$workingDirectory/superReadSequences.fasta";
 $finalReadPlacementFileUsingReadNumbers = "$workingDirectory/readPlacementsInSuperReads.final.read.superRead.offset.ori.usingReadNumbers.txt";
 $finalReadPlacementFile = "$workingDirectory/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt";
+$reducedReadPlacementFile = "$workingDirectory/readPlacementsInSuperReads.reduced.read.superRead.offset.ori.txt";
 
 if ($jumpLibraryReads) {
     $myProgOutput1_1 = "$workingDirectory/testOutput.nucmerLinesOnly.jumpLibrary.txt";
@@ -120,15 +121,25 @@ $cmd = "$exeDir/createKUnitigMaxOverlaps $kUnitigsFile -kmervalue $merLen -large
 $cmd = "$exeDir/joinKUnitigs_v3 -mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile -unitig-lengths-file $kUnitigLengthsFile -num-kunitigs-file $maxKUnitigNumberFile -overlaps-file $kUnitigOverlapsFile -min-overlap-length $merLenMinus1 -report-paths -prefix $joinerOutputPrefix -num-file-names $numProcessors $myProgOutput1_1prefix";
 print "$cmd\n";
 system("time $cmd");
-    
-$cmd = "cat ${joinerOutputPrefix}_* | $exeDir/getSuperReadInsertCountsFromReadPlacementFile > $myProgOutput3";
+
+#AZ -- put super read reduction before the counts
+$cmd = "cat ${joinerOutputPrefix}_* | $exeDir/getSuperReadInsertCountsFromReadPlacementFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread 1 -error-filename $sequenceCreationErrorFile -kunitigsfile $kUnitigsFile | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 50% > $workingDirectory/sr_sizes.tmp";
+&runCommandAndExitIfBad ($cmd,"$workingDirectory/sr_sizes.tmp", 1);
+
+$cmd = "cat $workingDirectory/sr_sizes.tmp| $exeDir/reduce_sr.pl  > $workingDirectory/reduce.tmp";
+&runCommandAndExitIfBad ($cmd,"$workingDirectory/reduce.tmp", 1);
+
+$cmd = "cat ${joinerOutputPrefix}_* | perl -e '{open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);\@F=split(/\s+/,\$line);\$sr{\$F[0]}=\$F[1]} while(\$line=<STDIN>){\@l=split(/\s+/,\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\";}else{print \"\$line\";}}}' $workingDirectory/reduce.tmp >  $reducedReadPlacementFile"; 
+&runCommandAndExitIfBad ($cmd, $reducedReadPlacementFile, 1);
+
+$cmd = "cat $reducedReadPlacementFile | $exeDir/getSuperReadInsertCountsFromReadPlacementFile > $myProgOutput3";
 &runCommandAndExitIfBad ($cmd, $myProgOutput3, 1);
 
 $cmd = "cat $myProgOutput3 | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -error-filename $sequenceCreationErrorFile -kunitigsfile $kUnitigsFile  > $finalSuperReadSequenceFile";
 &runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1);
 
 # Must put in the command to eliminate records from read placement file
-$cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $sequenceCreationErrorFile > $finalReadPlacementFile";
+$cmd = "cat $reducedReadPlacementFile | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $sequenceCreationErrorFile > $finalReadPlacementFile";
 &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1);
 
 $cmd = "touch $successFile";
