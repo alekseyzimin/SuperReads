@@ -129,7 +129,7 @@ $cmd = "cat ${joinerOutputPrefix}_* | $exeDir/getSuperReadInsertCountsFromReadPl
 $cmd = "cat $workingDirectory/sr_sizes.tmp| $exeDir/reduce_sr.pl  > $workingDirectory/reduce.tmp";
 &runCommandAndExitIfBad ($cmd,"$workingDirectory/reduce.tmp", 1);
 
-$cmd = "cat ${joinerOutputPrefix}_* | perl -e '{open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);\@F=split(/\s+/,\$line);\$sr{\$F[0]}=\$F[1]} while(\$line=<STDIN>){\@l=split(/\s+/,\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\";}else{print \"\$line\";}}}' $workingDirectory/reduce.tmp >  $reducedReadPlacementFile"; 
+$cmd = "cat ${joinerOutputPrefix}_* | perl -e '{open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);\@F=split(/\s+/,\$line);\$sr{\$F[0]}=\$F[1]} while(\$line=<STDIN>){\@l=split(\" \",\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\";}else{print \"\$line\";}}}' $workingDirectory/reduce.tmp >  $reducedReadPlacementFile"; 
 &runCommandAndExitIfBad ($cmd, $reducedReadPlacementFile, 1);
 
 $cmd = "cat $reducedReadPlacementFile | $exeDir/getSuperReadInsertCountsFromReadPlacementFile > $myProgOutput3";
