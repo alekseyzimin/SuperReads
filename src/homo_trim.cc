@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 			}
 		}
 //                printf("max_val=%d max_ind=%d\n",max_val,max_ind);
-		if(max_val<(size_t)atoi(argv[1]))
+		if(max_val<(ssize_t)atoi(argv[1]))
 			max_ind=0;
 		sequence[sequence_len-max_ind-1]='\0';
 		printf("%s%s\n",(char*)my_string,(char *)sequence);
