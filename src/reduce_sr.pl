@@ -16,7 +16,7 @@ while($line=<STDIN>){
 	$timing=time();
     }
 
-#here we check the k-unitigs and find which super read the current one could be reduced to
+#here we check the first and last k-unitig and find which super read the current one could be reduced to
 #print "Processing sr $line\n";
     %candidate_sr_counts=();
     @f=split('_',$l[0]);
@@ -32,8 +32,8 @@ while($line=<STDIN>){
             $first_k_u=scalar(@f);
         }
 
-    for($j=$first_k_u;$j<scalar(@f)-2;$j+=2){
-	$ku=substr($f[$j],0,length($f[$j])-1);
+     if($first_k_u==0){
+	$ku=substr($f[0],0,length($f[0])-1);
 	if(defined($ku_sr_number[$ku])){
 	    foreach $v(@{$ku_sr_number[$ku]}){
 		if(defined($candidate_sr_counts{$v})){
@@ -43,16 +43,14 @@ while($line=<STDIN>){
 	}
 	else{
 	    %candidate_sr_counts=();
-	    last;
 	}
     }
 
     if(scalar(keys %candidate_sr_counts)>0){
 	@candidate_sr=();
-	$desired_count=int((scalar(@f)+1)/2+.001);
 	foreach $v(keys %candidate_sr_counts){
 #print "Candidate $v $sr[$v] count $candidate_sr_counts{$v}\n";
-	    if($candidate_sr_counts{$v}>=$desired_count){
+	    if($candidate_sr_counts{$v}>=2){
 		push(@candidate_sr,$v);
 #print "Final candidate $v $sr[$v]\n";
 	    }
