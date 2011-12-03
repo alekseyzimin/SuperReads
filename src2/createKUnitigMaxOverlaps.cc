@@ -103,7 +103,7 @@ int main (int argc, char *argv[])
      mallocOrDie (kUnitigSequences, largestKUnitigNumber+1, char *);
      mallocOrDie (kUnitigLengths, largestKUnitigNumber+1, int);
      mallocOrDie (overlapData, (largestKUnitigNumber+1) * EST_OVLS_PER_KUNITIG, struct overlapDataStruct);
-     mallocOrDie (startOverlapByUnitig, largestKUnitigNumber+1, int);
+     mallocOrDie (startOverlapByUnitig, largestKUnitigNumber+2, int);
      loadKUnitigSequences (inputPrefix, numInputFiles);
 
      mallocOrDie (kMerMinusOneValuesAtEndOfKUnitigs, 4*(largestKUnitigNumber+1), struct endKUnitigKmerStruct);
