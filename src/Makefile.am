@@ -21,7 +21,7 @@ dist_bin_SCRIPTS = getNumBasesPerReadInFastaFile.perl reduce_sr.pl create_end_pa
 close_gaps.sh compute_sr_cov.pl        \
 create_sr_frg.pl extractreads.pl extract_unjoined_pairs.pl              \
 fasta2frg.pl filter_library.sh fix_unitigs.sh                           \
-recompute_astat_superreads.sh runSRCA.pl                                
+recompute_astat_superreads.sh runSRCA.pl extractreads_not.pl                                
 
 noinst_HEADERS = aligned_simple_array.hpp misc.hpp kmer.hpp		\
 diskBasedUnitigger.h create_k_unitigs_cmdline.hpp			\
