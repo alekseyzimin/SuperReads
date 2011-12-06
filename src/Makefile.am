@@ -14,7 +14,7 @@ AM_LDFLAGS = -lpthread $(JELLYFISH_LIBS)
 
 bin_PROGRAMS = create_k_unitigs error_correct_reads			\
         error_corrected2frg homo_trim	\
-        reverse_complement
+        reverse_complement reduce_sr
 
 
 dist_bin_SCRIPTS = getNumBasesPerReadInFastaFile.perl reduce_sr.pl create_end_pairs.pl     \
@@ -30,6 +30,7 @@ kmer.hpp priorityHeap.h redBlackTreesInsertOnly.h			\
 create_k_unitigs_cmdline.hpp yaggo.hpp gzip_stream.hpp charb.hpp	\
 exp_buffer.hpp charbuf.hpp
 
+reduce_sr_SOURCES = reduce_sr.cc
 error_corrected2frg_SOURCES = error_corrected2frg.c 
 homo_trim_SOURCES = homo_trim.cc 
 reverse_complement_SOURCES = reverse_complement.cc
