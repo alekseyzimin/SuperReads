@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
-#include "diskBasedUnitigger.h"
+#include <src/diskBasedUnitigger.h>
 #include "charb.hpp"
 using namespace std;
 

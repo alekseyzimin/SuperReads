@@ -41,7 +41,7 @@ VI)  Make sure you allow for an appropriate set of params
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <src/charb.hpp>
+#include <charb.hpp>
 
 #define NUM_KUNITIGS_FILENAME "numKUnitigs.txt"
 #define KUNITIG_FILE_COMPLETE "guillaumeKUnitigsAtLeast32bases_all.fasta"

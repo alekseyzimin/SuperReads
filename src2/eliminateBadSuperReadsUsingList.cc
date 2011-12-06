@@ -9,7 +9,7 @@
 #include <ctype.h>
 #include <string>
 #include <set>
-#include <src/charb.hpp>
+#include <charb.hpp>
 using namespace std;
 
 charb line(1000000);

@@ -21,7 +21,7 @@
 
 #include <iostream>
 
-#include "diskBasedUnitigger.h"
+#include <src/diskBasedUnitigger.h>
 #define KUNITIG_FILE "/genome8/raid/tri/kUnitigStudy/arg_ant/afterAlekseyAndMikeRedundentKill/guillaumeKUnitigsAtLeast32bases_all.fasta"
 #define READ_DATA_FILE "/genome8/raid/tri/testDirForReadPlacementRoutines/brucellaData/brucella.pass5reads.fasta"
 

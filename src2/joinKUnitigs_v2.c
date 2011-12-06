@@ -13,7 +13,7 @@
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
-#include "priorityHeap.h"
+#include <src/priorityHeap.h>
 // #include "redBlackTreesInsertOnly.h"
 #include "_redBlackTreesInsertOnly.h"
 

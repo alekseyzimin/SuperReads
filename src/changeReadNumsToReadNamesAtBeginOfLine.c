@@ -5,7 +5,7 @@
 // Output to stdout
 #include <stdio.h>
 #include <ctype.h>
-#include "diskBasedUnitigger.h"
+#include <src/diskBasedUnitigger.h>
 
 int main (int argc, char **argv)
 {

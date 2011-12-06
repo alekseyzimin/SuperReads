@@ -41,6 +41,9 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 
+#include <err.hpp>
+#include <charb.hpp>
+
 #define KMER_LENGTH 31
 #define EST_OVLS_PER_KUNITIG 5
 
@@ -60,7 +63,7 @@ struct overlapDataStruct
      char netOri;
 } *overlapData;
 
-char *line;
+charb line;
 char **kUnitigSequences;
 unsigned char **kUnitigSequenceCounts;
 unsigned char *endIsDone;
@@ -86,8 +89,6 @@ if (name == NULL) { fprintf (stderr, "Couldn't allocate space for '%s'\nBye!\n",
 int main (int argc, char *argv[])
 {
      int numInputFiles, i;
-
-     mallocOrDie (line, 1000000, char);
 
      processArgs (argc, argv);
      numInputFiles = getNumInputFiles (inputPrefix);
@@ -412,7 +413,8 @@ int getLargestKUnitigNumber (char *prefix, int numInputFiles)
 	       fileOffset = 0;
 	  infile = Fopen (fname, "r");
 	  fseek (infile, fileOffset, SEEK_SET);
-	  fgets (line, 1000000, infile);
+	  if(!fgets (line, infile))
+            die << "Error reading file '" << fname << "'" << err::no;
 	  while (fgets (line, 1000000, infile)) {
 	       if (line[0] != '>')
 		    continue;
@@ -454,7 +456,8 @@ void loadKUnitigSequences (char *prefix, int numInputFiles)
 	  else
 	       strcpy (fname, prefix);
 	  infile = Fopen (fname, "r");
-	  fgets (line, 1000000, infile);
+	  if(!fgets (line, infile))
+            die << "Invalid input file '" << fname << "': file is empty";
 	  kUnitigNumber = atoi (line+1);
 	  cptr = line;
 	  while (fgets (cptr, 1000000, infile)) {

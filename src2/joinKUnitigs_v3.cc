@@ -13,7 +13,7 @@
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
-#include <src/charb.hpp>
+#include <charb.hpp>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -22,7 +22,7 @@
 #include <sys/wait.h>
 
 extern "C" {
-#include <src2/priorityHeap.h>
+#include <src/priorityHeap.h>
 #include <src2/redBlackTreesInsertOnly.h>
 }
 

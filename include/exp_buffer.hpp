@@ -165,9 +165,9 @@ public:
   void clear() { ptr_ = base_; }
   bool empty() const { return ptr_ == base_; }
   
-  void reserve(size_type s) {
+  void reserve(size_type s = 0) {
     size_type clen = end_ - base_;
-    if(s <= clen)
+    if(s > 0 && s <= clen)
       return;
     if(s <= 2 * clen)
       s = 2 * clen;

@@ -1,8 +1,9 @@
-#include<src/charb.hpp>
 #include<stdlib.h>
 #include<string.h>
 #include<math.h>
 #include<assert.h>
+
+#include<charb.hpp>
 #define DEBUG 0
 //#undef DEBUG
 

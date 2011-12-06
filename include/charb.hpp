@@ -7,8 +7,9 @@
 #include <stdexcept>
 #include <string>
 #include <cstring>
+#include <assert.h>
 
-#include <src/exp_buffer.hpp>
+#include <exp_buffer.hpp>
 
 /** Drop in (almost) to the char * type. This implement a 0 terminated
  * growable array of char with overloaded functions for many/most of
@@ -67,6 +68,12 @@ public:
     return *this;
   }
   size_t len() const { return super::size(); }
+  void chomp() {
+    while(super::ptr_ > super::base_ && isspace(*(super::ptr_ - 1)))
+      --super::ptr_;
+    *super::ptr_ = '\0';
+  }
+
   friend char *fgets <> (basic_charb<R> &b, FILE *stream, char *cptr);
   friend int vsprintf <> (basic_charb<R> &b, const char *format, va_list ap);
   friend ssize_t getline <> (basic_charb<R> &b, FILE *stream);
@@ -93,6 +100,11 @@ char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
   long  npos  = pos;
   char *start = cptr;
 
+  if(b.empty()) {
+    b.reserve();
+    start = cptr = b.base();
+  }
+
   while(true) {
     char *res = fgets(cptr, b.capacity() - (cptr - b.base_), stream);
     if(!res)
@@ -117,6 +129,7 @@ char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
   
   if(cptr == b.base_)
     return 0;
+  assert(cptr != NULL);
   b.ptr_ = cptr;
   return start;
 }
