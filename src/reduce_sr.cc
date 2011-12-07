@@ -104,7 +104,7 @@ int main(int argc,char *argv[]){
     k=0;
     if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]].size()>0&&superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]].size()>0){
     int max_first_index=0;
-    int max_k=3;
+    int max_k=50;
     int max_2k=max_k*2;
 
     if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][0]>superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][0])
