@@ -164,15 +164,14 @@ public:
   }
   void clear() { ptr_ = base_; }
   bool empty() const { return ptr_ == base_; }
+  bool is_null() const { return !base_ || base_ == end_; }
   
-  void reserve(size_type s = 0) {
+  void reserve(size_type s = 1024) {
     size_type clen = end_ - base_;
-    if(s > 0 && s <= clen)
+    if(s <= clen)
       return;
     if(s <= 2 * clen)
       s = 2 * clen;
-    if(s == 0)
-      s = 1024;
     T *nbase = (T *)realloc(base_, clen, s);
     if(!nbase)
       throw std::runtime_error("Error allocating memory");

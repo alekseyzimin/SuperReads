@@ -40,6 +40,10 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <assert.h>
+
+#include <err.hpp>
+#include <charb.hpp>
 
 #define KMER_LENGTH 31
 #define EST_OVLS_PER_KUNITIG 5
@@ -60,7 +64,7 @@ struct overlapDataStruct
      char netOri;
 } *overlapData;
 
-char *line;
+charb line(2000);
 char **kUnitigSequences;
 unsigned char **kUnitigSequenceCounts;
 unsigned char *endIsDone;
@@ -86,8 +90,6 @@ if (name == NULL) { fprintf (stderr, "Couldn't allocate space for '%s'\nBye!\n",
 int main (int argc, char *argv[])
 {
      int numInputFiles, i;
-
-     mallocOrDie (line, 1000000, char);
 
      processArgs (argc, argv);
      numInputFiles = getNumInputFiles (inputPrefix);
@@ -412,7 +414,8 @@ int getLargestKUnitigNumber (char *prefix, int numInputFiles)
 	       fileOffset = 0;
 	  infile = Fopen (fname, "r");
 	  fseek (infile, fileOffset, SEEK_SET);
-	  fgets (line, 1000000, infile);
+	  if(!fgets (line, infile))
+            die << "Error reading file '" << fname << "'" << err::no;
 	  while (fgets (line, 1000000, infile)) {
 	       if (line[0] != '>')
 		    continue;
@@ -443,8 +446,9 @@ void loadKUnitigSequences (char *prefix, int numInputFiles)
 {
      FILE *infile;
      int i, kUnitigNumber, length;
-     char fname[500], *cptr;
+     char fname[500];
      int numInputFilesTemp;
+     charb header;
 
      numInputFilesTemp = (numInputFiles == 0) ? 1 : numInputFiles;
 
@@ -454,30 +458,29 @@ void loadKUnitigSequences (char *prefix, int numInputFiles)
 	  else
 	       strcpy (fname, prefix);
 	  infile = Fopen (fname, "r");
-	  fgets (line, 1000000, infile);
-	  kUnitigNumber = atoi (line+1);
-	  cptr = line;
-	  while (fgets (cptr, 1000000, infile)) {
-	       if (cptr[0] != '>') {
-		    length = strlen (cptr);
-		    cptr += (length-1);
-		    *cptr = 0;
-		    continue;
-	       }
-	       // If we got here it's a header line
-	       *cptr = 0;
-	       length = cptr - line;
-	       mallocOrDie (kUnitigSequences[kUnitigNumber], length+1, char);
-	       kUnitigLengths[kUnitigNumber] = length;
-	       strcpy (kUnitigSequences[kUnitigNumber], line);
-	       kUnitigNumber = atoi (cptr+1);
-	       cptr = line;
+	  if(!infile)
+	    die << "Can't open file '" << fname << "'" << err::no;
+	  
+	  int next_char = fgetc(infile);
+	  if(next_char != '>')
+	    die << "Badly formatted fasta file '" << fname << "'. Missing header";
+
+	  while(fgets (header, infile)) {
+	    kUnitigNumber = atoi (header);
+	    next_char = fgetc(infile);
+	    line.clear();
+	    while(next_char != EOF && next_char != '>') {
+	      ungetc(next_char, infile);
+	      fgets_append (line, infile);
+	      fflush(stdout);
+	      line.chomp();
+	      next_char = fgetc(infile);
+	    }
+	    length = line.len();
+	    mallocOrDie (kUnitigSequences[kUnitigNumber], length+1, char);
+	    kUnitigLengths[kUnitigNumber] = length;
+	    strcpy (kUnitigSequences[kUnitigNumber], line);
 	  }
-	  *cptr = 0;
-	  length = cptr - line;
-	  mallocOrDie (kUnitigSequences[kUnitigNumber], length+1, char);
-	  kUnitigLengths[kUnitigNumber] = length;
-	  strcpy (kUnitigSequences[kUnitigNumber], line);
 	  fclose (infile);
      }
 }

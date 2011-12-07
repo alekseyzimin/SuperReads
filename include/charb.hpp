@@ -100,15 +100,17 @@ char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
   long  npos  = pos;
   char *start = cptr;
 
-  if(b.empty()) {
+  if(b.is_null()) {
     b.reserve();
     start = cptr = b.base();
   }
 
   while(true) {
     char *res = fgets(cptr, b.capacity() - (cptr - b.base_), stream);
-    if(!res)
+    if(!res) {
+      printf("res null capacity %ld offset %ld\n", b.capacity(), cptr - b.base_);
       break;
+    }
     size_t char_read;
     if(pos == -1) {
       char_read = strlen(res);
