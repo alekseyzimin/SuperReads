@@ -33,9 +33,9 @@ extern "C" {
 #define READ_VS_KUNITIG_FILE "testOutput.nucmerLinesOnly.reorderedAndRenamed.txt"
 
 #define DEFAULT_MAX_OFFSET_CONSIDERED_SAME 5
-#define MAX_OFFSET_TO_TEST 13000
+#define MAX_OFFSET_TO_TEST 10000
 
-#define MAX_NODES_ALLOWED 20000
+#define MAX_NODES_ALLOWED 4000
 
 #define NEWLY_ADDED_MAXIMAL_UNITIG 2
 
