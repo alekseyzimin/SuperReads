@@ -126,7 +126,7 @@ system("time $cmd");
 $cmd = "cat ${joinerOutputPrefix}_* | $exeDir/getSuperReadInsertCountsFromReadPlacementFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -error-filename $sequenceCreationErrorFile -kunitigsfile $kUnitigsFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 50% > $workingDirectory/sr_sizes.tmp";
 &runCommandAndExitIfBad ($cmd,"$workingDirectory/sr_sizes.tmp", 1);
 
-$cmd = "cat $workingDirectory/sr_sizes.tmp| $exeDir/reduce_sr  > $workingDirectory/reduce.tmp";
+$cmd = "cat $workingDirectory/sr_sizes.tmp| $exeDir/reduce_sr $maxKUnitigNumber  > $workingDirectory/reduce.tmp";
 &runCommandAndExitIfBad ($cmd,"$workingDirectory/reduce.tmp", 1);
 
 $cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $sequenceCreationErrorFile | perl -e '{open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);\@F=split(\" \",\$line);\$sr{\$F[0]}=\$F[1]} while(\$line=<STDIN>){chomp(\$line);\@l=split(\" \",\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\\n\";}else{print \"\$line\\n\";}}}' $workingDirectory/reduce.tmp >  $finalReadPlacementFile"; 
