@@ -4,8 +4,7 @@
 #include<assert.h>
 
 #include<charb.hpp>
-#define DEBUG 0
-//#undef DEBUG
+#define DEBUG 1
 
 typedef ExpandingBuffer<int> int_buf;
 typedef ExpandingBuffer<int_buf, remaper<int_buf> > twoD_int_buf;
@@ -134,6 +133,9 @@ int main(int argc,char *argv[]){
     int candidate_count=1;
     for(i=0;i<k;i++){
       if(candidates[i]==last_candidate && candidate_count==1) {
+#if DEBUG
+	printf("Checking candidate %s\n",(char*)irreducibleSuperReadNames[candidates[i]]);
+#endif
 	if(strstr(irreducibleSuperReadNames[candidates[i]],superReadName_save)!=NULL)
 	  break;
 	if(strstr(irreducibleSuperReadNames[candidates[i]],superReadName_reverse)!=NULL)
