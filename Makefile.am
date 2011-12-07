@@ -45,9 +45,7 @@ noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/create_k_unitigs_cmdline.hpp		\
                   src/error_correct_reads_cmdline.hpp		\
                   src/error_correct_reads.hpp src/err_log.hpp	\
-                  src/kmer.hpp src/priorityHeap.h		\
-                  src/redBlackTreesInsertOnly.h			\
-                  src/create_k_unitigs_cmdline.hpp		\
+                  src/kmer.hpp src/create_k_unitigs_cmdline.hpp	\
                   src/error_corrected2frg_cmdline.hpp
 
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
@@ -66,21 +64,17 @@ bin_PROGRAMS += createFastaSuperReadSequences			\
                 createKUnitigMaxOverlaps			\
                 eliminateBadSuperReadsUsingList			\
                 getSuperReadInsertCountsFromReadPlacementFile	\
-                joinKUnitigs_v3 joinKUnitigs_v2
+                joinKUnitigs_v3
 
 dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
                     src2/createSuperReadsForDirectory.perl
 
-noinst_HEADERS += src2/_redBlackTreesInsertOnly.h	\
-src2/redBlackTreesInsertOnly.h
+noinst_HEADERS += src2/redBlackTreesInsertOnly.h src2/priorityHeap.h
 
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
 findMatchesBetweenKUnitigsAndReads_SOURCES =    \
 src2/findMatchesBetweenKUnitigsAndReads.cc
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc
-# joinKUnitigs_SOURCES = joinKUnitigs.cc redBlackTreesInsertOnly.cc priorityHeap.cc
-joinKUnitigs_v2_SOURCES = src2/joinKUnitigs_v2.c	\
-src2/_redBlackTreesInsertOnly.c src2/priorityHeap.c
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFile.cc
@@ -91,15 +85,15 @@ src2/redBlackTreesInsertOnly.c src2/priorityHeap.c
 ##############################
 # unittests
 ##############################
-TESTS = all_tests
-check_PROGRAMS = all_tests
+#TESTS = all_tests
+#check_PROGRAMS = all_tests
 
 
-all_tests_SOURCES = unittests/test_charb.cc		\
-unittests/test_exp_buffer.cc unittests/test_charbuf.cc
-all_tests_CXXFLAGS = -I$(top_srcdir)/unittests/gtest/include		\
--I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include -I$(top_srcdir)	\
--Wall -Werror
-all_tests_LDADD = libgtest_main.la
+# all_tests_SOURCES = unittests/test_charb.cc		\
+# unittests/test_exp_buffer.cc unittests/test_charbuf.cc
+# all_tests_CXXFLAGS = -I$(top_srcdir)/unittests/gtest/include		\
+# -I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include -I$(top_srcdir)	\
+# -Wall -Werror
+# all_tests_LDADD = libgtest_main.la
 
 include gtest.mk

@@ -22,7 +22,7 @@
 #include <sys/wait.h>
 
 extern "C" {
-#include <src/priorityHeap.h>
+#include <src2/priorityHeap.h>
 #include <src2/redBlackTreesInsertOnly.h>
 }
 
