@@ -33,9 +33,9 @@ extern "C" {
 #define READ_VS_KUNITIG_FILE "testOutput.nucmerLinesOnly.reorderedAndRenamed.txt"
 
 #define DEFAULT_MAX_OFFSET_CONSIDERED_SAME 5
-#define MAX_OFFSET_TO_TEST 10000
+#define MAX_OFFSET_TO_TEST 13000
 
-#define MAX_NODES_ALLOWED 5000
+#define MAX_NODES_ALLOWED 20000
 
 #define NEWLY_ADDED_MAXIMAL_UNITIG 2
 
@@ -139,6 +139,7 @@ int maxTotAllowableMissingOnEnds;
 FILE *outfile, *outputFile;
 int reportPaths;
 char *flds[1000];
+charb outputString(200);
 double mean[256][256], stdev[256][256];
 char fileName[500];
 char rdPrefix[3], rdPrefixHold[3];
@@ -233,7 +234,7 @@ int main (int argc, char **argv)
      charb line(2000),readVsKUnitigFileName(256), outputFileName(256);
      char *outputPrefix = (char *) "outputPrefix"; 
      char *overlapsFn = (char *) OVERLAPS_FILE;
-     char ori;
+//     char ori;
      char *meanAndStdevByPrefixFn = (char *) MEAN_AND_STDEV_BY_PREFIX_FILE;
      char *unitigLengthsFn = (char *) UNITIG_LENGTHS_FILE;
      char *numKUnitigsFn = (char *) NUM_UNITIGS_FILE;
@@ -241,7 +242,7 @@ int main (int argc, char **argv)
      int unitig1, unitig2, overlapCount = 0;
      // int itemp;
      int unitigNum, numUnitigs, firstUnitigNum = 0;
-     int ahg, bhg;
+//     int ahg, bhg;
      int i, *iptr;
 #if DEBUG
      int unitigForDebugging = DEBUG;
@@ -421,55 +422,9 @@ int main (int argc, char **argv)
 
 	  startOverlapByUnitig[unitig1]--;
 	  startOverlapIndexByUnitig2[unitig2]--;
-#if 0
-	  ori=overlapData[j].ori;
-	  ahg=overlapData[j].ahg;
-	  bhg=overlapData[j].bhg;
-	  
-	  if (unitig1 > unitig2)
-	       continue;
-	  else if ((unitig1 == unitig2) && (overlapData[j].ahg < 0))
-	       continue;
-
-	  if (unitig1 >= unitig2)
-	       continue;
-	  startOverlapByUnitig[unitig1]--;
-	  startOverlapIndexByUnitig2[unitig2]--;
-          unitig2OverlapIndex[startOverlapIndexByUnitig2[unitig2]] = startOverlapByUnitig[unitig1];
-	  //if (unitig1 == 0) fprintf (stderr, "pre-decrement value = %d   ", startOverlapByUnitig[unitig2]);
-	  startOverlapByUnitig[unitig2]--;
-	  startOverlapIndexByUnitig2[unitig1]--;
-	  //if (unitig1 == 0)
-	  //     fprintf (stderr, "Unitig1 = %d , unitig2 = %d, itemp = %d startIndex2 = %d Got here, got here got here\n", unitig1, unitig2, itemp, startOverlapIndexByUnitig2[unitig1]);
-	  unitig2OverlapIndex[startOverlapIndexByUnitig2[unitig1]] = startOverlapByUnitig[unitig2];
-#endif
+	  unitig2OverlapIndex[startOverlapIndexByUnitig2[unitig2]] = j;
      }
 
-     for(int j=0;j<overlapCount;j++)
-     {
-	  unitig1=overlapData[j].unitig1;
-	  unitig2=overlapData[j].unitig2;
-          ahg=overlapData[j].ahg;
-          bhg=overlapData[j].bhg;
-          ori=overlapData[j].ori;
-          int start_index=startOverlapByUnitig[unitig2];
-	  if(ori=='N')
-	       ahg=-ahg;
-          else
-	       ahg=bhg;
-          while(unitig2==overlapData[start_index].unitig1){
-	       if((overlapData[start_index].unitig2==unitig1) && (overlapData[start_index].ori==ori) && (overlapData[start_index].ahg==ahg))
-	       {
-		    unitig2OverlapIndex[j]= start_index;
-		    break;
-	       }
-	       start_index++;
-	  }
-          if(unitig2!=overlapData[start_index].unitig1){
-	       fprintf(stderr,"We should never get here %d %d\n",unitig2,overlapData[start_index].unitig1);
-	       exit(1);
-	  }    
-     }
 #if 0
      FILE *outfile = Fopen ("overlapDataArrayFile.txt", "w");
      for (int j=0; j<overlapCount; j++)
@@ -1150,19 +1105,23 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 #endif
      if (approxNumPaths == 1) {
 	  int isReversed, superReadLength;
+	  charb tempOutputString(100);
 	  // the following uses augmentedUnitigPathPrintData
 	  superReadLength = getSuperReadLength ();
 	  isReversed = setSuperReadNameFromAugmentedPath ();
-	  fprintf (outputFile,"%s%lld %s ", rdPrefixHold, readNumHold-1, superReadName);
+	  sprintf (outputString,"%s%lld %s ", rdPrefixHold, readNumHold-1, superReadName);
 	  if (! isReversed)
-	       fprintf (outputFile,"%d F\n", lengthAdjustment1);
+	       sprintf (tempOutputString,"%d F\n", lengthAdjustment1);
 	  else
-	       fprintf (outputFile,"%d R\n", superReadLength - lengthAdjustment1);
-	  fprintf (outputFile,"%s%lld %s ", rdPrefixHold, readNumHold, superReadName);
+	       sprintf (tempOutputString,"%d R\n", superReadLength - lengthAdjustment1);
+	  strcat (outputString, tempOutputString);
+	  sprintf (tempOutputString,"%s%lld %s ", rdPrefixHold, readNumHold, superReadName);
+	  strcat (outputString, tempOutputString);
 	  if (! isReversed)
-	       fprintf (outputFile,"%d R\n", superReadLength - lengthAdjustment2);
+	       sprintf (tempOutputString,"%d R\n", superReadLength - lengthAdjustment2);
 	  else
-	       fprintf (outputFile,"%d F\n", lengthAdjustment2);
+	       sprintf (tempOutputString,"%d F\n", lengthAdjustment2);
+	  strcat (outputString, tempOutputString);
      }
 #if 0
      printf ("final offset = %d, arraySize = %d\n", finalOffset, dataArr2.arraySize);
@@ -1522,6 +1481,7 @@ void getSuperReadsForInsert (void)
 {
      char readNameSpace[200];
      int insertLengthMean;
+     int retCode;
 
      // Output the stuff for the old pair
 #ifdef KILLED111115
@@ -1567,8 +1527,10 @@ void getSuperReadsForInsert (void)
 	  // The following to check what we're doing
 	  insertLengthMeanBetweenKUnisForInsertGlobal = insertLengthMean;
 	  insertLengthStdevGlobal = stdev[(int)rdPrefixHold[0]][(int)rdPrefixHold[1]];
-	  if (joinKUnitigsFromMates (insertLengthMean, stdev[(int)rdPrefixHold[0]][(int)rdPrefixHold[1]]) == 1)
-	       return;
+	  retCode = joinKUnitigsFromMates (insertLengthMean, stdev[(int)rdPrefixHold[0]][(int)rdPrefixHold[1]]);
+	  if (retCode == 1) {
+	       fputs (outputString, outputFile);
+	       return; }
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold-1);
 	  findSingleReadSuperReads(readNameSpace);
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
