@@ -104,6 +104,8 @@ int main(int argc,char *argv[]){
     k=0;
     if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]].size()>0&&superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]].size()>0){
     int max_first_index=0;
+    int max_k=3;
+    int max_2k=max_k*2;
 
     if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][0]>superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][0])
 	max_first_index=(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][0];
@@ -111,11 +113,11 @@ int main(int argc,char *argv[]){
         max_first_index=(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][0];
 
 
-    for(i=0;i<(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[0]].size();i++)
+    for(i=0;i<(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[0]].size()&&k<max_k;i++)
       if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][i]>=max_first_index)
 	      candidates[k++]=superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][i];
 
-    for(i=0;i<(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]].size();i++)
+    for(i=0;i<(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]].size()&&k<max_2k;i++)
      if(superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][i]>=max_first_index)
 	      candidates[k++]=superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][i];
 
