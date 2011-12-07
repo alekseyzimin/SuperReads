@@ -1,6 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
-#include <src/charb.hpp>
+#include <charb.hpp>
 int main(int argc, char *argv[])
 {
   ssize_t i,sequence_len;

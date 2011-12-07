@@ -27,11 +27,11 @@
 #include <vector>
 #include <utility>
 
-#include <src/charbuf.hpp>
+#include <charbuf.hpp>
 #include <src/create_k_unitigs_cmdline.hpp>
 #include <jflib/pool.hpp>
-#include <src/gzip_stream.hpp>
-#include <aligned_simple_array.hpp>
+#include <gzip_stream.hpp>
+#include <src/aligned_simple_array.hpp>
 
 // Structure and thread for writing out results
 struct output_pair {

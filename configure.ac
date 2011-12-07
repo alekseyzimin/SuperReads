@@ -1,7 +1,7 @@
 AC_PREREQ([2.63])
-AC_INIT([SuperReads], [0.0.1], [gmarcais@umd.edu])
+AC_INIT([SuperReads], [0.0.1], [alekseyz@ipst.umd.edu], [SuperReads])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE([SuperReads], [0.0.1])
+AM_INIT_AUTOMAKE([subdir-objects])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([config.h])
@@ -11,6 +11,7 @@ AC_PROG_LIBTOOL
 AC_PROG_AWK
 AC_PROG_CXX
 AC_PROG_CC
+AM_PROG_CC_C_O # To compile C program with subdir-objects
 AC_PROG_INSTALL
 AC_PROG_CPP
 AC_PROG_MKDIR_P
@@ -57,8 +58,12 @@ AC_CHECK_FUNCS([alarm clock_gettime dup2 getcwd getdelim getpagesize gettimeofda
 AC_ARG_ENABLE([debug], AS_HELP_STRING([--enable-debug], [Enable debugging]))
 AS_IF([test "x$enable_debug" = "x"], AC_DEFINE([NDEBUG], [1], [Defined if no debugging]))
 
-AC_CONFIG_FILES([Makefile
-                 src/Makefile
-                 src2/Makefile
-                 unittests/Makefile])
+AC_CONFIG_FILES([Makefile])
+#                 src/Makefile
+#                 src2/Makefile
+#                 unittests/Makefile])
+dnl if test -d "examples"; then
+dnl  AC_CONFIG_FILES([examples/Makefile])
+dnl fi
+
 AC_OUTPUT

@@ -1,0 +1,22 @@
+purpose "Create a frag file (.frg) from error corrected reads."
+package "error_corrected2frg"
+description ""
+
+option("l", "length-min") {
+  description "Minimum length of a read"
+  uint64; default "64" }
+arg("lib_id") {
+  description "ID of the library"
+  c_string }
+arg("mean") {
+  description "Library mean"
+  double}
+arg("stdev") {
+  description "Library standard deviation"
+  double}
+arg("number_of_reads") {
+  description "Maximum number of reads"
+  uint64 }
+arg("fasta_file") {
+  description "Input read sequences"
+  c_string }

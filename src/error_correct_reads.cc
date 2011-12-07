@@ -23,7 +23,7 @@
 
 #include <jflib/multiplexed_io.hpp>
 #include <src/error_correct_reads.hpp>
-#include <src/gzip_stream.hpp>
+#include <gzip_stream.hpp>
 
 typedef uint64_t hkey_t;
 typedef uint64_t hval_t;

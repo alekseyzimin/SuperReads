@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "priorityHeap.h"
+#include <src2/priorityHeap.h>
 
 int heapIsEmpty (struct heapStruct *A)
 {

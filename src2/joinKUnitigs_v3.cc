@@ -13,7 +13,7 @@
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
-#include <src/charb.hpp>
+#include <charb.hpp>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>

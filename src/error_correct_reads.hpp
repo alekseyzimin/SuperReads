@@ -12,9 +12,9 @@
 #include <fstream>
 #include <assert.h>
 #include <misc.hpp>
-#include <kmer.hpp>
-#include <err_log.hpp>
-#include <error_correct_reads_cmdline.hpp>
+#include <src/kmer.hpp>
+#include <src/err_log.hpp>
+#include <src/error_correct_reads_cmdline.hpp>
 
 // A forward moving pointer.
 template<typename T>

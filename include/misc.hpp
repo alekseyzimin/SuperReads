@@ -8,6 +8,7 @@
 
 // IO manipulator for substrings
 class substr {
+
 public:
   const char * const _str;
   size_t const       _len;

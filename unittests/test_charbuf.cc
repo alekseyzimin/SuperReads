@@ -1,6 +1,6 @@
 #include <sstream>
 #include <gtest/gtest.h>
-#include <src/charbuf.hpp>
+#include <charbuf.hpp>
 
 TEST(Charstream, Output) {
   charstream s(10);

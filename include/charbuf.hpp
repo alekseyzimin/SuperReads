@@ -1,7 +1,7 @@
 #ifndef __CHARBUF_HPP__
 #define __CHARBUF_HPP__
 
-#include <src/charb.hpp>
+#include <charb.hpp>
 
 /** Streambuf backed by a charb. Similar to std::stringbuf (used by
  * std::ostringstream) but is based on a charb rather than a

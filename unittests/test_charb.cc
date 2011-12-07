@@ -1,6 +1,6 @@
 #include <errno.h>
 #include <gtest/gtest.h>
-#include <src/charb.hpp>
+#include <charb.hpp>
 
 TEST(CharbBasic, Init) {
   charb empty;
@@ -105,7 +105,7 @@ TEST(CharbBasic, Strerror_r) {
 #else
   char *res = strerror_r(errno, b);
   EXPECT_EQ(res, (char*)b);
-  EXPECT_LT(0, strlen(b));
+  EXPECT_LT((size_t)0, strlen(b));
 #endif
 }
 
@@ -165,13 +165,13 @@ TEST_F(IOTest, fgets) {
   char *res = fgets(b, 3, tf); // 3 ignored!
   EXPECT_STREQ(l1, res);
   EXPECT_STREQ(l1, b);
-  EXPECT_EQ(20, b.capacity());
+  EXPECT_EQ((size_t)20, b.capacity());
   EXPECT_EQ(strlen(l1), b.len());
 
   res = fgets(b, tf);
   EXPECT_STREQ(l2, res);
   EXPECT_STREQ(l2, b);
-  EXPECT_EQ(80, b.capacity());
+  EXPECT_EQ((size_t)80, b.capacity());
   EXPECT_EQ(strlen(l2), b.len());
 
   res = fgets(b, tf);
@@ -179,17 +179,24 @@ TEST_F(IOTest, fgets) {
   EXPECT_STREQ(l2, b);
 }
 
+TEST_F(IOTest, fgets_empty) {
+  charb b; // start empty
+  char *res = fgets(b, tf);
+  EXPECT_STREQ(l1, res);
+  EXPECT_STREQ(l1, b);
+}
+
 TEST_F(IOTest, getline) {
   charb b(5);
   ssize_t res;
 
   res = getline(b, tf);
-  EXPECT_EQ(strlen(l1), res);
+  EXPECT_EQ(strlen(l1), (size_t)res);
   EXPECT_STREQ(l1, b);
   EXPECT_LE(strlen(l1), b.len());
 
   res = getline(b, tf);
-  EXPECT_EQ(strlen(l2), res);
+  EXPECT_EQ(strlen(l2), (size_t)res);
   EXPECT_STREQ(l2, b);
   EXPECT_LE(strlen(l2), b.len());
   
@@ -218,8 +225,24 @@ TEST(CharbBasic, sprintf) {
   const char *fmt = "Hello %d times";
   const char *str_res = "Hello 1000 times";
   int res = sprintf(b, fmt, 1000);
-  EXPECT_EQ(strlen(str_res), res);
+  EXPECT_EQ(strlen(str_res), (size_t)res);
   EXPECT_STREQ(str_res, b);
   EXPECT_EQ(strlen(str_res), b.len());
 }
 
+TEST(CharbBasic, chomp) {
+  const char * no_space_str = "Hello";
+  charb no_space(no_space_str);
+  no_space.chomp();
+  EXPECT_STREQ(no_space_str, no_space);
+
+  const char * empty_str = "";
+  charb empty(empty_str);
+  empty.chomp();
+  EXPECT_STREQ(empty_str, empty);
+
+  const char * some_space_str = "Hello \n";
+  charb some_space(some_space_str);
+  some_space.chomp();
+  EXPECT_STREQ(no_space_str, some_space);
+}

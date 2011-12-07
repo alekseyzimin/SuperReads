@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <src/exp_buffer.hpp>
+#include <exp_buffer.hpp>
 #include <algorithm>
 
 typedef ExpandingBuffer<int, remaper<int> > int_buf;
@@ -38,13 +38,13 @@ TEST(Remaper, Default) {
   EXPECT_EQ((size_t)0, b.capacity());
   EXPECT_EQ((size_t)0, b.size());
   b[10] = 5;
-  EXPECT_EQ(b.size() - 1, std::count(b.begin(), b.end(), -1));
+  EXPECT_EQ(b.size() - 1, (size_t)std::count(b.begin(), b.end(), -1));
 }
 
 TEST(Remaper, Swap) {
   int_buf b(10);
 
-  for(int i = 0; i < b.capacity(); ++i)
+  for(size_t i = 0; i < b.capacity(); ++i)
     b[i] = 2 * i;
   
   EXPECT_EQ((size_t)10, b.size());
@@ -53,15 +53,15 @@ TEST(Remaper, Swap) {
   b.swap(bs);
   EXPECT_EQ((size_t)0, b.capacity());
   EXPECT_EQ((size_t)10, bs.capacity());
-  for(int i = 0; i < bs.capacity(); ++i)
-    EXPECT_EQ(2 * i, bs[i]);
+  for(size_t i = 0; i < bs.capacity(); ++i)
+    EXPECT_EQ((int)(2 * i), bs[i]);
 
   std::swap(b, bs);
   
   EXPECT_EQ((size_t)10, b.capacity());
   EXPECT_EQ((size_t)0, bs.capacity());
-  for(int i = 0; i < b.capacity(); ++i)
-    EXPECT_EQ(2 * i, b[i]);
+  for(size_t i = 0; i < b.capacity(); ++i)
+    EXPECT_EQ((int)(2 * i), b[i]);
 
   ExpBuffer<int> b1, b2(5);
   std::swap(b1, b2);
