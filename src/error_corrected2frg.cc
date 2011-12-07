@@ -6,25 +6,28 @@
 #include <err.hpp>
 #include <src/error_corrected2frg_cmdline.hpp>
 
-void print_sequence(FILE *out, const char *seq, uint64_t len) {
-  uint64_t i;
-  for(i = 0; i < len; i += 70) {
-    fprintf(out, "%.70s\n", seq + i);
-  }
-  if(i < len)
-    fprintf(out, "%s\n", seq + i);
+inline void print_sequence(FILE *out, const char *seq, uint64_t len) {
+  fprintf(out, "%s\n", seq);
+  // uint64_t i;
+  // for(i = 0; i < len; i += 70) {
+  //   fprintf(out, "%.70s\n", seq + i);
+  // }
+  // if(i < len)
+  //   fprintf(out, "%s\n", seq + i);
 }
 
 void print_quals(FILE *out, uint64_t len) {
   static const char *quals =
     "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE";
+  static const size_t qlen = strlen(quals);
+
   uint64_t i = 0;
-  if(len > 70)
-    for( ; i < len; i += 70) {
-      fprintf(out, "%s\n", quals);
-    }
+  for( ; i + qlen < len; i += qlen) {
+    fprintf(out, "%s", quals);
+  }
   if(i < len)
-    fprintf(out, "%s\n", quals + 70 - (len - i));
+    fprintf(out, "%.*s", (int)(len - i), quals);
+  fprintf(out, "\n");
   
 }
 
