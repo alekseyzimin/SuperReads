@@ -4,7 +4,7 @@
 #include<assert.h>
 
 #include<charb.hpp>
-#define DEBUG 1
+#define DEBUG 0
 
 typedef ExpandingBuffer<int> int_buf;
 typedef ExpandingBuffer<int_buf, remaper<int_buf> > twoD_int_buf;
@@ -58,19 +58,19 @@ void reverse_sr(const char * original, char * reversed){
 int main(int argc,char *argv[]){
 
   int i,j,k,l=0,lastKUnitigIndex,irreducibleSuperReadIndex=0;
-  int_buf kUnitigsInSuperRead(100);
+  int_buf kUnitigsInSuperRead(1000);
   time_t time_start=time(NULL);
   int_buf candidates(100);
-  twoD_charb_buf irreducibleSuperReadNames(1000);
-  charb line(10000);
+  twoD_charb_buf irreducibleSuperReadNames(10000000);
+  charb line(1000000);
   char *token, *saveptr;
   //parse arguments here
   twoD_int_buf superReadIndicesForKUnitig(atoi(argv[1]));
 
   while(fgets(line,stdin)){
     l++;	
-    if(l%100000==0){
-      fprintf(stderr,"Processed %d super reads, irreducible %d, processing %d super reads per second\n",l,irreducibleSuperReadIndex,(int)floor(100000/difftime(time(NULL),time_start)));
+    if(l%500000==0){
+      fprintf(stderr,"Processed %d super reads, irreducible %d, processing %d super reads per second\n",l,irreducibleSuperReadIndex,(int)floor(500000/difftime(time(NULL),time_start)));
       time_start=time(NULL);
     }
     //first we parse the super read line, space separated, to get the name
@@ -102,11 +102,22 @@ int main(int argc,char *argv[]){
 
     //now we try to reduce
     k=0;
+    if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]].size()>0&&superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]].size()>0){
+    int max_first_index=0;
+
+    if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][0]>superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][0])
+	max_first_index=(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][0];
+    else
+        max_first_index=(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][0];
+
 
     for(i=0;i<(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[0]].size();i++)
-      candidates[k++]=superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][i];
+      if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][i]>=max_first_index)
+	      candidates[k++]=superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][i];
+
     for(i=0;i<(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]].size();i++)
-      candidates[k++]=superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][i];
+     if(superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][i]>=max_first_index)
+	      candidates[k++]=superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][i];
 
 #if DEBUG
     printf("Found %d candidates\n",k);
@@ -158,7 +169,7 @@ int main(int argc,char *argv[]){
       continue;
     }
 #endif
-
+}
 #if DEBUG
     printf("Irreducible %s, index %d\n",(char*)superReadName_save,irreducibleSuperReadIndex);
 #endif

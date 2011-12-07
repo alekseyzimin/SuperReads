@@ -9,10 +9,10 @@ while($line=<STDIN>){
     chomp($line);
     @l=split(/\s+/,$line);
     $ll++;
-    if($ll%100000==0){
+    if($ll%500000==0){
 	print STDERR "Processed $ll super reads, irreducible $i\n";
 	$elapsed=time()-$timing;
-	print STDERR "Processing ",int(100000/$elapsed)," super reads per second\n";
+	print STDERR "Processing ",int(500000/$elapsed)," super reads per second\n";
 	$timing=time();
     }
 
