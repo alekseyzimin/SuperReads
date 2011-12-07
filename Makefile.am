@@ -85,15 +85,15 @@ src2/redBlackTreesInsertOnly.c src2/priorityHeap.c
 ##############################
 # unittests
 ##############################
-#TESTS = all_tests
-#check_PROGRAMS = all_tests
+TESTS = all_tests
+check_PROGRAMS = all_tests
 
 
-# all_tests_SOURCES = unittests/test_charb.cc		\
-# unittests/test_exp_buffer.cc unittests/test_charbuf.cc
-# all_tests_CXXFLAGS = -I$(top_srcdir)/unittests/gtest/include		\
-# -I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include -I$(top_srcdir)	\
-# -Wall -Werror
-# all_tests_LDADD = libgtest_main.la
+all_tests_SOURCES = unittests/test_charb.cc		\
+unittests/test_exp_buffer.cc unittests/test_charbuf.cc
+all_tests_CXXFLAGS = -I$(top_srcdir)/unittests/gtest/include		\
+-I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include -I$(top_srcdir)	\
+-Wall -Werror
+all_tests_LDADD = libgtest_main.la
 
 include gtest.mk
