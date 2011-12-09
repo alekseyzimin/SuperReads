@@ -10,9 +10,10 @@ dist_bin_SCRIPTS =
 # jflib
 ##############################
 JFLIB_I = include/jflib
-noinst_HEADERS += $(JFLIB_I)/circular_buffer.hpp		\
-$(JFLIB_I)/compare_and_swap.hpp $(JFLIB_I)/locks_pthread.hpp	\
-$(JFLIB_I)/multiplexed_io.hpp $(JFLIB_I)/pool.hpp
+noinst_HEADERS += $(JFLIB_I)/circular_buffer.hpp			\
+                  $(JFLIB_I)/compare_and_swap.hpp			\
+                  $(JFLIB_I)/locks_pthread.hpp				\
+                  $(JFLIB_I)/multiplexed_io.hpp $(JFLIB_I)/pool.hpp
 
 ##############################
 # utils lib
@@ -46,7 +47,8 @@ noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/error_correct_reads_cmdline.hpp		\
                   src/error_correct_reads.hpp src/err_log.hpp	\
                   src/kmer.hpp src/create_k_unitigs_cmdline.hpp	\
-                  src/error_corrected2frg_cmdline.hpp
+                  src/error_corrected2frg_cmdline.hpp		\
+                  src/reduce_sr.hpp
 
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 homo_trim_SOURCES = src/homo_trim.cc 
@@ -90,7 +92,8 @@ check_PROGRAMS = all_tests
 
 
 all_tests_SOURCES = unittests/test_charb.cc		\
-unittests/test_exp_buffer.cc unittests/test_charbuf.cc
+                    unittests/test_exp_buffer.cc	\
+                    unittests/test_charbuf.cc
 all_tests_CXXFLAGS = -I$(top_srcdir)/unittests/gtest/include		\
 -I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include -I$(top_srcdir)	\
 -Wall -Werror

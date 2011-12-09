@@ -2,8 +2,8 @@
 #include<string.h>
 #include<math.h>
 #include<assert.h>
-
 #include<charb.hpp>
+#include<src/reduce_sr.hpp>
 #define DEBUG 0
 
 typedef ExpandingBuffer<int> int_buf;
@@ -56,7 +56,7 @@ void reverse_sr(const char * original, char * reversed){
 }
 
 int main(int argc,char *argv[]){
-
+  reduce_sr args(argc, argv);
   int i,j,k,l=0,lastKUnitigIndex,irreducibleSuperReadIndex=0;
   int_buf kUnitigsInSuperRead(1000);
   time_t time_start=time(NULL);
@@ -65,7 +65,7 @@ int main(int argc,char *argv[]){
   charb line(1000000);
   char *token, *saveptr;
   //parse arguments here
-  twoD_int_buf superReadIndicesForKUnitig(atoi(argv[1]));
+  twoD_int_buf superReadIndicesForKUnitig(args.largestkunitig_arg);
 
   while(fgets(line,stdin)){
     l++;	
@@ -104,8 +104,8 @@ int main(int argc,char *argv[]){
     k=0;
     if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]].size()>0&&superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]].size()>0){
     int max_first_index=0;
-    int max_k=100;
-    int max_2k=max_k*2;
+    const int max_k= args.maximum_search_depth_arg;
+    const int max_2k=max_k*2;
 
     if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][0]>superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][0])
 	max_first_index=(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][0];

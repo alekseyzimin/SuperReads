@@ -1,0 +1,11 @@
+purpose "Reduce contained SuperReads to their largest container."
+description "Long description"
+
+option("maximum-search-depth", "d") {
+  description "Check at most this many possible containing SuperReads"
+  int; default "50"
+}
+arg("largestkunitig") {
+  description "Largest kunitigs number"
+  uint64
+}
