@@ -16,7 +16,7 @@ public:
   };
 
   reduce_sr(int argc, char *argv[]) :
-    maximum_search_depth_arg(50), maximum_search_depth_given(false)
+    maximum_search_depth_arg(100), maximum_search_depth_given(false)
   {
     static struct option long_options[] = {
       {"maximum-search-depth", 1, 0, 'd'},
@@ -74,7 +74,7 @@ public:
   }
 #define reduce_sr_HELP "Reduce contained SuperReads to their largest container.\n\nLong description\n\n" \
   "Options (default value in (), *required):\n" \
-  " -d, --maximum-search-depth=int           Check at most this many possible containing SuperReads (50)\n" \
+  " -d, --maximum-search-depth=int           Check at most this many possible containing SuperReads (100)\n" \
   "     --usage                              Usage\n" \
   " -h, --help                               This message\n" \
   " -V, --version                            Version"

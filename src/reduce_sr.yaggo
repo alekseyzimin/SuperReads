@@ -3,7 +3,7 @@ description "Long description"
 
 option("maximum-search-depth", "d") {
   description "Check at most this many possible containing SuperReads"
-  int; default "50"
+  int; default "100"
 }
 arg("largestkunitig") {
   description "Largest kunitigs number"

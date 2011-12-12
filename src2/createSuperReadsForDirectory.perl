@@ -123,7 +123,27 @@ print "$cmd\n";
 system("time $cmd");
 
 #AZ -- put super read reduction before the counts
-$cmd = "cat ${joinerOutputPrefix}_* | $exeDir/getSuperReadInsertCountsFromReadPlacementFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -error-filename $sequenceCreationErrorFile -kunitigsfile $kUnitigsFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 50% > $workingDirectory/sr_sizes.tmp";
+my $numConcurrentJobs=4;
+open(FILE,">$workingDirectory/commands.sh");
+for($k=0;$k<$numProcessors;$k+=$numConcurrentJobs){
+for($j=0;$j<$numConcurrentJobs;$j++){
+print FILE "if [ -e ${joinerOutputPrefix}_".($k+$j)." ];then cat ${joinerOutputPrefix}_".($k+$j)."  | $exeDir/getSuperReadInsertCountsFromReadPlacementFile >  $workingDirectory/superReadCounts_".($k+$j).";fi & \n";
+print FILE "PID$j=\$!\n"
+}
+print FILE "wait ";
+for($j=0;$j<$numConcurrentJobs;$j++){
+print FILE "\$PID$j ";
+}
+print FILE "\n";
+}
+close(FILE);
+
+system("cat $workingDirectory/commands.sh");
+$cmd = "time sh $workingDirectory/commands.sh";
+print "$cmd\n";
+system($cmd);
+
+$cmd = "sort -m -k2,2 $workingDirectory/superReadCounts_*| awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\"){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -error-filename $sequenceCreationErrorFile -kunitigsfile $kUnitigsFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 50% > $workingDirectory/sr_sizes.tmp";
 &runCommandAndExitIfBad ($cmd,"$workingDirectory/sr_sizes.tmp", 1);
 
 $cmd = "cat $workingDirectory/sr_sizes.tmp| $exeDir/reduce_sr $maxKUnitigNumber  > $workingDirectory/reduce.tmp";
