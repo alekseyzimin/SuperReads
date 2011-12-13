@@ -1,6 +1,6 @@
 /* This program expects 2 args:
    1) The name of the file containing the read placements in the super-reads
-   2) The error file created when creating the super-read sequences
+   2) The file containing passing super read names produced when creating the super-read sequences
    The file containing read placements for reads in the good super-reads
       will come out on stdout.
 */

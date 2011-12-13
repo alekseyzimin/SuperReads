@@ -83,7 +83,7 @@ int main (int argc, char **argv)
      struct stat statbuf;
      uint64_t kUnitigSeqFileSize, fsize;
      uint64_t i64, j64=0;
-     charb errorFilename(500);
+     charb goodFilename(500);
      FILE *infile, *goodFile;
      int lastKUnitigNumber, kUnitigNumber=0, kUnitigNumberHold, i, argNum;
      int state;
@@ -105,7 +105,7 @@ int main (int argc, char **argv)
      workingDir = (char *) ".";
      sprintf (superReadListFile, "%s/%s", workingDir, DEFAULT_SUPER_READ_LIST_FILE);
      seqDiffMax = 0;
-     errorFilename[0] = 0;
+     goodFilename[0] = 0;
      argNum = 0;
      strcpy (kUnitigFilename, "");
      for (i=1; i<argc; i++) {
@@ -116,9 +116,9 @@ int main (int argc, char **argv)
 	       ++i;
 	       seqDiffMax = atoi (argv[i]);
 	       continue; }
-	  if (strcmp (argv[i], "-error-filename") == 0) {
+	  if (strcmp (argv[i], "-good-sr-filename") == 0) {
 	       ++i;
-	       strcpy (errorFilename, argv[i]);
+	       strcpy (goodFilename, argv[i]);
 	       continue; }
 	  if (strcmp (argv[i], "-min-ovl-len") == 0) {
 	       ++i;
@@ -141,8 +141,8 @@ int main (int argc, char **argv)
 	       exit (1); }
 	  ++argNum; }
      
-     if (strlen (errorFilename) == 0)
-	  sprintf (errorFilename, "%s/createFastaSuperReadSequences.errors.txt", workingDir);
+     if (strlen (goodFilename) == 0)
+	  sprintf (goodFilename, "%s/superReadNames.txt", workingDir);
 
      if (kUnitigFilename[0] == 0)
 	  sprintf (kUnitigFilename, "%s/%s", workingDir, KUNITIG_FILE_COMPLETE);
@@ -211,7 +211,7 @@ int main (int argc, char **argv)
      // (V) above
      strcpy (fname, superReadListFile);
      infile = Fopen (fname, "r");
-     goodFile = Fopen (errorFilename, "w");
+     goodFile = Fopen (goodFilename, "w");
      while (fgets (line, MAX_READ_LEN, infile)) {
 	  sscanf (line, "%d", &numReads);
 	  cptr = line;

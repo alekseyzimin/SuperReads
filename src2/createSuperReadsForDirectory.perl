@@ -162,7 +162,7 @@ $cmd = "chmod 0755 $workingDirectory/commands.sh;  $workingDirectory/commands.sh
 print "$cmd\n";
 system($cmd);
 
-$cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -error-filename $workingDirectory/superReadNames.txt -kunitigsfile $kUnitigsFile 2> $sequenceCreationErrorFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 40% -T ./ > $workingDirectory/sr_sizes.tmp";
+$cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -good-sr-filename $workingDirectory/superReadNames.txt -kunitigsfile $kUnitigsFile 2> $sequenceCreationErrorFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 40% -T ./ > $workingDirectory/sr_sizes.tmp";
 &runCommandAndExitIfBad ($cmd,"$workingDirectory/sr_sizes.tmp", 1);
 
 $cmd = "cat $workingDirectory/sr_sizes.tmp| $exeDir/reduce_sr $maxKUnitigNumber  > $workingDirectory/reduce.tmp";
