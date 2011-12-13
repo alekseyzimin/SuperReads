@@ -88,7 +88,7 @@ if ($jumpLibraryReads) {
 # We now require that a k-unitigs file was passed on the command line
 if ($kUnitigsFile !~ /^\//) {
     $kUnitigsFile = "$pwd/$kUnitigsFile"; }
-    
+
 # In addition to obvious output file, this also generates the files
 # numKUnitigs.txt, maxKUnitigNumber.txt, and totBasesInKUnitigs.txt in
 # $workingDirectory
@@ -97,9 +97,9 @@ $cmd = "cat $kUnitigsFile | $exeDir/getLengthStatisticsForKUnitigsFile.perl $wor
 
 $minSizeNeededForTable = &reportMinJellyfishTableSizeForKUnitigs;
 redoKUnitigsJellyfish:
-$cmd = "jellyfish count -m $merLen -r -o $jellyfishKUnitigDataPrefix -c 6 -p 126 --both-strands -s $minSizeNeededForTable -t $numProcessors $kUnitigsFile";
+    $cmd = "jellyfish count -m $merLen -r -o $jellyfishKUnitigDataPrefix -c 6 -p 126 --both-strands -s $minSizeNeededForTable -t $numProcessors $kUnitigsFile";
 &runCommandAndExitIfBad ($cmd, $jellyfishKUnitigHashFile, 1);
-    
+
 $tableResizeFactor = &returnTableResizeAmount ($jellyfishKUnitigDataPrefix, $jellyfishKUnitigHashFile);
 if ($tableResizeFactor > 1) {
     $tableSize *= 2;
@@ -109,7 +109,7 @@ if ($tableResizeFactor > 1) {
 $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $kUnitigsFile $maxKUnitigNumberFile $totReadFile";
 &runCommandAndExitIfBad ($cmd, "", 0);
 if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile, $totReadFile); }
-    
+
 if ($jumpLibraryReads) {
     goto jumpLibraryCalculations; }
 
@@ -123,27 +123,38 @@ print "$cmd\n";
 system("time $cmd");
 
 #AZ -- put super read reduction before the counts
-my $numConcurrentJobs=4;
+my $numConcurrentJobs=2;
 open(FILE,">$workingDirectory/commands.sh");
+print FILE "#!/bin/bash\n";
 for($k=0;$k<$numProcessors;$k+=$numConcurrentJobs){
-for($j=0;$j<$numConcurrentJobs;$j++){
-print FILE "if [ -e ${joinerOutputPrefix}_".($k+$j)." ];then cat ${joinerOutputPrefix}_".($k+$j)."  | $exeDir/getSuperReadInsertCountsFromReadPlacementFile >  $workingDirectory/superReadCounts_".($k+$j).";fi & \n";
-print FILE "PID$j=\$!\n"
+    for($j=0;$j<$numConcurrentJobs;$j++){
+	print FILE "if [ -e ${joinerOutputPrefix}_".($k+$j)." ];then cat ${joinerOutputPrefix}_".($k+$j)."  | $exeDir/getSuperReadInsertCountsFromReadPlacementFile >  $workingDirectory/superReadCounts_".($k+$j).";fi & \n";
+	print FILE "PID$j=\$!\n"
+    }
+    print FILE "wait ";
+    for($j=0;$j<$numConcurrentJobs;$j++){
+	print FILE "\$PID$j ";
+    }
+    print FILE "\n";
 }
-print FILE "wait ";
-for($j=0;$j<$numConcurrentJobs;$j++){
-print FILE "\$PID$j ";
+$numConcurrentJobs=16;
+print FILE "sort -m -k2,2 ";
+for($k=0;$k<$numProcessors;$k+=$numConcurrentJobs){
+    print FILE "<(sort -m -k2,2 $workingDirectory/superReadCounts_{".$k;
+    for($j=1;$j<$numConcurrentJobs;$j++){
+	print FILE ",".($k+$j) if( -e "$workingDirectory/superReadCounts_".($k+$j));
+    }
+    print FILE "}) ";
 }
-print FILE "\n";
-}
+print FILE " | awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\" && c > $minReadsInSuperRead ){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' >  $workingDirectory/superReadCounts.all\n";
 close(FILE);
 
 system("cat $workingDirectory/commands.sh");
-$cmd = "time sh $workingDirectory/commands.sh";
+$cmd = "chmod 0755 $workingDirectory/commands.sh;  $workingDirectory/commands.sh";
 print "$cmd\n";
 system($cmd);
 
-$cmd = "sort -m -k2,2 $workingDirectory/superReadCounts_*| awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\"){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -error-filename $sequenceCreationErrorFile -kunitigsfile $kUnitigsFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 50% > $workingDirectory/sr_sizes.tmp";
+$cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -error-filename $sequenceCreationErrorFile -kunitigsfile $kUnitigsFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 40% -T ./ > $workingDirectory/sr_sizes.tmp";
 &runCommandAndExitIfBad ($cmd,"$workingDirectory/sr_sizes.tmp", 1);
 
 $cmd = "cat $workingDirectory/sr_sizes.tmp| $exeDir/reduce_sr $maxKUnitigNumber  > $workingDirectory/reduce.tmp";
@@ -163,7 +174,7 @@ exit (0);
 jumpLibraryCalculations:
 # Must run createFastaSuperReadSequences here
 
-$cmd = "$exeDir/outputSuperReadSeqForJumpLibrary.perl $myProgOutput8 $myProgOutput12 > $finalSuperReadSequenceFile";
+    $cmd = "$exeDir/outputSuperReadSeqForJumpLibrary.perl $myProgOutput8 $myProgOutput12 > $finalSuperReadSequenceFile";
 &runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1);
 
 $cmd = "touch $successFile";
@@ -263,7 +274,7 @@ sub giveUsageAndExit
 	print "$line\n"; }
     exit (0);
 }
-	
+
 sub returnTableResizeAmount
 {
     my ($dataPrefix, $hashFile) = @_;
