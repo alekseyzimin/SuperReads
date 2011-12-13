@@ -137,6 +137,14 @@ for($k=0;$k<$numProcessors;$k+=$numConcurrentJobs){
     }
     print FILE "\n";
 }
+close(FILE);
+system("cat $workingDirectory/commands.sh");
+$cmd = "chmod 0755 $workingDirectory/commands.sh;  $workingDirectory/commands.sh";
+print "$cmd\n";
+system("time $cmd");
+
+open(FILE,">$workingDirectory/commands.sh");
+print FILE "#!/bin/bash\n";
 $numConcurrentJobs=16;
 print FILE "sort -m -k2,2 ";
 for($k=0;$k<$numProcessors;$k+=$numConcurrentJobs){
@@ -152,7 +160,7 @@ close(FILE);
 system("cat $workingDirectory/commands.sh");
 $cmd = "chmod 0755 $workingDirectory/commands.sh;  $workingDirectory/commands.sh";
 print "$cmd\n";
-system($cmd);
+system("time $cmd");
 
 $cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -error-filename $sequenceCreationErrorFile -kunitigsfile $kUnitigsFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 40% -T ./ > $workingDirectory/sr_sizes.tmp";
 &runCommandAndExitIfBad ($cmd,"$workingDirectory/sr_sizes.tmp", 1);
