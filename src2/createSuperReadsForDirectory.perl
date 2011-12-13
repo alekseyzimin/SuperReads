@@ -141,7 +141,7 @@ close(FILE);
 system("cat $workingDirectory/commands.sh");
 $cmd = "chmod 0755 $workingDirectory/commands.sh;  $workingDirectory/commands.sh";
 print "$cmd\n";
-system("time $cmd");
+system($cmd);
 
 open(FILE,">$workingDirectory/commands.sh");
 print FILE "#!/bin/bash\n";
@@ -154,21 +154,21 @@ for($k=0;$k<$numProcessors;$k+=$numConcurrentJobs){
     }
     print FILE "}) ";
 }
-print FILE " | awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\"){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' >  $workingDirectory/superReadCounts.all\n";
+print FILE " | awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\" && c >= $minReadsInSuperRead ){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' >  $workingDirectory/superReadCounts.all\n";
 close(FILE);
 
 system("cat $workingDirectory/commands.sh");
 $cmd = "chmod 0755 $workingDirectory/commands.sh;  $workingDirectory/commands.sh";
 print "$cmd\n";
-system("time $cmd");
+system($cmd);
 
-$cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -error-filename $sequenceCreationErrorFile -kunitigsfile $kUnitigsFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 40% -T ./ > $workingDirectory/sr_sizes.tmp";
+$cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -error-filename $workingDirectory/superReadNames.txt -kunitigsfile $kUnitigsFile 2> $sequenceCreationErrorFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 40% -T ./ > $workingDirectory/sr_sizes.tmp";
 &runCommandAndExitIfBad ($cmd,"$workingDirectory/sr_sizes.tmp", 1);
 
 $cmd = "cat $workingDirectory/sr_sizes.tmp| $exeDir/reduce_sr $maxKUnitigNumber  > $workingDirectory/reduce.tmp";
 &runCommandAndExitIfBad ($cmd,"$workingDirectory/reduce.tmp", 1);
 
-$cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $sequenceCreationErrorFile | perl -e '{open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);\@F=split(\" \",\$line);\$sr{\$F[0]}=\$F[1]} while(\$line=<STDIN>){chomp(\$line);\@l=split(\" \",\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\\n\";}else{print \"\$line\\n\";}}}' $workingDirectory/reduce.tmp >  $finalReadPlacementFile"; 
+$cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $workingDirectory/superReadNames.txt | perl -e '{open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);\@F=split(\" \",\$line);\$sr{\$F[0]}=\$F[1]} while(\$line=<STDIN>){chomp(\$line);\@l=split(\" \",\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\\n\";}else{print \"\$line\\n\";}}}' $workingDirectory/reduce.tmp >  $finalReadPlacementFile"; 
 &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1);
 
 $cmd = "awk '{print \$1}' $workingDirectory/reduce.tmp > $workingDirectory/sr_to_eliminate.tmp; $exeDir/extractreads_not.pl $workingDirectory/sr_to_eliminate.tmp $finalSuperReadSequenceFile.all 1 > $finalSuperReadSequenceFile";

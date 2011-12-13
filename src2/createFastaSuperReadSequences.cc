@@ -84,7 +84,7 @@ int main (int argc, char **argv)
      uint64_t kUnitigSeqFileSize, fsize;
      uint64_t i64, j64=0;
      charb errorFilename(500);
-     FILE *infile, *errorFile;
+     FILE *infile, *goodFile;
      int lastKUnitigNumber, kUnitigNumber=0, kUnitigNumberHold, i, argNum;
      int state;
      char *cptr, *cptr2;
@@ -211,7 +211,7 @@ int main (int argc, char **argv)
      // (V) above
      strcpy (fname, superReadListFile);
      infile = Fopen (fname, "r");
-     errorFile = Fopen (errorFilename, "w");
+     goodFile = Fopen (errorFilename, "w");
      while (fgets (line, MAX_READ_LEN, infile)) {
 	  sscanf (line, "%d", &numReads);
 	  cptr = line;
@@ -226,7 +226,7 @@ int main (int argc, char **argv)
 	       else
 		    strcpy (pluralStr, "s");
 	       sprintf (errorMessageLine, "%s has only %d insert%s, which is less than %d. Skipping.\n", superReadName, numReads, pluralStr, minReadsInSuperRead);
-	       fputs (errorMessageLine, errorFile); fputc ('\n', errorFile);
+	       fputs (errorMessageLine, stderr);
 	       continue;
 	  }
 	  kUnitigNumber = atoi (cptr);
@@ -293,18 +293,19 @@ int main (int argc, char **argv)
 	       else
 		    strcpy (pluralStr, "s");
 	       sprintf (errorMessageLine, "%s (with %d read%s) fails\n", (char *)superReadName, numReads, pluralStr);
-	       fputs (errorMessageLine, errorFile);
-	       fputs (errorMessage, errorFile); fputc ('\n', errorFile);
+	       fputs (errorMessageLine, stderr);
+	       fputs (errorMessage, stderr); 
 	       continue; }
 	  if (! noSequence)
 	       fputc ('>', stdout);
 	  fputs (superReadName, stdout); fputc ('\n', stdout);
+          fputs (superReadName,goodFile); fputc ('\n',goodFile);
 	  if (! noSequence) {
 	       fputs (outputSeqSpace, stdout); fputc ('\n', stdout); }
      }
 
      fclose (infile);
-     fclose (errorFile);
+     fclose (goodFile);
 	  
      return (0);
 }

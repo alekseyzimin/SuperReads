@@ -18,21 +18,21 @@ FILE *Fopen (const char *fn, const char *mode);
 
 int main (int argc, char **argv)
 {
-     set<string> isBadSuperRead;
+     set<string> isGoodSuperRead;
      FILE *infile;
-     char *errorFilename=argv[2];
+     char *goodFilename=argv[2];
      char *readPlacementFilename = argv[1];
      char *cptr, *cptr2;
      
 
-     infile = Fopen (errorFilename, "r");
+     infile = Fopen (goodFilename, "r");
      while (fgets (line, 1000000, infile)) {
 	  if (! isdigit(line[0]))
 	       continue;
 	  cptr = line;
 	  while (! isspace(*cptr)) ++cptr;
 	  *cptr = 0;
-	  isBadSuperRead.insert (string(line));
+	  isGoodSuperRead.insert (string(line));
      }
      fclose (infile);
 
@@ -45,7 +45,7 @@ int main (int argc, char **argv)
 	  cptr2 = cptr;
 	  while (! isspace (*cptr2)) ++cptr2;
 	  *cptr2 = 0;
-	  if (isBadSuperRead.find (string(cptr)) != isBadSuperRead.end())
+	  if (isGoodSuperRead.find (string(cptr)) == isGoodSuperRead.end())
 	       continue;
 	  cptr2[0] = ' ';
 	  fputs (line, stdout);
