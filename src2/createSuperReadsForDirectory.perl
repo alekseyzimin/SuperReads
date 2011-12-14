@@ -152,7 +152,7 @@ for($k=0;$k<$numProcessors;$k+=$numConcurrentJobs){
     for($j=1;$j<$numConcurrentJobs;$j++){
 	print FILE ",".($k+$j) if( -e "$workingDirectory/superReadCounts_".($k+$j));
     }
-    print FILE "}) ";
+    print FILE "}| awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\"){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}') ";
 }
 print FILE " | awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\" && c >= $minReadsInSuperRead ){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' >  $workingDirectory/superReadCounts.all\n";
 close(FILE);
