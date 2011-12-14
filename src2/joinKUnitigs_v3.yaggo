@@ -1,0 +1,26 @@
+purpose "Join k-unitigs overlapping mate pairs of an insert."
+description "For this exec we are using the unitig numbers starting from 0."
+
+option("min-overlap-length") {
+  description "Minimum length of an overlap between unitigs"
+  int; required }
+option("mean-and-stdev-by-prefix-file", "m") {
+  description "File containing the mean and stdev for each prefix library."
+  c_string; typestr "path"; required }
+option("unitig-lengths-file", "u") {
+  description "File containing the length of the unitigs."
+  c_string; typestr "path"; required }
+option("overlaps-file", "o") {
+  description "Celera-style overlap file between unitigs in binary format."
+  c_string; typestr "path"; required }
+option("num-kunitigs-file") {
+  description "File containing the number of k-unitigs."
+  c_string; typestr "path"; required }
+option("num-file-names") {
+  description "Number of files containing read_unitig_overlaps."
+  int; default "1" }
+option("prefix", "p") {
+  description "Output file prefix."
+  c_string; default "super_reads_output" }
+arg("input-prefix") {
+  c_string }

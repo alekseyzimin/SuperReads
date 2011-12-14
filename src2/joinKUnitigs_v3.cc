@@ -22,6 +22,7 @@
 #include <sys/wait.h>
 
 #include <heap.hpp>
+#include <src2/joinKUnitigs_v3.hpp>
 extern "C" {
 #include <src2/redBlackTreesInsertOnly.h>
 }
@@ -158,7 +159,6 @@ int minOverlapLength;
 int maxDiffInsertSizesForPrinting;
 int maxTotAllowableMissingOnEnds;
 FILE *outfile, *outputFile;
-int reportPaths;
 char *flds[1000];
 charb outputString(200);
 double mean[256][256], stdev[256][256];
@@ -177,7 +177,7 @@ extern "C" {
      FILE *Fopen (const char *fn, const char *mode);
      FILE *Popen (const char *fn, const char *mode);
      int getFldsFromLine (char *cptrHold);
-     int getInt (char *fname);
+     int getInt (const char *fname);
      int unitigLocStructCompare (struct unitigLocStruct *ptr1,
 				 struct unitigLocStruct *ptr2);
      int unitigLocStructCompareReversed (struct unitigLocStruct *ptr1,
@@ -241,98 +241,76 @@ extern "C" {
      else ++numOddReadMatches;
 #endif
 
-// #define DEBUG 814
-// #define DEBUG 1541
-// #define DEBUG 349
-// #define DEBUG 727157
-// $define DEBUG 41218
-// #define DEBUG 25129
-// #define DEBUG 5374
-#define DEBUG 5
+// #define DEBUG
 
 int main (int argc, char **argv)
 {
+     joinKUnitigs_v3 args(argc, argv);
      FILE *infile;
      charb line(2000),readVsKUnitigFileName(256), outputFileName(256);
-     char *outputPrefix = (char *) "outputPrefix"; 
-     char *overlapsFn = (char *) OVERLAPS_FILE;
-//     char ori;
-     char *meanAndStdevByPrefixFn = (char *) MEAN_AND_STDEV_BY_PREFIX_FILE;
-     char *unitigLengthsFn = (char *) UNITIG_LENGTHS_FILE;
-     char *numKUnitigsFn = (char *) NUM_UNITIGS_FILE;
-     char *readVsKUnitigFile = (char *) READ_VS_KUNITIG_FILE;
      int unitig1, unitig2, overlapCount = 0;
-     // int itemp;
      int unitigNum, numUnitigs, firstUnitigNum = 0;
-//     int ahg, bhg;
      int i, *iptr;
-// #if DEBUG
-//      int unitigForDebugging = DEBUG;
-// #endif
-//    int numNewlyAddedMaximalUnitigs;
-     int numFilenames = 0;
      int numFlds;
 
      maxTotAllowableMissingOnEnds = 2;
      minOverlapLength = 40;
-     reportPaths = 0;
-//    outfile = fopen ("/localraid/tri/out.gaps5", "w");
+#if KILLED111115
      outfile = stdout;
+#endif
 
      maxDiffInsertSizesForPrinting = 5;
-     for (i=1; i<argc; i++) {
-	  if (argv[i][0] == '-') {
-	       if (strcmp (argv[i], "-max-diff-insert-sizes-for-printing") == 0) {
-		    ++i;
-		    maxDiffInsertSizesForPrinting = atoi (argv[i]);
-	       }
-	       else if (strcmp (argv[i], "-report-paths") == 0)
-		    reportPaths = 1;
-	       else if (strcmp (argv[i], "-min-overlap-length") == 0) {
-		    ++i;
-		    minOverlapLength = atoi (argv[i]);
-	       }
-	       else if (strcmp (argv[i], "-mean-and-stdev-by-prefix-file") == 0) {
-		    ++i;
-		    meanAndStdevByPrefixFn = argv[i];
-	       }
-	       else if (strcmp (argv[i], "-unitig-lengths-file") == 0) {
-		    ++i;
-		    unitigLengthsFn = argv[i];
-	       }
-	       else if (strcmp (argv[i], "-num-kunitigs-file") == 0) {
-		    ++i;
-		    numKUnitigsFn = argv[i];
-	       }
-	       else if (strcmp (argv[i], "-overlaps-file") == 0) {
-		    ++i;
-		    overlapsFn = argv[i];
-	       }
-	       else if (strcmp (argv[i], "-num-file-names") == 0) {
-		    ++i;
-		    numFilenames = atoi (argv[i]);
-	       }	       
-	       else if (strcmp (argv[i], "-prefix") == 0) {
-		    ++i;
-		    outputPrefix = argv[i];
-	       }
-	       else { // We need to allow -h later; for now we just exit
-		    fprintf (stderr, "Unrecognized flag %s. Bye.\n", argv[i]);
-		    return (-1);
-	       }
-	  }
-	  else{
-	       readVsKUnitigFile = argv[i];
-	       if(numFilenames==0)
-			numFilenames=1; }
-     }
-// #if DEBUG
-//      if (argc > 3) unitigForDebugging = atoi (argv[3]); // Must fix
-// #endif
+     minOverlapLength              = args.min_overlap_length_arg;
+
+     // for (i=1; i<argc; i++) {
+     //      if (argv[i][0] == '-') {
+     //           if (strcmp (argv[i], "-max-diff-insert-sizes-for-printing") == 0) {
+     //    	    ++i;
+     //    	    maxDiffInsertSizesForPrinting = atoi (argv[i]);
+     //           }
+     //           else if (strcmp (argv[i], "-report-paths") == 0)
+     //    	    reportPaths = 1;
+     //           else if (strcmp (argv[i], "-min-overlap-length") == 0) {
+     //    	    ++i;
+     //    	    minOverlapLength = atoi (argv[i]);
+     //           }
+     //           else if (strcmp (argv[i], "-mean-and-stdev-by-prefix-file") == 0) {
+     //    	    ++i;
+     //    	    meanAndStdevByPrefixFn = argv[i];
+     //           }
+     //           else if (strcmp (argv[i], "-unitig-lengths-file") == 0) {
+     //    	    ++i;
+     //    	    unitigLengthsFn = argv[i];
+     //           }
+     //           else if (strcmp (argv[i], "-num-kunitigs-file") == 0) {
+     //    	    ++i;
+     //    	    numKUnitigsFn = argv[i];
+     //           }
+     //           else if (strcmp (argv[i], "-overlaps-file") == 0) {
+     //    	    ++i;
+     //    	    overlapsFn = argv[i];
+     //           }
+     //           else if (strcmp (argv[i], "-num-file-names") == 0) {
+     //    	    ++i;
+     //    	    numFilenames = atoi (argv[i]);
+     //           }	       
+     //           else if (strcmp (argv[i], "-prefix") == 0) {
+     //    	    ++i;
+     //    	    outputPrefix = argv[i];
+     //           }
+     //           else { // We need to allow -h later; for now we just exit
+     //    	    fprintf (stderr, "Unrecognized flag %s. Bye.\n", argv[i]);
+     //    	    return (-1);
+     //           }
+     //      }
+     //      else{
+     //           readVsKUnitigFile = argv[i];
+     //           if(numFilenames==0)
+     //    		numFilenames=1; }
+     // }
 
      rdPrefix[2] = rdPrefixHold[2] = 0;
-     strcpy (fileName, meanAndStdevByPrefixFn);
-     infile = Fopen (fileName, "r");
+     infile = Fopen (args.mean_and_stdev_by_prefix_file_arg, "r");
      while (fgets (line, 2000, infile)) {
 	  getFldsFromLine(line);
 	  mean[(int)flds[0][0]][(int)flds[0][1]] = atof (flds[1]);
@@ -342,16 +320,14 @@ int main (int argc, char **argv)
 
      mateUnitig1ori = 'F'; mateUnitig2ori = 'R';
 // Get the number of unitigs
-     strcpy (fileName, numKUnitigsFn);
-     numUnitigs = getInt (fileName);
+     numUnitigs = getInt (args.num_kunitigs_file_arg) + 1;
      mallocOrDie (startOverlapByUnitig, numUnitigs + 1 + firstUnitigNum, int);
      mallocOrDie (startOverlapIndexByUnitig2, numUnitigs + 1 + firstUnitigNum, int);
 
      mallocOrDie (unitigLengths, numUnitigs + 1 + firstUnitigNum, int);
      // Here we read in the unitig lengths, allowing for either type of length
      // format
-     strcpy (fileName, unitigLengthsFn);
-     infile = Fopen (fileName, "r");
+     infile = Fopen (args.unitig_lengths_file_arg, "r");
      if (! fgets (line, 2000, infile)) {
 	  fprintf (stderr, "File %s is of length 0 (or can't be read). Bye!\n", fileName);
 	  exit (1); }
@@ -375,7 +351,7 @@ int main (int argc, char **argv)
 
 
 // Set up space to keep the overlaps file
-     int fd = open(overlapsFn, O_RDONLY);
+     int fd = open(args.overlaps_file_arg, O_RDONLY);
      if(fd == -1) {
 	  perror("open failed");
 	  exit(1);
@@ -462,15 +438,15 @@ int main (int argc, char **argv)
      fclose (outfile);
 #endif
      int ret;
-     for(int i = 0; i < numFilenames; ++i) {
+     for(int i = 0; i < args.num_file_names_arg; ++i) {
 	  switch(fork()) {
 	  case -1:
 	       perror("fork failed");
 	       exit(1);
 	       
 	  case 0:
-               sprintf(readVsKUnitigFileName,"%s_%d",readVsKUnitigFile,i);
-               sprintf(outputFileName,"%s_%d",outputPrefix,i);
+               sprintf(readVsKUnitigFileName,"%s_%d",args.input_prefix_arg,i);
+               sprintf(outputFileName,"%s_%d",args.prefix_arg,i);
 	       ret=processKUnitigVsReadMatches(readVsKUnitigFileName,outputFileName);
 	       exit(ret);
 	       
@@ -482,7 +458,7 @@ int main (int argc, char **argv)
      //processKUnitigVsReadMatches (readVsKUnitigFile);
      
      int status;
-     for(int i = 0; i < numFilenames; ++i) {
+     for(int i = 0; i < args.num_file_names_arg; ++i) {
 	  if(wait(&status) == -1) {
 	       perror("wait failed");
 	       exit(1);
@@ -675,7 +651,6 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 		       overlapData[j].ori, overlapData[j].ahg,
 		       overlapData[j].bhg);
 #endif
-//	       printf ("Got to 50, unitig1 = %d, unitig2 = %d\n", unitig1, unitig2);
 	       if (ori == 'F')
 	       {
 		    if (overlapData[j].bhg <= 0) 
@@ -700,7 +675,9 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	       }
 	       abbrevUnitigLocVal.lastOffsetAtOverlap = offset;
 	       // Skip if the offset is too large
-//	       printf ("frontEdgeOffset = %d, lastOffsetToTest = %d\n", abbrevUnitigLocVal.frontEdgeOffset, lastOffsetToTest);
+#if DEBUG
+	       printf ("frontEdgeOffset = %d, lastOffsetToTest = %d\n", abbrevUnitigLocVal.frontEdgeOffset, lastOffsetToTest);
+#endif
 	       if (unitig2 == mateUnitig2)
 		    maxOffsetToAllow = lastOffsetToTest;
 	       else
@@ -727,7 +704,6 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	       unitigLocVal.unitig2 = unitig2;
 	       unitigLocVal.frontEdgeOffset = abbrevUnitigLocVal.frontEdgeOffset;
 	       unitigLocVal.ori = abbrevUnitigLocVal.ori;
-//	       printf ("Got to 70, unitig = %d\n", unitigLocVal.unitig2);
                forward_path_unitigs.push(unitigLocVal);
 	       if (treeArr[unitig2].root == TREE_NIL)
 	       {
@@ -751,10 +727,8 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	       break;
      }			// Ends !forward_path_unitigs.empty() line
      // Do output for the mate pair
-     //      for (j=0; j<=numUnitigs; j++)
      curPathNum = 0;
      approxNumPaths = 0;
-//	       printf ("Got to 80\n");
      if (treeArr[mateUnitig2].root != TREE_NIL)
      {
 	  treeSize = 0;
@@ -1103,7 +1077,7 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
      printf ("tree root = %d\n", treeArr2[0].root);
 #endif
      numUnitigPathPrintRecsOnPath = 0;
-     if ((treeSize <= maxDiffInsertSizesForPrinting) && (reportPaths))
+     if (treeSize <= maxDiffInsertSizesForPrinting)
 	  inOrderTreeWalk (treeArr2, treeArr2[0].root,
 			   (void (*)(char *)) printPathNode);
 #ifdef KILLED111115
@@ -1335,7 +1309,7 @@ FILE *Popen (const char *fn, const char *mode)
      return (result);
 }
 
-int getInt (char *fname)
+int getInt (const char *fname)
 {
      FILE *infile;
      int tval;
