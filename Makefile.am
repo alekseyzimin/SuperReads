@@ -72,7 +72,7 @@ bin_PROGRAMS += createFastaSuperReadSequences			\
 dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
                     src2/createSuperReadsForDirectory.perl
 
-noinst_HEADERS += src2/redBlackTreesInsertOnly.h src2/priorityHeap.h
+noinst_HEADERS += src2/redBlackTreesInsertOnly.h src2/joinKUnitigs_v3.hpp
 
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
 findMatchesBetweenKUnitigsAndReads_SOURCES =    \
@@ -81,8 +81,8 @@ createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFile.cc
-joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc	\
-src2/redBlackTreesInsertOnly.c src2/priorityHeap.c
+joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc		\
+                          src2/redBlackTreesInsertOnly.c
 
 
 ##############################
