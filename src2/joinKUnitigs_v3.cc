@@ -21,8 +21,8 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 
+#include <heap.hpp>
 extern "C" {
-#include <src2/priorityHeap.h>
 #include <src2/redBlackTreesInsertOnly.h>
 }
 
@@ -56,6 +56,24 @@ struct unitigLocStruct
      int unitig2;
      int frontEdgeOffset;
      char ori;
+  bool operator<(const unitigLocStruct &rhs) const {
+    if(frontEdgeOffset > rhs.frontEdgeOffset)
+      return true;
+    if(frontEdgeOffset < rhs.frontEdgeOffset)
+      return false;
+    if (unitig2 > rhs.unitig2)
+      return true;
+    if (unitig2 < rhs.unitig2)
+      return false;
+    if (ori > rhs.ori)
+      return true;
+    if (ori < rhs.ori)
+      return false;
+    return false;
+  }
+  bool operator>(const unitigLocStruct &rhs) const {
+    return !operator<(rhs);
+  }
 };
 
 // In the following, lastOverlappingOffset gives us the offset for the node
@@ -130,7 +148,10 @@ int *treeReinitList, numTreesUsed;
 int *startOverlapIndexByUnitig2, *unitig2OverlapIndex;
 int mateUnitig1, mateUnitig2;
 unsigned char mateUnitig1ori, mateUnitig2ori;
-struct heapStruct priorityQueue;
+typedef heap<unitigLocStruct>::min min_heap;
+typedef heap<unitigLocStruct>::max max_heap;
+min_heap forward_path_unitigs;
+max_heap backward_path_unitigs;
 int curPathNum;
 int treeSize;
 int minOverlapLength;
@@ -227,6 +248,7 @@ extern "C" {
 // $define DEBUG 41218
 // #define DEBUG 25129
 // #define DEBUG 5374
+#define DEBUG 5
 
 int main (int argc, char **argv)
 {
@@ -244,9 +266,9 @@ int main (int argc, char **argv)
      int unitigNum, numUnitigs, firstUnitigNum = 0;
 //     int ahg, bhg;
      int i, *iptr;
-#if DEBUG
-     int unitigForDebugging = DEBUG;
-#endif
+// #if DEBUG
+//      int unitigForDebugging = DEBUG;
+// #endif
 //    int numNewlyAddedMaximalUnitigs;
      int numFilenames = 0;
      int numFlds;
@@ -304,9 +326,9 @@ int main (int argc, char **argv)
 	       if(numFilenames==0)
 			numFilenames=1; }
      }
-#if DEBUG
-     if (argc > 3) unitigForDebugging = atoi (argv[3]); // Must fix
-#endif
+// #if DEBUG
+//      if (argc > 3) unitigForDebugging = atoi (argv[3]); // Must fix
+// #endif
 
      rdPrefix[2] = rdPrefixHold[2] = 0;
      strcpy (fileName, meanAndStdevByPrefixFn);
@@ -325,7 +347,7 @@ int main (int argc, char **argv)
      mallocOrDie (startOverlapByUnitig, numUnitigs + 1 + firstUnitigNum, int);
      mallocOrDie (startOverlapIndexByUnitig2, numUnitigs + 1 + firstUnitigNum, int);
 
-     mallocOrDie (unitigLengths, numUnitigs + firstUnitigNum, int);
+     mallocOrDie (unitigLengths, numUnitigs + 1 + firstUnitigNum, int);
      // Here we read in the unitig lengths, allowing for either type of length
      // format
      strcpy (fileName, unitigLengthsFn);
@@ -398,10 +420,6 @@ int main (int argc, char **argv)
 	  startOverlapByUnitig[unitigNum] += startOverlapByUnitig[unitigNum - 1];
      for (unitigNum = 0; unitigNum < numUnitigs + 1 + firstUnitigNum; unitigNum++)
 	  startOverlapIndexByUnitig2[unitigNum] = startOverlapByUnitig[unitigNum];
-
-// Set up the priority queue
-     initializeEmptyHeap (priorityQueue, struct unitigLocStruct,
-			  unitigLocStructCompare);
 
 // Set up the RB trees
      initializeEmptyTrees (treeArr, numUnitigs + 1, dataArr,
@@ -552,11 +570,8 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
      int j;
      struct unitigLocStruct unitigLocVal;
      struct abbrevUnitigLocStruct abbrevUnitigLocVal, *abbRLPtr;
-     int maxNodes;
+     size_t maxNodes;
      char *vptr;
-#if DEBUG
-     struct unitigLocStruct *RLPtr;
-#endif
      int unitig1, unitig2;
      char ori; 
      int offset;
@@ -593,24 +608,20 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 #if 0
      printf ("Inserting in the RB tree at %d: fEO = %d, lOAO = %d, pN = %u ori = %c\n", mateUnitig1, abbrevUnitigLocVal.frontEdgeOffset, abbrevUnitigLocVal.lastOffsetAtOverlap, abbrevUnitigLocVal.pathNum, abbrevUnitigLocVal.ori);
 #endif     
-     heapInsert (&priorityQueue, &unitigLocVal);
+     forward_path_unitigs.push(unitigLocVal);
      maxNodes = 1;
 //     printf ("Got to 30\n");
-     while (!heapIsEmpty (&priorityQueue))
+     while (!forward_path_unitigs.empty())
      {
-	  if (priorityQueue.heapSize > maxNodes)
-	       maxNodes = priorityQueue.heapSize;
+       if (forward_path_unitigs.size() > maxNodes)
+         maxNodes = forward_path_unitigs.size();
 #if DEBUG
 	  printf ("Starting new offset: "); fflush (stdout);
-	  for (j = 0; j < priorityQueue.heapSize; j++)
-	  {
-	       setHeapValPtr (vptr, &priorityQueue, j);
-	       RLPtr = vptr;
-	       printf ("%d ", RLPtr->frontEdgeOffset); fflush (stdout);
-	  }
+	  for(min_heap::iterator it = forward_path_unitigs.begin(); it != forward_path_unitigs.end(); ++it)
+            printf("%d ", it->frontEdgeOffset); fflush(stdout);
 	  printf ("\n"); fflush (stdout);
 #endif
-	  heapExtractRoot (&priorityQueue, &unitigLocVal);
+          unitigLocVal = forward_path_unitigs.pop();
 	  unitig1 = unitigLocVal.unitig2;
 #if DEBUG
 	  printf ("unitig1 = %d, ", unitig1); fflush (stdout);
@@ -717,8 +728,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	       unitigLocVal.frontEdgeOffset = abbrevUnitigLocVal.frontEdgeOffset;
 	       unitigLocVal.ori = abbrevUnitigLocVal.ori;
 //	       printf ("Got to 70, unitig = %d\n", unitigLocVal.unitig2);
-	       {
-		    heapInsert (&priorityQueue, &unitigLocVal); }
+               forward_path_unitigs.push(unitigLocVal);
 	       if (treeArr[unitig2].root == TREE_NIL)
 	       {
 		    // If unitig2's tree never seen before
@@ -739,7 +749,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	  }			// End of going through overlaps for unitig
 	  if (maxNodes > MAX_NODES_ALLOWED)
 	       break;
-     }			// Ends heapIsEmpty line
+     }			// Ends !forward_path_unitigs.empty() line
      // Do output for the mate pair
      //      for (j=0; j<=numUnitigs; j++)
      curPathNum = 0;
@@ -757,15 +767,12 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 #endif
 	  fprintf (outfile, "maxNodes = %d\n", maxNodes); // This prints
 #endif
-	  priorityQueue.compare = (void *) unitigLocStructCompareReversed;
 	  // This is where the main print statement is
 	  if (maxNodes <= MAX_NODES_ALLOWED)
 	       inOrderTreeWalk (treeArr + mateUnitig2, treeArr[mateUnitig2].root,
 //				  (void (*)(void *)) printIfGood);
 				(void (*)(char *)) completePathPrint);
-	  priorityQueue.compare = (void *) unitigLocStructCompare;
      }
-     priorityQueue.heapSize = 0;
      for (j = 0; j < numTreesUsed; j++)
 	  treeArr[treeReinitList[j]].root = TREE_NIL;
      numTreesUsed = 0;
@@ -959,8 +966,8 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 	  unitigPathPrintVal.frontEdgeOffset = finalOffset;
 	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
 	  unitigPathPrintVal.unitig1 = minConnectingUnitig;
-	  unitigPathPrintVal.frontEdgeOffset = minConnectingOffset;
-	  unitigPathPrintVal.numOverlapsIn = 0;
+	  unitigPathPrintVal.frontEdgeOffset = minConnectingOffset;	
+  unitigPathPrintVal.numOverlapsIn = 0;
 	  unitigPathPrintVal.numOverlapsOut = 1;
 	  unitigPathPrintVal.ori = minConnectingOri;
 	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
@@ -983,9 +990,9 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
      printf ("isSpecialCase = %d, unitigLocVal = %d, %d, %c\n", isSpecialCase, mateUnitig2, finalOffset, unitigLocVal.ori);
 #endif
      numUnitigConnectionsForPathData = 0;
-     heapInsert (&priorityQueue, &unitigLocVal);
-     while (!heapIsEmpty (&priorityQueue)) {
-	  heapExtractRoot (&priorityQueue, &unitigLocVal);
+     backward_path_unitigs.push(unitigLocVal);
+     while (!backward_path_unitigs.empty()) {
+          unitigLocVal = backward_path_unitigs.pop();
 	  unitig2 = unitigLocVal.unitig2;
 	  offset = unitigLocVal.frontEdgeOffset;
 	  ori = unitigLocVal.ori;
@@ -1047,7 +1054,7 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 		    unitigLocVal.unitig2 = unitig1;
 		    unitigLocVal.frontEdgeOffset = abbRLPtr->frontEdgeOffset;
 		    unitigLocVal.ori = abbRLPtr->ori;
-		    heapInsert (&priorityQueue, &unitigLocVal);
+                    backward_path_unitigs.push(unitigLocVal);
 		    unitigPathPrintVal.unitig1 = unitig1;
 		    unitigPathPrintVal.frontEdgeOffset = unitigLocVal.frontEdgeOffset;
 		    unitigPathPrintVal.ori = unitigLocVal.ori;

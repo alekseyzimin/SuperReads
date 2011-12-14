@@ -22,7 +22,8 @@ UTILS_I = include
 noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/charb.hpp $(UTILS_I)/charbuf.hpp		\
                   $(UTILS_I)/exp_buffer.hpp $(UTILS_I)/gzip_stream.hpp	\
-                  $(UTILS_I)/yaggo.hpp $(UTILS_I)/misc.hpp
+                  $(UTILS_I)/yaggo.hpp $(UTILS_I)/misc.hpp		\
+                  $(UTILS_I)/heap.hpp
 noinst_LIBRARIES = libutils.a
 libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp
 LDADD = libutils.a
@@ -91,9 +92,9 @@ TESTS = all_tests
 check_PROGRAMS = all_tests
 
 
-all_tests_SOURCES = unittests/test_charb.cc		\
-                    unittests/test_exp_buffer.cc	\
-                    unittests/test_charbuf.cc
+all_tests_SOURCES = unittests/test_charb.cc				\
+                    unittests/test_exp_buffer.cc			\
+                    unittests/test_charbuf.cc unittests/test_heap.cc
 all_tests_CXXFLAGS = -I$(top_srcdir)/unittests/gtest/include		\
 -I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include -I$(top_srcdir)	\
 -Wall -Werror
