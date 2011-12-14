@@ -1,11 +1,5 @@
-// Flags for this program:
-// -mean-and-stdev-by-prefix-file fn (the file with mean and stdev for each prefix)
-// -unitig-lengths-file fn (the file with the unitig lengths)
-// -num-kunitigs-file fn (the file with the largest k-unitig number (+1))
-// -overlaps-file fn (the file with the overlaps (of length kmer-1))
-// For this exec we are using the unitig numbers starting from 0
-// 1 (optional) arg:
-// 1) The file of overlaps between k-unitigs and reads
+// For usage, see --help
+
 #define NEW_STUFF // Put in to get node-to-node connections
 // #define KILLED111115
 #include <stdio.h>
@@ -21,17 +15,12 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 
+#include <err.hpp>
 #include <heap.hpp>
 #include <src2/joinKUnitigs_v3.hpp>
 extern "C" {
 #include <src2/redBlackTreesInsertOnly.h>
 }
-
-#define NUM_UNITIGS_FILE "numKUnitigs.txt"
-#define UNITIG_LENGTHS_FILE "kUnitigLengths.txt"
-#define OVERLAPS_FILE "overlap.overlaps"
-#define MEAN_AND_STDEV_BY_PREFIX_FILE "meanAndStdevByPrefix.txt"
-#define READ_VS_KUNITIG_FILE "testOutput.nucmerLinesOnly.reorderedAndRenamed.txt"
 
 #define DEFAULT_MAX_OFFSET_CONSIDERED_SAME 5
 #define MAX_OFFSET_TO_TEST 10000
@@ -162,7 +151,6 @@ FILE *outfile, *outputFile;
 char *flds[1000];
 charb outputString(200);
 double mean[256][256], stdev[256][256];
-char fileName[500];
 char rdPrefix[3], rdPrefixHold[3];
 long long readNum, readNumHold;
 int approxNumPaths;
@@ -328,9 +316,8 @@ int main (int argc, char **argv)
      // Here we read in the unitig lengths, allowing for either type of length
      // format
      infile = Fopen (args.unitig_lengths_file_arg, "r");
-     if (! fgets (line, 2000, infile)) {
-	  fprintf (stderr, "File %s is of length 0 (or can't be read). Bye!\n", fileName);
-	  exit (1); }
+     if (! fgets (line, 2000, infile))
+       die << "File '" << args.unitig_lengths_file_arg << "' is of length 0 or can't be read";
      numFlds = getFldsFromLine (line);
      rewind (infile);
      if (numFlds == 1) {
