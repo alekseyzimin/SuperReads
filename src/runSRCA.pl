@@ -310,10 +310,10 @@ foreach $v(@pe_info_array){
     print FILE "echo '$f[0] $f[1] $f[2]' >> meanAndStdevByPrefix.pe.txt\n";
     next if(-e "$f[0].renamed.fastq");
     if($f[3] eq $f[4]){
-	print FILE "zcat $f[3] | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";\$readnumber+=2;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
+	print FILE "zcat -cf $f[3] | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";\$readnumber+=2;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
     }
     else{
-	print FILE "paste <(zcat $f[3]) <(zcat $f[4]) | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";\$readnumber++;print \"\@\",\"\$library\$readnumber\\n\$seq[1]\\n+\\n\$qlt[1]\\n\";\$readnumber++;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
+	print FILE "paste <(zcat -cf $f[3]) <(zcat -cf $f[4]) | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";\$readnumber++;print \"\@\",\"\$library\$readnumber\\n\$seq[1]\\n+\\n\$qlt[1]\\n\";\$readnumber++;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
     }
     $i++;
 }
@@ -341,7 +341,7 @@ if(scalar(@jump_info_array)>0){
 	    die("duplicate jump library $f[0] files");
 	}
 	else{
-	    print FILE "paste <(zcat $f[3]) <(zcat $f[4]) | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";\$readnumber++;print \"\@\",\"\$library\$readnumber\\n\$seq[1]\\n+\\n\$qlt[1]\\n\";\$readnumber++;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
+	    print FILE "paste <(zcat -cf $f[3]) <(zcat -cf $f[4]) | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";\$readnumber++;print \"\@\",\"\$library\$readnumber\\n\$seq[1]\\n+\\n\$qlt[1]\\n\";\$readnumber++;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
 	}
 	$i++;
     }
