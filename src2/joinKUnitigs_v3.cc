@@ -105,7 +105,7 @@ struct kuniToReadMatchStruct
      char ori;
 };
 ExpBuffer<struct kuniToReadMatchStruct> evenReadMatchStructs, oddReadMatchStructs;
-unsigned char matchStructIsUsed[10000];
+ExpandingBuffer<unsigned char> matchStructIsUsed;
 struct unitigConnectionsForPathStruct
 {
      int unitig1;
@@ -114,8 +114,8 @@ struct unitigConnectionsForPathStruct
      int frontEdgeOffset2;
      char ori1;
      char ori2;
-} unitigConnectionsForPathData[1000000];
-int numUnitigConnectionsForPathData;
+};
+ExpandingBuffer<struct unitigConnectionsForPathStruct> unitigConnectionsForPathData;
 
 struct augmentedUnitigPathPrintStruct
 {
@@ -126,7 +126,8 @@ struct augmentedUnitigPathPrintStruct
      int beginOffset;
      int endOffset;
      char ori;
-} augmentedUnitigPathPrintData[100000];
+};
+ExpandingBuffer<struct augmentedUnitigPathPrintStruct> augmentedUnitigPathPrintData;
 int numUnitigPathPrintRecsOnPath;
 
 
@@ -958,7 +959,8 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 #if 0
      printf ("isSpecialCase = %d, unitigLocVal = %d, %d, %c\n", isSpecialCase, mateUnitig2, finalOffset, unitigLocVal.ori);
 #endif
-     numUnitigConnectionsForPathData = 0;
+     unitigConnectionsForPathData.clear();
+     int numUnitigConnectionsForPathData = 0;
      backward_path_unitigs.push(unitigLocVal);
      while (!backward_path_unitigs.empty()) {
           unitigLocVal = backward_path_unitigs.pop();
