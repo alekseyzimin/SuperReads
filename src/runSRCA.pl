@@ -433,7 +433,7 @@ if(scalar(@jump_info_array)>0){
 
 #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
     if(not(-e "chimeric_sj.txt")){
-	print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$3\" \"\$2\" \"\$1;}else{print \$3\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 1| awk 'BEGIN{insert=\"\";}{if(\$3!=insert){start=\$1;insert=\$3}else{if(start>\$1){print insert\" \"start-\$1}else{print insert\" \"\$1-start}}}' | perl -ane '{if(\$F[1]<700&&\$F[1]>128){print STDOUT \"\$F[0]\\n\",substr(\$F[0],0,2),int(substr(\$F[0],2))+1,\"\\n\";}}' 1> chimeric_sj.txt \n";
+	print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$3\" \"\$2\" \"\$1;}else{print \$3\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 1| awk 'BEGIN{insert=\"\";}{if(\$3!=insert){start=\$1;insert=\$3}else{if(start>\$1){print insert\" \"start-\$1}else{print insert\" \"\$1-start}}}' | perl -ane '{if(\$F[1]<600&&\$F[1]>128){print STDOUT \"\$F[0]\\n\",substr(\$F[0],0,2),int(substr(\$F[0],2))+1,\"\\n\";}}' 1> chimeric_sj.txt \n";
 	print FILE "\n";
 	print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$4\" \"\$2\" \"\$1;}else{print \$4\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -d | perl -ane '{print STDOUT \"\$F[2]\\n\",substr(\$F[2],0,2),int(substr(\$F[2],2))+1,\"\\n\";}' 1>> chimeric_sj.txt \n";
 	print FILE "\n";
@@ -562,7 +562,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "exit\n";
     print FILE "fi\n";
 
-    print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.clean.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid 700\n";
+    print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.clean.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid 600\n";
 
 #we should not check for redundancy on the extended jump reads -- it will wipe them all out
     if($EXTEND_JUMP_READS==0){
