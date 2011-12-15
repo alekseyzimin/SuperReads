@@ -17,6 +17,7 @@
 
 #include <err.hpp>
 #include <heap.hpp>
+#include <exp_buffer.hpp>
 #include <src2/joinKUnitigs_v3.hpp>
 extern "C" {
 #include <src2/redBlackTreesInsertOnly.h>
@@ -102,8 +103,8 @@ struct kuniToReadMatchStruct
      int readLength;
      int kUnitigNumber;
      char ori;
-} evenReadMatchStructs[10000], oddReadMatchStructs[10000], *kUTRMSptr;
-int numEvenReadMatches, numOddReadMatches;
+};
+ExpBuffer<struct kuniToReadMatchStruct> evenReadMatchStructs, oddReadMatchStructs;
 unsigned char matchStructIsUsed[10000];
 struct unitigConnectionsForPathStruct
 {
@@ -199,34 +200,6 @@ extern "C" {
 #define mallocOrDie(name, num, type) fprintf (stderr, "Allocating %lu bytes for %s.\n", (unsigned long) ((num) * sizeof ( type )), #name); \
      name = (type *) calloc (num, sizeof ( type ));			\
      if (name == NULL) { fprintf (stderr, "Couldn't allocate space for '%s'\nBye!\n", #name ); exit (-1); }
-#endif
-
-#ifndef updateMatchRecords
-#define updateMatchRecords if (readNum % 2 == 0) kUTRMSptr = evenReadMatchStructs+numEvenReadMatches; else kUTRMSptr = oddReadMatchStructs+numOddReadMatches; \
-     cptr = flds[1]+1; kUTRMSptr->matchRgnBegin = atoi (cptr);		\
-     kUTRMSptr->matchRgnEnd = atoi (flds[2]);				\
-     cptr = flds[3]+1; kUTRMSptr->ahg = atoi (cptr);			\
-     while(*cptr != ',') ++cptr;	++cptr;				\
-     kUTRMSptr->bhg = atoi (cptr);					\
-     kUTRMSptr->kUnitigMatchBegin = atoi (flds[4])-1;			\
-     kUTRMSptr->kUnitigMatchEnd = atoi (flds[5]);			\
-     kUTRMSptr->orientedReadMatchBegin = atoi (flds[6]);		\
-     kUTRMSptr->orientedReadMatchEnd = atoi (flds[7]);			\
-     if (kUTRMSptr->orientedReadMatchBegin < kUTRMSptr->orientedReadMatchEnd) {	\
-	  --kUTRMSptr->orientedReadMatchBegin;				\
-	  kUTRMSptr->ori = 'F';						\
-	  kUTRMSptr->readMatchBegin = kUTRMSptr->orientedReadMatchBegin; \
-	  kUTRMSptr->readMatchEnd = kUTRMSptr->orientedReadMatchEnd; }	\
-     else {								\
-	  --kUTRMSptr->orientedReadMatchEnd;				\
-	  kUTRMSptr->ori = 'R';						\
-	  kUTRMSptr->readMatchBegin = kUTRMSptr->orientedReadMatchEnd;	\
-	  kUTRMSptr->readMatchEnd = kUTRMSptr->orientedReadMatchBegin; } \
-     kUTRMSptr->kUnitigLength = atoi (flds[8]);				\
-     kUTRMSptr->readLength = atoi (flds[9]);				\
-     kUTRMSptr->kUnitigNumber = atoi (flds[10]);			\
-     if (readNum % 2 == 0) ++numEvenReadMatches;			\
-     else ++numOddReadMatches;
 #endif
 
 // #define DEBUG
@@ -465,6 +438,39 @@ int main (int argc, char **argv)
      return (0);
 }
 
+void updateMatchRecords(int readNum, char *cptr, char *flds[]) {
+  ExpBuffer<struct kuniToReadMatchStruct> *structs;
+  if (readNum % 2 == 0) 
+    structs = &evenReadMatchStructs;
+  else
+    structs = &oddReadMatchStructs;
+  structs->push_back(kuniToReadMatchStruct());
+  struct kuniToReadMatchStruct &kUTRMS = structs->back();
+  cptr = flds[1]+1;
+  kUTRMS.matchRgnBegin = atoi (cptr);		
+  kUTRMS.matchRgnEnd = atoi (flds[2]);				
+  cptr = flds[3]+1; kUTRMS.ahg = atoi (cptr);			
+  while(*cptr != ',') ++cptr;	++cptr;                                 
+  kUTRMS.bhg = atoi (cptr);                                         
+  kUTRMS.kUnitigMatchBegin = atoi (flds[4])-1;			
+  kUTRMS.kUnitigMatchEnd = atoi (flds[5]);                          
+  kUTRMS.orientedReadMatchBegin = atoi (flds[6]);                   
+  kUTRMS.orientedReadMatchEnd = atoi (flds[7]);			
+  if (kUTRMS.orientedReadMatchBegin < kUTRMS.orientedReadMatchEnd) { 
+    --kUTRMS.orientedReadMatchBegin;				
+    kUTRMS.ori = 'F';						
+    kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchBegin;      
+    kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchEnd; }	
+  else {								
+    --kUTRMS.orientedReadMatchEnd;                                  
+    kUTRMS.ori = 'R';						
+    kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchEnd;	
+    kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchBegin; }      
+  kUTRMS.kUnitigLength = atoi (flds[8]);				
+  kUTRMS.readLength = atoi (flds[9]);				
+  kUTRMS.kUnitigNumber = atoi (flds[10]); 
+}
+
 int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
 {
      char *cptr;
@@ -484,8 +490,9 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
      rdPrefixHold[1] = cptr[1];
      cptr += 2;
      readNum = readNumHold = atoll (cptr);
-     numEvenReadMatches = numOddReadMatches = 0;
-     updateMatchRecords;
+     evenReadMatchStructs.clear();
+     oddReadMatchStructs.clear();
+     updateMatchRecords(readNum, cptr, flds);
 
      while (fgets (line, 2000, infile)) {
 	  numFlds = getFldsFromLine(line);
@@ -497,7 +504,7 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
 	  if ((strcmp (rdPrefix, rdPrefixHold) == 0) &&
 	      readNum == readNumHold) {
 	       // load more data
-	       updateMatchRecords;
+	       updateMatchRecords(readNum, cptr, flds);
 	       continue;
 	  }
 	  if ((strcmp (rdPrefix, rdPrefixHold) != 0) ||
@@ -506,8 +513,9 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
 	       // Get the super-read for the insert we just finished reading
 	       getSuperReadsForInsert();
 	       // Set up and load the new data
-	       numEvenReadMatches = numOddReadMatches = 0;
-	       updateMatchRecords;
+               evenReadMatchStructs.clear();
+               oddReadMatchStructs.clear();
+	       updateMatchRecords(readNum, cptr, flds);
 	       // Update what the old data is
 	       strcpy (rdPrefixHold, rdPrefix);
 	       readNumHold = readNum;
@@ -515,7 +523,7 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
 	  }
 	  // If we get here we've gotten to the second read of a mate pair
 	  // load the data
-	  updateMatchRecords;
+	  updateMatchRecords(readNum, cptr, flds);
 	  // hold the updated read info
 	  readNumHold = readNum;
      }
@@ -1335,17 +1343,18 @@ void findSingleReadSuperReads(char *readName)
      int minReadOffset, maxReadOffset, minReadOffsetSeen, maxReadOffsetSeen;
      int i, j, recNumToUse=0;
      int isReversed=0;
+     struct kuniToReadMatchStruct *kUTRMSptr;
 
      tempInt = atoll(cptr);
 #ifdef KILLED111115
      printf ("findSingleReadSuperReads\n");
 #endif
      if (tempInt % 2 == 0) {
-	  countOfMatchingKUnitigs = numEvenReadMatches;
+          countOfMatchingKUnitigs = evenReadMatchStructs.size();
 	  kUTRMSptr = &(evenReadMatchStructs[0]);
      }
      else {
-	  countOfMatchingKUnitigs = numOddReadMatches;
+          countOfMatchingKUnitigs = oddReadMatchStructs.size();
 	  kUTRMSptr = &(oddReadMatchStructs[0]);
      }
      
@@ -1453,10 +1462,10 @@ void getSuperReadsForInsert (void)
 
      // Output the stuff for the old pair
 #ifdef KILLED111115
-     printf ("%s%lld %d %d\n", rdPrefixHold, readNumHold, numEvenReadMatches, numOddReadMatches);
+     printf ("%s%lld %ld %ld\n", rdPrefixHold, readNumHold, evenReadMatchStructs.size(), oddReadMatchStructs.size());
 #endif
      sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
-     if ((numEvenReadMatches == 0) || (numOddReadMatches == 0)) {
+     if (evenReadMatchStructs.empty() || oddReadMatchStructs.empty()) {
 	  findSingleReadSuperReads(readNameSpace);
 	  return; }
      // If we get here both the even read and the odd read have
