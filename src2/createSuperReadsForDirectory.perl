@@ -118,7 +118,7 @@ $cmd = "$exeDir/createKUnitigMaxOverlaps $kUnitigsFile -kmervalue $merLen -large
 &runCommandAndExitIfBad($cmd, $kUnitigOverlapsFile, 1);
 
 # Do the shooting method here
-$cmd = "$exeDir/joinKUnitigs_v3 -mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile -unitig-lengths-file $kUnitigLengthsFile -num-kunitigs-file $maxKUnitigNumberFile -overlaps-file $kUnitigOverlapsFile -min-overlap-length $merLenMinus1 -report-paths -prefix $joinerOutputPrefix -num-file-names $numProcessors $myProgOutput1_1prefix";
+$cmd = "$exeDir/joinKUnitigs_v3 --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $kUnitigLengthsFile --num-kunitigs-file $maxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 --prefix $joinerOutputPrefix --num-file-names $numProcessors $myProgOutput1_1prefix";
 print "$cmd\n";
 system("time $cmd");
 
@@ -143,24 +143,9 @@ $cmd = "chmod 0755 $workingDirectory/commands.sh;  $workingDirectory/commands.sh
 print "$cmd\n";
 system($cmd);
 
-open(FILE,">$workingDirectory/commands.sh");
-print FILE "#!/bin/bash\n";
-$numConcurrentJobs=16;
-print FILE "sort -m -k2,2 ";
-for($k=0;$k<$numProcessors;$k+=$numConcurrentJobs){
-    print FILE "<(sort -m -k2,2 $workingDirectory/superReadCounts_{".$k;
-    for($j=1;$j<$numConcurrentJobs;$j++){
-	print FILE ",".($k+$j) if( -e "$workingDirectory/superReadCounts_".($k+$j));
-    }
-    print FILE "}| awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\"){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}') ";
-}
-print FILE " | awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\" && c >= $minReadsInSuperRead ){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' >  $workingDirectory/superReadCounts.all\n";
-close(FILE);
-
-system("cat $workingDirectory/commands.sh");
-$cmd = "chmod 0755 $workingDirectory/commands.sh;  $workingDirectory/commands.sh";
+$cmd= "sort -m -k2,2 --batch-size 512 $workingDirectory/superReadCounts_* | awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\" && c >= $minReadsInSuperRead ){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' >  $workingDirectory/superReadCounts.all\n";
 print "$cmd\n";
-system($cmd);
+system("time $cmd");
 
 $cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -good-sr-filename $workingDirectory/superReadNames.txt -kunitigsfile $kUnitigsFile 2> $sequenceCreationErrorFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 40% -T ./ > $workingDirectory/sr_sizes.tmp";
 &runCommandAndExitIfBad ($cmd,"$workingDirectory/sr_sizes.tmp", 1);
