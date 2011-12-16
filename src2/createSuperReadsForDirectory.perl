@@ -143,7 +143,7 @@ $cmd = "chmod 0755 $workingDirectory/commands.sh;  $workingDirectory/commands.sh
 print "$cmd\n";
 system($cmd);
 
-$cmd= "sort -m -k2,2 --batch-size 512 $workingDirectory/superReadCounts_* | awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\" && c >= $minReadsInSuperRead ){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' >  $workingDirectory/superReadCounts.all\n";
+$cmd= "$exeDir/sorted_merge -k 2 $workingDirectory/superReadCounts_* | awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\" && c >= $minReadsInSuperRead ){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' >  $workingDirectory/superReadCounts.all\n";
 print "$cmd\n";
 system("time $cmd");
 

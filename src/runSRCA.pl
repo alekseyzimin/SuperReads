@@ -433,10 +433,10 @@ if(scalar(@jump_info_array)>0){
 
 #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
     if(not(-e "chimeric_sj.txt")){
-	print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$3\" \"\$2\" \"\$1;}else{print \$3\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 1| awk 'BEGIN{insert=\"\";}{if(\$3!=insert){start=\$1;insert=\$3}else{if(start>\$1){print insert\" \"start-\$1}else{print insert\" \"\$1-start}}}' | perl -ane '{if(\$F[1]<600&&\$F[1]>128){print STDOUT \"\$F[0]\\n\",substr(\$F[0],0,2),int(substr(\$F[0],2))+1,\"\\n\";}}' 1> chimeric_sj.txt \n";
+	print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$3\" \"\$2\" \"\$1;}else{print \$3\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 1| awk 'BEGIN{insert=\"\";}{if(\$3!=insert){start=\$1;insert=\$3}else{if(start>\$1){print insert\" \"start-\$1}else{print insert\" \"\$1-start}}}' | perl -ane '{if(\$F[1]<700&&\$F[1]>128){print STDOUT \"\$F[0]\\n\",substr(\$F[0],0,2),int(substr(\$F[0],2))+1,\"\\n\";}}' 1> chimeric_sj.txt \n";
 	print FILE "\n";
-	print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$4\" \"\$2\" \"\$1;}else{print \$4\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -d | perl -ane '{print STDOUT \"\$F[2]\\n\",substr(\$F[2],0,2),int(substr(\$F[2],2))+1,\"\\n\";}' 1>> chimeric_sj.txt \n";
-	print FILE "\n";
+#	print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$4\" \"\$2\" \"\$1;}else{print \$4\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -d | perl -ane '{print STDOUT \"\$F[2]\\n\",substr(\$F[2],0,2),int(substr(\$F[2],2))+1,\"\\n\";}' 1>> chimeric_sj.txt \n";
+#	print FILE "\n";
     }
 #we also do initial redundancy filtering here, based on positions of reads in suoer reads
     print FILE "cat work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt | awk '{rn=int(substr(\$1,3));if(rn%2==1 && int(substr(pr,3))+1==rn){print ps\" \"po\" \"pr\"\\n\"\$2\" \"\$3\" \"pr}else{pr=\$1;ps=\$2;po=\$3}}' |awk 'BEGIN{flag=0}{if(flag==1){index1=int(substr(c1_1,1,length(c1_1)-1))*20000+c1_2;index2=int(substr(\$1,1,length(\$1)-1))*20000+\$2;if(index1>index2){print c1_1\" \"\$1\" \"c1_2\" \"\$2\" \"c}else{print \$1\" \"c1_1\" \"\$2\" \"c1_2\" \"c}}c=\$3;c1_1=\$1;c1_2=\$2;flag=1-flag;}'|perl -ane '{chomp;\$range=2;\$code=0;for(\$i=-\$range;\$i<=\$range;\$i++){for(\$j=-\$range;\$j<=\$range;\$j++){\$code++ if(defined(\$h{\"\$F[0] \$F[1] \".(\$F[2]+\$i).\" \".(\$F[3]+\$j)}))}}if(\$code==0){\$h{\"\$F[0] \$F[1] \$F[2] \$F[3]\"}=1}else{print \"\$F[4]\\n\",substr(\$F[4],0,2),int(substr(\$F[4],2))+1,\"\\n\"}}' > redundant_sj.txt\n" if(not(-e "redundant_sj.txt")); 
@@ -562,7 +562,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "exit\n";
     print FILE "fi\n";
 
-    print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.clean.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid 600\n";
+    print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.clean.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid 700\n";
 
 #we should not check for redundancy on the extended jump reads -- it will wipe them all out
     if($EXTEND_JUMP_READS==0){
