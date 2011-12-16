@@ -33,7 +33,7 @@ LDADD = libutils.a
 ##############################
 bin_PROGRAMS += create_k_unitigs error_correct_reads			\
                 error_corrected2frg homo_trim reverse_complement	\
-                reduce_sr
+                reduce_sr sorted_merge
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/reduce_sr.pl src/create_end_pairs.pl		\
                     src/close_gaps.sh src/compute_sr_cov.pl		\
@@ -49,7 +49,7 @@ noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/error_correct_reads.hpp src/err_log.hpp	\
                   src/kmer.hpp src/create_k_unitigs_cmdline.hpp	\
                   src/error_corrected2frg_cmdline.hpp		\
-                  src/reduce_sr.hpp
+                  src/reduce_sr.hpp src/sorted_merge.hpp
 
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 homo_trim_SOURCES = src/homo_trim.cc 
@@ -58,6 +58,7 @@ create_k_unitigs_SOURCES = src/create_k_unitigs.cpp
 error_correct_reads_SOURCES = src/error_correct_reads.cc src/kmer.cc	\
                               src/err_log.cc
 reduce_sr_SOURCES = src/reduce_sr.cc
+sorted_merge_SOURCES = src/sorted_merge.cc
 
 ##############################
 # src2 pipeline

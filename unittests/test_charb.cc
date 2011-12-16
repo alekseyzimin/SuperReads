@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <gtest/gtest.h>
 #include <charb.hpp>
+#include <ext/stdio_filebuf.h>
 
 TEST(CharbBasic, Init) {
   charb empty;
@@ -155,6 +156,10 @@ protected:
     rewind(tf);
   }
 
+  virtual void TearDown() {
+    fclose(tf);
+  }
+
   FILE *tf;
   const char *l1;
   const char *l2;
@@ -218,6 +223,28 @@ TEST_F(IOTest, fgets_append) {
   str_res += l2;
   EXPECT_STREQ(str_res.c_str(), b);
   EXPECT_EQ(strlen(l1) + strlen(l2), b.len());
+}
+
+TEST_F(IOTest, getline_cpp) {
+  __gnu_cxx::stdio_filebuf<char> ib(tf, std::ios::in);
+  std::istream                   is(&ib);
+  charb                          b;
+  std::string                    str;
+  std::string::iterator          it;
+
+  EXPECT_TRUE((bool)getline(is, b));
+  str.assign(l1);  // Copy of l1 without newline
+  if(*(it = str.end() - 1) == '\n')
+    str.erase(it);
+  EXPECT_STREQ(str.c_str(), b);
+  
+  EXPECT_TRUE((bool)getline(is, b));
+  str.assign(l2);
+  if(*(it = str.end() - 1) == '\n')
+    str.erase(it);
+  EXPECT_STREQ(str.c_str(), b);
+
+  EXPECT_FALSE((bool)getline(is, b));
 }
 
 TEST(CharbBasic, sprintf) {

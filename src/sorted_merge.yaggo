@@ -1,0 +1,15 @@
+description "Merge sorted files, similar to sort -m."
+package "sorted_merge"
+
+option("key", "k") {
+  description "Key (1 base column number) for sorting"
+  uint32; default "1" }
+option("o", "output") {
+  description "Output file instead of stdout"
+  c_string; typestr "path"; default "/dev/fd/1" }
+option("n", "numerical") {
+  description "Numerical sort"
+  flag; off }
+arg("input") {
+  description "Input file"
+  c_string; typestr "path"; multiple; at_least 2 }

@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <string>
 #include <cstring>
+#include <istream>
 #include <assert.h>
 
 #include <exp_buffer.hpp>
@@ -32,6 +33,7 @@ template<typename R> int vsprintf(basic_charb<R> &b, const char *format, va_list
 template<typename R> ssize_t getline(basic_charb<R> &b, FILE *stream);
 template<typename R> ssize_t getdelim(basic_charb<R> &b, int delim, FILE *stream);
 template<typename R> char *strcat(basic_charb<R> &b, const char *src);
+template<typename R> std::istream& getline(std::istream& is, basic_charb<R> &b, char delim, char *cptr);
 
 template<typename R>
 class basic_charb : public ExpBuffer<char, R> {
@@ -79,6 +81,7 @@ public:
   friend ssize_t getline <> (basic_charb<R> &b, FILE *stream);
   friend ssize_t getdelim <> (basic_charb<R> &b, int delim, FILE *stream);
   friend char *strcat <> (basic_charb<R> &b, const char *src);
+  friend std::istream& getline <> (std::istream& is, basic_charb<R> &b, char delim, char *cptr);
 };
 
 template<typename T>
@@ -186,6 +189,48 @@ template<typename T, typename R>
 ssize_t getdelim(basic_charb<R> &b, T *n, int delim, FILE *stream) {
   return getdelim(b, delim, stream);
 }
+
+/** getline - C++ stream version. Similar to the global function
+ * getline(istream& is, string& str). Unlike the C version of fgets
+ * and getline, the delimiter character is not included in the output
+ * string.
+ */
+template<typename R>
+std::istream& getline(std::istream &is, basic_charb<R> &b, char delim, char *cptr) {
+  if(b.is_null()) {
+    b.reserve();
+    cptr = b.base();
+  }
+  while(true) {
+    is.getline(cptr, b.capacity() - (cptr - b.base_), delim);
+    if(is.bad()) // Bad, we quit
+      break;
+    cptr += is.gcount();
+    if(is.eof())  // Eof, we quit
+      break;
+    if(!is.fail()) // Found delim, done
+      break;
+    // Need to extend buffer
+    ssize_t off = cptr - b.base_;
+    b.enlarge();
+    cptr = b.base_ + off;
+    is.clear();
+  }
+  b.ptr_ = cptr;
+  return is;
+}
+
+template<typename R>
+std::istream& getline(std::istream& is, basic_charb<R>& b) { return getline(is, b, '\n', b.base()); }
+
+template<typename R>
+std::istream& getline(std::istream& is, basic_charb<R>& b, char delim) { return getline(is, b, delim, b.base_); }
+
+template<typename R>
+std::istream& getline_append(std::istream& is, basic_charb<R>& b) { return getline(is, b, '\n', b.ptr_); }
+
+template<typename R>
+std::istream& getline_append(std::istream& is, basic_charb<R>& b, char delim) { return getline(is, b, delim, b.ptr_); }
 
 
 /** sprintf, snprintf, vsprintf, vsnprintf - formatted output
