@@ -106,9 +106,9 @@ if ($tableResizeFactor > 1) {
     print "Resizing the table to $tableSize for the k-unitig jellyfish run\n";
     goto redoKUnitigsJellyfish; }
 
-$cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $kUnitigsFile $maxKUnitigNumberFile $totReadFile";
+$cmd = "cat $totReadFile | $exeDir/add_missing_mates.pl >  $workingDirectory/inputreads.fa ; $exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $kUnitigsFile $maxKUnitigNumberFile  $workingDirectory/inputreads.fa";
 &runCommandAndExitIfBad ($cmd, "", 0);
-if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile, $totReadFile); }
+if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile, "$workingDirectory/inputreads.fa"); }
 
 if ($jumpLibraryReads) {
     goto jumpLibraryCalculations; }
