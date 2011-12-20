@@ -106,9 +106,9 @@ if ($tableResizeFactor > 1) {
     print "Resizing the table to $tableSize for the k-unitig jellyfish run\n";
     goto redoKUnitigsJellyfish; }
 
-$cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $kUnitigsFile $maxKUnitigNumberFile $totReadFile";
+$cmd = "cat $totReadFile | $exeDir/add_missing_mates.pl >  $workingDirectory/inputreads.fa ; $exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $kUnitigsFile $maxKUnitigNumberFile  $workingDirectory/inputreads.fa";
 &runCommandAndExitIfBad ($cmd, "", 0);
-if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile, $totReadFile); }
+if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile, "$workingDirectory/inputreads.fa"); }
 
 if ($jumpLibraryReads) {
     goto jumpLibraryCalculations; }
@@ -143,7 +143,7 @@ $cmd = "chmod 0755 $workingDirectory/commands.sh;  $workingDirectory/commands.sh
 print "$cmd\n";
 system($cmd);
 
-$cmd= "sort -m -k2,2 --batch-size 512 $workingDirectory/superReadCounts_* | awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\" && c >= $minReadsInSuperRead ){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' >  $workingDirectory/superReadCounts.all\n";
+$cmd= "$exeDir/sorted_merge -k 2 $workingDirectory/superReadCounts_* | awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\" && c >= $minReadsInSuperRead ){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' >  $workingDirectory/superReadCounts.all\n";
 print "$cmd\n";
 system("time $cmd");
 
