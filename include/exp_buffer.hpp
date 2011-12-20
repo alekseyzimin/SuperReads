@@ -115,7 +115,8 @@ public:
   }
   ExpBuffer(const T *ptr, size_type nb_elements) : base_(0), end_(0), ptr_(0) {
     reserve(nb_elements);
-    memcpy(base_, ptr, sizeof(T) * nb_elements);
+    if(ptr)
+      memcpy(base_, ptr, sizeof(T) * nb_elements);
     ptr_ = base_ + nb_elements;
   }
   ExpBuffer(const ExpBuffer &rhs) : base_(0), end_(0), ptr_(0) {
