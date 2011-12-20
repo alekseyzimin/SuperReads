@@ -422,7 +422,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "echo -n 'filtering JUMP ';date;\n";
 
 #creating super reads. for filtering
-    print FILE "createSuperReadsForDirectory.perl -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n" if(not(-e "work2"));;
+    print FILE "createSuperReadsForDirectory.perl -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n" if(not(-e "work2"));;
     print FILE "\n";
 
 #check if the super reads pipeline finished successfully
@@ -448,7 +448,7 @@ if(scalar(@jump_info_array)>0){
 
 #we extend the filtered and reverse complemented jump reads if asked -- the reason to do that is that sometimes the jump library reads are shorter than 64 bases and CA cannot use them
     if($EXTEND_JUMP_READS==1 && 0){#this is not supported
-	print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -jumplibraryreads -mkudisr 0 work3 sj.cor.clean.fa 1>super3.err 2>&1\n" if(not(-e "work3"));
+	print FILE "createSuperReadsForDirectory.perl -noreduce -minreadsinsuperread 1 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -jumplibraryreads -mkudisr 0 work3 sj.cor.clean.fa 1>super3.err 2>&1\n" if(not(-e "work3"));
 	print FILE "ln -sf work3/superReadSequences.jumpLibrary.fasta sj.cor.ext.fa\n";
 #check if the super reads pipeline finished successfully
 	print FILE "if [[ ! -e work3/superReads.success ]];then\n";
@@ -504,17 +504,6 @@ print FILE "fi\n";
 
 print FILE "\n";
 
-#This is now done in super reads pipeline
-#here we reduce the super reads removing containees
-#if(not(-e "work1/superReadSequences.fasta.bak")){
-#print FILE "paste <(grep '^>' work1/superReadSequences.fasta | awk '{print substr(\$1,2)}' ) <(getNumBasesPerReadInFastaFile.perl work1/superReadSequences.fasta) |sort -grk2,2 -S 10% | tee sr_sizes.tmp | reduce_sr.pl  > reduce.tmp\n";
-#print FILE "perl -ane '{\$sr{\$F[0]}=\$F[1]}END{open(FILE,\"work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\");while(\$line=<FILE>){chomp(\$line); \@l=split(/\\s+/,\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\\n\";}else{print \"\$line\\n\";}}}' reduce.tmp > readPlacementsInSuperReads.final.read.superRead.offset.ori.txt.reduced\n";
-#print FILE "extractreads.pl <(cat <(grep '^>' work1/superReadSequences.fasta | awk '{print substr(\$1,2)}' ) reduce.tmp | awk '{print \$1}' |sort -S 10%|uniq -u ) work1/superReadSequences.fasta 1 > superReadSequences.reduced.fasta\n";
-#print FILE "mv work1/superReadSequences.fasta work1/superReadSequences.fasta.bak\n";
-#print FILE "mv work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt.bak\n";
-#print FILE "mv superReadSequences.reduced.fasta work1/superReadSequences.fasta\n";
-#print FILE "mv readPlacementsInSuperReads.final.read.superRead.offset.ori.txt.reduced  work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n\n";
-#}
 
 #now we extract those PE mates that did not end up in the same super read -- we call them linking mates, they will be useful for scaffolding
 print FILE "extractreads.pl <( awk '{if(int(substr(\$1,3))%2==0){print \$1\" \"\$2\" \"\$1;}else{print \$1\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 2 | uniq -u -f 1 | awk '{print \$1}' )  pe.cor.fa 1 > pe.linking.fa\n" if(not(-e "pe.linking.fa"));

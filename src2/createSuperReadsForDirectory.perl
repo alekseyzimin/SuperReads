@@ -37,6 +37,7 @@ $pwd = cwd;
 if ($exeDir !~ /^\//) {
     $exeDir = "$pwd/$exeDir"; }
 
+$noReduce=0;
 &processArgs;
 $merLenMinus1 = $merLen - 1;
 
@@ -147,6 +148,7 @@ $cmd= "$exeDir/sorted_merge -k 2 $workingDirectory/superReadCounts_* | awk 'BEGI
 print "$cmd\n";
 system("time $cmd");
 
+if($noReduce==0){
 $cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -good-sr-filename $workingDirectory/superReadNames.txt -kunitigsfile $kUnitigsFile 2> $sequenceCreationErrorFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 40% -T ./ > $workingDirectory/sr_sizes.tmp";
 &runCommandAndExitIfBad ($cmd,"$workingDirectory/sr_sizes.tmp", 1);
 
@@ -158,6 +160,14 @@ $cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /d
 
 $cmd = "awk '{print \$1}' $workingDirectory/reduce.tmp > $workingDirectory/sr_to_eliminate.tmp; $exeDir/extractreads_not.pl $workingDirectory/sr_to_eliminate.tmp $finalSuperReadSequenceFile.all 1 > $finalSuperReadSequenceFile";
 &runCommandAndExitIfBad ($cmd,$finalSuperReadSequenceFile, 1);
+}
+else{
+$cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -good-sr-filename $workingDirectory/superReadNames.txt -kunitigsfile $kUnitigsFile 2> $sequenceCreationErrorFile > $finalSuperReadSequenceFile";
+&runCommandAndExitIfBad ($cmd,$finalSuperReadSequenceFile, 1);
+
+$cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $workingDirectory/superReadNames.txt > $finalReadPlacementFile";
+&runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1);
+}
 
 $cmd = "touch $successFile";
 system ($cmd);
@@ -228,7 +238,10 @@ sub processArgs
 	    next; }
 	elsif ($ARGV[$i] eq "-jumplibraryreads") {
 	    $jumpLibraryReads = 1;
-	    next; }
+	    next; }        
+	elsif ($ARGV[$i] eq "-noreduce") {
+            $noReduce = 1;
+            next; }
 	elsif ($ARGV[$i] eq "-h") {
 	    $help = 1;
 	    next; }
