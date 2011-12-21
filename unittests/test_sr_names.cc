@@ -7,7 +7,7 @@
 TEST(SR_name, encode_decode) {
   long sr_name_len = random() % 10;
   charb sr_original;
-  charb one_entry, sr_str;
+  charb one_entry;
   sprintf(sr_original, "%ld%c", random(), random() % 2 ? 'R' : 'F');
   for(long i = 1; i < sr_name_len; ++i) {
     sprintf(one_entry, "_%ld_%ld%c", random() % 100, random(), random() %2 ? 'R' : 'F');
@@ -15,6 +15,5 @@ TEST(SR_name, encode_decode) {
   }
 
   sr_name sr(sr_original);
-    sr.to_str(sr_str);
-  EXPECT_STREQ(sr_original, sr_str);
+  EXPECT_STREQ(sr_original, sr.to_str());
 }
