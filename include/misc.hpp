@@ -33,5 +33,32 @@ inline std::ostream & operator<<(std::ostream &os, const substr &ss) {
   return os.write(ss._str, ss._len);
 }
 
+template<typename T>
+int getFldsFromLine(char *line, T &res) {
+  char *saveptr;
+  res.clear();
+
+  char *tok = strtok_r(line, " \t\n", &saveptr);
+  while(tok) {
+    res.push_back(tok);
+    tok = strtok_r(0, " \t\n", &saveptr);
+  }
+  return res.size();
+}
+
+template<typename T>
+int appendFldsFromLine(char *line, T &res) {
+  char *saveptr;
+  int numFlds = 0;
+
+  char *tok = strtok_r(line, " \t\n", &saveptr);
+  while(tok) {
+    res.push_back(tok);
+    ++numFlds;
+    tok = strtok_r(0, " \t\n", &saveptr);
+  }
+  return numFlds;
+}
+
 
 #endif

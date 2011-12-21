@@ -156,7 +156,8 @@ public:
   reference front() const { return *base_; }
   reference back() const { return *(ptr_ - 1); }
   void push_back(const T& x) {
-    reserve(size() + 1);
+    if(ptr_ >= end_)
+      reserve();
     *ptr_++ = x; // Should we use the inplace new instead?
   }
   void pop_back() {

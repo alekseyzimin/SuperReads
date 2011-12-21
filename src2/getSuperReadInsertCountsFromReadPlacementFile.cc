@@ -4,13 +4,12 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <exp_buffer.hpp>
 #include <charb.hpp>
 #include <err.hpp>
+#include <misc.hpp> // for getFldsFromLine
 
 using namespace std;
-
-char *flds[10000];
-int getFldsFromLine (char *cptrHold);
 
 int main (int argc, char **argv)
 {
@@ -22,20 +21,21 @@ int main (int argc, char **argv)
      char *prefixHold;
      long long readNumHold, readNum;
      char *superReadHold;
+     ExpBuffer<char *> flds;
 
      isFirstLine = 1;
      cptr = &line;
      if(!fgets (*cptr, stdin))
        die << "Invalid input: empty file";
-     numFlds = getFldsFromLine (*cptr);
+     numFlds = getFldsFromLine (*cptr, flds);
      str = string (flds[1]);
-     superReadToCounts.insert (superReadToCounts.begin(), pair<string,int>(str, 1));
+     superReadToCounts.insert(superReadToCounts.begin(), pair<string,int>(str, 1));
      superReadHold = flds[1];
      prefixHold = flds[0]; // Just use the first 2 chars
      readNumHold = atoll (*cptr+2);
      cptr = &line2;
      while (fgets (*cptr, stdin)) {
-	  numFlds = getFldsFromLine (*cptr);
+       numFlds = getFldsFromLine (*cptr, flds);
 	  readNum = atoll(*cptr+2);
 	  // The next excludes counting the second read of a mate pair from
 	  // the counts for the super-read. We want super-reads which have
@@ -66,25 +66,7 @@ int main (int argc, char **argv)
 	       cptr = &line;
      }
      for (it=superReadToCounts.begin(); it != superReadToCounts.end(); it++)
-	  cout << (*it).second << " " << (*it).first << endl;
+       cout << (*it).second << " " << (*it).first << endl;
 
      return (0);
 }
-
-int getFldsFromLine (char *cptrHold)
-{
-     int numFlds=0, state = 0;
-     char *cptr;
-
-     for (cptr=cptrHold; *cptr; cptr++) {
-          if (isspace (*cptr)) { state = 0;*cptr = 0; }
-          else {
-               if (state == 1) continue;
-               flds[numFlds] = cptr;
-               ++numFlds;
-               state = 1;
-          }
-     }
-     return (numFlds);
-}
-
