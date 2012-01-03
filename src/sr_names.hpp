@@ -29,18 +29,8 @@ public:
   iterator begin() const { return iterator(data); }
   iterator end() const { return iterator(); }
 
-  const char *raw() const { return data; }
-  void to_str(charb &res) {
-    charb one_entry;
-    iterator it = begin();
-    if(it == end())
-      return;
-    sprintf(res, "%ld%c", it->id, it->ori);
-    for(++it; it != end(); ++it) {
-      sprintf(one_entry, "_%ld_%ld%c", it->offset, it->id, it->ori);
-      strcat(res, one_entry);
-    }
-  }
+  const char* raw() const { return data; }
+  const char* to_str() { charb res; to_str(data, res); return strdup(res); }
   
 public:
   const char* copy(const char *str) {
@@ -157,7 +147,11 @@ public:
     uint64_t data;
   };
   typedef std::vector<entry> bin_array;
-  static const char* from_str(const char *str) {
+  static const char* from_str(const char* str) {
+    bin_array fib_buffer;
+    return from_str(str, fib_buffer);
+  }
+  static const char* from_str(const char* str, bin_array &fib_buffer) {
     bin_array ary;
     charb     tokens(str);
     char*     saveptr;
@@ -250,5 +244,18 @@ public:
     }
     
     return res;
+  }
+
+  static void to_str(const char* name, charb& str) {
+    charb one_entry;
+    iterator it = iterator(name);
+    iterator end;
+    if(it == end)
+      return;
+    sprintf(str, "%ld%c", it->id, it->ori);
+    for(++it; it != end; ++it) {
+      sprintf(one_entry, "_%ld_%ld%c", it->offset, it->id, it->ori);
+      strcat(str, one_entry);
+    }
   }
 };
