@@ -23,7 +23,8 @@ noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/charb.hpp $(UTILS_I)/charbuf.hpp		\
                   $(UTILS_I)/exp_buffer.hpp $(UTILS_I)/gzip_stream.hpp	\
                   $(UTILS_I)/yaggo.hpp $(UTILS_I)/misc.hpp		\
-                  $(UTILS_I)/heap.hpp
+                  $(UTILS_I)/heap.hpp $(UTILS_I)/reallocators.hpp
+
 noinst_LIBRARIES = libutils.a
 libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp
 LDADD = libutils.a
@@ -74,7 +75,9 @@ bin_PROGRAMS += createFastaSuperReadSequences			\
 dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
                     src2/createSuperReadsForDirectory.perl src2/add_missing_mates.pl
 
-noinst_HEADERS += src2/redBlackTreesInsertOnly.h src2/joinKUnitigs_v3.hpp
+noinst_HEADERS += src2/redBlackTreesInsertOnly.h				\
+                  src2/joinKUnitigs_v3.hpp					\
+                  src2/getSuperReadInsertCountsFromReadPlacementFile.hpp
 
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
 findMatchesBetweenKUnitigsAndReads_SOURCES =    \
