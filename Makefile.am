@@ -51,7 +51,8 @@ noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/kmer.hpp src/create_k_unitigs_cmdline.hpp	\
                   src/error_corrected2frg_cmdline.hpp		\
                   src/reduce_sr.hpp src/sorted_merge.hpp	\
-                  src/fibonacci_coding.hpp src/sr_names.hpp
+                  src/fibonacci_coding.hpp src/sr_names.hpp	\
+                  src/bloom_filter.hpp src/MurmurHash3.h
 
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 homo_trim_SOURCES = src/homo_trim.cc 
@@ -98,14 +99,17 @@ TESTS = all_tests
 check_PROGRAMS = all_tests
 
 
-all_tests_SOURCES = unittests/test_charb.cc				\
+
+all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_exp_buffer.cc			\
                     unittests/test_charbuf.cc unittests/test_heap.cc	\
-                    unittests/test_sr_names.cc
-all_tests_SOURCES += src/fibonacci_coding.cc
+                    unittests/test_sr_names.cc				\
+                    unittests/test_bloom_filter.cc
+all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp
 all_tests_CXXFLAGS = -I$(top_srcdir)/unittests/gtest/include		\
 -I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include -I$(top_srcdir)	\
 -Wall -Werror
-all_tests_LDADD = libgtest_main.la
+all_tests_LDADD = libgtest.la
+noinst_HEADERS += unittests/test_main.hpp
 
 include gtest.mk
