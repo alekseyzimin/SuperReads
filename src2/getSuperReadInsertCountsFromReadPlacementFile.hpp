@@ -12,28 +12,37 @@ public:
   const char *                   output_arg;
   bool                           output_given;
   bool                           fib_flag;
+  bool                           bloom_flag;
+  uint64_t                       number_reads_arg;
+  bool                           number_reads_given;
 
   enum {
     USAGE_OPT = 1000,
-    FIB_OPT
+    FIB_OPT,
+    BLOOM_OPT
   };
 
   getSuperReadInsertCountsFromReadPlacementFile(int argc, char *argv[]) :
     input_arg("/dev/fd/0"), input_given(false),
     output_arg("/dev/fd/1"), output_given(false),
-    fib_flag(false)
+    fib_flag(false),
+    bloom_flag(false),
+    number_reads_arg(1000000), number_reads_given(false)
   {
     static struct option long_options[] = {
       {"input", 1, 0, 'i'},
       {"output", 1, 0, 'o'},
       {"fib", 0, 0, FIB_OPT},
+      {"bloom", 0, 0, BLOOM_OPT},
+      {"number-reads", 1, 0, 'n'},
       {"help", 0, 0, 'h'},
       {"usage", 0, 0, USAGE_OPT},
       {"version", 0, 0, 'V'},
       {0, 0, 0, 0}
     };
-    static const char *short_options = "hVi:o:";
+    static const char *short_options = "hVi:o:n:";
 
+    std::string err;
 #define CHECK_ERR(type,val,which) if(!err.empty()) { std::cerr << "Invalid " #type " '" << val << "' for [" which "]: " << err << "\n"; exit(1); }
     while(true) { 
       int index = -1;
@@ -68,6 +77,14 @@ public:
       case FIB_OPT:
         fib_flag = true;
         break;
+      case BLOOM_OPT:
+        bloom_flag = true;
+        break;
+      case 'n':
+        number_reads_given = true;
+        number_reads_arg = yaggo::conv_uint<uint64_t>((const char *)optarg, err, false);
+        CHECK_ERR(uint64_t, optarg, "-n, --number-reads=uint64")
+        break;
       }
     }
     if(argc - optind != 0)
@@ -86,6 +103,8 @@ public:
   " -i, --input=path                         Input file (/dev/fd/0)\n" \
   " -o, --output=path                        Output file (/dev/fd/1)\n" \
   "     --fib                                Use fibonacci encoding of the names (false)\n" \
+  "     --bloom                              Use a bloom filter to remove unique super-reads (false)\n" \
+  " -n, --number-reads=uint64                Estimated number of super-reads (1000000)\n" \
   "     --usage                              Usage\n" \
   " -h, --help                               This message\n" \
   " -V, --version                            Version"
@@ -104,6 +123,8 @@ public:
     os << "input_given:" << input_given << " input_arg:" << input_arg << "\n";
     os << "output_given:" << output_given << " output_arg:" << output_arg << "\n";
     os << "fib_flag:" << fib_flag << "\n";
+    os << "bloom_flag:" << bloom_flag << "\n";
+    os << "number_reads_given:" << number_reads_given << " number_reads_arg:" << number_reads_arg << "\n";
   }
 private:
 };

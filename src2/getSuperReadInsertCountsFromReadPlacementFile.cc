@@ -10,13 +10,11 @@
 #include <misc.hpp> // for getFldsFromLine
 #include <src/sr_names.hpp>
 #include <src2/getSuperReadInsertCountsFromReadPlacementFile.hpp>
+#include <src/bloom_filter.hpp>
 
 using namespace std;
 
-// The following feature is broken! The char * for prefixHold and
-// superReadHold need to be changed to a charb as well (i.e., to copy
-// the string from one iteration to the next).
-/*  #define EXCLUDE_MATE 1 */
+#define EXCLUDE_MATE 1
 
 struct str_comp {
   bool operator()(const char *s1, const char *s2) {
@@ -27,6 +25,7 @@ struct str_comp {
 typedef const char*(*encode_fn)(const char* str);
 typedef const char*(*decode_fn)(const char* str);
 
+// Function pointer to encode (if so desired) the names.
 const char* identity(const char* str) { return str; }
 const char* dup(const char* str) { return strdup(str); }
 const char* fib_decode(const char* str) {
@@ -34,6 +33,22 @@ const char* fib_decode(const char* str) {
   sr_name::to_str(str, buffer);
   return buffer;
 }
+
+// Classes to filter names that need to be inserted in the map
+class name_filter {
+public:
+  virtual bool insert(const char* name) = 0;
+};
+class name_bloom_filter : public name_filter {
+  bloom_filter<const char*> filter;
+public:
+  name_bloom_filter(double fn, size_t n) : filter(fn, n) { }
+  virtual bool insert(const char* const name) { return filter.insert(name); }
+};
+class name_true : public name_filter {
+public:
+  virtual bool insert(const char* const name) { return true; }
+};
 
 int main (int argc, char **argv)
 {
@@ -68,12 +83,20 @@ int main (int argc, char **argv)
     decode = identity;
   }
 
+  name_filter *filter;
+  if(args.bloom_flag)
+    filter = new name_bloom_filter(0.01, args.number_reads_arg);
+  else
+    filter = new name_true();
+
   cptr = &lines[(line = !line)];
   if(!getline (input, *cptr))
     die << "Invalid input: empty file";
   getFldsFromLine (*cptr, flds);
   const char *nstr = encode(flds[1]);
-  ++superReadToCounts[nstr];
+  if(filter->insert(nstr))
+    ++superReadToCounts[nstr];
+
 #if EXCLUDE_MATE
   superReadHold = flds[1];
   prefixHold    = flds[0];      // Just use the first 2 chars
@@ -95,7 +118,8 @@ int main (int argc, char **argv)
       continue;
 #endif
     nstr = encode(flds[1]);
-    ++superReadToCounts[nstr];
+    if(filter->insert(nstr))
+      ++superReadToCounts[nstr];
 #if EXCLUDE_MATE
     superReadHold = flds[1];
     prefixHold    = flds[0];

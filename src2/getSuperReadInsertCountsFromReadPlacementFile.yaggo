@@ -10,3 +10,9 @@ option("output", "o") {
 option("fib") {
   description "Use fibonacci encoding of the names"
   flag; off }
+option("bloom") {
+  description "Use a bloom filter to remove unique super-reads"
+  flag; off }
+option("n", "number-reads") {
+  description "Estimated number of super-reads"
+  uint64; default "1000000" }

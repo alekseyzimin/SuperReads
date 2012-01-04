@@ -87,7 +87,7 @@ createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFile.cc	\
-src/fibonacci_coding.cc
+src/fibonacci_coding.cc src/MurmurHash3.cc
 joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc		\
                           src2/redBlackTreesInsertOnly.c
 
