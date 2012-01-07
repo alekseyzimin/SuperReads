@@ -1,27 +1,18 @@
+#ifndef __BLOOM_FILTER_HPP__
+#define __BLOOM_FILTER_HPP__
+
 #include <math.h>
 #include <vector>
 #include <algorithm>
 #include <reallocators.hpp>
-#include <src/MurmurHash3.h>
+#include <src/bloom_hash.hpp>
+
 /* Bloom filter using Kirsh & Mitzenmacher double hashing. I.e., only
    two hash functions are computed and the k functions have values (0
    <= i < k):
 
    hash_0 + i * hash_1
  */
-
-/* Hash pairs
- */
-template<typename Key>
-class hash_pair { };
-
-template <>
-class hash_pair<const char*> {
-public:
-  void operator()(const char* const key, uint64_t *hashes) const {
-    MurmurHash3_x64_128(key, strlen(key), 0, hashes);
-  }
-};
 
 #define LOG2    0.6931471805599453
 #define LOG2_SQ 0.4804530139182014
@@ -33,11 +24,11 @@ class bloom_filter {
   
   typedef std::vector<bool>::reference bit;
 public:
-  // BF with false positive rate of fn and estimated number of entries
+  // BF with false positive rate of fp and estimated number of entries
   // of n.
-  bloom_filter(double fn, size_t n) : 
-    data_(n * (size_t)lrint(-log(fn) / LOG2_SQ)),
-    k_(lrint(-log(fn) / LOG2)),
+  bloom_filter(double fp, size_t n) : 
+    data_(n * (size_t)lrint(-log(fp) / LOG2_SQ)),
+    k_(lrint(-log(fp) / LOG2)),
     hash_fns_() { }
 
   bloom_filter(size_t m, unsigned long k) :
@@ -88,3 +79,5 @@ public:
     return true;
   }
 };
+
+#endif // __BLOOM_FILTER_HPP__

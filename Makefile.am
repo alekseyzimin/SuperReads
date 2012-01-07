@@ -13,7 +13,8 @@ JFLIB_I = include/jflib
 noinst_HEADERS += $(JFLIB_I)/circular_buffer.hpp			\
                   $(JFLIB_I)/compare_and_swap.hpp			\
                   $(JFLIB_I)/locks_pthread.hpp				\
-                  $(JFLIB_I)/multiplexed_io.hpp $(JFLIB_I)/pool.hpp
+                  $(JFLIB_I)/multiplexed_io.hpp $(JFLIB_I)/pool.hpp	\
+                  $(JFLIB_I)/atomic_field.hpp
 
 ##############################
 # utils lib
@@ -52,7 +53,8 @@ noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/error_corrected2frg_cmdline.hpp		\
                   src/reduce_sr.hpp src/sorted_merge.hpp	\
                   src/fibonacci_coding.hpp src/sr_names.hpp	\
-                  src/bloom_filter.hpp src/MurmurHash3.h
+                  src/bloom_filter.hpp src/MurmurHash3.h	\
+                  src/bloom_hash.hpp src/bloom_counter2.hpp
 
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 homo_trim_SOURCES = src/homo_trim.cc 
@@ -66,11 +68,12 @@ sorted_merge_SOURCES = src/sorted_merge.cc
 ##############################
 # src2 pipeline
 ##############################
-bin_PROGRAMS += createFastaSuperReadSequences			\
-                findMatchesBetweenKUnitigsAndReads		\
-                createKUnitigMaxOverlaps			\
-                eliminateBadSuperReadsUsingList			\
-                getSuperReadInsertCountsFromReadPlacementFile	\
+bin_PROGRAMS += createFastaSuperReadSequences				\
+                findMatchesBetweenKUnitigsAndReads			\
+                createKUnitigMaxOverlaps				\
+                eliminateBadSuperReadsUsingList				\
+                getSuperReadInsertCountsFromReadPlacementFile		\
+                getSuperReadInsertCountsFromReadPlacementFileTwoPasses	\
                 joinKUnitigs_v3
 
 dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
@@ -87,7 +90,10 @@ createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFile.cc	\
-src/fibonacci_coding.cc src/MurmurHash3.cc
+src/fibonacci_coding.cc src/MurmurHash3.cpp
+getSuperReadInsertCountsFromReadPlacementFileTwoPasses_SOURCES =	\
+src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.cc		\
+src/fibonacci_coding.cc src/MurmurHash3.cpp
 joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc		\
                           src2/redBlackTreesInsertOnly.c
 
@@ -104,7 +110,8 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_exp_buffer.cc			\
                     unittests/test_charbuf.cc unittests/test_heap.cc	\
                     unittests/test_sr_names.cc				\
-                    unittests/test_bloom_filter.cc
+                    unittests/test_bloom_filter.cc			\
+                    unittests/test_bloom_counter2.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp
 all_tests_CXXFLAGS = -I$(top_srcdir)/unittests/gtest/include		\
 -I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include -I$(top_srcdir)	\

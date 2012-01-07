@@ -13,6 +13,7 @@
  */
 template<typename T>
 struct reallocator {
+  typedef T element_type;
   T *operator()(T *ptr, size_t osize, size_t nsize) {
     return (T*)::realloc((void*)ptr, nsize * sizeof(T));
   }
@@ -22,6 +23,7 @@ struct reallocator {
  */
 template<typename T, T v>
 struct reallocator_init {
+  typedef T element_type;
   static const T default_value = v;
   T *operator()(T *ptr, size_t osize, size_t nsize) {
     T *res = (T*)::realloc((void*)ptr, nsize * sizeof(T));
@@ -36,6 +38,7 @@ struct reallocator_init {
  */
 template<typename T>
 struct remaper {
+  typedef T element_type;
   T *operator()(T *ptr, size_t osize, size_t nsize) {
     void *res;
     if(nsize == 0) {     // free
@@ -60,6 +63,7 @@ struct remaper {
  */
 template<typename T, T v>
 struct remaper_init {
+  typedef T element_type;
   static const T default_value = v;
   remaper<T> remap;
   T *operator()(T *ptr, size_t osize, size_t nsize) {

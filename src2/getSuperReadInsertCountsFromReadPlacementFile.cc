@@ -93,9 +93,10 @@ int main (int argc, char **argv)
   if(!getline (input, *cptr))
     die << "Invalid input: empty file";
   getFldsFromLine (*cptr, flds);
-  const char *nstr = encode(flds[1]);
-  if(filter->insert(nstr))
+  if(filter->insert(flds[1])) {
+    const char *nstr = encode(flds[1]);
     ++superReadToCounts[nstr];
+  }
 
 #if EXCLUDE_MATE
   superReadHold = flds[1];
@@ -117,9 +118,10 @@ int main (int argc, char **argv)
         (strncmp(prefixHold, *cptr, 2) == 0))
       continue;
 #endif
-    nstr = encode(flds[1]);
-    if(filter->insert(nstr))
+    if(filter->insert(flds[1])) {
+      const char *nstr = encode(flds[1]);
       ++superReadToCounts[nstr];
+    }
 #if EXCLUDE_MATE
     superReadHold = flds[1];
     prefixHold    = flds[0];
