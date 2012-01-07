@@ -3,19 +3,9 @@
 
 #include <sys/types.h>
 #include <stdint.h>
+#include <jflib/atomic_field.hpp>
 
 namespace jflib {
-  // Atomic load (get) and store (set). For now assume that the
-  // architecture does this based on the virtual key word (true for
-  // x86_64). TODO: improve on other architectures.
-  template<typename T>
-  T a_get(const T &x) { return *(volatile T*)&x; }
-  template<typename T, typename U>
-  T &a_set(T &lhs, const U &rhs) {
-    *(volatile T*)&lhs = rhs;
-    return lhs;
-  }
-
   // Numeric type of length rounded up to the size of a
   // word. Undefined, and raise a compilation error, if the length is
   // not a machine word size

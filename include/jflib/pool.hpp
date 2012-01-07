@@ -141,7 +141,7 @@ uint32_t jflib::pool<T, CV>::side::get() {
   while(res == cbT::guard) {
     cond_.lock();
 
-    switch(a_get(state_)) {
+    switch(a_load(state_)) {
     case CLOSED:
       if(last_attempt) {
         cond_.unlock();
@@ -151,7 +151,7 @@ uint32_t jflib::pool<T, CV>::side::get() {
         break;
       }
     case NONE:
-      a_set(state_, WAITING);
+      a_store(state_, WAITING);
       break;
     case WAITING:
       break;
@@ -168,7 +168,7 @@ uint32_t jflib::pool<T, CV>::side::get() {
     }
     do {
       cond_.timedwait(5);
-    } while(a_get(state_) == WAITING);
+    } while(a_load(state_) == WAITING);
     cond_.unlock();
   }
 
@@ -190,9 +190,9 @@ void jflib::pool<T, CV>::side::release(uint32_t i) {
 
 template<typename T, typename CV>
 void jflib::pool<T, CV>::side::signal(bool close) {
-  if(a_get(state_) != NONE || close) {
+  if(a_load(state_) != NONE || close) {
     cond_.lock();
-    a_set(state_, close ? CLOSED : NONE);
+    a_store(state_, close ? CLOSED : NONE);
     cond_.broadcast();
     cond_.unlock();
   }

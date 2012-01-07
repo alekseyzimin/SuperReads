@@ -46,8 +46,8 @@ namespace jflib {
      * @return 0 if the FIFO is empty.
      */
     T dequeue();
-    bool is_closed() const { return a_get(_closed); }
-    void close() { a_set(_closed, true); }
+    bool is_closed() const { return a_load(_closed); }
+    void close() { a_store(_closed, true); }
   };
 
 #define BSIZEOF(x) (sizeof(T) * CHAR_BIT)
@@ -71,15 +71,15 @@ template<typename T, unsigned int n, T guard>
 bool jflib::basic_circular_buffer<T,n,guard>::enqueue(const T &v) {
   bool done = false;
  
-  size_t chead = a_get(_head);
+  size_t chead = a_load(_head);
   while(!done) {
     size_t nhead = chead + 1;
-    if(nhead % _size == a_get(_tail) % _size)
+    if(nhead % _size == a_load(_tail) % _size)
       return false;
     
     elt celt;
-    celt.binary = a_get(_buffer[chead % _size]);
-    size_t achead = a_get(_head);
+    celt.binary = a_load(_buffer[chead % _size]);
+    size_t achead = a_load(_head);
     if(achead != chead) {
       chead = achead;
       continue;
@@ -103,17 +103,17 @@ T jflib::basic_circular_buffer<T,n,guard>::dequeue() {
   bool done = false;
   elt res;
 
-  size_t ctail = a_get(_tail);
+  size_t ctail = a_load(_tail);
   while(!done) {
     bool dequeued = false;
     do {
-      if(ctail % _size == a_get(_head) % _size)
+      if(ctail % _size == a_load(_head) % _size)
         return guard;
       size_t ntail = ctail + 1;
       dequeued = cas(&_tail, ctail, ntail, &ctail);
     } while(!dequeued);
 
-    res.binary = a_get(_buffer[ctail % _size]);
+    res.binary = a_load(_buffer[ctail % _size]);
     elt nres;
     nres.split.val = guard;
     while(true) {
