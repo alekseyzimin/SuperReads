@@ -14,9 +14,10 @@
    As it stands, there is no allocator parameter.
  */
 
-#include <assert.h>
 #include <iterator>
 #include <algorithm>
+#include <cstring>
+#include <stdint.h>
 
 // Count trailing zeros
 template<typename T>
@@ -29,9 +30,23 @@ template<>
 int ctz<unsigned long long>(unsigned long long x) { return __builtin_ctzll(x); }
 
 // Random function
-struct std_random {
-  typedef unsigned long rand_type;
-  rand_type operator()() const { return (rand_type)random(); }
+// struct std_random {
+//   typedef unsigned long rand_type;
+//   rand_type operator()() { return (rand_type)random(); }
+// };
+
+// XOR RNG by George Marsalia
+struct xor_random {
+  typedef uint64_t rand_type;
+  uint64_t x;
+  rand_type operator()() {
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    return x;
+  }
+  explicit xor_random() : x(88172645463325252LL) { };
+  explicit xor_random(uint64_t seed) : x(seed) { }
 };
 
 // Return the height of a tower of pointer. Specialized for 2 and 4.
@@ -40,7 +55,7 @@ struct random_height;
 template<typename Random>
 struct random_height<Random, 2> {
   Random rng;
-  int operator()() const {
+  int operator()() {
     typename Random::rand_type x = rng();
     return (x == 0 ? 8*sizeof(typename Random::rand_type) : ctz(x)) + 1;
   }
@@ -49,7 +64,7 @@ struct random_height<Random, 2> {
 template<typename Random>
 struct random_height<Random, 4> {
   Random rng;
-  int operator()() const {
+  int operator()() {
     typename Random::rand_type x = rng();
     return (x == 0 ? 4 * sizeof(typename Random::rand_type) : ctz(x) >> 1) + 1;
   }
@@ -57,7 +72,7 @@ struct random_height<Random, 4> {
 };
 
 // Set based on a skip list
-template <typename Key, typename Compare = std::less<Key>, int p_ = 4, typename Random = std_random>
+template <typename Key, typename Compare = std::less<Key>, int p_ = 4, typename Random = xor_random>
 class skip_list_set {
   struct node {
     Key   k;
@@ -133,9 +148,7 @@ public:
     heads_(new node*[10]), max_height_(10), cur_height_(1), size_(0),
     comp_(comp), rh_(rand)
   {
-    for(int i = 0; i < max_height_; ++i)
-      heads_[i] = 0;
-    
+    memset(heads_, '\0', sizeof(node*) * max_height_);    
   }
                          
   explicit skip_list_set(int max_height,
@@ -145,8 +158,7 @@ public:
     max_height_(max_height), cur_height_(1), size_(0),
     comp_(comp), rh_(rand)
   {
-    for(int i = 0; i < max_height_; ++i)
-      heads_[i] = 0;
+    memset(heads_, '\0', sizeof(node*) * max_height_);
   }
   template<class InputIterator>
   skip_list_set(int max_height, InputIterator first, InputIterator last,
@@ -156,16 +168,14 @@ public:
     max_height_(max_height), cur_height_(1), size_(0),
     comp_(comp), rh_(rand)
   {
-    for(int i = 0; i < max_height_; ++i)
-      heads_[i] = 0;
+    memset(heads_, '\0', sizeof(node*) * max_height_);    
     insert(first, last);
   }    
   skip_list_set(const skip_list_set& rhs) :
     heads_(new node*[rhs.max_height_]),
     max_height_(rhs.max_height_), cur_height_(1), size_(0)
   {
-    for(int i = 0; i < max_height_; ++i)
-      heads_[i] = 0;
+    memset(heads_, '\0', sizeof(node*) * max_height_);    
     insert(rhs.begin(), rhs.end());
   }
   virtual ~skip_list_set() {
@@ -274,13 +284,25 @@ public:
     if(n)
       return std::make_pair(iterator(n), false);
     n = new_node(x);
-    for(int i = 0; i < std::min(n->height, cur_height_); ++i) {
-      n->tower[i] = *path[i];
-      *path[i] = n;
+    const int height = std::min(n->height, cur_height_);
+    int i;
+    for(i = 0; i < height - 3; i += 4) {
+      n->tower[  i] = *path[  i]; *path[  i] = n;
+      n->tower[i+1] = *path[i+1]; *path[i+1] = n;
+      n->tower[i+2] = *path[i+2]; *path[i+2] = n;
+      n->tower[i+3] = *path[i+3]; *path[i+3] = n;
+    }
+    switch(height - i) {
+    case 3: n->tower[i] = *path[i]; *path[i++] = n;
+    case 2: n->tower[i] = *path[i]; *path[i++] = n;
+    case 1: n->tower[i] = *path[i]; *path[i  ] = n;
     }
     if(n->height > cur_height_) {
-      n->tower[cur_height_] = 0;
-      heads_[cur_height_++] = n;
+      for(int i = cur_height_; i < n->height; ++i) {
+        n->tower[i] = 0;
+        heads_[i] = n;
+      }
+      cur_height_ = n->height;
     }
     ++size_;
     return std::make_pair(iterator(n), true);
@@ -307,23 +329,22 @@ private:
     node*  cnode = 0;
     for(int i = cur_height_ - 1; i >= 0; --i) {
       node** cptr = cnode ? &cnode->tower[i] : &heads_[i];
-      while(*cptr) {
-        if(!comp_((*cptr)->k, x))
-          break;
+      while(*cptr && comp_((*cptr)->k, x)) {
         cnode = *cptr;
-        cptr  = &(cnode->tower[i]);
+        cptr  = &((*cptr)->tower[i]);
       }
       path[i] = cptr;
     }
     // Check if we found a node equal to x. If so, return it.
-    return *path[0] && !comp_(x,(*path[0])->k) ? *path[0] : 0 ;
+    return *path[0] && !comp_(x,(*path[0])->k) ? *path[0] : 0;
   }
 
   // Allocate a new node. Does raw memory allocation of a node with
   // enough space for the tower. Then in place copy construction of
   // the key from x.
-  node* new_node(const value_type& x) const {
-    int height  = std::min(max_height_, std::min(cur_height_ + 1, rh_()));
+  node* new_node(const value_type& x) {
+    //    int height  = std::min(max_height_, std::min(cur_height_ + 1, rh_()));
+    int height = std::min(max_height_, rh_());
     node* res   = (node*)operator new(sizeof(node) + height * sizeof(node*));
     res->height = height;
     new ((void*)&res->k) value_type(x);
