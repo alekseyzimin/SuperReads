@@ -89,8 +89,7 @@ int main(int argc,char *argv[]){
     j=0;
     token=strtok_r(superReadName,"FR_",&saveptr);
     for(i=0; token != NULL;i++){
-      if(i%2==0)
-	kUnitigsInSuperRead[j++]=atoi(token);
+      kUnitigsInSuperRead[j++]=atoi(token);
       token=strtok_r(NULL,"FR_",&saveptr); 
     }
     lastKUnitigIndex=j-1;

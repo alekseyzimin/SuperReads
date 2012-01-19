@@ -90,7 +90,7 @@ int main (int argc, char **argv)
      char *cptr, *cptr2;
      char* superReadName;
      char ori, oriHold;
-     int overlap;
+     int overlap = 30;
      int outputSeqLen;
      int seqDiffMax;
      int fail;
@@ -99,7 +99,7 @@ int main (int argc, char **argv)
      char pluralStr[2];
      int noSequence = 0;
      int minReadsInSuperRead = 2;
-     int minOvlLen = 40;
+     int minOvlLen = 30;
      
      // (VI) above
      workingDir = (char *) ".";
@@ -122,7 +122,7 @@ int main (int argc, char **argv)
 	       continue; }
 	  if (strcmp (argv[i], "-min-ovl-len") == 0) {
 	       ++i;
-	       minOvlLen = atoi (argv[i]);
+	       overlap = minOvlLen = atoi (argv[i]);
 	       continue; }
 	  if (strcmp (argv[i], "-minreadsinsuperread") == 0) {
 	       ++i;
@@ -248,16 +248,10 @@ int main (int argc, char **argv)
 	       if (*cptr != '_')
 		    break;
 	       ++cptr;
-	       overlap = atoi (cptr);
-	       while (isdigit (*cptr)) ++cptr; ++cptr;
 	       kUnitigNumber = atoi (cptr);
 	       while (isdigit (*cptr)) ++cptr;
 	       ori = *cptr;
 	       ++cptr;
-	       if (overlap < minOvlLen) {
-		    sprintf (errorMessageLine, "The %d-base overlap between %d%c and %d%c is shorter than %d, the minimum allowed.\n", overlap, kUnitigNumberHold, oriHold, kUnitigNumber, ori, minOvlLen);
-                    strcat (errorMessage, errorMessageLine);
-		    fail = 1; }
 	       if (ori == 'F') {
 		    cptr3 = kUnitigSeq[kUnitigNumber];
 		    cptr2 = kUnitigSeq[kUnitigNumber] + overlap; }
