@@ -123,30 +123,9 @@ $cmd = "$exeDir/joinKUnitigs_v3 --mean-and-stdev-by-prefix-file $meanAndStdevByP
 print "$cmd\n";
 system("time $cmd");
 
-#AZ -- put super read reduction before the counts
-my $numConcurrentJobs=2;
-open(FILE,">$workingDirectory/commands.sh");
-print FILE "#!/bin/bash\n";
-for($k=0;$k<$numProcessors;$k+=$numConcurrentJobs){
-    for($j=0;$j<$numConcurrentJobs;$j++){
-	print FILE "if [ -e ${joinerOutputPrefix}_".($k+$j)." ];then cat ${joinerOutputPrefix}_".($k+$j)."  | $exeDir/getSuperReadInsertCountsFromReadPlacementFile >  $workingDirectory/superReadCounts_".($k+$j).";fi & \n";
-	print FILE "PID$j=\$!\n"
-    }
-    print FILE "wait ";
-    for($j=0;$j<$numConcurrentJobs;$j++){
-	print FILE "\$PID$j ";
-    }
-    print FILE "\n";
-}
-close(FILE);
-system("cat $workingDirectory/commands.sh");
-$cmd = "chmod 0755 $workingDirectory/commands.sh;  $workingDirectory/commands.sh";
+$cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile` -o $workingDirectory/superReadCounts.all ${joinerOutputPrefix}_*";
 print "$cmd\n";
-system($cmd);
-
-$cmd= "$exeDir/sorted_merge -k 2 $workingDirectory/superReadCounts_* | awk 'BEGIN{l=\"-1\";c=0}{if(l==\$2){c+=\$1}else{if(l!=\"-1\" && c >= $minReadsInSuperRead ){print c\" \"l;}c=\$1;l=\$2}}END{print c\" \"l}' >  $workingDirectory/superReadCounts.all\n";
-print "$cmd\n";
-system("time $cmd");
+&runCommandAndExitIfBad ($cmd,"$workingDirectory/superReadCounts.all", 1);
 
 if($noReduce==0){
 $cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -good-sr-filename $workingDirectory/superReadNames.txt -kunitigsfile $kUnitigsFile 2> $sequenceCreationErrorFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 40% -T ./ > $workingDirectory/sr_sizes.tmp";
