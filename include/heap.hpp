@@ -28,8 +28,16 @@ public:
     return *this;
   }
   
-  void push(const T &e) { ary.push_back(e); push_heap(ary.begin(), ary.end(), comp); }
-  T &pop() { pop_heap(ary.begin(), ary.end(), comp); T &tmp = ary.back(); ary.pop_back(); return tmp; }
+  void push(const T &e) { 
+    ary.push_back(e);
+    push_heap(ary.begin(), ary.end(), comp);
+  }
+  T &pop() {
+    pop_heap(ary.begin(), ary.end(), comp);
+    T &tmp = ary.back();
+    ary.pop_back();
+    return tmp;
+  }
   const T &peek() const { return ary.front(); }
   size_t size() const { return ary.size(); }
   bool empty() const { return ary.empty(); }
@@ -38,6 +46,7 @@ public:
   const_iterator begin() const { return ary.begin(); }
   iterator end() { return ary.end(); }
   const_iterator end() const { return ary.end(); }
+  void clear() { ary.clear(); }
 
 protected:
   C  ary;

@@ -23,6 +23,9 @@ TEST(Heap, MaxHeap) {
   }
   for(int i = 0; i < (int)elts.size(); ++i)
     EXPECT_EQ((int)elts.size() - i - 1, h.pop());
+
+  h.clear();
+  EXPECT_EQ((size_t)0, h.size());
 }
 
 TEST(Heap, MinHeap) {
@@ -43,6 +46,9 @@ TEST(Heap, MinHeap) {
 
   for(int i = 0; i < (int)elts.size(); ++i)
     EXPECT_EQ(i, h.pop());
+
+  h.clear();
+  EXPECT_EQ((size_t)0, h.size());
 }
 
 TEST(Heap, Heapify) {
