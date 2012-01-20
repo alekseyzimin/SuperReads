@@ -1,0 +1,15 @@
+purpose "Count number of occurences of each super-read"
+description "No long description!"
+
+option("output", "o") {
+  description "Output file"
+  c_string; typestr "path" }
+option("fib", "f") {
+  description "Use fibonacci encoding"
+  flag; off }
+option("n", "number-reads") {
+  description "Estimated number of super-reads"
+  uint64; default "1000000" }
+arg("input") {
+  description "Input files"
+  c_string; multiple; typestr "path" }
