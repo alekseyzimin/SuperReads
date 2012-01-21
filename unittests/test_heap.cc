@@ -5,13 +5,16 @@
 #include <algorithm>
 #include <limits>
 #include <iostream>
+#include <exp_buffer.hpp>
 
-TEST(Heap, MaxHeap) {
+static const size_t nb_elts = 1000;
+
+TEST(HeapMax, PushPop) {
   heap<int>::max h;
   std::vector<int> elts;
 
-  for(int i = 0; i < 10; ++i)
-    elts.push_back(i);
+  for(size_t i = 0; i < nb_elts; ++i)
+    elts.push_back((int)i);
   std::random_shuffle(elts.begin(), elts.end());
 
   int max = std::numeric_limits<int>::min();
@@ -21,6 +24,7 @@ TEST(Heap, MaxHeap) {
     EXPECT_EQ(i+1, (int)h.size());
     EXPECT_EQ(max, h.peek());
   }
+  EXPECT_EQ(nb_elts, elts.size());
   for(int i = 0; i < (int)elts.size(); ++i)
     EXPECT_EQ((int)elts.size() - i - 1, h.pop());
 
@@ -28,12 +32,18 @@ TEST(Heap, MaxHeap) {
   EXPECT_EQ((size_t)0, h.size());
 }
 
-TEST(Heap, MinHeap) {
-  heap<int>::min h;
+template<typename heap_T>
+class HeapMin : public ::testing::Test { };
+
+typedef ::testing::Types<heap<int>::min, heap<int,ExpBuffer<int> >::min> MyTypes;
+TYPED_TEST_CASE(HeapMin, MyTypes);
+
+TYPED_TEST(HeapMin, PushPop) {
+  TypeParam h;
   std::vector<int> elts;
 
-  for(int i = 0; i < 10; ++i)
-    elts.push_back(i);
+  for(size_t i = 0; i < nb_elts; ++i)
+    elts.push_back((int)i);
   std::random_shuffle(elts.begin(), elts.end());
 
   int min = std::numeric_limits<int>::max();
@@ -43,6 +53,7 @@ TEST(Heap, MinHeap) {
     EXPECT_EQ(i+1, (int)h.size());
     EXPECT_EQ(min, h.peek());
   }
+  EXPECT_EQ(nb_elts, elts.size());
 
   for(int i = 0; i < (int)elts.size(); ++i)
     EXPECT_EQ(i, h.pop());
@@ -51,7 +62,7 @@ TEST(Heap, MinHeap) {
   EXPECT_EQ((size_t)0, h.size());
 }
 
-TEST(Heap, Heapify) {
+TYPED_TEST(HeapMin, Heapify) {
   std::vector<int> elts;
 
   for(int i = 0; i < 10; ++i)
@@ -64,7 +75,7 @@ TEST(Heap, Heapify) {
     EXPECT_EQ(i, h.pop());
 }
 
-TEST(Heap, Copy) {
+TYPED_TEST(HeapMin, Copy) {
   std::vector<int> elts;
 
   for(int i = 0; i < 10; ++i)
