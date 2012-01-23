@@ -246,6 +246,7 @@ void RBTreeInsertElement (struct RBTreeStruct *T, char *element)
      int numElemsHold, amountToAllocate;
      struct RBTreeNodeStruct *rbtptr;
 
+//     fprintf (stderr, "Array size = %d\n", dasptr->arraySize); // DEBUGGING 1/20/12
      if (dasptr->arraySize == dasptr->numElementsAllocated) {
 	  numElemsHold = dasptr->numElementsAllocated;
 //	  printf ("numElemsHold = %d\n", numElemsHold);
@@ -267,7 +268,7 @@ void RBTreeInsertElement (struct RBTreeStruct *T, char *element)
 //	  printf ("dasptr->data = %p\n", dasptr->data);
 	  dasptr->data = realloc (dasptr->data, amountToAllocate);
 	  if (dasptr->data == 0) {
-	       fprintf (stderr, "realloc failed in RBTreeInsertElement(4). Bye!\n");
+	       fprintf (stderr, "realloc failed to allocate %d bytes in RBTreeInsertElement(4). numElements = %d, elementSize = %d. Bye!\n", amountToAllocate, dasptr->numElementsAllocated, dasptr->elementSize);
 	       exit (4);
 	  }
 	  vptr = dasptr->data + (numElemsHold * dasptr->elementSize);

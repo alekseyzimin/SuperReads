@@ -54,7 +54,7 @@ struct unitigLocStruct
      int unitig2;
      int frontEdgeOffset;
      char ori;
-  bool operator<(const unitigLocStruct &rhs) const {
+  bool operator>(const unitigLocStruct &rhs) const {
     if(frontEdgeOffset > rhs.frontEdgeOffset)
       return true;
     if(frontEdgeOffset < rhs.frontEdgeOffset)
@@ -69,8 +69,8 @@ struct unitigLocStruct
       return false;
     return false;
   }
-  bool operator>(const unitigLocStruct &rhs) const {
-    return !operator<(rhs);
+  bool operator<(const unitigLocStruct &rhs) const {
+    return !operator>(rhs);
   }
 };
 
@@ -586,8 +586,9 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
      int elementIndex;
      int overlapLength;
      int ahg, bhg;
+     int forcedStop;
 
-
+//     fprintf (stderr, "In joinKUnitigsFromMates\n");
      lastOffsetToTest = insertLengthMean+4*insertLengthStdev;
      // The following assumes that all the overlaps are of length
      // minOverlapLength
@@ -610,8 +611,9 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
      }
      abbrevUnitigLocVal.pathNum = 0;
      RBTreeInsertElement (treeArr + mateUnitig1, (char *) &abbrevUnitigLocVal);
+     unitig2 = mateUnitig1; // Initialized to make the compiler happy
 #if 0
-     printf ("Inserting in the RB tree at %d: fEO = %d, pN = %u ori = %c\n", mateUnitig1, abbrevUnitigLocVal.frontEdgeOffset, abbrevUnitigLocVal.pathNum, abbrevUnitigLocVal.ori);
+     fprintf (stderr, "Inserting at 1 in the RB tree at %d: fEO = %d, pN = %u ori = %c\n", mateUnitig1, abbrevUnitigLocVal.frontEdgeOffset, abbrevUnitigLocVal.pathNum, abbrevUnitigLocVal.ori);
 #endif     
      forward_path_unitigs.push(unitigLocVal);
      
@@ -625,6 +627,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
      nodeToIndexMap.insert (std::pair<unitigLocStruct, int> (unitigLocVal, nodeArray.size()-1) );
      maxNodes = 1;
 //     printf ("Got to 30\n");
+     forcedStop = 0;
      while (!forward_path_unitigs.empty())
      {
        if (forward_path_unitigs.size() > maxNodes)
@@ -746,6 +749,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	       // Add offset to list for tree
 	       abbrevUnitigLocVal.pathNum = 0;
 	       RBTreeInsertElement (treeArr + unitig2, (char *) &abbrevUnitigLocVal);
+//	       fprintf (stderr, "Inserting at 2 in the RB tree at %d: fEO = %d, pN = %u ori = %c\n", unitig2, abbrevUnitigLocVal.frontEdgeOffset, abbrevUnitigLocVal.pathNum, abbrevUnitigLocVal.ori);
 #if DEBUG
 //		if ((unitig2 == mateUnitig2) && (abbrevUnitigLocVal.ori == 'R'))
 	       if (unitig2 == mateUnitig2)
@@ -754,10 +758,17 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 #endif		
 	       //   Make sure the root of the tree is updated (if needed)
 	  }			// End of going through overlaps for unitig
-	  if (maxNodes > MAX_NODES_ALLOWED)
-	       break;
+//	  if (maxNodes > MAX_NODES_ALLOWED)
+	  if (treeArr[unitig2].dataArrayPtr->arraySize > MAX_NODES_ALLOWED) {
+	       forcedStop = 1;
+	       break; }
      }			// Ends !forward_path_unitigs.empty() line
-     if (maxNodes > MAX_NODES_ALLOWED)
+     forward_path_unitigs.clear();
+//     while (! forward_path_unitigs.empty())
+//	  unitigLocVal = forward_path_unitigs.pop();
+
+//     if (maxNodes > MAX_NODES_ALLOWED)
+     if (forcedStop)
 	  return (0);
      else
 	  return (1);
@@ -936,13 +947,15 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 	  unitigPathPrintVal.ori = 'R'; // Forced; may be adjusted later
 	  unitigPathPrintVal.frontEdgeOffset = finalOffset;
 	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+//	  fprintf (stderr, "Inserting at 3 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
 	  unitigPathPrintVal.unitig1 = minConnectingUnitig;
 	  unitigPathPrintVal.frontEdgeOffset = minConnectingOffset;	
   unitigPathPrintVal.numOverlapsIn = 0;
 	  unitigPathPrintVal.numOverlapsOut = 1;
 	  unitigPathPrintVal.ori = minConnectingOri;
 	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
-     }
+//	  fprintf (stderr, "Inserting at 4 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
+	       }
      else {
 	  unitigLocVal.unitig2 = endUnitig;
 	  unitigLocVal.frontEdgeOffset = finalOffset;
@@ -956,6 +969,7 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 	  printf ("Inserting unitig1 = %d, offset = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
 #endif
 	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+//	  fprintf (stderr, "Inserting at 5 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);   
      }
 #if 0
      printf ("isSpecialCase = %d, unitigLocVal = %d, %d, %c\n", isSpecialCase, endUnitig, finalOffset, unitigLocVal.ori);
@@ -1031,6 +1045,7 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 		    unitigPathPrintVal.numOverlapsIn = 0;
 		    unitigPathPrintVal.numOverlapsOut = 0;
 		    RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+//		    fprintf (stderr, "Inserting at 6 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
 	       }
 		    
 	       unitigPathPrintVal.unitig1 = unitig1;
