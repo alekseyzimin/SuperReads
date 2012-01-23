@@ -121,7 +121,7 @@ $cmd = "$exeDir/createKUnitigMaxOverlaps $kUnitigsFile -kmervalue $merLen -large
 # Do the shooting method here
 $cmd = "$exeDir/joinKUnitigs_v3 --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $kUnitigLengthsFile --num-kunitigs-file $maxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 --prefix $joinerOutputPrefix --num-file-names $numProcessors $myProgOutput1_1prefix";
 print "$cmd\n";
-system("time $cmd");
+&runCommandAndExitIfBad ($cmd);
 
 $cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile` -o $workingDirectory/superReadCounts.all ${joinerOutputPrefix}_*";
 print "$cmd\n";
