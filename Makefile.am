@@ -26,7 +26,8 @@ noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/yaggo.hpp $(UTILS_I)/misc.hpp		\
                   $(UTILS_I)/heap.hpp $(UTILS_I)/reallocators.hpp	\
                   $(UTILS_I)/skip_list_set.hpp				\
-                  $(UTILS_I)/skip_list_map.hpp
+                  $(UTILS_I)/skip_list_map.hpp				\
+                  $(UTILS_I)/gcc_builtins.hpp
 
 noinst_LIBRARIES = libutils.a
 libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp
