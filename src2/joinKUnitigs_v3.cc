@@ -21,6 +21,7 @@
 #include <vector>
 #include <list>
 #include <stack>
+#include <iterator>
 
 #include <err.hpp>
 #include <heap.hpp>
@@ -54,24 +55,28 @@ struct unitigLocStruct
      int unitig2;
      int frontEdgeOffset;
      char ori;
-  bool operator>(const unitigLocStruct &rhs) const {
-    if(frontEdgeOffset > rhs.frontEdgeOffset)
-      return true;
-    if(frontEdgeOffset < rhs.frontEdgeOffset)
-      return false;
-    if (unitig2 > rhs.unitig2)
-      return true;
-    if (unitig2 < rhs.unitig2)
-      return false;
-    if (ori > rhs.ori)
-      return true;
-    if (ori < rhs.ori)
-      return false;
-    return false;
-  }
-  bool operator<(const unitigLocStruct &rhs) const {
-    return !operator>(rhs);
-  }
+     bool operator>(const unitigLocStruct &rhs) const {
+	  if(frontEdgeOffset > rhs.frontEdgeOffset)
+	       return true;
+	  if(frontEdgeOffset < rhs.frontEdgeOffset)
+	       return false;
+	  if (unitig2 > rhs.unitig2)
+	       return true;
+	  if (unitig2 < rhs.unitig2)
+	       return false;
+	  if (ori > rhs.ori)
+	       return true;
+	  if (ori < rhs.ori)
+	       return false;
+	  return false;
+     }
+     bool operator<(const unitigLocStruct &rhs) const {
+	  if ((frontEdgeOffset == rhs.frontEdgeOffset) &&
+	      (unitig2 == rhs.unitig2) &&
+	      (ori == rhs.ori))
+	       return false;
+	  return !operator>(rhs);
+     }
 };
 
 // In the following, lastOverlappingOffset gives us the offset for the node
@@ -157,7 +162,9 @@ std::set<unitigLocStruct> startingNodes, endingNodes;
 int startingNodeNumber;
 std::vector<unitigLocStruct> nodeArray;
 std::map<unitigLocStruct, int> nodeToIndexMap;
+typedef std::map<unitigLocStruct, int>::iterator unitigLocMap_iterator;
 std::set<std::pair<int, int> > edgeList, sortedEdgeList;
+typedef std::set<std::pair<int, int> >::iterator edge_iterator;
 std::vector<int> unitigNodeNumbersForPath;
 // std::vector<int, std::set <int> > fwdEdgeList, revEdgeList;
 struct nodePair {
@@ -547,6 +554,7 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
 	      (readNum != readNumHold+1) ||
 	      (readNum % 2 == 0)) {
 	       // Get the super-read for the insert we just finished reading
+	       approxNumPaths = 0;
 	       getSuperReadsForInsert();
 	       // Set up and load the new data
                evenReadMatchStructs.clear();
@@ -615,6 +623,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 #if 0
      fprintf (stderr, "Inserting at 1 in the RB tree at %d: fEO = %d, pN = %u ori = %c\n", mateUnitig1, abbrevUnitigLocVal.frontEdgeOffset, abbrevUnitigLocVal.pathNum, abbrevUnitigLocVal.ori);
 #endif     
+     forward_path_unitigs.clear();
      forward_path_unitigs.push(unitigLocVal);
      
      startingNodes.clear();
@@ -974,6 +983,7 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 #if 0
      printf ("isSpecialCase = %d, unitigLocVal = %d, %d, %c\n", isSpecialCase, endUnitig, finalOffset, unitigLocVal.ori);
 #endif
+     backward_path_unitigs.clear();
      backward_path_unitigs.push(unitigLocVal);
      while (!backward_path_unitigs.empty()) {
           unitigLocVal = backward_path_unitigs.pop();
@@ -1047,7 +1057,6 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 		    RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
 //		    fprintf (stderr, "Inserting at 6 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
 	       }
-		    
 	       unitigPathPrintVal.unitig1 = unitig1;
 	       unitigPathPrintVal.frontEdgeOffset = abbRLPtr->frontEdgeOffset;
 	       unitigPathPrintVal.ori = abbRLPtr->ori;
@@ -1108,7 +1117,7 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 	  unitigLocStruct uLS;
 //	  int index1, index2;
 	  int firstIndex, secondIndex;
-	  std::map<unitigLocStruct, int>::iterator it;
+	  unitigLocMap_iterator it;
 	  std::list<int>::iterator l_it;
 	  struct nodePair nodeValue;
 	  uLS.unitig2 = unitigConnectionsForPathData[i].unitig1;
@@ -1133,6 +1142,8 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 	       secondIndex = it->second; }
 	  nodeValue.node1 = firstIndex;
 	  nodeValue.node2 = secondIndex;
+//	  assert((size_t)firstIndex < nodeArray.size());
+//	  assert((size_t)secondIndex < nodeArray.size());
 	  edgeList.insert(std::pair<int, int> (firstIndex, secondIndex));
 	  
 #ifdef KILL120102	  
@@ -1526,7 +1537,7 @@ void findSingleReadSuperReads(char *readName)
 	  if (kUTRMSptr[recNumToUse].ori == 'F')
 	       offsetOfReadInSuperRead = kUTRMSptr[recNumToUse].kUnitigMatchBegin - kUTRMSptr[recNumToUse].readMatchBegin;
 	  else
-	       offsetOfReadInSuperRead = unitigLengths[kUTRMSptr[recNumToUse].kUnitigNumber] - kUTRMSptr[recNumToUse].kUnitigMatchEnd - kUTRMSptr[i].readMatchBegin;
+	       offsetOfReadInSuperRead = unitigLengths[kUTRMSptr[recNumToUse].kUnitigNumber] - kUTRMSptr[recNumToUse].kUnitigMatchEnd - kUTRMSptr[recNumToUse].readMatchBegin;
 //	  printf ("%s %s %d %c\n", readName, superReadName, offsetOfReadInSuperRead, kUTRMSptr[recNumToUse].ori);
 	  fprintf (outputFile, "%s %s %d %c\n", readName, superReadName, offsetOfReadInSuperRead, 'F');	  
      }
@@ -1574,7 +1585,7 @@ void getSuperReadsForInsert (void)
      int startValue;
      int pathNum=0;
      std::set<unitigLocStruct>::iterator it1;
-     std::map<unitigLocStruct, int>::iterator it2;
+     unitigLocMap_iterator it2;
      int numNodes = 0;
      ExpandingBuffer<int> pathNumArray;
      std::stack<int> nodeIntArray;
@@ -1673,13 +1684,13 @@ void getSuperReadsForInsert (void)
 #if 1
 	  sort (nodeArray.begin(), nodeArray.end(), unitigLocStructCompare);
 	  for (unsigned int i=0; i<nodeArray.size(); i++) {
-	       std::map<unitigLocStruct, int>::iterator it;
+	       unitigLocMap_iterator it;
 	       it = nodeToIndexMap.find (nodeArray[i]);
 	       int j = it->second;
 	       it->second = i;
 	       newNodeNumsFromOld[j] = i; }
 	  sortedEdgeList.clear();
-	  for (std::set<std::pair<int, int> >::iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++)
+	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++)
 	       sortedEdgeList.insert(std::pair<int, int> (newNodeNumsFromOld[it3141->first], newNodeNumsFromOld[it3141->second]));
 	  edgeList = sortedEdgeList;
 #ifdef KILL120102
@@ -1688,12 +1699,12 @@ void getSuperReadsForInsert (void)
 	       fprintf (stderr, "uni = %d, frontEdgeOffset = %d, ori = %c\n", (int) nodeArray[i].unitig2, (int) nodeArray[i].frontEdgeOffset, nodeArray[i].ori);
 #endif
 	  sprintf (stderrOutputString, "%s%lld\n", rdPrefixHold, readNumHold);
-	  for (std::set<std::pair<int, int> >::iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
+	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
 	       sprintf (tempStderrStr, "Node %d %d %c -> %d %d %c\n", (int) nodeArray[it3141->first].unitig2, (int) nodeArray[it3141->first].frontEdgeOffset, (char) nodeArray[it3141->first].ori, (int) nodeArray[it3141->second].unitig2, (int) nodeArray[it3141->second].frontEdgeOffset, (char) nodeArray[it3141->second].ori);
 	       strcat(stderrOutputString, tempStderrStr); }
 #endif
 	  struct nodePair tNodePair;
-	  for (std::set<std::pair<int, int> >::iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
+	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
 	       tNodePair.node1 = it3141->first;
 	       tNodePair.node2 = it3141->second;
 	       fwdConnections.push_back(tNodePair);
@@ -1740,6 +1751,7 @@ void getSuperReadsForInsert (void)
 		    revStartIndices[j] -= (revNumIndices[j]-1);
 	       else
 		    revStartIndices[j] = 0; }
+
 #ifdef KILL120102
 	  fprintf (stderr, "revStartIndices[1] = %d\n", (int) revStartIndices[1]);
 #endif
@@ -1832,7 +1844,7 @@ void getSuperReadsForInsert (void)
 	       goto mustSplit2;
 
 	  for (int i=overlapMatchIndexHold-1; i>=0; i--) {
-	       std::map<unitigLocStruct, int>::iterator it;
+	       unitigLocMap_iterator it;
 	       int isGood = 0;
 	       tempULS.ori = evenReadMatchStructs[i].ori;
 	       if (evenReadMatchStructs[i].ori == 'F')
@@ -2039,7 +2051,7 @@ void getSuperReadsForInsert (void)
           }
 
           for (int i=overlapMatchIndexHold-1; i>=0; i--) {
-               std::map<unitigLocStruct, int>::iterator it;
+               unitigLocMap_iterator it;
                int isGood = 0;
 	       if (oddReadMatchStructs[i].ori == 'F')
 		    tempULS.ori = 'R';
