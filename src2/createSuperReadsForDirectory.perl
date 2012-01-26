@@ -13,8 +13,6 @@
 # -l merLen : the length of the k-mer to use for the calculations (31)
 # -s tableSize : the size of the table when running jellyfish (2,000,000,000)
 # -t numProcessors : the number of processors to run jellyfish and create_k_unitigs (16)
-# -M minCoverageToContinueAUnitig : same as the parameter into create_k_unitigs (3)
-# -m minCoverageToCreateAFork : same as the parameter into create_k_unitigs (2)
 # -kunitigsfile filename : a user-given k-unitigs file; otherwise we calculate
 # -mean-and-stdev-by-prefix-file filename : a file giving mate info about each
 #                      library. Each line is the 2-letter prefix for the reads
@@ -23,16 +21,16 @@
 # -mkudisr numBaseDiffs : max base diffs between overlapping k-unitigs in super-reads (0)
 # -minreadsinsuperread minReads : super-reads containing fewer than numReads
 #                                reads will be eliminated (2)
+# --stopAfter target : Stop the run after one of the "target" names, which are the
+#               4th arguments to the runCommandAndExitIfBad subroutine.
 # -noclean : don't clean up the files afterwards
 # -mikedebug : don't kill off intermediate results
 # -jumplibraryreads : we are generating for jump-library reads; a k-unitigs
 #                                 file must be specified
-# -elim-dupls : eliminate duplicate reads ahead of time (not implemented yet).
 # -h : help 
 use File::Basename;
 use Cwd;
 $exeDir = dirname ($0);
-# $exeDir = "/home/tri/superReadPipeline/SuperReads/build/src2/";
 $pwd = cwd;
 if ($exeDir !~ /^\//) {
     $exeDir = "$pwd/$exeDir"; }
@@ -45,7 +43,8 @@ $maxHashFillFactor = .8;
 
 $successFile = "$workingDirectory/superReads.success";
 unlink ($successFile) if (-e $successFile);
-
+# The following is set to 1 when the first success file for a step is missing
+$mustRun = 0;
 if (! -d $workingDirectory) {
     $cmd = "mkdir $workingDirectory";
     print "$cmd\n"; system ($cmd); }
@@ -64,17 +63,15 @@ $numReadsFile = "$workingDirectory/numReads.txt";
 $prefixForOverlapsBetweenKUnitigs = "$workingDirectory/overlap";
 $kUnitigOverlapsFile = "${prefixForOverlapsBetweenKUnitigs}.overlaps";
 
-$myProgOutput1prefix = "$workingDirectory/newTestOutput";
 $joinerOutputPrefix = "$workingDirectory/readPositionsInSuperReads";
 $myProgOutput1_1 = "$workingDirectory/testOutput.nucmerLinesOnly.txt";
 $myProgOutput1_1prefix = "$workingDirectory/newTestOutput.nucmerLinesOnly";
 $sequenceCreationErrorFile = "$workingDirectory/createFastaSuperReadSequences.errors.txt";
-$myProgOutput2 = "$workingDirectory/readPlacementsInSuperReads.postMateMerge.read.superRead.offset.ori.txt";
-$myProgOutput3 = "$workingDirectory/superReadCounts.count.superRead.txt";
+# $myProgOutput2 = "$workingDirectory/readPlacementsInSuperReads.postMateMerge.read.superRead.offset.ori.txt";
+# $myProgOutput3 = "$workingDirectory/superReadCounts.count.superRead.txt";
 $finalSuperReadSequenceFile = "$workingDirectory/superReadSequences.fasta";
-$finalReadPlacementFileUsingReadNumbers = "$workingDirectory/readPlacementsInSuperReads.final.read.superRead.offset.ori.usingReadNumbers.txt";
 $finalReadPlacementFile = "$workingDirectory/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt";
-$reducedReadPlacementFile = "$workingDirectory/readPlacementsInSuperReads.reduced.read.superRead.offset.ori.txt";
+# $reducedReadPlacementFile = "$workingDirectory/readPlacementsInSuperReads.reduced.read.superRead.offset.ori.txt";
 
 if ($jumpLibraryReads) {
     $myProgOutput1_1 = "$workingDirectory/testOutput.nucmerLinesOnly.jumpLibrary.txt";
@@ -90,16 +87,18 @@ if ($jumpLibraryReads) {
 if ($kUnitigsFile !~ /^\//) {
     $kUnitigsFile = "$pwd/$kUnitigsFile"; }
 
+&cleanUpFailureDirectories;
+
 # In addition to obvious output file, this also generates the files
 # numKUnitigs.txt, maxKUnitigNumber.txt, and totBasesInKUnitigs.txt in
 # $workingDirectory
 $cmd = "cat $kUnitigsFile | $exeDir/getLengthStatisticsForKUnitigsFile.perl $workingDirectory > $kUnitigLengthsFile";
-&runCommandAndExitIfBad ($cmd, $kUnitigLengthsFile, 1);
+&runCommandAndExitIfBad ($cmd, $kUnitigLengthsFile, 1, "createLengthStatisticsFiles", "$workingDirectory/totBasesInKUnitigs.txt", "$workingDirectory/numKUnitigs.txt", "$workingDirectory/maxKUnitigNumber.txt", "$workingDirectory/kUnitigLengths.txt");
 
 $minSizeNeededForTable = &reportMinJellyfishTableSizeForKUnitigs;
-redoKUnitigsJellyfish:
+ redoKUnitigsJellyfish:
     $cmd = "jellyfish count -m $merLen -r -o $jellyfishKUnitigDataPrefix -c 6 -p 126 --both-strands -s $minSizeNeededForTable -t $numProcessors $kUnitigsFile";
-&runCommandAndExitIfBad ($cmd, $jellyfishKUnitigHashFile, 1);
+&runCommandAndExitIfBad ($cmd, $jellyfishKUnitigHashFile, 1, "createKUnitigHashTable", "$workingDirectory/organismMerCountsForKUnitigs_0");
 
 $tableResizeFactor = &returnTableResizeAmount ($jellyfishKUnitigDataPrefix, $jellyfishKUnitigHashFile);
 if ($tableResizeFactor > 1) {
@@ -107,8 +106,11 @@ if ($tableResizeFactor > 1) {
     print "Resizing the table to $tableSize for the k-unitig jellyfish run\n";
     goto redoKUnitigsJellyfish; }
 
-$cmd = "cat $totReadFile | $exeDir/add_missing_mates.pl >  $workingDirectory/inputreads.fa ; $exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $kUnitigsFile $maxKUnitigNumberFile  $workingDirectory/inputreads.fa";
-&runCommandAndExitIfBad ($cmd, "", 0);
+$cmd = "cat $totReadFile | $exeDir/add_missing_mates.pl >  $workingDirectory/inputreads.fa";
+&runCommandAndExitIfBad ($cmd, "$workingDirectory/inputreads.fa", 1, "addMissingMates", "$workingDirectory/inputreads.fa");
+
+$cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $kUnitigsFile $maxKUnitigNumberFile  $workingDirectory/inputreads.fa";
+&runCommandAndExitIfBad ($cmd, $myProgOutput1_1prefix . "*", 1, "findReadKUnitigMatches", "$workingDirectory/newTestOutput.nucmerLinesOnly_*");
 if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile, "$workingDirectory/inputreads.fa"); }
 
 if ($jumpLibraryReads) {
@@ -116,36 +118,35 @@ if ($jumpLibraryReads) {
 
 open (FILE, $maxKUnitigNumberFile); $maxKUnitigNumber = <FILE>; chomp ($maxKUnitigNumber); close (FILE);
 $cmd = "$exeDir/createKUnitigMaxOverlaps $kUnitigsFile -kmervalue $merLen -largest-kunitig-number ".(int($maxKUnitigNumber)+1)." $prefixForOverlapsBetweenKUnitigs";
-&runCommandAndExitIfBad($cmd, $kUnitigOverlapsFile, 1);
+&runCommandAndExitIfBad($cmd, $kUnitigOverlapsFile, 1, "createKUnitigMaxOverlaps", "$workingDirectory/overlap.overlaps", "$workingDirectory/overlap.coords");
 
 # Do the shooting method here
 $cmd = "$exeDir/joinKUnitigs_v3 --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $kUnitigLengthsFile --num-kunitigs-file $maxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 --prefix $joinerOutputPrefix --num-file-names $numProcessors $myProgOutput1_1prefix";
 print "$cmd\n";
-&runCommandAndExitIfBad ($cmd);
+&runCommandAndExitIfBad ($cmd, $joinerOutputPrefix . "*", 1, "joinKUnitigs", "$workingDirectory/readPositionsInSuperReads_*");
 
 $cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile` -o $workingDirectory/superReadCounts.all ${joinerOutputPrefix}_*";
 print "$cmd\n";
-&runCommandAndExitIfBad ($cmd,"$workingDirectory/superReadCounts.all", 1);
+&runCommandAndExitIfBad ($cmd,"$workingDirectory/superReadCounts.all", 1, "getSuperReadInsertCounts", "$workingDirectory/superReadCounts.all");
 
-if($noReduce==0){
-$cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -good-sr-filename $workingDirectory/superReadNames.txt -kunitigsfile $kUnitigsFile 2> $sequenceCreationErrorFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 40% -T ./ > $workingDirectory/sr_sizes.tmp";
-&runCommandAndExitIfBad ($cmd,"$workingDirectory/sr_sizes.tmp", 1);
+if($noReduce==0) {
+    $cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -good-sr-filename $workingDirectory/superReadNames.txt -kunitigsfile $kUnitigsFile 2> $sequenceCreationErrorFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 40% -T ./ > $workingDirectory/sr_sizes.tmp";
+    &runCommandAndExitIfBad ($cmd,"$workingDirectory/sr_sizes.tmp", 1, "createFastaSuperReadSequences", "$workingDirectory/superReadSequences.fasta.all", "$workingDirectory/superReadNames.txt", "$workingDirectory/sr_sizes.tmp");
 
-$cmd = "cat $workingDirectory/sr_sizes.tmp| $exeDir/reduce_sr $maxKUnitigNumber  > $workingDirectory/reduce.tmp";
-&runCommandAndExitIfBad ($cmd,"$workingDirectory/reduce.tmp", 1);
+    $cmd = "cat $workingDirectory/sr_sizes.tmp| $exeDir/reduce_sr $maxKUnitigNumber  > $workingDirectory/reduce.tmp";
+    &runCommandAndExitIfBad ($cmd,"$workingDirectory/reduce.tmp", 1, "reduceSuperReads", "$workingDirectory/reduce.tmp", "$workingDirectory/createFastaSuperReadSequences.errors.txt");
 
-$cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $workingDirectory/superReadNames.txt | perl -e '{open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);\@F=split(\" \",\$line);\$sr{\$F[0]}=\$F[1]} while(\$line=<STDIN>){chomp(\$line);\@l=split(\" \",\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\\n\";}else{print \"\$line\\n\";}}}' $workingDirectory/reduce.tmp >  $finalReadPlacementFile"; 
-&runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1);
+    $cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $workingDirectory/superReadNames.txt | perl -e '{open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);\@F=split(\" \",\$line);\$sr{\$F[0]}=\$F[1]} while(\$line=<STDIN>){chomp(\$line);\@l=split(\" \",\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\\n\";}else{print \"\$line\\n\";}}}' $workingDirectory/reduce.tmp >  $finalReadPlacementFile"; 
+    &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1, "createFinalReadPlacementFile", "$workingDirectory/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt");
 
-$cmd = "awk '{print \$1}' $workingDirectory/reduce.tmp > $workingDirectory/sr_to_eliminate.tmp; $exeDir/extractreads_not.pl $workingDirectory/sr_to_eliminate.tmp $finalSuperReadSequenceFile.all 1 > $finalSuperReadSequenceFile";
-&runCommandAndExitIfBad ($cmd,$finalSuperReadSequenceFile, 1);
-}
-else{
-$cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -good-sr-filename $workingDirectory/superReadNames.txt -kunitigsfile $kUnitigsFile 2> $sequenceCreationErrorFile > $finalSuperReadSequenceFile";
-&runCommandAndExitIfBad ($cmd,$finalSuperReadSequenceFile, 1);
+    $cmd = "awk '{print \$1}' $workingDirectory/reduce.tmp > $workingDirectory/sr_to_eliminate.tmp; $exeDir/extractreads_not.pl $workingDirectory/sr_to_eliminate.tmp $finalSuperReadSequenceFile.all 1 > $finalSuperReadSequenceFile";
+    &runCommandAndExitIfBad ($cmd,$finalSuperReadSequenceFile, 1, "createFinalSuperReadFastaSequences", "$workingDirectory/superReadSequences.fasta", "$workingDirectory/sr_to_eliminate.tmp"); }
+else {
+    $cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead -good-sr-filename $workingDirectory/superReadNames.txt -kunitigsfile $kUnitigsFile 2> $sequenceCreationErrorFile > $finalSuperReadSequenceFile";
+    &runCommandAndExitIfBad ($cmd,$finalSuperReadSequenceFile, 1, "createFastaSuperReadSequences", "$workingDirectory/superReadSequences.fasta", "$workingDirectory/superReadNames.txt");
 
-$cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $workingDirectory/superReadNames.txt > $finalReadPlacementFile";
-&runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1);
+    $cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $workingDirectory/superReadNames.txt > $finalReadPlacementFile";
+    &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1, "createFinalReadPlacementFile", "$workingDirectory/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt", "$workingDirectory/createFastaSuperReadSequences.errors.txt");
 }
 
 $cmd = "touch $successFile";
@@ -153,11 +154,11 @@ system ($cmd);
 
 exit (0);
 
-jumpLibraryCalculations:
+ jumpLibraryCalculations:
 # Must run createFastaSuperReadSequences here
-
-    $cmd = "$exeDir/outputSuperReadSeqForJumpLibrary.perl $myProgOutput8 $myProgOutput12 > $finalSuperReadSequenceFile";
-&runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1);
+    
+$cmd = "$exeDir/outputSuperReadSeqForJumpLibrary.perl $myProgOutput8 $myProgOutput12 > $finalSuperReadSequenceFile";
+&runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1, "createFastaSuperReadSequences");
 
 $cmd = "touch $successFile";
 system ($cmd);
@@ -167,11 +168,8 @@ sub processArgs
     $tableSize = 2000000000;
     $merLen = 31;
     $numProcessors = 16;
-    $minCoverageToCreateAFork = 2;
-    $minCoverageToContinueAUnitig = 3;
     $minReadsInSuperRead = 2;
     $seqDiffMax = 0;
-    $elimDupls = 0;
     $help = 0;
     if ($#ARGV < 0) {
 	$help = 1; }
@@ -188,17 +186,9 @@ sub processArgs
 	    ++$i;
 	    $numProcessors = $ARGV[$i];
 	    next; }
-	elsif ($ARGV[$i] eq "-M") {
-	    ++$i;
-	    $minCoverageToContinueAUnitig = $ARGV[$i];
-	    next; }
 	elsif ($ARGV[$i] eq "-kunitigsfile") {
 	    ++$i;
 	    $kUnitigsFile = $ARGV[$i];
-	    next; }
-	elsif ($ARGV[$i] eq "-m") {
-	    ++$i;
-	    $minCoverageToCreateAFork = $ARGV[$i];
 	    next; }
 	elsif ($ARGV[$i] eq "-mkudisr") {
 	    ++$i;
@@ -212,12 +202,13 @@ sub processArgs
 	    ++$i;
 	    $meanAndStdevByPrefixFile = $ARGV[$i];
 	    next; }
-	elsif ($ARGV[$i] eq "-elim-dupls") {
-	    $elimDupls = 1;
+	elsif ($ARGV[$i] eq "--stopAfter") {
+	    ++$i;
+	    $stopAfter = $ARGV[$i];
 	    next; }
 	elsif ($ARGV[$i] eq "-jumplibraryreads") {
 	    $jumpLibraryReads = 1;
-	    next; }        
+	    next; }
 	elsif ($ARGV[$i] eq "-noreduce") {
             $noReduce = 1;
             next; }
@@ -263,7 +254,7 @@ sub giveUsageAndExit
 sub returnTableResizeAmount
 {
     my ($dataPrefix, $hashFile) = @_;
-
+    
     for ($i=1; 1; $i++) {
 	$fn = $dataPrefix . "_$i";
 	last unless (-e $fn);
@@ -276,7 +267,7 @@ sub getNumLines
 {
     my ($fn) = @_;
     my ($cmd, $line, @flds);
-
+    
     $cmd = "wc -l $fn |";
     open (CRAZYFILE, $cmd);
     $line = <CRAZYFILE>;
@@ -288,7 +279,7 @@ sub getNumLines
 sub reportMinJellyfishTableSizeForKUnitigs
 {
     my ($numKMersInKUnitigs, $numKUnitigs, $minSizeNeededForTable);
-
+    
     open (FILE, $totBasesInKUnitigsFile);
     $numKMersInKUnitigs = <FILE>;
     close (FILE);
@@ -307,7 +298,7 @@ sub killFiles
 {
     my (@filesToKill) = @_;
     my ($file);
-
+    
     for (@filesToKill) {
 	$file = $_;
 	if (-e $file) {
@@ -320,36 +311,104 @@ sub killFiles
 # With minSize one can set the minimum output file size
 sub runCommandAndExitIfBad
 {
-    my ($localCmd, $fileName, $minSize) = @_;
+    my ($localCmd, $fileName, $minSize, $stepName, @filesCreated) = @_;
     my ($retCode, $exitValue, $sz);
-
+    my ($totSize, $tempFilename, $cmd);
+    my ($successFile, $failDir);
+    
+#    sleep (5); # For testing only
+    $failDir = $workingDirectory . "/" . $stepName . ".Failed";
+    if (-e $failDir) {
+	$cmd = "rm -rf $failDir"; print "$cmd\n"; system ($cmd); }
+    $successFile = $workingDirectory . "/" . $stepName . ".success";
+    if (-e $successFile) {
+	if ($mustRun) {
+	    unlink ($successFile); }
+	else {
+	    print STDERR "Step $stepName already completed. Continuing.\n";
+	    goto successfulRun; } }
+    else {
+	$mustRun = 1; }
+    
     if ($localCmd =~ /\S/) {
         print "$localCmd\n";
         system ("time $localCmd");
         $retCode = $?;
         if ($retCode == -1) {
             print STDERR "failed to execute: $!\n";
-            exit ($retCode); }
+	    goto failingRun; }
         elsif ($retCode & 127) {
             printf STDERR "child died with signal %d, %s coredump\n",
             ($retCode & 127), ($retCode & 128) ? 'with' : 'without';
-            exit ($retCode); }
+	    goto failingRun; }
         else {
             $exitValue = $retCode >> 8;
             if ($exitValue == 255) { $exitValue = -1; }
             if ($exitValue != 0) {
                 printf STDERR "child exited with value %d\n", $exitValue;
                 print STDERR "Command \"$localCmd\" failed. Bye!\n";
-                exit ($exitValue); }
+		$retCode = $exitValue;
+		goto failingRun; }
         }
     }
-    return unless ($fileName =~ /\S/);
+    goto successfulRun unless ($fileName =~ /\S/);
+    if ($fileName =~ /\*/) {
+	goto multipleFiles; }
     if (! -e $fileName) {
         print STDERR "Output file \"$fileName\" doesn't exist. Bye!\n";
-        exit (1); }
+	$retCode = 1;
+	goto failingRun; }
     $sz = -s $fileName;
     if ($sz < $minSize) {
         print STDERR "Output file \"$fileName\" is of size $sz, must be at least of size $minSize. Bye!\n";
-        exit (1); }
+	$retCode = 1;
+	goto failingRun; }
+    goto successfulRun;
+  multipleFiles:
+    $cmd = "ls $fileName |";
+    $totSize = 0;
+    open (CMD, $cmd);
+    while ($tempFilename = <CMD>) {
+	chomp ($tempFilename);
+	$sz = -s $tempFilename;
+	$totSize += $sz; }
+    close (CMD);
+    if ($totSize < $minSize) {
+	print STDERR "The combined output files from \"$fileName\" have a total size of $totSize, must be at least of size $minSize. Bye!\n";
+	$retCode = 1;
+	goto failingRun; }
+  successfulRun:
+    if (! -e $successFile) {
+	$cmd = "touch $successFile"; print "$cmd\n"; system ($cmd); }
+    if ($stopAfter eq $stepName) {
+	print STDERR "Stopping after step ${stepName}. Bye!\n";
+	exit (0); }
+    return;
+    
+  failingRun:
+    $outdir = "$workingDirectory/${stepName}.Failed";
+    mkdir ($outdir);
+    for (@filesCreated) {
+	$cmd = "mv $_ $outdir";
+	print "$cmd\n"; system ($cmd); }
+    exit ($retCode);
 }
 
+sub cleanUpFailureDirectories
+{
+    my ($tfile, $totFile, $cmd);
+
+    if (! -e $workingDirectory) {
+	return; }
+    opendir (DIR, $workingDirectory);
+    while ($tfile = readdir (DIR)) {
+	next unless ($tfile =~ /\.Failed$/);
+	$totFile = "$workingDirectory/$tfile";
+	next unless (-d $totFile);
+	$cmd = "rm -rf $totFile";
+	print "$cmd\n"; system ($cmd); }
+    closedir (DIR);
+}
+
+
+    
