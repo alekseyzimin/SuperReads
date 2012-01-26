@@ -21,7 +21,7 @@
  * The interface is similar to std::vector by design.
  */
 
-/*#define CHECK {                      \
+/* #define CHECK {                      \
     assert(this->base_ <= this->end_); \
     assert(this->base_ <= this->ptr_); \
     assert(this->ptr_ <= this->end_); \
@@ -102,7 +102,7 @@ public:
   void push_back(const T& x) {
     CHECK;
     if(ptr_ >= end_)
-      reserve();
+      enlarge();
     *ptr_++ = x; // Should we use the inplace new instead?
     CHECK;
   }

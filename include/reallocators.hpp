@@ -29,6 +29,7 @@ struct reallocator_init {
     T *res = (T*)::realloc((void*)ptr, nsize * sizeof(T));
     if(res && nsize > osize)
       std::fill(res + osize, res + nsize, v);
+    return res;
   }
 };
   
