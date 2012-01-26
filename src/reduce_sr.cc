@@ -2,6 +2,7 @@
 #include<string.h>
 #include<math.h>
 #include<assert.h>
+#include<algorithm>
 #include<charb.hpp>
 #include<src/reduce_sr.hpp>
 #define DEBUG 0
@@ -101,77 +102,75 @@ int main(int argc,char *argv[]){
 
 
     //now we try to reduce
-    k=0;
-    if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]].size()>0&&superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]].size()>0){
-    int max_first_index=0;
-    const int max_k= args.maximum_search_depth_arg;
-    const int max_2k=max_k*2;
+    k = 0;
+    const int_buf& first_srs = superReadIndicesForKUnitig[kUnitigsInSuperRead[0]];
+    const int_buf& last_srs = superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]];
+    if(first_srs.size() > 0 && last_srs.size() > 0) {
+      int       max_first_index = 0;
+      const int max_k           = args.maximum_search_depth_arg;
+      const int max_2k          = max_k*2;
+      
+      max_first_index = std::max(first_srs[0], last_srs[0]);
+      
+      for(i=0; i< (int)first_srs.size() && k < max_k; ++i)
+        if(first_srs[i] >= max_first_index)
+          candidates[k++] = first_srs[i];
 
-    if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][0]>superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][0])
-	max_first_index=(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][0];
-    else
-        max_first_index=(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][0];
-
-
-    for(i=0;i<(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[0]].size()&&k<max_k;i++)
-      if(superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][i]>=max_first_index)
-	      candidates[k++]=superReadIndicesForKUnitig[kUnitigsInSuperRead[0]][i];
-
-    for(i=0;i<(int)superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]].size()&&k<max_2k;i++)
-     if(superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][i]>=max_first_index)
-	      candidates[k++]=superReadIndicesForKUnitig[kUnitigsInSuperRead[lastKUnitigIndex]][i];
-
+      for(i=0; i< (int)last_srs.size() && k < max_2k; ++i)
+        if(last_srs[i] >= max_first_index)
+          candidates[k++] = last_srs[i];
+      
 #if DEBUG
-    printf("Found %d candidates\n",k);
+      printf("Found %d candidates\n",k);
 #endif
 
 #if DEBUG
-    for(i=0;i<k;i++)
-      printf("Before qsort:Candidate %d, super read %s\n",candidates[i], (char*)irreducibleSuperReadNames[candidates[i]]);
+      for(i = 0; i < k; ++i)
+        printf("Before qsort:Candidate %d, super read %s\n",candidates[i], (char*)irreducibleSuperReadNames[candidates[i]]);
 #endif
 
-    qsort(candidates,k,sizeof(int),int_compare);
+      qsort(candidates,k,sizeof(int),int_compare);
 
-    charb superReadName_reverse(superReadName_save.size());
+      charb superReadName_reverse(superReadName_save.size());
 
-    reverse_sr(superReadName_save,superReadName_reverse);
-    //now we go through the sorted candidates and figure out which one matches
+      reverse_sr(superReadName_save,superReadName_reverse);
+      //now we go through the sorted candidates and figure out which one matches
 #if DEBUG
-    for(i=0;i<k;i++)
-      printf("Candidate %d, super read %s\n",candidates[i], (char*)irreducibleSuperReadNames[candidates[i]]);
+      for(i = 0; i < k; i++)
+        printf("Candidate %d, super read %s\n",candidates[i], (char*)irreducibleSuperReadNames[candidates[i]]);
 #endif
 
-    //now we go through the sorted candidates and figure out which one matches, we only look at the candidate if it is encountered twice
-    int last_candidate=-1;
-    int candidate_count=1;
-    for(i=0;i<k;i++){
-      if(candidates[i]==last_candidate && candidate_count==1) {
+      //now we go through the sorted candidates and figure out which one matches, we only look at the candidate if it is encountered twice
+      int last_candidate  = -1;
+      int candidate_count = 1;
+      for(i = 0; i < k; ++i) {
+        if(candidates[i] == last_candidate && candidate_count == 1) {
 #if DEBUG
-	printf("Checking candidate %s\n",(char*)irreducibleSuperReadNames[candidates[i]]);
+          printf("Checking candidate %s\n",(char*)irreducibleSuperReadNames[candidates[i]]);
 #endif
-	if(strstr(irreducibleSuperReadNames[candidates[i]],superReadName_save)!=NULL)
-	  break;
-	if(strstr(irreducibleSuperReadNames[candidates[i]],superReadName_reverse)!=NULL)
-	  break;
-	candidate_count++;
-      } else {
-	candidate_count=1;
+          if(strstr(irreducibleSuperReadNames[candidates[i]],superReadName_save)!=NULL)
+            break;
+          if(strstr(irreducibleSuperReadNames[candidates[i]],superReadName_reverse)!=NULL)
+            break;
+          candidate_count++;
+        } else {
+          candidate_count=1;
+        }
+        last_candidate=candidates[i];
       }
-      last_candidate=candidates[i];
-    }
 
 #if DEBUG
-    if(i<k){
-      printf("Reduced %s to %s\n",(char*)superReadName_save,(char*)irreducibleSuperReadNames[candidates[i]]); 	
-      continue;
-    }
+      if(i<k){
+        printf("Reduced %s to %s\n",(char*)superReadName_save,(char*)irreducibleSuperReadNames[candidates[i]]); 	
+        continue;
+      }
 #else
-    if(i<k){
-      printf("%s %s\n",(char*)superReadName_save,(char*)irreducibleSuperReadNames[candidates[i]]);
-      continue;
-    }
+      if(i < k){
+        printf("%s %s\n",(char*)superReadName_save,(char*)irreducibleSuperReadNames[candidates[i]]);
+        continue;
+      }
 #endif
-}
+    }
 #if DEBUG
     printf("Irreducible %s, index %d\n",(char*)superReadName_save,irreducibleSuperReadIndex);
 #endif
@@ -179,7 +178,7 @@ int main(int argc,char *argv[]){
     //if we got here, then the super read is irreducible :(
     //here is what we do with an irreducible super read
     irreducibleSuperReadNames[irreducibleSuperReadIndex]=superReadName_save;
-    for(i=0;i<=lastKUnitigIndex;i++)
+    for(i = 0; i <= lastKUnitigIndex; ++i)
       superReadIndicesForKUnitig[kUnitigsInSuperRead[i]].push_back(irreducibleSuperReadIndex);
     irreducibleSuperReadIndex++;
   }
