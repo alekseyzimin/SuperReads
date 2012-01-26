@@ -117,14 +117,10 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_bloom_filter.cc			\
                     unittests/test_bloom_counter2.cc			\
                     unittests/test_skip_list_set.cc			\
-<<<<<<< HEAD
+                    unittests/test_skip_list_map.cc			\
                     unittests/test_rbtree.cc
-all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp
-=======
-                    unittests/test_skip_list_map.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
                      src/gcc_builtins.cc
->>>>>>> b9e083a9bf35a51b3742ff936cc23857fa2519d9
 all_tests_CXXFLAGS = -I$(top_srcdir)/unittests/gtest/include		\
 -I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include -I$(top_srcdir)	\
 -Wall -Werror
