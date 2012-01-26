@@ -21,8 +21,18 @@
 # -mkudisr numBaseDiffs : max base diffs between overlapping k-unitigs in super-reads (0)
 # -minreadsinsuperread minReads : super-reads containing fewer than numReads
 #                                reads will be eliminated (2)
-# --stopAfter target : Stop the run after one of the "target" names, which are the
-#               4th arguments to the runCommandAndExitIfBad subroutine.
+# --stopAfter target : Stop the run after one of the following "target" names:
+#               createLengthStatisticsFiles
+#               createKUnitigHashTable
+#               addMissingMates
+#               findReadKUnitigMatches
+#               createKUnitigMaxOverlaps
+#               joinKUnitigs
+#               getSuperReadInsertCounts
+#               createFastaSuperReadSequences
+#               reduceSuperReads
+#               createFinalReadPlacementFile
+#               createFinalSuperReadFastaSequences
 # -noclean : don't clean up the files afterwards
 # -mikedebug : don't kill off intermediate results
 # -jumplibraryreads : we are generating for jump-library reads; a k-unitigs
