@@ -25,7 +25,9 @@ noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/exp_buffer.hpp $(UTILS_I)/gzip_stream.hpp	\
                   $(UTILS_I)/yaggo.hpp $(UTILS_I)/misc.hpp		\
                   $(UTILS_I)/heap.hpp $(UTILS_I)/reallocators.hpp	\
-                  $(UTILS_I)/skip_list_set.hpp
+                  $(UTILS_I)/skip_list_set.hpp $(UTILS_I)/rb_tree.hpp	\
+                  $(UTILS_I)/rb_node.hpp				\
+                  $(UTILS_I)/binary_search_tree_iterator.hpp
 
 noinst_LIBRARIES = libutils.a
 libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp
@@ -114,7 +116,8 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_sr_names.cc				\
                     unittests/test_bloom_filter.cc			\
                     unittests/test_bloom_counter2.cc			\
-                    unittests/test_skip_list_set.cc
+                    unittests/test_skip_list_set.cc			\
+                    unittests/test_rbtree.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp
 all_tests_CXXFLAGS = -I$(top_srcdir)/unittests/gtest/include		\
 -I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include -I$(top_srcdir)	\
