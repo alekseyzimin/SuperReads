@@ -156,13 +156,18 @@ char *fgets(basic_charb<R> &b, T size, FILE *stream) { return fgets(b, stream); 
  */
 template<typename R>
 ssize_t getline(basic_charb<R> &b, FILE *stream) {
-  size_t n = b.capacity();
-  ssize_t res = getline(&b.base_, &n, stream);
+  size_t  n       = b.capacity();
+  size_t  on      = n;
+  char*   lineptr = b.base_;
+  ssize_t res     = getline(&lineptr, &n, stream);
+
   if(res == -1)
     return res;
+  if(on != n) {
+    b.end_  = lineptr + n;
+    b.base_ = lineptr;
+  }
   b.ptr_ = b.base_ + res;
-  if(n != b.capacity())
-    b.end_ = b.base_ + n;
 
   return res;
 }
@@ -201,6 +206,7 @@ std::istream& getline(std::istream &is, basic_charb<R> &b, char delim, char *cpt
     b.reserve();
     cptr = b.base();
   }
+
   while(true) {
     is.getline(cptr, b.capacity() - (cptr - b.base_), delim);
     if(is.bad()) // Bad, we quit

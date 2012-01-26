@@ -1,8 +1,10 @@
 #ifndef _EXP_BUFFER_H_
 #define _EXP_BUFFER_H_
 
+#include <assert.h>
 #include <cstdlib>
 #include <stdexcept>
+#include <iostream>
 #include <reallocators.hpp>
 
 /** A growable array (and expanding buffer) but only suitable for
@@ -18,6 +20,13 @@
  *
  * The interface is similar to std::vector by design.
  */
+
+/*#define CHECK {                      \
+    assert(this->base_ <= this->end_); \
+    assert(this->base_ <= this->ptr_); \
+    assert(this->ptr_ <= this->end_); \
+    } while(0); */
+#define CHECK
 
 template<typename T, typename R=reallocator<T> >
 class ExpBuffer {
@@ -43,24 +52,28 @@ public:
   ExpBuffer() : base_(0), end_(0), ptr_(0) { }
   explicit ExpBuffer(size_type s) : base_(0), end_(0), ptr_(0) {
     reserve(s);
+    CHECK;
   }
   ExpBuffer(const T *ptr, size_type nb_elements) : base_(0), end_(0), ptr_(0) {
     reserve(nb_elements);
     if(ptr)
       memcpy(base_, ptr, sizeof(T) * nb_elements);
     ptr_ = base_ + nb_elements;
+    CHECK;
   }
   ExpBuffer(const ExpBuffer &rhs) : base_(0), end_(0), ptr_(0) {
     reserve(rhs.capacity());
     memcpy(base_, rhs.base_, sizeof(T) * rhs.size());
     ptr_ = base_ + rhs.size();
+    CHECK;
   }
   virtual ~ExpBuffer() {
     realloc(base_, 0, 0);
   }
 
-  size_type capacity() const { return end_ - base_; }
-  size_type size() const { return ptr_ - base_; }
+  void check() const { CHECK; }
+  size_type capacity() const { CHECK; return end_ - base_; }
+  size_type size() const { CHECK; return ptr_ - base_; }
 
   void swap(ExpBuffer &rhs) {
     std::swap(base_, rhs.base_);
@@ -87,9 +100,11 @@ public:
   reference front() const { return *base_; }
   reference back() const { return *(ptr_ - 1); }
   void push_back(const T& x) {
+    CHECK;
     if(ptr_ >= end_)
       reserve();
     *ptr_++ = x; // Should we use the inplace new instead?
+    CHECK;
   }
   void pop_back() {
     if(ptr_ > base_)
@@ -100,17 +115,19 @@ public:
   bool is_null() const { return !base_ || base_ == end_; }
   
   void reserve(size_type s = 1024) {
+    CHECK;
     size_type clen = end_ - base_;
     if(s <= clen)
       return;
     if(s <= 2 * clen)
       s = 2 * clen;
-    T *nbase = (T *)realloc(base_, clen, s);
+    T* nbase = (T*)realloc(base_, clen, s);
     if(!nbase)
       throw std::runtime_error("Error allocating memory");
     ptr_  = nbase + (ptr_ - base_);
     end_  = nbase + s;
     base_ = nbase;
+    CHECK;
   }
 
   
@@ -139,10 +156,18 @@ public:
   template<typename U>
   reference operator[](U _i) {
     size_type i = _i;
-    if(super::capacity() <= i)
+    assert(super::base_ <= super::end_);
+    assert(super::base_ <= super::ptr_ && super::ptr_ <= super::end_);
+    if(super::capacity() <= i) {
+      std::cerr << "operator[] " << super::capacity() << " " << super::size() << " " << i << std::endl;
       super::reserve(i + 1);
+    }
+    assert(super::base_ <= super::end_);
+    assert(super::ptr_ <= super::end_);
     if(super::size() <= i)
       super::ptr_ = super::base_ + i + 1;
+    assert(super::base_ <= super::end_);
+    assert(super::ptr_ <= super::end_);
     return super::operator[](i);
   }
 };
