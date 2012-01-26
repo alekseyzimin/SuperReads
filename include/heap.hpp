@@ -8,9 +8,15 @@
 template<typename T, typename Pr = std::less<T>, typename C = std::vector<T> >
 class basic_heap {
 public:
-  typedef T                          value_type;
-  typedef typename C::iterator       iterator;
-  typedef typename C::const_iterator const_iterator;
+  typedef T                           value_type;
+  typedef typename C::reference       reference;
+  typedef typename C::const_reference const_reference;
+  typedef typename C::pointer         pointer;
+  typedef typename C::const_pointer   const_pointer;
+  typedef typename C::iterator        iterator;
+  typedef typename C::const_iterator  const_iterator;
+  typedef typename C::size_type       size_type;
+  typedef typename C::difference_type difference_type;
 
   basic_heap() { }
   template<typename ForwardIterator>
@@ -28,16 +34,31 @@ public:
     return *this;
   }
   
-  void push(const T &e) { ary.push_back(e); push_heap(ary.begin(), ary.end(), comp); }
-  T &pop() { pop_heap(ary.begin(), ary.end(), comp); T &tmp = ary.back(); ary.pop_back(); return tmp; }
-  const T &peek() const { return ary.front(); }
-  size_t size() const { return ary.size(); }
+  void push(const T& e) { 
+    ary.push_back(e);
+    push_heap(ary.begin(), ary.end(), comp);
+  }
+  reference pop() {
+    pop_heap(ary.begin(), ary.end(), comp);
+    reference tmp = ary.back();
+    ary.pop_back();
+    return tmp;
+  }
+  const_reference &peek() const { return ary.front(); }
+  size_type size() const { return ary.size(); }
   bool empty() const { return ary.empty(); }
 
+  /** These iterator do not return the element in order of the
+   * comparator but the order in which the element are stored in
+   * ary. If used to modify the heap, the behavior is
+   * undefined. (Should the non-const version be removed?)
+   */
   iterator begin() { return ary.begin(); }
   const_iterator begin() const { return ary.begin(); }
   iterator end() { return ary.end(); }
   const_iterator end() const { return ary.end(); }
+
+  void clear() { ary.clear(); }
 
 protected:
   C  ary;

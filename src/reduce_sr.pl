@@ -9,7 +9,7 @@ while($line=<STDIN>){
     chomp($line);
     @l=split(/\s+/,$line);
     $ll++;
-    if($ll%500000==0){
+    if($ll%100000==0){
 	print STDERR "Processed $ll super reads, irreducible $i\n";
 	$elapsed=time()-$timing;
 	print STDERR "Processing ",int(500000/$elapsed)," super reads per second\n";
@@ -64,12 +64,19 @@ while($line=<STDIN>){
 #look for the match
 	    $fwd_sr=$l[0];
             $rev_sr=reverse_sr(@f);
-	    for($j=0;$j<scalar(@candidate_sr_sorted);$j++){
+	    $flag=0;
+ 	    for($j=0;$j<scalar(@candidate_sr_sorted) && $j<20 ;$j++){
 #print "trying candidate $sr[$candidate_sr_sorted[$j]], number $candidate_sr_sorted[$j]\n";
-		last if(index($sr[$candidate_sr_sorted[$j]],$fwd_sr)>-1);
-                last if(index($sr[$candidate_sr_sorted[$j]],$rev_sr)>-1);
+		if(index($sr[$candidate_sr_sorted[$j]],$fwd_sr)>-1){
+		$flag=1;
+		last;
+		}
+                if(index($sr[$candidate_sr_sorted[$j]],$rev_sr)>-1){
+                $flag=1;
+                last;
+		}
 	    }
-	    if($j<scalar(@candidate_sr_sorted)){
+	    if($flag==1){
 		print "$fwd_sr $sr[$candidate_sr_sorted[$j]]\n";
 		next;
 	    }

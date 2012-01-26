@@ -58,10 +58,10 @@ TEST(SkipListSet, InsertIterator) {
 
   sls_it_type sls_it = sls.begin();
   for(set_it_type set_it = set.begin(); set_it != set.end(); ++set_it, ++sls_it) {
-    EXPECT_NE(sls.end(), sls_it);
+    ASSERT_FALSE(sls.end() == sls_it);
     EXPECT_EQ(*set_it, *sls_it);
   }
-  EXPECT_EQ(sls.end(), sls_it);
+  EXPECT_TRUE(sls.end() == sls_it);
 
   for(int i = 0; i < 51; ++i) {
     EXPECT_EQ(set.count(i), sls.count(i));
@@ -76,24 +76,30 @@ TEST(SkipListSet, InsertIterator) {
     
     set_it_type set_it = set.find(i);
     sls_it_type sls_it = sls.find(i);
-    if(set_it == set.end())
+    if(set_it == set.end()) {
       EXPECT_EQ(sls.end(), sls_it);
-    else
+    } else {
+      ASSERT_NE(sls.end(), sls_it);
       EXPECT_EQ(*set_it, *sls_it);
+    }
 
     set_it = set.lower_bound(i);
     sls_it = sls.lower_bound(i);
-    if(set_it == set.end())
+    if(set_it == set.end()) {
       EXPECT_EQ(sls.end(), sls_it);
-    else
+    } else {
+      ASSERT_NE(sls.end(), sls_it);
       EXPECT_EQ(*set_it, *sls_it);
+    }
 
     set_it = set.upper_bound(i);
     sls_it = sls.upper_bound(i);
-    if(set_it == set.end())
+    if(set_it == set.end()) {
       EXPECT_EQ(sls.end(), sls_it);
-    else
+    } else {
+      ASSERT_NE(sls.end(), sls_it);
       EXPECT_EQ(*set_it, *sls_it);
+    }
   }
 
   set.clear();

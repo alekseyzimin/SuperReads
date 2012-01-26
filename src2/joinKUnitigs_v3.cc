@@ -21,6 +21,7 @@
 #include <vector>
 #include <list>
 #include <stack>
+#include <iterator>
 
 #include <err.hpp>
 #include <heap.hpp>
@@ -54,24 +55,28 @@ struct unitigLocStruct
      int unitig2;
      int frontEdgeOffset;
      char ori;
-  bool operator<(const unitigLocStruct &rhs) const {
-    if(frontEdgeOffset > rhs.frontEdgeOffset)
-      return true;
-    if(frontEdgeOffset < rhs.frontEdgeOffset)
-      return false;
-    if (unitig2 > rhs.unitig2)
-      return true;
-    if (unitig2 < rhs.unitig2)
-      return false;
-    if (ori > rhs.ori)
-      return true;
-    if (ori < rhs.ori)
-      return false;
-    return false;
-  }
-  bool operator>(const unitigLocStruct &rhs) const {
-    return !operator<(rhs);
-  }
+     bool operator>(const unitigLocStruct &rhs) const {
+	  if(frontEdgeOffset > rhs.frontEdgeOffset)
+	       return true;
+	  if(frontEdgeOffset < rhs.frontEdgeOffset)
+	       return false;
+	  if (unitig2 > rhs.unitig2)
+	       return true;
+	  if (unitig2 < rhs.unitig2)
+	       return false;
+	  if (ori > rhs.ori)
+	       return true;
+	  if (ori < rhs.ori)
+	       return false;
+	  return false;
+     }
+     bool operator<(const unitigLocStruct &rhs) const {
+	  if ((frontEdgeOffset == rhs.frontEdgeOffset) &&
+	      (unitig2 == rhs.unitig2) &&
+	      (ori == rhs.ori))
+	       return false;
+	  return !operator>(rhs);
+     }
 };
 
 // In the following, lastOverlappingOffset gives us the offset for the node
@@ -157,7 +162,9 @@ std::set<unitigLocStruct> startingNodes, endingNodes;
 int startingNodeNumber;
 std::vector<unitigLocStruct> nodeArray;
 std::map<unitigLocStruct, int> nodeToIndexMap;
+typedef std::map<unitigLocStruct, int>::iterator unitigLocMap_iterator;
 std::set<std::pair<int, int> > edgeList, sortedEdgeList;
+typedef std::set<std::pair<int, int> >::iterator edge_iterator;
 std::vector<int> unitigNodeNumbersForPath;
 // std::vector<int, std::set <int> > fwdEdgeList, revEdgeList;
 struct nodePair {
@@ -185,6 +192,8 @@ int lengthAdjustment1, lengthAdjustment2;
 char superReadName[100000];
 int splitJoinWindowMin, splitJoinWindowMax;
 int numUnitigConnectionsForPathData;
+int numPairsInOneUnitig, numSimplyJoinable, numJoinableAfterRead1Analysis,
+     numJoinableAfterBothReadAnalysis, numJoinableUnresolvedAtEnd;
 
 bool firstNodeSort (struct nodePair val1, struct nodePair val2);
 bool secondNodeSort (struct nodePair val1, struct nodePair val2);
@@ -194,26 +203,26 @@ bool unitigLocStructCompare (struct unitigLocStruct ptr1,
 bool unitigLocStructCompareReversed (struct unitigLocStruct ptr1,
 				    struct unitigLocStruct ptr2);
 void generateSuperReadPlacementLinesForJoinedMates (void);
-
-extern "C" {
-     int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev);
-     FILE *Fopen (const char *fn, const char *mode);
-     FILE *Popen (const char *fn, const char *mode);
-     int getFldsFromLine (char *cptrHold);
-     int getInt (const char *fname);
+int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev);
+FILE *Fopen (const char *fn, const char *mode);
+FILE *Popen (const char *fn, const char *mode);
 // The following returns the overlap length if it is greater than the
 // existing largest overlap on the end. It returns -1 if not.
-     int getOvlLenFromOvlIndicesPlus (int maxOvlIndex, int j, int maxOvlLen, int whichEnd);
-     int findOtherOverlapIndex (int ovlIndex1);
-     void printIfGood (struct abbrevUnitigLocStruct *ptr);
-     void completePathPrint (struct abbrevUnitigLocStruct *ptr);
-     void printPathNode (struct unitigPathPrintStruct *ptr);
-     int setSuperReadNameFromAugmentedPath (void);
-     int getSuperReadLength(void);
-     void funcToGetTreeSize (abbrevUnitigLocStruct *ptr); // Adds 1 to treeSize (a global) each time
-     void findSingleReadSuperReads(char *readName);
-     void getSuperReadsForInsert (void);
-     int processKUnitigVsReadMatches (char *inputFilename, char *outputFilename);
+int getOvlLenFromOvlIndicesPlus (int maxOvlIndex, int j, int maxOvlLen, int whichEnd);
+int findOtherOverlapIndex (int ovlIndex1);
+void printIfGood (struct abbrevUnitigLocStruct *ptr);
+void completePathPrint (struct abbrevUnitigLocStruct *ptr);
+void printPathNode (struct unitigPathPrintStruct *ptr);
+int setSuperReadNameFromAugmentedPath (void);
+int getSuperReadLength(void);
+void funcToGetTreeSize (abbrevUnitigLocStruct *ptr); // Adds 1 to treeSize (a global) each time
+void findSingleReadSuperReads(char *readName);
+void getSuperReadsForInsert (void);
+int processKUnitigVsReadMatches (char *inputFilename, char *outputFilename);
+int getInt (const char *fname);
+
+// extern "C" {
+     int getFldsFromLine (char *cptrHold);
 
 // RB tree data stuff
      struct RBTreeStruct *treeArr, *treeArr2;
@@ -224,7 +233,7 @@ extern "C" {
 				     struct abbrevUnitigLocStruct *ptr2);
      int unitigPathPrintStructComp (struct unitigPathPrintStruct *ptr1,
 				    struct unitigPathPrintStruct *ptr2);
-}
+// }
 
 #ifndef mallocOrDie
 #define mallocOrDie(name, num, type) fprintf (stderr, "Allocating %lu bytes for %s.\n", (unsigned long) ((num) * sizeof ( type )), #name); \
@@ -308,6 +317,9 @@ int main (int argc, char **argv)
 	  stdev[(int)flds[0][0]][(int)flds[0][1]] = atof (flds[2]);
      }
      fclose (infile);
+
+     numPairsInOneUnitig = numSimplyJoinable = numJoinableAfterRead1Analysis =
+	  numJoinableAfterBothReadAnalysis = numJoinableUnresolvedAtEnd = 0;
 
      mateUnitig1ori = 'F'; mateUnitig2ori = 'R';
 // Get the number of unitigs
@@ -438,6 +450,7 @@ int main (int argc, char **argv)
                sprintf(readVsKUnitigFileName,"%s_%d",args.input_prefix_arg,i);
                sprintf(outputFileName,"%s_%d",args.prefix_arg,i);
 	       ret=processKUnitigVsReadMatches(readVsKUnitigFileName,outputFileName);
+	       fprintf (stderr, "Num pairs with both reads in same unitig: %d\nNum pairs uniquely joinable: %d\nNum pairs after disambiguation to beginning of insert: %d\nNum pairs after disambiguation to end of insert: %d\nNum still joinable but not uniquely joinable: %d\n", numPairsInOneUnitig, numSimplyJoinable, numJoinableAfterRead1Analysis, numJoinableAfterBothReadAnalysis, numJoinableUnresolvedAtEnd);
 	       exit(ret);
 	       
 	  default:
@@ -541,6 +554,7 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
 	      (readNum != readNumHold+1) ||
 	      (readNum % 2 == 0)) {
 	       // Get the super-read for the insert we just finished reading
+	       approxNumPaths = 0;
 	       getSuperReadsForInsert();
 	       // Set up and load the new data
                evenReadMatchStructs.clear();
@@ -580,8 +594,9 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
      int elementIndex;
      int overlapLength;
      int ahg, bhg;
+     int forcedStop;
 
-
+//     fprintf (stderr, "In joinKUnitigsFromMates\n");
      lastOffsetToTest = insertLengthMean+4*insertLengthStdev;
      // The following assumes that all the overlaps are of length
      // minOverlapLength
@@ -604,9 +619,11 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
      }
      abbrevUnitigLocVal.pathNum = 0;
      RBTreeInsertElement (treeArr + mateUnitig1, (char *) &abbrevUnitigLocVal);
+     unitig2 = mateUnitig1; // Initialized to make the compiler happy
 #if 0
-     printf ("Inserting in the RB tree at %d: fEO = %d, pN = %u ori = %c\n", mateUnitig1, abbrevUnitigLocVal.frontEdgeOffset, abbrevUnitigLocVal.pathNum, abbrevUnitigLocVal.ori);
+     fprintf (stderr, "Inserting at 1 in the RB tree at %d: fEO = %d, pN = %u ori = %c\n", mateUnitig1, abbrevUnitigLocVal.frontEdgeOffset, abbrevUnitigLocVal.pathNum, abbrevUnitigLocVal.ori);
 #endif     
+     forward_path_unitigs.clear();
      forward_path_unitigs.push(unitigLocVal);
      
      startingNodes.clear();
@@ -619,6 +636,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
      nodeToIndexMap.insert (std::pair<unitigLocStruct, int> (unitigLocVal, nodeArray.size()-1) );
      maxNodes = 1;
 //     printf ("Got to 30\n");
+     forcedStop = 0;
      while (!forward_path_unitigs.empty())
      {
        if (forward_path_unitigs.size() > maxNodes)
@@ -740,6 +758,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	       // Add offset to list for tree
 	       abbrevUnitigLocVal.pathNum = 0;
 	       RBTreeInsertElement (treeArr + unitig2, (char *) &abbrevUnitigLocVal);
+//	       fprintf (stderr, "Inserting at 2 in the RB tree at %d: fEO = %d, pN = %u ori = %c\n", unitig2, abbrevUnitigLocVal.frontEdgeOffset, abbrevUnitigLocVal.pathNum, abbrevUnitigLocVal.ori);
 #if DEBUG
 //		if ((unitig2 == mateUnitig2) && (abbrevUnitigLocVal.ori == 'R'))
 	       if (unitig2 == mateUnitig2)
@@ -748,10 +767,17 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 #endif		
 	       //   Make sure the root of the tree is updated (if needed)
 	  }			// End of going through overlaps for unitig
-	  if (maxNodes > MAX_NODES_ALLOWED)
-	       break;
+//	  if (maxNodes > MAX_NODES_ALLOWED)
+	  if (treeArr[unitig2].dataArrayPtr->arraySize > MAX_NODES_ALLOWED) {
+	       forcedStop = 1;
+	       break; }
      }			// Ends !forward_path_unitigs.empty() line
-     if (maxNodes > MAX_NODES_ALLOWED)
+     forward_path_unitigs.clear();
+//     while (! forward_path_unitigs.empty())
+//	  unitigLocVal = forward_path_unitigs.pop();
+
+//     if (maxNodes > MAX_NODES_ALLOWED)
+     if (forcedStop)
 	  return (0);
      else
 	  return (1);
@@ -930,13 +956,15 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 	  unitigPathPrintVal.ori = 'R'; // Forced; may be adjusted later
 	  unitigPathPrintVal.frontEdgeOffset = finalOffset;
 	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+//	  fprintf (stderr, "Inserting at 3 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
 	  unitigPathPrintVal.unitig1 = minConnectingUnitig;
 	  unitigPathPrintVal.frontEdgeOffset = minConnectingOffset;	
   unitigPathPrintVal.numOverlapsIn = 0;
 	  unitigPathPrintVal.numOverlapsOut = 1;
 	  unitigPathPrintVal.ori = minConnectingOri;
 	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
-     }
+//	  fprintf (stderr, "Inserting at 4 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
+	       }
      else {
 	  unitigLocVal.unitig2 = endUnitig;
 	  unitigLocVal.frontEdgeOffset = finalOffset;
@@ -950,10 +978,12 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 	  printf ("Inserting unitig1 = %d, offset = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
 #endif
 	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+//	  fprintf (stderr, "Inserting at 5 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);   
      }
 #if 0
      printf ("isSpecialCase = %d, unitigLocVal = %d, %d, %c\n", isSpecialCase, endUnitig, finalOffset, unitigLocVal.ori);
 #endif
+     backward_path_unitigs.clear();
      backward_path_unitigs.push(unitigLocVal);
      while (!backward_path_unitigs.empty()) {
           unitigLocVal = backward_path_unitigs.pop();
@@ -1025,8 +1055,8 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 		    unitigPathPrintVal.numOverlapsIn = 0;
 		    unitigPathPrintVal.numOverlapsOut = 0;
 		    RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+//		    fprintf (stderr, "Inserting at 6 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
 	       }
-		    
 	       unitigPathPrintVal.unitig1 = unitig1;
 	       unitigPathPrintVal.frontEdgeOffset = abbRLPtr->frontEdgeOffset;
 	       unitigPathPrintVal.ori = abbRLPtr->ori;
@@ -1087,7 +1117,7 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 	  unitigLocStruct uLS;
 //	  int index1, index2;
 	  int firstIndex, secondIndex;
-	  std::map<unitigLocStruct, int>::iterator it;
+	  unitigLocMap_iterator it;
 	  std::list<int>::iterator l_it;
 	  struct nodePair nodeValue;
 	  uLS.unitig2 = unitigConnectionsForPathData[i].unitig1;
@@ -1112,6 +1142,8 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 	       secondIndex = it->second; }
 	  nodeValue.node1 = firstIndex;
 	  nodeValue.node2 = secondIndex;
+//	  assert((size_t)firstIndex < nodeArray.size());
+//	  assert((size_t)secondIndex < nodeArray.size());
 	  edgeList.insert(std::pair<int, int> (firstIndex, secondIndex));
 	  
 #ifdef KILL120102	  
@@ -1207,7 +1239,8 @@ int setSuperReadNameFromAugmentedPath (void)
 	  sprintf (cptr, "%d%c", augmentedUnitigPathPrintData[0].unitig1, augmentedUnitigPathPrintData[0].ori);
 	  cptr += strlen (cptr);
 	  for (i=1; i<numUnitigPathPrintRecsOnPath; i++) {
-	       sprintf (cptr, "_%d_%d%c", minOverlapLength, augmentedUnitigPathPrintData[i].unitig1, augmentedUnitigPathPrintData[i].ori);
+//	       sprintf (cptr, "_%d_%d%c", minOverlapLength, augmentedUnitigPathPrintData[i].unitig1, augmentedUnitigPathPrintData[i].ori);
+	       sprintf (cptr, "_%d%c", augmentedUnitigPathPrintData[i].unitig1, augmentedUnitigPathPrintData[i].ori);
 	       cptr += strlen (cptr);
 	  }
      }
@@ -1215,7 +1248,8 @@ int setSuperReadNameFromAugmentedPath (void)
 	  sprintf (cptr, "%d%c", augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath-1].unitig1, (augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath-1].ori == 'F') ? 'R' : 'F');
 	  cptr += strlen (cptr);
 	  for (i=numUnitigPathPrintRecsOnPath-2; i>=0; i--) {
-	       sprintf (cptr, "_%d_%d%c", minOverlapLength, augmentedUnitigPathPrintData[i].unitig1, (augmentedUnitigPathPrintData[i].ori == 'F') ? 'R' : 'F');
+//	       sprintf (cptr, "_%d_%d%c", minOverlapLength, augmentedUnitigPathPrintData[i].unitig1, (augmentedUnitigPathPrintData[i].ori == 'F') ? 'R' : 'F');
+	       sprintf (cptr, "_%d%c", augmentedUnitigPathPrintData[i].unitig1, (augmentedUnitigPathPrintData[i].ori == 'F') ? 'R' : 'F');
 	       cptr += strlen (cptr);
 	  }
      }
@@ -1491,7 +1525,11 @@ void findSingleReadSuperReads(char *readName)
 	  for (++i; i<countOfMatchingKUnitigs; i++) {
 	       if (! matchStructIsUsed[i])
 		    continue;
-	       sprintf (cptr, "_%d_%d%c", maxReadOffset-kUTRMSptr[i].readMatchBegin, kUTRMSptr[i].kUnitigNumber, kUTRMSptr[i].ori);
+	       // The next is the overlap amount between k-unitigs, which we now require to be minOverlapLength
+	       if (maxReadOffset-kUTRMSptr[i].readMatchBegin != minOverlapLength)
+		    return;
+//	       sprintf (cptr, "_%d_%d%c", maxReadOffset-kUTRMSptr[i].readMatchBegin, kUTRMSptr[i].kUnitigNumber, kUTRMSptr[i].ori);
+	       sprintf (cptr, "_%d%c", kUTRMSptr[i].kUnitigNumber, kUTRMSptr[i].ori);
 	       cptr += strlen(cptr);
 	       maxReadOffset = kUTRMSptr[i].readMatchEnd;
 	  }
@@ -1499,7 +1537,7 @@ void findSingleReadSuperReads(char *readName)
 	  if (kUTRMSptr[recNumToUse].ori == 'F')
 	       offsetOfReadInSuperRead = kUTRMSptr[recNumToUse].kUnitigMatchBegin - kUTRMSptr[recNumToUse].readMatchBegin;
 	  else
-	       offsetOfReadInSuperRead = unitigLengths[kUTRMSptr[recNumToUse].kUnitigNumber] - kUTRMSptr[recNumToUse].kUnitigMatchEnd - kUTRMSptr[i].readMatchBegin;
+	       offsetOfReadInSuperRead = unitigLengths[kUTRMSptr[recNumToUse].kUnitigNumber] - kUTRMSptr[recNumToUse].kUnitigMatchEnd - kUTRMSptr[recNumToUse].readMatchBegin;
 //	  printf ("%s %s %d %c\n", readName, superReadName, offsetOfReadInSuperRead, kUTRMSptr[recNumToUse].ori);
 	  fprintf (outputFile, "%s %s %d %c\n", readName, superReadName, offsetOfReadInSuperRead, 'F');	  
      }
@@ -1514,7 +1552,11 @@ void findSingleReadSuperReads(char *readName)
 	  for (--i; i>=0; i--) {
 	       if (! matchStructIsUsed[i])
 		    continue;
-	       sprintf (cptr, "_%d_%d%c", kUTRMSptr[i].readMatchEnd-minReadOffset, kUTRMSptr[i].kUnitigNumber, (kUTRMSptr[i].ori == 'F') ? 'R' : 'F');
+	       // The next is the overlap amount between k-unitigs, which we now require to be minOverlapLength
+	       if (kUTRMSptr[i].readMatchEnd-minReadOffset != minOverlapLength)
+		    return;
+//	       sprintf (cptr, "_%d_%d%c", kUTRMSptr[i].readMatchEnd-minReadOffset, kUTRMSptr[i].kUnitigNumber, (kUTRMSptr[i].ori == 'F') ? 'R' : 'F');
+	       sprintf (cptr, "_%d%c", kUTRMSptr[i].kUnitigNumber, (kUTRMSptr[i].ori == 'F') ? 'R' : 'F');
 	       cptr += strlen(cptr);
 	       minReadOffset = kUTRMSptr[i].readMatchBegin;
 	  }
@@ -1543,7 +1585,7 @@ void getSuperReadsForInsert (void)
      int startValue;
      int pathNum=0;
      std::set<unitigLocStruct>::iterator it1;
-     std::map<unitigLocStruct, int>::iterator it2;
+     unitigLocMap_iterator it2;
      int numNodes = 0;
      ExpandingBuffer<int> pathNumArray;
      std::stack<int> nodeIntArray;
@@ -1574,6 +1616,7 @@ void getSuperReadsForInsert (void)
 	  findSingleReadSuperReads (readNameSpace);
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
 	  findSingleReadSuperReads (readNameSpace);
+	  ++numPairsInOneUnitig;
 	  return;
      }
      if ((evenReadMatchStructs[0].readMatchBegin + oddReadMatchStructs[0].readMatchBegin <= maxTotAllowableMissingOnEnds)) {
@@ -1634,18 +1677,20 @@ void getSuperReadsForInsert (void)
 	  numUnitigConnectionsForPathData = 0;
 	  inOrderTreeWalk (treeArr + endUnitig, treeArr[endUnitig].root,
 			   (void (*)(char *)) completePathPrint);
+	  if (approxNumPaths == 1)
+	       ++numSimplyJoinable;
 	  if (approxNumPaths <= 1)
 	       goto afterSuperRead;
 #if 1
 	  sort (nodeArray.begin(), nodeArray.end(), unitigLocStructCompare);
 	  for (unsigned int i=0; i<nodeArray.size(); i++) {
-	       std::map<unitigLocStruct, int>::iterator it;
+	       unitigLocMap_iterator it;
 	       it = nodeToIndexMap.find (nodeArray[i]);
 	       int j = it->second;
 	       it->second = i;
 	       newNodeNumsFromOld[j] = i; }
 	  sortedEdgeList.clear();
-	  for (std::set<std::pair<int, int> >::iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++)
+	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++)
 	       sortedEdgeList.insert(std::pair<int, int> (newNodeNumsFromOld[it3141->first], newNodeNumsFromOld[it3141->second]));
 	  edgeList = sortedEdgeList;
 #ifdef KILL120102
@@ -1654,12 +1699,12 @@ void getSuperReadsForInsert (void)
 	       fprintf (stderr, "uni = %d, frontEdgeOffset = %d, ori = %c\n", (int) nodeArray[i].unitig2, (int) nodeArray[i].frontEdgeOffset, nodeArray[i].ori);
 #endif
 	  sprintf (stderrOutputString, "%s%lld\n", rdPrefixHold, readNumHold);
-	  for (std::set<std::pair<int, int> >::iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
+	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
 	       sprintf (tempStderrStr, "Node %d %d %c -> %d %d %c\n", (int) nodeArray[it3141->first].unitig2, (int) nodeArray[it3141->first].frontEdgeOffset, (char) nodeArray[it3141->first].ori, (int) nodeArray[it3141->second].unitig2, (int) nodeArray[it3141->second].frontEdgeOffset, (char) nodeArray[it3141->second].ori);
 	       strcat(stderrOutputString, tempStderrStr); }
 #endif
 	  struct nodePair tNodePair;
-	  for (std::set<std::pair<int, int> >::iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
+	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
 	       tNodePair.node1 = it3141->first;
 	       tNodePair.node2 = it3141->second;
 	       fwdConnections.push_back(tNodePair);
@@ -1706,6 +1751,7 @@ void getSuperReadsForInsert (void)
 		    revStartIndices[j] -= (revNumIndices[j]-1);
 	       else
 		    revStartIndices[j] = 0; }
+
 #ifdef KILL120102
 	  fprintf (stderr, "revStartIndices[1] = %d\n", (int) revStartIndices[1]);
 #endif
@@ -1798,7 +1844,7 @@ void getSuperReadsForInsert (void)
 	       goto mustSplit2;
 
 	  for (int i=overlapMatchIndexHold-1; i>=0; i--) {
-	       std::map<unitigLocStruct, int>::iterator it;
+	       unitigLocMap_iterator it;
 	       int isGood = 0;
 	       tempULS.ori = evenReadMatchStructs[i].ori;
 	       if (evenReadMatchStructs[i].ori == 'F')
@@ -1887,6 +1933,7 @@ void getSuperReadsForInsert (void)
 	       }
 	       generateSuperReadPlacementLinesForJoinedMates();
 	       approxNumPaths = 1;
+	       ++numJoinableAfterRead1Analysis;
 #ifdef KILL120102
 	       fprintf (stderr, "We have successfully joined the mates!\n");
 	       for (unsigned int i=0; i<unitigNodeNumbersForPath.size(); i++) {
@@ -2004,7 +2051,7 @@ void getSuperReadsForInsert (void)
           }
 
           for (int i=overlapMatchIndexHold-1; i>=0; i--) {
-               std::map<unitigLocStruct, int>::iterator it;
+               unitigLocMap_iterator it;
                int isGood = 0;
 	       if (oddReadMatchStructs[i].ori == 'F')
 		    tempULS.ori = 'R';
@@ -2083,6 +2130,7 @@ void getSuperReadsForInsert (void)
                }
                if (nodeIntArray.size() > 1) {
                     lastGoodNodeNumber = localLoopNodeNumber;
+		    ++numJoinableUnresolvedAtEnd;
                     while (! nodeIntArray.empty())
                          nodeIntArray.pop();
                     break; }
@@ -2105,6 +2153,7 @@ void getSuperReadsForInsert (void)
                }
                generateSuperReadPlacementLinesForJoinedMates();
                approxNumPaths = 1;
+	       ++numJoinableAfterBothReadAnalysis;
 #ifdef KILL120102
 	       fprintf (stderr, "We have successfully joined the mates!\n");
 	       for (unsigned int i=0; i<unitigNodeNumbersForPath.size(); i++) {

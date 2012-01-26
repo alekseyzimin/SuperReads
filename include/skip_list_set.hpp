@@ -18,16 +18,7 @@
 #include <algorithm>
 #include <cstring>
 #include <stdint.h>
-
-// Count trailing zeros
-template<typename T>
-int ctz(T x);
-template<>
-int ctz<unsigned int>(unsigned int x) { return __builtin_ctz(x); }
-template<>
-int ctz<unsigned long>(unsigned long x) { return __builtin_ctzl(x); }
-template<>
-int ctz<unsigned long long>(unsigned long long x) { return __builtin_ctzll(x); }
+#include <gcc_builtins.hpp>
 
 // Random function
 // struct std_random {
@@ -74,6 +65,7 @@ struct random_height<Random, 4> {
 // Set based on a skip list
 template <typename Key, typename Compare = std::less<Key>, int p_ = 4, typename Random = xor_random>
 class skip_list_set {
+protected:
   struct node {
     Key   k;
     int   height;
@@ -99,50 +91,68 @@ public:
   typedef const Key*                            const_pointer;
   static const int p = p_;
 
-  // This template stuff for defining the iterator and const_iterator
-  // is barely worth it. It is hardly shorter and more confusing.
-  template<typename ref_type, typename ptr_type>
-  class node_iterator : public std::iterator<std::forward_iterator_tag, key_type> {
+  class node_iterator {
+  protected:
     node* item;
-    friend class skip_list_set;
     node_iterator(node* item_) : item(item_) { }
-  public:
-    node_iterator() : item(0) { }
     node_iterator(const node_iterator& rhs) : item(rhs.item) { }
-
-    node_iterator& operator=(const node_iterator& rhs) {
-      item = rhs.item;
-      return *this;
-    }    
+    void next() { item = item->tower[0]; }
+  public:
     bool operator==(const node_iterator& rhs) const { return item == rhs.item; }
     bool operator!=(const node_iterator& rhs) const { return item != rhs.item; }
-    ref_type operator*() { return item->k; }
-    ptr_type operator->() { return &item->k; }
-    node_iterator& operator++() {
-      item = item->tower[0];
+  };
+
+  class iterator : public std::iterator<std::forward_iterator_tag, key_type>,
+                   public node_iterator {
+    friend class skip_list_set;
+    iterator(node* item_) : node_iterator(item_) { }
+  public:
+    iterator() : node_iterator(0) { }
+    iterator(const node_iterator& rhs) : node_iterator(rhs) { }
+
+    iterator& operator=(iterator rhs) {
+      std::swap(node_iterator::item, rhs.item);
+      return *this;
+    }    
+    reference operator*() { return node_iterator::item->k; }
+    pointer operator->() { return &node_iterator::item->k; }
+    iterator& operator++() {
+      node_iterator::next();
       return *this;
     }
-    node_iterator operator++(int) {
-      node_iterator c(*this);
-      item = item->tower[0];
+    iterator operator++(int) {
+      iterator c(*this);
+      node_iterator::next();
       return c;
     }
   };
-  typedef node_iterator<reference, pointer> iterator;
-  class const_iterator : public node_iterator<const_reference, const_pointer> {
-    typedef node_iterator<const_reference, const_pointer> super;
+  class const_iterator : public std::iterator<std::forward_iterator_tag, key_type>,
+                         public node_iterator {
     friend class skip_list_set;
-    const_iterator(node* item_) : super(item_) { }
+    const_iterator(node* item_) : node_iterator(item_) { }
   public:
-    const_iterator() : super(0) { }
-    const_iterator(const const_iterator& rhs) : super(rhs.item) { }
-    const_iterator(const iterator& rhs) : super(rhs.item) { }
-    using super::operator==;
-    using super::operator!=;
-    bool operator==(const iterator& rhs) const { return super::item == rhs.item; }
-    bool operator!=(const iterator& rhs) const { return super::item != rhs.item; }
+    const_iterator() : node_iterator(0) { }
+    const_iterator(const const_iterator& rhs) : node_iterator(rhs) { }
+    const_iterator(const iterator& rhs) : node_iterator(rhs) { }
+
+    const_iterator& operator=(node_iterator rhs) {
+      swap(node_iterator::item, rhs.item);
+      return *this;
+    }    
+    const_reference operator*() { return node_iterator::item->k; }
+    const_pointer operator->() { return &node_iterator::item->k; }
+    const_iterator& operator++() {
+      node_iterator::next();
+      return *this;
+    }
+    const_iterator operator++(int) {
+      const_iterator c(*this);
+      node_iterator::next();
+      return c;
+    }
   };
 
+  
   explicit skip_list_set(const Compare& comp = Compare(), 
                          const Random& rand = Random()) :
     heads_(new node*[10]), max_height_(10), cur_height_(1), size_(0),
@@ -215,14 +225,13 @@ public:
     size_ = 0;
   }
 
-  size_type count(const key_type& x) const {
-    node **path[max_height_];
-    if(find_node_path(x, path))
-      return 1;
-    return 0;
+  template<typename T>
+  size_type count(const T& x) const {
+    return find_node(x) ? 1 : 0;
   }
 
-  std::pair<iterator, iterator> equal_range(const key_type& x) const {
+  template<typename T>
+  std::pair<iterator, iterator> equal_range(const T& x) const {
     node **path[max_height_];
     node *n = find_node_path(x, path);
     if(n)
@@ -242,23 +251,25 @@ public:
     return 1;
   }
 
-  iterator find(const key_type& x) const {
-    node** path[max_height_];
-    return iterator(find_node_path(x, path));
+  template<typename T> // T typically key_type
+  iterator find(const T& x) const {
+    return iterator(find_node(x));
   }
 
   key_compare key_comp() const { return comp_; }
   value_compare value_comp() const { return comp_; }
 
-  iterator lower_bound(const key_type& x) const {
+  template<typename T> // T typically key_type
+  iterator lower_bound(const T& x) const {
     node** path[max_height_];
     find_node_path(x, path);
     return iterator(*path[0]);
   }
 
-  iterator upper_bound(const key_type& x) const {
+  template<typename T>
+  iterator upper_bound(const T& x) const {
     node** path[max_height_];
-    node* n =find_node_path(x, path);
+    node*  n = find_node_path(x, path);
     if(n)
       return ++iterator(n);
     return iterator(*path[0]);
@@ -286,21 +297,14 @@ public:
     n = new_node(x);
     const int height = std::min(n->height, cur_height_);
     int i;
-    for(i = 0; i < height - 3; i += 4) {
-      n->tower[  i] = *path[  i]; *path[  i] = n;
-      n->tower[i+1] = *path[i+1]; *path[i+1] = n;
-      n->tower[i+2] = *path[i+2]; *path[i+2] = n;
-      n->tower[i+3] = *path[i+3]; *path[i+3] = n;
-    }
-    switch(height - i) {
-    case 3: n->tower[i] = *path[i]; *path[i++] = n;
-    case 2: n->tower[i] = *path[i]; *path[i++] = n;
-    case 1: n->tower[i] = *path[i]; *path[i  ] = n;
+    for(i = 0; i < height; ++i) {
+      n->tower[i] = *path[i];
+      *path[i]    = n;
     }
     if(n->height > cur_height_) {
-      for(int i = cur_height_; i < n->height; ++i) {
-        n->tower[i] = 0;
-        heads_[i] = n;
+      for(i = cur_height_; i < n->height; ++i) {
+        n->tower[i] = 0; 
+        heads_[i]   = n;
       }
       cur_height_ = n->height;
     }
@@ -319,24 +323,56 @@ public:
       insert(*first);
   }
   
-private:
+protected:
   // Find the node path. I.e. the addresses of the pointers that leads
   // to the largest element less than x. If a node with a value
   // equivalent to x is found, a pointer to the node is returned and
   // path has an undefined value. Otherwise, 0 is returned and the
   // path array is initialized.
-  node* find_node_path(const value_type& x, node*** path) const {
-    node*  cnode = 0;
-    for(int i = cur_height_ - 1; i >= 0; --i) {
-      node** cptr = cnode ? &cnode->tower[i] : &heads_[i];
-      while(*cptr && comp_((*cptr)->k, x)) {
-        cnode = *cptr;
-        cptr  = &((*cptr)->tower[i]);
+  //
+  // T is whatever type that can be compared with the elements in the set
+  template<typename T>
+  node* find_node_path(const T& x, node*** path) const {
+    int i = cur_height_ - 1;
+    for( ; i >= 0 && !(heads_[i] && comp_(heads_[i]->k, x)); --i)
+      path[i] = &heads_[i];
+    if(i >= 0) {
+      for(node* cnode = heads_[i]; i >= 0; --i) {
+        node* nnode = cnode->tower[i];
+        while(nnode && comp_(nnode->k, x)) {
+          cnode = nnode;
+          nnode = nnode->tower[i];
+        }
+        path[i] = &(cnode->tower[i]);
       }
-      path[i] = cptr;
     }
     // Check if we found a node equal to x. If so, return it.
-    return *path[0] && !comp_(x,(*path[0])->k) ? *path[0] : 0;
+    node* lnode = *path[0];
+    return lnode && !comp_(x, lnode->k) ? lnode : 0;
+  }
+
+  // Find a node. Equivalent to find_node_path, but the path is not
+  // recorded. Maybe a tad faster.
+  template<typename T>
+  node* find_node(const T& x) const {
+    int i = cur_height_ - 1;
+    for( ; i >= 0 && !(heads_[i] && comp_(heads_[i]->k, x)); --i) ;
+    if(i < 0) {
+      if(heads_[0] && !comp_(x, heads_[0]->k))
+        return heads_[0];
+      return 0;
+    }
+
+    for(node* cnode = heads_[i]; i >= 0; --i) {
+      node* nnode = cnode->tower[i];
+      while(nnode && comp_(nnode->k, x)) {
+        cnode = nnode;
+        nnode = nnode->tower[i];
+      }
+      if(nnode && !comp_(x, nnode->k))
+        return nnode;
+    }
+    return 0;
   }
 
   // Allocate a new node. Does raw memory allocation of a node with
@@ -373,8 +409,14 @@ private:
   //     std::cout << "check " << i << ": " << (void*)path[i] << ":"
   //               << (path[i] ? (void*)*path[i] : (void*)0) << std::endl;
   //   }
-  // }
+  // }  
 };
 
+// Equality operators between iterators
+// template <typename Key, typename Compare, int p_, typename Random>
+// bool operator==(skip_list_set<Key, Compare, p_, Random::iterator,
+//                 skip_list_set<Key, Compare, p_, Random::const_iterator) {
+//   return 
+// }
 
 #endif /* __SKIP_LIST_SET_HPP */
