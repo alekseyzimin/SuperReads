@@ -26,7 +26,7 @@ typedef const char*(*encode_fn)(const char* str);
 typedef const char*(*decode_fn)(const char* str);
 
 // Function pointer to encode (if so desired) the names.
-const char* identity(const char* str) { return str; }
+const char* str_identity(const char* str) { return str; }
 const char* dup(const char* str) { return strdup(str); }
 const char* fib_decode(const char* str) {
   static charb buffer;
@@ -80,7 +80,7 @@ int main (int argc, char **argv)
     decode = fib_decode;
   } else {
     encode = dup;
-    decode = identity;
+    decode = str_identity;
   }
 
   name_filter *filter;

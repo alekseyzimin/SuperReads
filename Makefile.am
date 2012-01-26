@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-AM_CXXFLAGS = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -Werror $(JELLYFISH_CFLAGS)
+AM_CXXFLAGS = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -Werror $(JELLYFISH_CFLAGS) -std=c++0x
 AM_LDFLAGS = -lpthread $(JELLYFISH_LIBS)
 
 noinst_HEADERS =

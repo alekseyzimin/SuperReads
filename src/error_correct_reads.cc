@@ -17,6 +17,10 @@
 #include <vector>
 #include <memory>
 
+#ifndef typeof
+#define typeof __typeof__
+#endif
+
 #include <jellyfish/dbg.hpp>
 #include <jellyfish/atomic_gcc.hpp>
 #include <jellyfish/mer_counting.hpp>

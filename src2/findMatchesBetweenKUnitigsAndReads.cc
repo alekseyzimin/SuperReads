@@ -11,6 +11,10 @@
    5/13/11: Use the '-t' flag to specify how many threads should run.
 */
 
+#ifndef typeof
+#define typeof __typeof__
+#endif
+
 #include <jellyfish/err.hpp>
 #include <jellyfish/mer_counting.hpp>
 #include <jellyfish/parse_read.hpp>

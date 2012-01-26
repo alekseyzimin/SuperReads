@@ -14,6 +14,10 @@
     along with k_unitig.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef typeof
+#define typeof __typeof__
+#endif
+
 #include <jellyfish/err.hpp>
 #include <jellyfish/mapped_file.hpp>
 #include <jellyfish/mer_counting.hpp>

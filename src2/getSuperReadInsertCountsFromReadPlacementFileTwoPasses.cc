@@ -25,7 +25,7 @@ struct str_comp {
 typedef const char*(*coding_fn)(const char* str);
 
 // Function pointer to encode (if so desired) the names.
-const char* identity(const char* str) { return str; }
+const char* str_identity(const char* str) { return str; }
 const char* str_dup(const char* str) { return strdup(str); }
 const char* fib_decode(const char* str) {
   static charb buffer;
@@ -109,7 +109,7 @@ int main (int argc, char **argv)
   }
 
   // Output result
-  coding_fn decode = args.fib_flag ? fib_decode : identity;
+  coding_fn decode = args.fib_flag ? fib_decode : str_identity;
   for (map_store::iterator it = ms.map.begin(); it != ms.map.end(); ++it)
     if(it->second > 1)
       output << it->second << " " << decode(it->first) << "\n";
