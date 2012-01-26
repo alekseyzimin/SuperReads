@@ -46,10 +46,22 @@ TYPED_TEST(ExpandingBufferDefault, Initialization) {
   // Again, only for remaper
   // for(typename TypeParam::iterator it = b.begin(); it != b.end(); ++it)
   //   EXPECT_TRUE(*it == 0 || *it == (it - b.begin()));
+}
 
-  b.push_back(5001);
-  EXPECT_EQ((size_t)5002, b.size());
-  EXPECT_EQ(5001, b.back());
+TYPED_TEST(ExpandingBufferDefault, push_back) {
+  TypeParam b;
+
+  EXPECT_TRUE(b.empty());
+
+  for(int i = 0; i < 100; ++i) {
+    b.push_back(i);
+    EXPECT_FALSE(b.empty());
+    EXPECT_EQ((size_t)(i+1), b.size());
+    EXPECT_EQ(i, b.back());
+  }
+  for(int i = 0; i < 100; ++i) {
+    EXPECT_EQ(i, b[i]);
+  }
 }
 
 TYPED_TEST(ExpandingBufferDefault, Swap) {

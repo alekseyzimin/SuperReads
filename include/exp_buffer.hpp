@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <cstdlib>
 #include <stdexcept>
-#include <iostream>
 #include <reallocators.hpp>
 
 /** A growable array (and expanding buffer) but only suitable for
@@ -101,8 +100,10 @@ public:
   reference back() const { return *(ptr_ - 1); }
   void push_back(const T& x) {
     CHECK;
-    if(ptr_ >= end_)
+    if(!ptr_ || ptr_ >= end_) {
       enlarge();
+      CHECK;
+    }
     *ptr_++ = x; // Should we use the inplace new instead?
     CHECK;
   }
@@ -114,9 +115,11 @@ public:
   bool empty() const { return ptr_ == base_; }
   bool is_null() const { return !base_ || base_ == end_; }
   
-  void reserve(size_type s = 1024) {
+  void reserve(size_type s = 0) {
     CHECK;
     size_type clen = end_ - base_;
+    if(s == 0)
+      s = 1024;
     if(s <= clen)
       return;
     if(s <= 2 * clen)
@@ -158,10 +161,8 @@ public:
     size_type i = _i;
     assert(super::base_ <= super::end_);
     assert(super::base_ <= super::ptr_ && super::ptr_ <= super::end_);
-    if(super::capacity() <= i) {
-      std::cerr << "operator[] " << super::capacity() << " " << super::size() << " " << i << std::endl;
+    if(super::capacity() <= i)
       super::reserve(i + 1);
-    }
     assert(super::base_ <= super::end_);
     assert(super::ptr_ <= super::end_);
     if(super::size() <= i)
