@@ -55,8 +55,7 @@ namespace jflib {
         }
       };
     
-      class mutex
-      {
+      class mutex {
         pthread_mutex_t     _mutex;
     
       public:
@@ -72,9 +71,15 @@ namespace jflib {
         inline void unlock() { pthread_mutex_unlock(&_mutex); }
         inline bool try_lock() { return !pthread_mutex_trylock(&_mutex); }
       };
+
+      class mutex_lock {
+        mutex& m_;
+      public:
+        explicit mutex_lock(mutex& m) : m_(m) { m_.lock(); }
+        ~mutex_lock() { m_.unlock(); }
+      };
     
-      class Semaphore
-      {
+      class Semaphore {
         int _value, _wakeups;
         cond _cv;
       public:

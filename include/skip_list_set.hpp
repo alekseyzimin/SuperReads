@@ -18,54 +18,11 @@
 #include <algorithm>
 #include <cstring>
 #include <stdint.h>
-#include <gcc_builtins.hpp>
-
-// Random function
-// struct std_random {
-//   typedef unsigned long rand_type;
-//   rand_type operator()() { return (rand_type)random(); }
-// };
-
-// XOR RNG by George Marsalia
-struct xor_random {
-  typedef uint64_t rand_type;
-  uint64_t x;
-  rand_type operator()() {
-    x ^= x << 13;
-    x ^= x >> 7;
-    x ^= x << 17;
-    return x;
-  }
-  explicit xor_random() : x(88172645463325252LL) { };
-  explicit xor_random(uint64_t seed) : x(seed) { }
-};
-
-// Return the height of a tower of pointer. Specialized for 2 and 4.
-template<typename Random, int p>
-struct random_height;
-template<typename Random>
-struct random_height<Random, 2> {
-  Random rng;
-  int operator()() {
-    typename Random::rand_type x = rng();
-    return (x == 0 ? 8*sizeof(typename Random::rand_type) : ctz(x)) + 1;
-  }
-  random_height(const Random& rng_ = Random()) : rng(rng_) { }
-};
-template<typename Random>
-struct random_height<Random, 4> {
-  Random rng;
-  int operator()() {
-    typename Random::rand_type x = rng();
-    return (x == 0 ? 4 * sizeof(typename Random::rand_type) : ctz(x) >> 1) + 1;
-  }
-  random_height(const Random& rng_ = Random()) : rng(rng_) { }
-};
+#include <skip_list_common.hpp>
 
 // Set based on a skip list
 template <typename Key, typename Compare = std::less<Key>, int p_ = 4, typename Random = xor_random>
 class skip_list_set {
-protected:
   struct node {
     Key   k;
     int   height;
@@ -91,6 +48,7 @@ public:
   typedef const Key*                            const_pointer;
   static const int p = p_;
 
+public:
   class node_iterator {
   protected:
     node* item;
@@ -102,8 +60,9 @@ public:
     bool operator!=(const node_iterator& rhs) const { return item != rhs.item; }
   };
 
-  class iterator : public std::iterator<std::forward_iterator_tag, key_type>,
-                   public node_iterator {
+  class iterator : 
+    public std::iterator<std::forward_iterator_tag, key_type>,
+    public node_iterator {
     friend class skip_list_set;
     iterator(node* item_) : node_iterator(item_) { }
   public:
@@ -126,8 +85,9 @@ public:
       return c;
     }
   };
-  class const_iterator : public std::iterator<std::forward_iterator_tag, key_type>,
-                         public node_iterator {
+  class const_iterator :
+    public std::iterator<std::forward_iterator_tag, key_type>,
+    public node_iterator {
     friend class skip_list_set;
     const_iterator(node* item_) : node_iterator(item_) { }
   public:
