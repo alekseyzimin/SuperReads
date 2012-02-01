@@ -1,5 +1,5 @@
 // For usage, see --help
-
+#define DEBUG 1
 #define NEW_STUFF // Put in to get node-to-node connections
 // #define KILLED111115
 #include <stdio.h>
@@ -27,9 +27,11 @@
 #include <heap.hpp>
 #include <exp_buffer.hpp>
 #include <src2/joinKUnitigs_v3.hpp>
-extern "C" {
-#include <src2/redBlackTreesInsertOnly.h>
-}
+#include <rb_tree.hpp>
+// TODO: to delete
+// extern "C" {
+// #include <src2/redBlackTreesInsertOnly.h>
+// }
 
 #define DEFAULT_MAX_OFFSET_CONSIDERED_SAME 5
 #define MAX_OFFSET_TO_TEST 10000
@@ -84,18 +86,17 @@ struct unitigLocStruct
 // It is set artificially to the length of the first unitig to start
 struct abbrevUnitigLocStruct
 {
-     int frontEdgeOffset;
-     unsigned short pathNum; 
-     char ori;
-};
+     int            frontEdgeOffset;
+  mutable unsigned short pathNum; 
+     char           ori;
 
-struct unitigPathPrintStruct
-{
-     int unitig1;
-     int frontEdgeOffset;
-     int numOverlapsIn;
-     int numOverlapsOut;
-     char ori;
+  bool operator<(const abbrevUnitigLocStruct& rhs) const {
+    if(ori != rhs.ori) return ori < rhs.ori;
+    return frontEdgeOffset < rhs.frontEdgeOffset;
+  }
+  bool operator==(const abbrevUnitigLocStruct& rhs) const {
+    return ori == rhs.ori && frontEdgeOffset == rhs.frontEdgeOffset;
+  }
 };
 
 struct kuniToReadMatchStruct
@@ -211,11 +212,14 @@ FILE *Popen (const char *fn, const char *mode);
 int getOvlLenFromOvlIndicesPlus (int maxOvlIndex, int j, int maxOvlLen, int whichEnd);
 int findOtherOverlapIndex (int ovlIndex1);
 void printIfGood (struct abbrevUnitigLocStruct *ptr);
-void completePathPrint (struct abbrevUnitigLocStruct *ptr);
-void printPathNode (struct unitigPathPrintStruct *ptr);
+template<typename T>
+void completePathPrint (const T& ptr);
+template<typename T>
+void printPathNode (const T& ptr);
 int setSuperReadNameFromAugmentedPath (void);
 int getSuperReadLength(void);
-void funcToGetTreeSize (abbrevUnitigLocStruct *ptr); // Adds 1 to treeSize (a global) each time
+template<typename T>
+void funcToGetTreeSize (const T& ptr); // Adds 1 to treeSize (a global) each time
 void findSingleReadSuperReads(char *readName);
 void getSuperReadsForInsert (void);
 int processKUnitigVsReadMatches (char *inputFilename, char *outputFilename);
@@ -225,14 +229,62 @@ int getInt (const char *fname);
      int getFldsFromLine (char *cptrHold);
 
 // RB tree data stuff
-     struct RBTreeStruct *treeArr, *treeArr2;
-     struct dataArrayStruct dataArr, dataArr2;
-     int abbrevLocStructCompForSearch (struct abbrevUnitigLocStruct *ptr1,
-				       struct abbrevUnitigLocStruct *ptr2);
-     int abbrevLocStructCompForSort (struct abbrevUnitigLocStruct *ptr1,
-				     struct abbrevUnitigLocStruct *ptr2);
-     int unitigPathPrintStructComp (struct unitigPathPrintStruct *ptr1,
-				    struct unitigPathPrintStruct *ptr2);
+typedef std::set<abbrevUnitigLocStruct> unitig_ori_offsets;
+typedef std::map<int, unitig_ori_offsets> unitig_to_ori_offsets;
+unitig_to_ori_offsets treeArr;
+
+struct unitigPathPrintStruct
+{
+     int unitig1;
+     int frontEdgeOffset;
+  mutable int numOverlapsIn;
+  mutable int numOverlapsOut;
+     char ori;
+
+  bool operator<(const unitigPathPrintStruct& rhs) const {
+    if(unitig1 == mateUnitig2) return false;
+    if(rhs.unitig1 == mateUnitig2) return true;
+    if(frontEdgeOffset != rhs.frontEdgeOffset) return frontEdgeOffset < rhs.frontEdgeOffset;
+    if(unitig1 != rhs.unitig1) return unitig1 < rhs.unitig1;
+    return ori < rhs.ori;
+  }
+};
+typedef std::set<unitigPathPrintStruct> unitig_print_path;
+unitig_print_path treeArr2;
+
+
+// TODO: merge and template the following two functions
+unitig_ori_offsets::iterator find_within(unitig_ori_offsets& tree,
+                                            abbrevUnitigLocStruct x, int delta) {
+  x.frontEdgeOffset -= (delta - 1);
+  auto res = tree.lower_bound(x);
+  if(res == tree.end())
+    return res;
+  if(res->frontEdgeOffset > x.frontEdgeOffset + 2 * delta)
+    return tree.end();
+  return res;
+}
+
+unitig_print_path::iterator find_within(unitig_print_path& tree,
+                                        unitigPathPrintStruct x, int delta) {
+  x.frontEdgeOffset -= (delta - 1);
+  auto res = tree.lower_bound(x);
+  if(res == tree.end())
+    return res;
+  if(res->frontEdgeOffset > x.frontEdgeOffset + 2 * delta)
+    return tree.end();
+  return res;
+}
+
+// TODO: to delete
+     // struct RBTreeStruct *treeArr, *treeArr2;
+     // struct dataArrayStruct dataArr, dataArr2;
+     // int abbrevLocStructCompForSearch (struct abbrevUnitigLocStruct *ptr1,
+     //    			       struct abbrevUnitigLocStruct *ptr2);
+     // int abbrevLocStructCompForSort (struct abbrevUnitigLocStruct *ptr1,
+     //    			     struct abbrevUnitigLocStruct *ptr2);
+     // int unitigPathPrintStructComp (struct unitigPathPrintStruct *ptr1,
+     //    			    struct unitigPathPrintStruct *ptr2);
 // }
 
 #ifndef mallocOrDie
@@ -255,9 +307,9 @@ int main (int argc, char **argv)
 
      maxTotAllowableMissingOnEnds = 2;
      minOverlapLength = 40;
-#if KILLED111115
-     outfile = stdout;
-#endif
+     //#if KILLED111115
+     outfile = stderr;
+     //#endif
 
      maxDiffInsertSizesForPrinting = 5;
      minOverlapLength              = args.min_overlap_length_arg;
@@ -400,15 +452,16 @@ int main (int argc, char **argv)
 	  startOverlapIndexByUnitig2[unitigNum] = startOverlapByUnitig[unitigNum];
 
 // Set up the RB trees
-     initializeEmptyTrees (treeArr, numUnitigs + 1, dataArr,
-			   struct abbrevUnitigLocStruct, abbrevLocStructCompForSort,
-			   abbrevLocStructCompForSearch);
-     mallocOrDie (treeReinitList, numUnitigs + 1, int);
+// TODO: to delete
+     // initializeEmptyTrees (treeArr, numUnitigs + 1, dataArr,
+     //    		   struct abbrevUnitigLocStruct, abbrevLocStructCompForSort,
+     //    		   abbrevLocStructCompForSearch);
+     // mallocOrDie (treeReinitList, numUnitigs + 1, int);
     
 // Set up the RB tree for the final paths
-     initializeEmptyTreesWithDataSize (treeArr2, 1, dataArr2,
-				       struct unitigPathPrintStruct, 40000, unitigPathPrintStructComp,
-				       unitigPathPrintStructComp);
+     // initializeEmptyTreesWithDataSize (treeArr2, 1, dataArr2,
+     //    			       struct unitigPathPrintStruct, 40000, unitigPathPrintStructComp,
+     //    			       unitigPathPrintStructComp);
 
 // Unitig in the overlaps file
      for(int j=0;j<overlapCount;j++)
@@ -441,40 +494,40 @@ int main (int argc, char **argv)
 #endif
      int ret;
      for(int i = 0; i < args.num_file_names_arg; ++i) {
-	  switch(fork()) {
-	  case -1:
-	       perror("fork failed");
-	       exit(1);
+	  // switch(fork()) {
+	  // case -1:
+	  //      perror("fork failed");
+	  //      exit(1);
 	       
-	  case 0:
+	  // case 0:
                sprintf(readVsKUnitigFileName,"%s_%d",args.input_prefix_arg,i);
                sprintf(outputFileName,"%s_%d",args.prefix_arg,i);
 	       ret=processKUnitigVsReadMatches(readVsKUnitigFileName,outputFileName);
 	       fprintf (stderr, "Num pairs with both reads in same unitig: %d\nNum pairs uniquely joinable: %d\nNum pairs after disambiguation to beginning of insert: %d\nNum pairs after disambiguation to end of insert: %d\nNum still joinable but not uniquely joinable: %d\n", numPairsInOneUnitig, numSimplyJoinable, numJoinableAfterRead1Analysis, numJoinableAfterBothReadAnalysis, numJoinableUnresolvedAtEnd);
-	       exit(ret);
+     //           exit(ret);
 	       
-	  default:
-	       break;
-	  }
+     //      default:
+     //           break;
+     //      }
      }
      
-     //processKUnitigVsReadMatches (readVsKUnitigFile);
+     // //processKUnitigVsReadMatches (readVsKUnitigFile);
      
-     int status;
-     for(int i = 0; i < args.num_file_names_arg; ++i) {
-	  if(wait(&status) == -1) {
-	       perror("wait failed");
-	       exit(1);
-	  }
-	  if(WIFEXITED(status)) {
-	       fprintf(stderr,"sub %d exit status %d\n", i, WEXITSTATUS(status));
-	  } else if(WIFSIGNALED(status)) {
-	       fprintf(stderr,"sub %d signaled %d coredumped %d\n",
-		      i, WTERMSIG(status), WCOREDUMP(status));
-	  } else {
-	       fprintf(stderr,"sub %d at a loss\n", i);
-	  }
-     }
+     // int status;
+     // for(int i = 0; i < args.num_file_names_arg; ++i) {
+     //      if(wait(&status) == -1) {
+     //           perror("wait failed");
+     //           exit(1);
+     //      }
+     //      if(WIFEXITED(status)) {
+     //           fprintf(stderr,"sub %d exit status %d\n", i, WEXITSTATUS(status));
+     //      } else if(WIFSIGNALED(status)) {
+     //           fprintf(stderr,"sub %d signaled %d coredumped %d\n",
+     //    	      i, WTERMSIG(status), WCOREDUMP(status));
+     //      } else {
+     //           fprintf(stderr,"sub %d at a loss\n", i);
+     //      }
+     // }
      
      munmap(overlapData, stat_buf.st_size);
      
@@ -585,18 +638,16 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
      int lastOffsetToTest = 6000, lastOffsetToTestIfNotMate2, maxOffsetToAllow;
      int j;
      struct unitigLocStruct unitigLocVal;
-     struct abbrevUnitigLocStruct abbrevUnitigLocVal, *abbRLPtr;
+     struct abbrevUnitigLocStruct abbrevUnitigLocVal;
      size_t maxNodes;
-     char *vptr;
      int unitig1, unitig2;
      char ori; 
      int offset;
-     int elementIndex;
      int overlapLength;
      int ahg, bhg;
      int forcedStop;
 
-//     fprintf (stderr, "In joinKUnitigsFromMates\n");
+     //     fprintf (stderr, "In joinKUnitigsFromMates\n");
      lastOffsetToTest = insertLengthMean+4*insertLengthStdev;
      // The following assumes that all the overlaps are of length
      // minOverlapLength
@@ -611,16 +662,19 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
      numTreesUsed = 0;
      abbrevUnitigLocVal.frontEdgeOffset = unitigLocVal.frontEdgeOffset;
      abbrevUnitigLocVal.ori = unitigLocVal.ori;
-     // We may want to change the following
-     if (treeArr[mateUnitig1].root == TREE_NIL)
-     {
-	  treeReinitList[numTreesUsed] = mateUnitig1;
-	  numTreesUsed++;
-     }
      abbrevUnitigLocVal.pathNum = 0;
-     RBTreeInsertElement (treeArr + mateUnitig1, (char *) &abbrevUnitigLocVal);
+     // TODO: delete
+     // We may want to change the following
+     // if (treeArr[mateUnitig1].root == TREE_NIL)
+     // {
+     //      treeReinitList[numTreesUsed] = mateUnitig1;
+     //      numTreesUsed++;
+     // }
+     // RBTreeInsertElement (treeArr + mateUnitig1, (char *) &abbrevUnitigLocVal);
+     treeArr[mateUnitig1].insert(abbrevUnitigLocVal);
+     assert(treeArr.find(mateUnitig1) != treeArr.end());
      unitig2 = mateUnitig1; // Initialized to make the compiler happy
-#if 0
+#if 1
      fprintf (stderr, "Inserting at 1 in the RB tree at %d: fEO = %d, pN = %u ori = %c\n", mateUnitig1, abbrevUnitigLocVal.frontEdgeOffset, abbrevUnitigLocVal.pathNum, abbrevUnitigLocVal.ori);
 #endif     
      forward_path_unitigs.clear();
@@ -635,7 +689,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
      nodeArray.push_back(unitigLocVal);
      nodeToIndexMap.insert (std::pair<unitigLocStruct, int> (unitigLocVal, nodeArray.size()-1) );
      maxNodes = 1;
-//     printf ("Got to 30\n");
+     printf ("Got to 30\n");
      forcedStop = 0;
      while (!forward_path_unitigs.empty())
      {
@@ -652,6 +706,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 #if DEBUG
 	  printf ("unitig1 = %d, ", unitig1); fflush (stdout);
 #endif
+          fprintf (stderr, "Got to 40\n");
 	  ori = unitigLocVal.ori;
 	  offset = unitigLocVal.frontEdgeOffset;
 	  abbrevUnitigLocVal.frontEdgeOffset = offset;
@@ -659,11 +714,13 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	  printf ("offset = %d, ", offset); fflush (stdout);
 #endif
 	  abbrevUnitigLocVal.ori = ori;
-	  elementIndex =
-	       treeFindElement (treeArr + unitig1, (char *) &abbrevUnitigLocVal);
-	  assert (elementIndex != TREE_NIL);
-	  setTreeValPtr (vptr, treeArr + unitig1, elementIndex);
-	  abbRLPtr = (abbrevUnitigLocStruct *) vptr;
+          
+          // TODO: delete
+	  // elementIndex =
+	  //      treeFindElement (treeArr + unitig1, (char *) &abbrevUnitigLocVal);
+	  // assert (elementIndex != TREE_NIL);
+	  // setTreeValPtr (vptr, treeArr + unitig1, elementIndex);
+	  // abbRLPtr = (abbrevUnitigLocStruct *) vptr;
 //	  printf ("Got to 40\n");
 	  for (j = startOverlapByUnitig[unitig1];
 	       j < startOverlapByUnitig[unitig1 + 1]; j++)
@@ -680,6 +737,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 		    overlapLength = unitigLengths[unitig1];
 	       if (overlapLength > unitigLengths[unitig2])
 		    overlapLength = unitigLengths[unitig2];
+               fprintf (stderr, "Got to 42\n");
 #if DEBUG
 	       printf ("; ovl len = %d", overlapLength);
 #endif
@@ -690,6 +748,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 #endif
 		    continue;
 	       }
+               fprintf (stderr, "Got to 43\n");
 #endif
 #if DEBUG
 	       printf ("; unitig2 = %d, ori = %c, ahg = %d, bhg = %d\n", unitig2,
@@ -700,6 +759,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	       {
 		    if (overlapData[j].bhg <= 0) 
 			 continue;
+               fprintf (stderr, "Got to 44\n");
 		    bhg = overlapData[j].bhg;
 		    if (overlapData[j].ori == 'N')
 			 abbrevUnitigLocVal.ori = 'F';
@@ -709,6 +769,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	       }
 	       else
 	       {
+               fprintf (stderr, "Got to 45\n");
 		    if (overlapData[j].ahg >= 0)
 			 continue;
 		    ahg = overlapData[j].ahg;
@@ -716,12 +777,14 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 			 abbrevUnitigLocVal.ori = 'R';
 		    else
 			 abbrevUnitigLocVal.ori = 'F';
+               fprintf (stderr, "Got to 48\n");
 		    abbrevUnitigLocVal.frontEdgeOffset = offset - ahg;
 	       }
 	       // Skip if the offset is too large
 #if DEBUG
 	       printf ("frontEdgeOffset = %d, lastOffsetToTest = %d\n", abbrevUnitigLocVal.frontEdgeOffset, lastOffsetToTest);
 #endif
+               fprintf (stderr, "Got to 52\n");
 	       if (unitig2 == mateUnitig2)
 		    maxOffsetToAllow = lastOffsetToTest;
 	       else
@@ -732,32 +795,47 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	       printf ("cur front = %d\n", abbrevUnitigLocVal.frontEdgeOffset);
 #endif
 	       // Skip if abbrevUnitigLocVal al unitig y seen for unitig2
-	       elementIndex =
-		    treeFindElement (treeArr + unitig2, (char *) &abbrevUnitigLocVal);
-	       setTreeValPtr (vptr, treeArr + unitig2, elementIndex);
-	       abbRLPtr = (abbrevUnitigLocStruct *) vptr;
+               // TODO: delete
+	       // elementIndex =
+	       //      treeFindElement (treeArr + unitig2, (char *) &abbrevUnitigLocVal);
+	       // setTreeValPtr (vptr, treeArr + unitig2, elementIndex);
+	       // abbRLPtr = (abbrevUnitigLocStruct *) vptr;
+               fprintf (stderr, "Got to 54\n");
+               auto unitig2_tree = treeArr.find(unitig2);
+               fprintf(stderr, "After find\n");
+               if(unitig2_tree != treeArr.end()) {
+                 fprintf (stderr, "Got to 57\n");
+                 auto element = find_within(unitig2_tree->second, abbrevUnitigLocVal,
+                                            DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+                 if(element != unitig2_tree->second.end())
+                   continue;
+               }
 	       
-//	       printf ("Got to 60\n");
-	       if (elementIndex != TREE_NIL)
-		    continue;
+	       fprintf (stderr, "Got to 60\n");
+               // TODO: delete
+	       // if (elementIndex != TREE_NIL)
+	       //      continue;
 #if DEBUG
-	       printf ("Adding to the tree\n");
+	       fprintf (stderr, "Adding to the tree\n");
 #endif
 	       // Insert this value in the priority queue
 	       unitigLocVal.unitig2 = unitig2;
 	       unitigLocVal.frontEdgeOffset = abbrevUnitigLocVal.frontEdgeOffset;
 	       unitigLocVal.ori = abbrevUnitigLocVal.ori;
                forward_path_unitigs.push(unitigLocVal);
-	       if (treeArr[unitig2].root == TREE_NIL)
-	       {
-		    // If unitig2's tree never seen before
-		    //    Add unitig2 to list of trees to reinit
-		    treeReinitList[numTreesUsed] = unitig2;
-		    numTreesUsed++;
-	       }
-	       // Add offset to list for tree
 	       abbrevUnitigLocVal.pathNum = 0;
-	       RBTreeInsertElement (treeArr + unitig2, (char *) &abbrevUnitigLocVal);
+               // TODO: delete
+	       // if (treeArr[unitig2].root == TREE_NIL)
+	       // {
+	       //      // If unitig2's tree never seen before
+	       //      //    Add unitig2 to list of trees to reinit
+	       //      treeReinitList[numTreesUsed] = unitig2;
+	       //      numTreesUsed++;
+	       // }
+	       // Add offset to list for tree
+	       // RBTreeInsertElement (treeArr + unitig2, (char *) &abbrevUnitigLocVal);
+               treeArr[unitig2].insert(abbrevUnitigLocVal);
+
 //	       fprintf (stderr, "Inserting at 2 in the RB tree at %d: fEO = %d, pN = %u ori = %c\n", unitig2, abbrevUnitigLocVal.frontEdgeOffset, abbrevUnitigLocVal.pathNum, abbrevUnitigLocVal.ori);
 #if DEBUG
 //		if ((unitig2 == mateUnitig2) && (abbrevUnitigLocVal.ori == 'R'))
@@ -768,7 +846,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	       //   Make sure the root of the tree is updated (if needed)
 	  }			// End of going through overlaps for unitig
 //	  if (maxNodes > MAX_NODES_ALLOWED)
-	  if (treeArr[unitig2].dataArrayPtr->arraySize > MAX_NODES_ALLOWED) {
+          if (treeArr[unitig2].size() > MAX_NODES_ALLOWED) {
 	       forcedStop = 1;
 	       break; }
      }			// Ends !forward_path_unitigs.empty() line
@@ -839,7 +917,8 @@ void printIfGood (struct abbrevUnitigLocStruct *ptr)
      }
 }
 
-void printPathNode (struct unitigPathPrintStruct *ptr)
+template<typename T>
+void printPathNode (const T& ptr) // take a ptr/iterator to a unitigPathPrintStruct
 {
      int beginOffset, endOffset;
      if (ptr->ori == 'F') {
@@ -865,28 +944,28 @@ void printPathNode (struct unitigPathPrintStruct *ptr)
 	  approxNumPaths += (ptr->numOverlapsOut - 1);
 }
 
-void completePathPrint (struct abbrevUnitigLocStruct *ptr)
+template<typename T> // A pointer/iterator to a struct abbrevUnitigLocStruct
+void completePathPrint (T& ptr)
 {
-     struct abbrevUnitigLocStruct abbrevUnitigLocVal, *abbRLPtr;
+  struct abbrevUnitigLocStruct abbrevUnitigLocVal;
      struct unitigLocStruct unitigLocVal;
-     struct unitigPathPrintStruct unitigPathPrintVal, *rppvPtr1, *rppvPtr2;
+     struct unitigPathPrintStruct unitigPathPrintVal;
      struct unitigConnectionsForPathStruct unitigConnectionsForPathRec;
      char ori;
 #ifdef NEW_STUFF
      char tempOri1, tempOri2;
 #endif
      int isSpecialCase, finalOffset, minConnectingOffset, i, index;
-     int unitig1, unitig2, offset, elementIndex1, elementIndex, overlapLength;
+     int unitig1, unitig2, offset, overlapLength;
      int minConnectingUnitig=0, minConnectingOverlapIndex;
      char minConnectingOri=' ';
-     char *vptr;
      double numStdevsFromMean;
      // In the following we assume we move from left to right when moving from
      // beginUnitig to endUnitig.
      ++curPathNum;
-#if 0
-     printf ("curPathNum = %d, nodePathNum = %d; ", curPathNum, ptr->pathNum);
-     printf ("frontEdgeOffset = %d, ori = %c\n", ptr->frontEdgeOffset, ptr->ori);
+#if 1
+     fprintf (stderr, "curPathNum = %d, nodePathNum = %d; ", curPathNum, ptr->pathNum);
+     fprintf (stderr, "frontEdgeOffset = %d, ori = %c\n", ptr->frontEdgeOffset, ptr->ori);
 #endif
      ori = ptr->ori;
      if (ori != endUnitigOri) return;
@@ -895,9 +974,9 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
      finalOffset = ptr->frontEdgeOffset;
      minConnectingOffset = finalOffset + 1000000;
      numStdevsFromMean = (finalOffset - insertLengthMeanBetweenKUnisForInsertGlobal)/insertLengthStdevGlobal;
-#ifdef KILLED111115
+     //#ifdef KILLED111115
      fprintf (outfile, "%d %f\n", finalOffset, numStdevsFromMean);
-#endif
+     //#endif
      for (i=startOverlapIndexByUnitig2[endUnitig]; i<startOverlapIndexByUnitig2[endUnitig+1]; i++) {
 	  index = unitig2OverlapIndex[i];
 	  unitig1 = overlapData[index].unitig1;
@@ -924,20 +1003,29 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 	  else
 	       abbrevUnitigLocVal.frontEdgeOffset = finalOffset + overlapData[index].ahg;
 //	  printf ("We are at 1\n");
-	  elementIndex = treeFindElement (treeArr + unitig1, (char *) &abbrevUnitigLocVal);
-	  if (elementIndex == TREE_NIL) continue;
-//	  printf ("We are at 2\n");
-	  setTreeValPtr (vptr, treeArr + unitig1, elementIndex);
-	  abbRLPtr = (abbrevUnitigLocStruct *) vptr;
-#if 0
-	  printf ("frontEdgeOffset = %d\n", abbRLPtr->frontEdgeOffset);
+          // TODO: delete
+	  // elementIndex = treeFindElement (treeArr + unitig1, (char *) &abbrevUnitigLocVal);
+	  // if (elementIndex == TREE_NIL) continue;
+	  printf ("We are at 2\n");
+          auto unitig_tree = treeArr.find(unitig1);
+          if(unitig_tree == treeArr.end())
+            continue;
+          auto element = find_within(unitig_tree->second, abbrevUnitigLocVal, 
+                                     DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+          if(element == unitig_tree->second.end())
+            continue;
+          // TODO: delete
+	  // setTreeValPtr (vptr, treeArr + unitig1, elementIndex);
+	  // abbRLPtr = (abbrevUnitigLocStruct *) vptr;
+#if 1
+	  printf ("frontEdgeOffset = %d\n", element->frontEdgeOffset);
 #endif
-	  if (abbRLPtr->frontEdgeOffset < finalOffset) {
+	  if (element->frontEdgeOffset < finalOffset) {
 	       isSpecialCase = 0;
 	       break;
 	  }
-	  else if (abbRLPtr->frontEdgeOffset < minConnectingOffset) {
-	       minConnectingOffset = abbRLPtr->frontEdgeOffset;
+	  else if (element->frontEdgeOffset < minConnectingOffset) {
+	       minConnectingOffset = element->frontEdgeOffset;
 	       minConnectingUnitig = unitig1;
 	       minConnectingOri = abbrevUnitigLocVal.ori;
 	       minConnectingOverlapIndex = index;
@@ -955,14 +1043,19 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 	  unitigPathPrintVal.numOverlapsOut = 0;
 	  unitigPathPrintVal.ori = 'R'; // Forced; may be adjusted later
 	  unitigPathPrintVal.frontEdgeOffset = finalOffset;
-	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+          
+          // TODO: delete
+	  // RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+          treeArr2.insert(unitigPathPrintVal);
 //	  fprintf (stderr, "Inserting at 3 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
 	  unitigPathPrintVal.unitig1 = minConnectingUnitig;
 	  unitigPathPrintVal.frontEdgeOffset = minConnectingOffset;	
   unitigPathPrintVal.numOverlapsIn = 0;
 	  unitigPathPrintVal.numOverlapsOut = 1;
 	  unitigPathPrintVal.ori = minConnectingOri;
-	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+          // TODO
+          //	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+          treeArr2.insert(unitigPathPrintVal);
 //	  fprintf (stderr, "Inserting at 4 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
 	       }
      else {
@@ -977,11 +1070,13 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 #if 0
 	  printf ("Inserting unitig1 = %d, offset = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
 #endif
-	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+          // TODO
+          //	  RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+          treeArr2.insert(unitigPathPrintVal);
 //	  fprintf (stderr, "Inserting at 5 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);   
      }
-#if 0
-     printf ("isSpecialCase = %d, unitigLocVal = %d, %d, %c\n", isSpecialCase, endUnitig, finalOffset, unitigLocVal.ori);
+#if 1
+     fprintf (stderr, "isSpecialCase = %d, unitigLocVal = %d, %d, %c\n", isSpecialCase, endUnitig, finalOffset, unitigLocVal.ori);
 #endif
      backward_path_unitigs.clear();
      backward_path_unitigs.push(unitigLocVal);
@@ -993,17 +1088,20 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 	  unitigPathPrintVal.unitig1 = unitig2;
 	  unitigPathPrintVal.frontEdgeOffset = offset;
 	  unitigPathPrintVal.ori = ori;
-	  elementIndex1 = treeFindElement (treeArr2, (char *) &unitigPathPrintVal);
-	  setTreeValPtr (vptr, treeArr2, elementIndex1);
-	  rppvPtr1 = (unitigPathPrintStruct *) vptr;
-#if 0
-	  printf ("unitig2 = %d, offset = %d, ori = %c; elementIndex1 = %d\n", unitig2, offset, ori, elementIndex1);
+          // TODO: delete
+	  // elementIndex1 = treeFindElement (treeArr2, (char *) &unitigPathPrintVal);
+	  // setTreeValPtr (vptr, treeArr2, elementIndex1);
+	  // rppvPtr1 = (unitigPathPrintStruct *) vptr;
+          auto front_unitig = find_within(treeArr2, unitigPathPrintVal,
+                                          DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+#if 1
+	  fprintf (stderr, "unitig2 = %d, offset = %d, ori = %c\n", unitig2, offset, ori);
 #endif
 	  for (i=startOverlapIndexByUnitig2[unitig2]; i<startOverlapIndexByUnitig2[unitig2+1]; i++) {
 	       index = unitig2OverlapIndex[i];
 	       unitig1 = overlapData[index].unitig1;
-#if 0
-	       printf ("unitig1 = %d\n", unitig1);
+#if 1
+	       fprintf (stderr, "unitig1 = %d\n", unitig1);
 #endif
 	       if (overlapData[index].ahg >= 0)
 		    overlapLength = unitigLengths[unitig1] - overlapData[index].ahg;
@@ -1029,74 +1127,90 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 		    abbrevUnitigLocVal.frontEdgeOffset = offset - overlapData[index].bhg;
 	       else
 		    abbrevUnitigLocVal.frontEdgeOffset = offset + overlapData[index].ahg;
-	       elementIndex = treeFindElement (treeArr + unitig1, (char *) &abbrevUnitigLocVal);
+               // TODO
+	       // elementIndex = treeFindElement (treeArr + unitig1, (char *) &abbrevUnitigLocVal);
+               auto unitig1_tree = treeArr.find(unitig1);
+               if(unitig1_tree == treeArr.end())
+                 continue;
+               auto element = find_within(unitig1_tree->second, abbrevUnitigLocVal, 
+                                          DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+               if(element == unitig1_tree->second.end())
+                 continue;
 //	       printf ("Got to 21, unitig1 = %d\n", unitig1);
 //	       printf ("fEO = %d, pN = %u ori = %c\n", abbrevUnitigLocVal.frontEdgeOffset, abbrevUnitigLocVal.pathNum, abbrevUnitigLocVal.ori);
-	       if (elementIndex == TREE_NIL) continue;
-//	       printf ("Got to 215\n");
-	       setTreeValPtr (vptr, treeArr + unitig1, elementIndex);
-	       abbRLPtr = (abbrevUnitigLocStruct *) vptr;
+// 	       if (elementIndex == TREE_NIL) continue;
+// //	       printf ("Got to 215\n");
+// 	       setTreeValPtr (vptr, treeArr + unitig1, elementIndex);
+// 	       abbRLPtr = (abbrevUnitigLocStruct *) vptr;
 //	       printf ("Got to 22\n");
-	       if (abbRLPtr->frontEdgeOffset >= offset) continue;
-//	       printf ("Got to 23, abbRLVpathNum = %d, curPathNum = %d\n", abbRLPtr->pathNum, curPathNum);
+               
+	       if (element->frontEdgeOffset >= offset) continue;
+//	       printf ("Got to 23, abbRLVpathNum = %d, curPathNum = %d\n", element->pathNum, curPathNum);
 	       // It hasn't been seen in the retrace, so put on the queue
-	       if (abbRLPtr->pathNum < curPathNum) {
-#if 0
-		    printf ("Adding node: unitig2 = %d, offset = %d, ori = %c\n", unitigLocVal.unitig2, unitigLocVal.frontEdgeOffset, unitigLocVal.ori);
+	       if (element->pathNum < curPathNum) {
+#if 1
+                 fprintf (stderr, "Adding node: unitig2 = %d, offset = %d, ori = %c\n", unitigLocVal.unitig2, unitigLocVal.frontEdgeOffset, unitigLocVal.ori);
 #endif
-		    abbRLPtr->pathNum = curPathNum;
+		    element->pathNum = curPathNum;
 		    unitigLocVal.unitig2 = unitig1;
-		    unitigLocVal.frontEdgeOffset = abbRLPtr->frontEdgeOffset;
-		    unitigLocVal.ori = abbRLPtr->ori;
+		    unitigLocVal.frontEdgeOffset = element->frontEdgeOffset;
+		    unitigLocVal.ori = element->ori;
                     backward_path_unitigs.push(unitigLocVal);
 		    unitigPathPrintVal.unitig1 = unitig1;
 		    unitigPathPrintVal.frontEdgeOffset = unitigLocVal.frontEdgeOffset;
 		    unitigPathPrintVal.ori = unitigLocVal.ori;
 		    unitigPathPrintVal.numOverlapsIn = 0;
 		    unitigPathPrintVal.numOverlapsOut = 0;
-		    RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+                    //		    RBTreeInsertElement (treeArr2, (char *) &unitigPathPrintVal);
+                    treeArr2.insert(unitigPathPrintVal);
 //		    fprintf (stderr, "Inserting at 6 in the RB tree at %d: fEO = %d, ori = %c\n", unitigPathPrintVal.unitig1, unitigPathPrintVal.frontEdgeOffset, unitigPathPrintVal.ori);
 	       }
 	       unitigPathPrintVal.unitig1 = unitig1;
-	       unitigPathPrintVal.frontEdgeOffset = abbRLPtr->frontEdgeOffset;
-	       unitigPathPrintVal.ori = abbRLPtr->ori;
-	       elementIndex = treeFindElement (treeArr2, (char *) &unitigPathPrintVal);
-	       setTreeValPtr (vptr, treeArr2, elementIndex);
-	       rppvPtr2 = (unitigPathPrintStruct *) vptr;
-	       int frontEdgeOffset1 = rppvPtr2->frontEdgeOffset;
+	       unitigPathPrintVal.frontEdgeOffset = element->frontEdgeOffset;
+	       unitigPathPrintVal.ori = element->ori;
+               // TODO: delete
+	       // elementIndex = treeFindElement (treeArr2, (char *) &unitigPathPrintVal);
+	       // setTreeValPtr (vptr, treeArr2, elementIndex);
+	       // rppvPtr2 = (unitigPathPrintStruct *) vptr;
+               auto rear_unitig = find_within(treeArr2, unitigPathPrintVal, 
+                                              DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+	       int frontEdgeOffset1 = rear_unitig->frontEdgeOffset;
 	       // The following must be recalced in case the array had to be
 	       // moved due to needing more space
-	       setTreeValPtr (vptr, treeArr2, elementIndex1);
-	       rppvPtr1 = (unitigPathPrintStruct *) vptr;
-	       int frontEdgeOffset2 = rppvPtr1->frontEdgeOffset;
-	       if (frontEdgeOffset2 - frontEdgeOffset1 != unitigLengths[rppvPtr1->unitig1] - minOverlapLength)
+               // TODO: delete
+	       // setTreeValPtr (vptr, treeArr2, elementIndex1);
+	       // rppvPtr1 = (unitigPathPrintStruct *) vptr;
+	       int frontEdgeOffset2 = front_unitig->frontEdgeOffset;
+	       if (frontEdgeOffset2 - frontEdgeOffset1 != unitigLengths[front_unitig->unitig1] - minOverlapLength)
 		    continue;
-	       setTreeValPtr (vptr, treeArr2, elementIndex);
-	       rppvPtr2 = (unitigPathPrintStruct *) vptr;
-	       ++(rppvPtr2->numOverlapsOut);
-	       if (rppvPtr2->numOverlapsOut > 1) {
-		    if (rppvPtr2->frontEdgeOffset < splitJoinWindowMin)
-			 splitJoinWindowMin = rppvPtr2->frontEdgeOffset; }
+               // TODO: delete
+	       // setTreeValPtr (vptr, treeArr2, elementIndex);
+	       // rppvPtr2 = (unitigPathPrintStruct *) vptr;
+	       ++(rear_unitig->numOverlapsOut);
+	       if (rear_unitig->numOverlapsOut > 1) {
+		    if (rear_unitig->frontEdgeOffset < splitJoinWindowMin)
+			 splitJoinWindowMin = rear_unitig->frontEdgeOffset; }
 	       // The following must be recalced in case the array had to be
 	       // moved due to needing more space
-	       setTreeValPtr (vptr, treeArr2, elementIndex1);
-	       rppvPtr1 = (unitigPathPrintStruct *) vptr;
-	       ++(rppvPtr1->numOverlapsIn);
-	       if (rppvPtr1->numOverlapsIn > 1) {
-		    if (rppvPtr1->frontEdgeOffset > splitJoinWindowMax)
-			 splitJoinWindowMax = rppvPtr1->frontEdgeOffset; }
+               // TODO: delete
+	       // setTreeValPtr (vptr, treeArr2, elementIndex1);
+	       // rppvPtr1 = (unitigPathPrintStruct *) vptr;
+	       ++(front_unitig->numOverlapsIn);
+	       if (front_unitig->numOverlapsIn > 1) {
+		    if (front_unitig->frontEdgeOffset > splitJoinWindowMax)
+			 splitJoinWindowMax = front_unitig->frontEdgeOffset; }
 #ifdef NEW_STUFF
-	       tempOri1 = rppvPtr1->ori;
-	       if (rppvPtr1->unitig1 == beginUnitig) tempOri1 = beginUnitigOri;
-	       if (rppvPtr1->unitig1 == endUnitig) tempOri1 = endUnitigOri;
-	       tempOri2 = rppvPtr2->ori;
-	       if (rppvPtr2->unitig1 == beginUnitig) tempOri2 = beginUnitigOri;
-	       if (rppvPtr2->unitig1 == endUnitig) tempOri2 = endUnitigOri;
-//	       printf ("Node (%d, %d, %c) -> (%d, %d, %c)\n", rppvPtr2->unitig1, rppvPtr2->frontEdgeOffset, tempOri2, rppvPtr1->unitig1, rppvPtr1->frontEdgeOffset, tempOri1);
-	       unitigConnectionsForPathRec.unitig1 = rppvPtr2->unitig1;
-	       unitigConnectionsForPathRec.unitig2 = rppvPtr1->unitig1;
-	       unitigConnectionsForPathRec.frontEdgeOffset1 = rppvPtr2->frontEdgeOffset;
-	       unitigConnectionsForPathRec.frontEdgeOffset2 = rppvPtr1->frontEdgeOffset;
+	       tempOri1 = front_unitig->ori;
+	       if (front_unitig->unitig1 == beginUnitig) tempOri1 = beginUnitigOri;
+	       if (front_unitig->unitig1 == endUnitig) tempOri1 = endUnitigOri;
+	       tempOri2 = rear_unitig->ori;
+	       if (rear_unitig->unitig1 == beginUnitig) tempOri2 = beginUnitigOri;
+	       if (rear_unitig->unitig1 == endUnitig) tempOri2 = endUnitigOri;
+//	       printf ("Node (%d, %d, %c) -> (%d, %d, %c)\n", rear_unitig->unitig1, rear_unitig->frontEdgeOffset, tempOri2, front_unitig->unitig1, front_unitig->frontEdgeOffset, tempOri1);
+	       unitigConnectionsForPathRec.unitig1 = rear_unitig->unitig1;
+	       unitigConnectionsForPathRec.unitig2 = front_unitig->unitig1;
+	       unitigConnectionsForPathRec.frontEdgeOffset1 = rear_unitig->frontEdgeOffset;
+	       unitigConnectionsForPathRec.frontEdgeOffset2 = front_unitig->frontEdgeOffset;
 	       unitigConnectionsForPathRec.ori1 = tempOri2;
 	       unitigConnectionsForPathRec.ori2 = tempOri1;
 	       unitigConnectionsForPathData[numUnitigConnectionsForPathData].unitig1 = unitigConnectionsForPathRec.unitig1;
@@ -1151,13 +1265,14 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 #endif
      }
 // #endif
-#if 0
-     printf ("tree root = %d\n", treeArr2[0].root);
-#endif
+
      numUnitigPathPrintRecsOnPath = 0;
      if (treeSize <= maxDiffInsertSizesForPrinting)
-	  inOrderTreeWalk (treeArr2, treeArr2[0].root,
-			   (void (*)(char *)) printPathNode);
+       for(auto it = treeArr2.begin(); it != treeArr2.end(); ++it)
+         printPathNode(it);
+       // TODO: delete
+	  // inOrderTreeWalk (treeArr2, treeArr2[0].root,
+	  //       	   (void (*)(char *)) printPathNode);
 #ifdef KILLED111115
      for (i=0; i<numUnitigPathPrintRecsOnPath; i++)
 	  fprintf (outfile, "uni = %d, offset = %d, ori = %c, beginOffset = %d, endOffset = %d, numOvlsIn = %d, numOvlsOut = %d\n", augmentedUnitigPathPrintData[i].unitig1, augmentedUnitigPathPrintData[i].frontEdgeOffset, augmentedUnitigPathPrintData[i].ori, augmentedUnitigPathPrintData[i].beginOffset, augmentedUnitigPathPrintData[i].endOffset, augmentedUnitigPathPrintData[i].numOverlapsIn, augmentedUnitigPathPrintData[i].numOverlapsOut);
@@ -1188,8 +1303,10 @@ void completePathPrint (struct abbrevUnitigLocStruct *ptr)
 #if 0
      printf ("final offset = %d, arraySize = %d\n", finalOffset, dataArr2.arraySize);
 #endif
-     treeArr2[0].root = TREE_NIL;
-     dataArr2.arraySize = 0;
+     // TODO: delete
+     // treeArr2[0].root = TREE_NIL;
+     // dataArr2.arraySize = 0;
+     treeArr2.clear();
 }
 
 void generateSuperReadPlacementLinesForJoinedMates (void)
@@ -1266,7 +1383,8 @@ int getSuperReadLength(void)
      return (totLen);
 }
 
-void funcToGetTreeSize (abbrevUnitigLocStruct *ptr)
+template<typename T> // A ptr/iterator to a abbrevUnitigLocStruct
+void funcToGetTreeSize (const T& ptr)
 {
      struct unitigLocStruct localUnitigLoc;
      if (ptr->ori == endUnitigOri) {
@@ -1307,54 +1425,55 @@ bool unitigLocStructCompareReversed (struct unitigLocStruct uLS1,
      return (0);
 }
 
-int abbrevLocStructCompForSort (struct abbrevUnitigLocStruct *ptr1,
-				struct abbrevUnitigLocStruct *ptr2)
-{
-     if (ptr1->ori < ptr2->ori)
-	  return (-1);
-     if (ptr1->ori > ptr2->ori)
-	  return (1);
-     if (ptr1->frontEdgeOffset < ptr2->frontEdgeOffset)
-	  return (-1);
-     if (ptr1->frontEdgeOffset > ptr2->frontEdgeOffset)
-	  return (1);
-     return (0);
-}
+// TODO: to delete
+// int abbrevLocStructCompForSort (struct abbrevUnitigLocStruct *ptr1,
+// 				struct abbrevUnitigLocStruct *ptr2)
+// {
+//      if (ptr1->ori < ptr2->ori)
+// 	  return (-1);
+//      if (ptr1->ori > ptr2->ori)
+// 	  return (1);
+//      if (ptr1->frontEdgeOffset < ptr2->frontEdgeOffset)
+// 	  return (-1);
+//      if (ptr1->frontEdgeOffset > ptr2->frontEdgeOffset)
+// 	  return (1);
+//      return (0);
+// }
 
-int abbrevLocStructCompForSearch (struct abbrevUnitigLocStruct *ptr1,
-				  struct abbrevUnitigLocStruct *ptr2)
-{
-     if (ptr1->ori < ptr2->ori)
-	  return (-1);
-     if (ptr1->ori > ptr2->ori)
-	  return (1);
-     if (ptr1->frontEdgeOffset <
-	 ptr2->frontEdgeOffset - DEFAULT_MAX_OFFSET_CONSIDERED_SAME)
-	  return (-1);
-     if (ptr1->frontEdgeOffset >
-	 ptr2->frontEdgeOffset + DEFAULT_MAX_OFFSET_CONSIDERED_SAME)
-	  return (1);
-     return (0);
-}
+// int abbrevLocStructCompForSearch (struct abbrevUnitigLocStruct *ptr1,
+// 				  struct abbrevUnitigLocStruct *ptr2)
+// {
+//      if (ptr1->ori < ptr2->ori)
+// 	  return (-1);
+//      if (ptr1->ori > ptr2->ori)
+// 	  return (1);
+//      if (ptr1->frontEdgeOffset <
+// 	 ptr2->frontEdgeOffset - DEFAULT_MAX_OFFSET_CONSIDERED_SAME)
+// 	  return (-1);
+//      if (ptr1->frontEdgeOffset >
+// 	 ptr2->frontEdgeOffset + DEFAULT_MAX_OFFSET_CONSIDERED_SAME)
+// 	  return (1);
+//      return (0);
+// }
 
-int unitigPathPrintStructComp (struct unitigPathPrintStruct *ptr1,
-			       struct unitigPathPrintStruct *ptr2)
-{
-     if (ptr1->unitig1 == mateUnitig2) {
-	  if (ptr1->unitig1 == ptr2->unitig1)
-	       return (0);
-	  else
-	       return(1);
-     }
-     if (ptr2->unitig1 == mateUnitig2) return(-1);
-     if (ptr1->frontEdgeOffset < ptr2->frontEdgeOffset) return (-1);
-     if (ptr1->frontEdgeOffset > ptr2->frontEdgeOffset) return (1);
-     if (ptr1->unitig1 < ptr2->unitig1) return (-1);
-     if (ptr1->unitig1 > ptr2->unitig1) return (1);
-     if (ptr1->ori < ptr2->ori) return (-1);
-     if (ptr1->ori > ptr2->ori) return (1);
-     return (0);
-}
+// int unitigPathPrintStructComp (struct unitigPathPrintStruct *ptr1,
+// 			       struct unitigPathPrintStruct *ptr2)
+// {
+//      if (ptr1->unitig1 == mateUnitig2) {
+// 	  if (ptr1->unitig1 == ptr2->unitig1)
+// 	       return (0);
+// 	  else
+// 	       return(1);
+//      }
+//      if (ptr2->unitig1 == mateUnitig2) return(-1);
+//      if (ptr1->frontEdgeOffset < ptr2->frontEdgeOffset) return (-1);
+//      if (ptr1->frontEdgeOffset > ptr2->frontEdgeOffset) return (1);
+//      if (ptr1->unitig1 < ptr2->unitig1) return (-1);
+//      if (ptr1->unitig1 > ptr2->unitig1) return (1);
+//      if (ptr1->ori < ptr2->ori) return (-1);
+//      if (ptr1->ori > ptr2->ori) return (1);
+//      return (0);
+// }
 
 FILE *Fopen (const char *fn, const char *mode)
 {
@@ -1580,7 +1699,6 @@ void getSuperReadsForInsert (void)
      int successCode;
      struct abbrevUnitigLocStruct abbULS1;
      struct unitigLocStruct tempULS;
-     int elementIndex=0, elementIndex2=0;
      int numPossibleLengths=0;
      int startValue;
      int pathNum=0;
@@ -1595,6 +1713,12 @@ void getSuperReadsForInsert (void)
      int localFrontEdgeOffset = 0, localSuperReadLength = 0;
      int doMinimalWorkHere;
      int distFromEndOfSuperRead = 0;
+     bool last_element_is_nil = false;
+     unitig_to_ori_offsets::iterator end_tree;
+
+     // Make sure it is initialized
+     abbULS1.frontEdgeOffset = 0;
+     abbULS1.ori = 'F';
 
      // Output the stuff for the old pair
      stderrOutputString[0] = 0;
@@ -1650,21 +1774,28 @@ void getSuperReadsForInsert (void)
 	  approxNumPaths = 0;
 	  beginUnitig = mateUnitig1; beginUnitigOri = mateUnitig1ori;
 	  endUnitig = mateUnitig2; endUnitigOri = mateUnitig2ori;
-	  if (treeArr[mateUnitig2].root == TREE_NIL)
-	       goto afterSuperRead;
+          if(treeArr.find(mateUnitig2) == treeArr.end())
+            goto afterSuperRead;
+          // TODO: delete
+	  // if (treeArr[mateUnitig2].root == TREE_NIL)
+	  //      goto afterSuperRead;
 	  treeSize = 0;
 	  edgeList.clear();
 	  endingNodes.clear();
 	  fwdConnections.clear();
 	  revConnections.clear();
-	  inOrderTreeWalk (treeArr + endUnitig, treeArr[endUnitig].root,
-			   (void (*)(char *)) funcToGetTreeSize);
-#ifdef KILLED111115
+          end_tree = treeArr.find(endUnitig);
+          for(auto it = end_tree->second.begin(); it != end_tree->second.end(); ++it)
+            funcToGetTreeSize(it);
+          // TODO: delete
+	  // inOrderTreeWalk (treeArr + endUnitig, treeArr[endUnitig].root,
+	  //       	   (void (*)(char *)) funcToGetTreeSize);
+          // #ifdef KILLED111115
 	  printf ("treeSize = %d\n", treeSize);
 #ifndef NO_OUTPUT
 	  fprintf (outfile, "endUnitig = %d\n", endUnitig); // This prints
 #endif
-#endif
+          // #endif
 	  // This is where the main print statement is
 	  splitJoinWindowMin = INT_MAX;
 	  splitJoinWindowMax = INT_MIN;
@@ -1675,8 +1806,10 @@ void getSuperReadsForInsert (void)
 
 	  unitigConnectionsForPathData.clear();
 	  numUnitigConnectionsForPathData = 0;
-	  inOrderTreeWalk (treeArr + endUnitig, treeArr[endUnitig].root,
-			   (void (*)(char *)) completePathPrint);
+	  // inOrderTreeWalk (treeArr + endUnitig, treeArr[endUnitig].root,
+	  //       	   (void (*)(char *)) completePathPrint);
+          for(auto it = end_tree->second.begin(); it != end_tree->second.end(); ++it)
+            completePathPrint(it);
 	  if (approxNumPaths == 1)
 	       ++numSimplyJoinable;
 	  if (approxNumPaths <= 1)
@@ -1778,16 +1911,24 @@ void getSuperReadsForInsert (void)
 		    abbULS1.frontEdgeOffset = startValue - evenReadMatchStructs[i].bhg;
 	       else
 		    abbULS1.frontEdgeOffset = startValue + evenReadMatchStructs[i].ahg;
-	       elementIndex = treeFindElement (treeArr + evenReadMatchStructs[i].kUnitigNumber, (char *) &abbULS1);
-	       if (elementIndex == TREE_NIL) {
-#ifdef KILL120102
-		    fprintf (stderr, "%s %d %d %d FAIL %d %d\n", readNameSpace, treeSize, i, abbULS1.frontEdgeOffset, splitJoinWindowMin, splitJoinWindowMax);
-#endif
-		    continue; }
+               // TODO: delete
+// 	       elementIndex = treeFindElement (treeArr + evenReadMatchStructs[i].kUnitigNumber, (char *) &abbULS1);
+// 	       if (elementIndex == TREE_NIL) {
+// #ifdef KILL120102
+// 		    fprintf (stderr, "%s %d %d %d FAIL %d %d\n", readNameSpace, treeSize, i, abbULS1.frontEdgeOffset, splitJoinWindowMin, splitJoinWindowMax);
+// #endif
+// 		    continue; }
+               
 	       // If we get here we have a unitig on the path
-	       char *vptr;
-	       setTreeValPtr (vptr, treeArr+evenReadMatchStructs[i].kUnitigNumber, elementIndex);
-	       pathNum = ((abbrevUnitigLocStruct *) vptr)->pathNum;
+	       // char *vptr;
+	       // setTreeValPtr (vptr, treeArr+evenReadMatchStructs[i].kUnitigNumber, elementIndex);
+               auto match_tree = treeArr.find(evenReadMatchStructs[i].kUnitigNumber);
+               if(match_tree == treeArr.end())
+                 continue;
+               auto element = find_within(match_tree->second, abbULS1,
+                                          DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+               //	       pathNum = ((abbrevUnitigLocStruct *) vptr)->pathNum;
+               pathNum = element->pathNum;
 #ifdef KILL120102
 	       fprintf (stderr, "%s %d %d %d SUCCESS %d %d %d\n", readNameSpace, treeSize, i, abbULS1.frontEdgeOffset, splitJoinWindowMin, splitJoinWindowMax, pathNum);
 #endif
@@ -1804,9 +1945,7 @@ void getSuperReadsForInsert (void)
 	       overlapMatchIndexHold = i;
 	       break;
 	  }
-	  if (elementIndex == TREE_NIL) {
-	       fprintf (stderr, "We should never get to TREE_NIL 1\n");
-	       goto mustSplit2; }
+
 	  if (doMinimalWorkHere) {
 	       localUnitigNumber = evenReadMatchStructs[0].kUnitigNumber;
 	       abbULS1.frontEdgeOffset = unitigLengths[localUnitigNumber];
@@ -1963,6 +2102,7 @@ void getSuperReadsForInsert (void)
 
 	  // Here we are measuring the distance of the frontEdgeOffset
 	  // from the end of the super-read (using a positive distance)
+          last_element_is_nil = false;
           for (int i=oddReadMatchStructs.size()-1; i>=0; i--) {
 	       int distFromEndOfSuperRead = 0;
 	       if (oddReadMatchStructs[i].ori == 'F')
@@ -1979,9 +2119,22 @@ void getSuperReadsForInsert (void)
 	       numPossibleLengths = 0;
 	       for (it1=endingNodes.begin(); it1!=endingNodes.end(); it1++) {
 		    abbULS1.frontEdgeOffset = it1->frontEdgeOffset - distFromEndOfSuperRead;
-		    elementIndex = treeFindElement (treeArr + oddReadMatchStructs[i].kUnitigNumber, (char *) &abbULS1);
-		    if (elementIndex == TREE_NIL)
-			 continue;
+                    auto match_tree = treeArr.find(oddReadMatchStructs[i].kUnitigNumber);
+                    if(match_tree == treeArr.end()) {
+                      last_element_is_nil = true;
+                      continue;
+                    }
+                    auto element = find_within(match_tree->second, abbULS1,
+                                               DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+                    if(element == match_tree->second.end()) {
+                      last_element_is_nil = true;
+                      continue;
+                    }
+                    last_element_is_nil = false;
+                    // TODO: delete
+		    // elementIndex = treeFindElement (treeArr + oddReadMatchStructs[i].kUnitigNumber, (char *) &abbULS1);
+		    // if (elementIndex == TREE_NIL)
+		    //      continue;
 		    tempULS.unitig2 = oddReadMatchStructs[i].kUnitigNumber;
 		    tempULS.frontEdgeOffset = abbULS1.frontEdgeOffset;
 		    tempULS.ori = abbULS1.ori;
@@ -1990,7 +2143,8 @@ void getSuperReadsForInsert (void)
 			 continue;
 		    if (pathNumArray[it2->second] != pathNum)
 			 continue;
-		    elementIndex2 = elementIndex;
+                    // TODO: delete
+		    // elementIndex2 = elementIndex;
 		    localSuperReadLength = it1->frontEdgeOffset;
 		    ++numPossibleLengths;
 	       }
@@ -2003,8 +2157,9 @@ void getSuperReadsForInsert (void)
 #endif
 		    continue;
 	       }
-               char *vptr;
-               setTreeValPtr (vptr, treeArr+oddReadMatchStructs[i].kUnitigNumber, elementIndex2);
+               // TODO: delete
+               // char *vptr;
+               // setTreeValPtr (vptr, treeArr+oddReadMatchStructs[i].kUnitigNumber, elementIndex2);
                // If we get here we have a unitig on the path
 #ifdef KILL120102
                fprintf (stderr, "%s %d %d %d SUCCESS %d %d %d\n", readNameSpace, treeSize, i, abbULS1.frontEdgeOffset, splitJoinWindowMin, splitJoinWindowMax, pathNum);
@@ -2020,8 +2175,8 @@ void getSuperReadsForInsert (void)
                overlapMatchIndexHold = i;
 	       break;
           }
-          if (elementIndex == TREE_NIL)
-               goto afterSuperRead;
+          if(last_element_is_nil)
+            goto afterSuperRead;
 	       
           tempULS.unitig2 = localUnitigNumber;
           tempULS.ori = abbULS1.ori;
@@ -2167,10 +2322,12 @@ void getSuperReadsForInsert (void)
           
      afterSuperRead:
 	  // Cleaning up the data structures
-	  for (int j = 0; j < numTreesUsed; j++)
-	       treeArr[treeReinitList[j]].root = TREE_NIL;
-	  numTreesUsed = 0;
-	  dataArr.arraySize = 0;
+          // TODO: delete
+	  // for (int j = 0; j < numTreesUsed; j++)
+	  //      treeArr[treeReinitList[j]].root = TREE_NIL;
+	  // numTreesUsed = 0;
+	  // dataArr.arraySize = 0;
+          treeArr.clear();
 	  
 #ifdef KILLED111115
 	  printf ("Approx num paths returned = %d\n", approxNumPaths);
