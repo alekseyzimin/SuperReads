@@ -37,11 +37,13 @@ int main(int argc, char *argv[])
       ary = new inv_hash_storage_t(hash.get_size(), klen, 
                                    hash.get_val_len() + ceilLog2(N-1),
                                    reprobe, jellyfish::quadratic_reprobes);
+      ary->set_matrix(hash_matrix);
       if(args.verbose_flag)
         std::cerr << "Loading database: " << *db_it << "\n";
       auto it = hash.get_iterator();
       while(it.next())
-        ary->map(it.get_key(), it.get_val() * (N-1));
+        if(!ary->map(it.get_key(), it.get_val() * N))
+          die << "Output hash is full";
     } else {
       die << "Invalid file type '" << err::substr(type, sizeof(type)) << "'.";
     }
@@ -68,12 +70,15 @@ int main(int argc, char *argv[])
         std::cerr << "Loading database: " << *db_it << "\n";
       auto it = hash.get_iterator();
       while(it.next())
-        ary->map(it.get_key(), it.get_val() * (N-1) + nb);
+        if(!ary->map(it.get_key(), it.get_val() * N + nb))
+          die << "Output hash is full";
     } else {
       die << "Invalid file type '" << err::substr(type, sizeof(type)) << "'.";
     }    
   }
   
+  if(args.verbose_flag)
+    std::cerr << "Writing result to '" << args.output_arg << "'\n";
   raw_inv_hash_dumper_t dumper((uint_t)4, args.output_arg, 10000000, ary);
   dumper.dump();
 
