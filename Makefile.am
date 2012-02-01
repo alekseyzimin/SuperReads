@@ -42,7 +42,7 @@ LDADD = libutils.a
 ##############################
 bin_PROGRAMS += create_k_unitigs error_correct_reads			\
                 error_corrected2frg homo_trim reverse_complement	\
-                reduce_sr sorted_merge
+                reduce_sr sorted_merge combine_jf_dbs
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/reduce_sr.pl src/create_end_pairs.pl		\
                     src/close_gaps.sh src/compute_sr_cov.pl		\
@@ -61,7 +61,8 @@ noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/reduce_sr.hpp src/sorted_merge.hpp	\
                   src/fibonacci_coding.hpp src/sr_names.hpp	\
                   src/bloom_filter.hpp src/MurmurHash3.h	\
-                  src/bloom_hash.hpp src/bloom_counter2.hpp
+                  src/bloom_hash.hpp src/bloom_counter2.hpp	\
+                  src/combine_jf_dbs.hpp
 
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 homo_trim_SOURCES = src/homo_trim.cc 
@@ -71,6 +72,7 @@ error_correct_reads_SOURCES = src/error_correct_reads.cc src/kmer.cc	\
                               src/err_log.cc
 reduce_sr_SOURCES = src/reduce_sr.cc
 sorted_merge_SOURCES = src/sorted_merge.cc
+combine_jf_dbs_SOURCES = src/combine_jf_dbs.cc
 
 ##############################
 # src2 pipeline
