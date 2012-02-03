@@ -9,8 +9,6 @@
 int main(int argc, char *argv[])
 {
   combine_jf_dbs     args(argc, argv);
-  SquareBinaryMatrix hash_matrix;
-  unsigned int       reprobe;
   unsigned int       klen;
   unsigned int       N = args.db_jf_arg.size();
   inv_hash_storage_t *ary;
@@ -30,18 +28,20 @@ int main(int argc, char *argv[])
     if(!strncmp(type, jellyfish::raw_hash::file_type, sizeof(type))) {
       raw_inv_hash_query_t hash(dbf);
       klen        = hash.get_key_len();
-      reprobe     = hash.get_max_reprobe();
-      hash_matrix = hash.get_hash_matrix();
       if(args.verbose_flag)
-        std::cerr << "Key len: " << klen << " reprobe:" << reprobe << "\n";
+        std::cerr << "Key len: " << klen << "\n";
       ary = new inv_hash_storage_t(hash.get_size(), klen, 
                                    hash.get_val_len() + ceilLog2(N-1),
-                                   reprobe, jellyfish::quadratic_reprobes);
+                                   hash.get_max_reprobe(),
+                                   jellyfish::quadratic_reprobes);
+      SquareBinaryMatrix hash_matrix = hash.get_hash_matrix();
+      ary->set_matrix(hash_matrix);
       if(args.verbose_flag)
         std::cerr << "Loading database: " << *db_it << "\n";
       auto it = hash.get_iterator();
       while(it.next())
-        ary->map(it.get_key(), it.get_val() * (N-1));
+        if(!ary->map(it.get_key(), it.get_val() * N))
+          die << "Output hash is full";
     } else {
       die << "Invalid file type '" << err::substr(type, sizeof(type)) << "'.";
     }
@@ -59,21 +59,19 @@ int main(int argc, char *argv[])
       if(klen != hash.get_key_len())
         die << "Invalid key len for '" << *db_it << "': " << hash.get_key_len()
             << " expected " << klen;
-      if(reprobe != hash.get_max_reprobe())
-        die << "Invalid max reprobe for '" << *db_it << "': " << hash.get_max_reprobe()
-            << " expected " << reprobe;
-      if(hash_matrix != hash.get_hash_matrix())
-        die << "Invalid hash matrix for '" << *db_it << "'";
       if(args.verbose_flag)
         std::cerr << "Loading database: " << *db_it << "\n";
       auto it = hash.get_iterator();
       while(it.next())
-        ary->map(it.get_key(), it.get_val() * (N-1) + nb);
+        if(!ary->map(it.get_key(), it.get_val() * N + nb))
+          die << "Output hash is full";
     } else {
       die << "Invalid file type '" << err::substr(type, sizeof(type)) << "'.";
     }    
   }
   
+  if(args.verbose_flag)
+    std::cerr << "Writing result to '" << args.output_arg << "'\n";
   raw_inv_hash_dumper_t dumper((uint_t)4, args.output_arg, 10000000, ary);
   dumper.dump();
 

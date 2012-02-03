@@ -86,8 +86,7 @@ public:
   "quality database containing this k-mer and its count in this\n" \
   "database.\n" \
   "\n" \
-  "All the databases must use the same k-mer size, max reprobe value and\n" \
-  "hash function (matrix).\n\n" \
+  "All the databases must use the same k-mer size.\n\n" \
   "Options (default value in (), *required):\n" \
   " -o, --output=prefix                      Output file (combined.jf)\n" \
   " -v, --verbose                            Be verbose (false)\n" \

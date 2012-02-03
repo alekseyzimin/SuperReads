@@ -9,8 +9,7 @@ The output database contains for every k-mer the number of the highest
 quality database containing this k-mer and its count in this
 database.
 
-All the databases must use the same k-mer size, max reprobe value and
-hash function (matrix)."
+All the databases must use the same k-mer size."
 
 # option("thread", "t") {
 #   description "Number of threads"
