@@ -11,6 +11,8 @@ public:
   typedef std::vector<const char *>::iterator db_arg_it;
   typedef std::vector<const char *>::const_iterator db_arg_const_it;
   bool                           db_given;
+  uint32_t                       combined_arg;
+  bool                           combined_given;
   uint32_t                       thread_arg;
   bool                           thread_given;
   bool                           both_strands_flag;
@@ -40,19 +42,21 @@ public:
 
   args_t(int argc, char *argv[]) :
     db_arg(), db_given(false),
+    combined_arg(), combined_given(false),
     thread_arg(1), thread_given(false),
     both_strands_flag(true),
     min_count_arg(2), min_count_given(false),
     skip_arg(2), skip_given(false),
     good_arg(2), good_given(false),
-    anchor_count_arg(0), anchor_count_given(false),
-    window_arg(0), window_given(false),
+    anchor_count_arg(), anchor_count_given(false),
+    window_arg(), window_given(false),
     error_arg(5), error_given(false),
     output_arg("error_corrected"), output_given(false),
     gzip_flag(false)
   {
     static struct option long_options[] = {
       {"db", 1, 0, 'd'},
+      {"combined", 1, 0, 'c'},
       {"thread", 1, 0, 't'},
       {"both-strands", 0, 0, 'C'},
       {"min-count", 1, 0, 'm'},
@@ -68,7 +72,7 @@ public:
       {"version", 0, 0, 'V'},
       {0, 0, 0, 0}
     };
-    static const char *short_options = "hVd:t:Cm:s:g:a:w:e:o:";
+    static const char *short_options = "hVd:c:t:Cm:s:g:a:w:e:o:";
 
     std::string err;
 #define CHECK_ERR(type,val,which) if(!err.empty()) { std::cerr << "Invalid " #type " '" << val << "' for [" which "]: " << err << "\n"; exit(1); }
@@ -97,6 +101,11 @@ public:
       case 'd':
         db_given = true;
         db_arg.push_back(optarg);
+        break;
+      case 'c':
+        combined_given = true;
+        combined_arg = yaggo::conv_uint<uint32_t>((const char *)optarg, err, false);
+        CHECK_ERR(uint32_t, optarg, "-c, --combined=Nb-DB")
         break;
       case 't':
         thread_given = true;
@@ -164,6 +173,7 @@ public:
 #define args_t_HELP "Error correct reads from a fastq file based on the k-mer frequencies.\n\n" \
   "Options (default value in (), *required):\n" \
   " -d, --db=jellyfish.db                   *Jellyfish database\n" \
+  " -c, --combined=Nb-DB                     Combined jellyfish database\n" \
   " -t, --thread=uint32                      Number of threads (1)\n" \
   " -C, --both-strands                       Canonical k-mers in database (true)\n" \
   " -m, --min-count=uint32                   Minimum count for a k-mer to be considered \"good\" (2)\n" \
@@ -190,6 +200,7 @@ public:
   }
   void dump(std::ostream &os = std::cout) {
     os << "db_given:" << db_given << " db_arg:" << yaggo::vec_str(db_arg) << "\n";
+    os << "combined_given:" << combined_given << " combined_arg:" << combined_arg << "\n";
     os << "thread_given:" << thread_given << " thread_arg:" << thread_arg << "\n";
     os << "both_strands_flag:" << both_strands_flag << "\n";
     os << "min_count_given:" << min_count_given << " min_count_arg:" << min_count_arg << "\n";

@@ -41,29 +41,120 @@ std::ostream &operator<<(std::ostream &os, const backward_counter &c) {
   return os << c._c;
 }
 
+// Base class which gives all possible continuation given a k-mer and
+// Jellyfish databases. One version uses many Jellyfish databases
+// while the other uses a combined database.
+//
+// The best alternatives version gets all the possible continuation at
+// the highest possible level. The best level is recorded. The
+// get_alternatives version gets all the possible continuation at the
+// currently recorded level.
+class alternative_finder { 
+public:
+  virtual ~alternative_finder() { }
+
+  // Reset to highest level/quality
+  virtual void reset_level() = 0;
+  // Get count at current level for a k-mer. If the k-mer is not
+  // found, 0 is returned
+  virtual hval_t get_val(uint64_t m) = 0;
+  virtual int get_best_alternatives(forward_mer& m, uint64_t counts[], uint64_t &ucode) = 0;
+  virtual int get_best_alternatives(backward_mer& m, uint64_t counts[], uint64_t &ucode) = 0;
+
+  virtual int get_alternatives(forward_mer& m, uint64_t counts[], uint64_t &ucode) = 0;
+  virtual int get_alternatives(backward_mer& m, uint64_t counts[], uint64_t &ucode) = 0;
+};
+
+class alternative_multiple_dbs : public alternative_finder {
+  const hashes_t*          hashes_;
+  hashes_t::const_iterator chash_;
+  int                      min_count_;
+
+public:
+  alternative_multiple_dbs(const hashes_t* hashes, int min_count) :
+    hashes_(hashes), chash_(hashes_->begin()), min_count_(min_count) { }
+
+  virtual ~alternative_multiple_dbs() { std::cerr << __PRETTY_FUNCTION__ << "\n"; }
+
+  virtual void reset_level() { chash_ = hashes_->begin(); }
+
+  virtual hval_t get_val(uint64_t mer) {
+    hval_t res = 0;
+    if(!chash_->get_val(mer, res, true))
+      return 0;
+    return res;
+  }
+  virtual int get_best_alternatives(forward_mer& m, uint64_t counts[], uint64_t &ucode) {
+    return get_best_alternatives__(m, counts, ucode);
+  }
+  virtual int get_best_alternatives(backward_mer& m, uint64_t counts[], uint64_t &ucode) {
+    return get_best_alternatives__(m, counts, ucode);
+  }
+  virtual int get_alternatives(forward_mer& m, uint64_t counts[], uint64_t &ucode) {
+    return get_alternatives__(m, counts, ucode);
+  }
+  virtual int get_alternatives(backward_mer& m, uint64_t counts[], uint64_t &ucode) {
+    return get_alternatives__(m, counts, ucode);
+  }
+
+private:  
+  template<typename dir_mer>
+  int get_best_alternatives__(const dir_mer &mer, uint64_t counts[], uint64_t &ucode) {
+    reset_level();
+    int count = 0;
+    while(count == 0) {
+      count = get_alternatives__(mer, counts, ucode);
+      if(count == 0 && ++chash_ == hashes_->end())
+        return 0;
+    }
+    return count;
+  }
+
+  template <typename dir_mer>
+  int get_alternatives__(const dir_mer &mer, uint64_t counts[], uint64_t &ucode) {
+    uint64_t val   = 0;
+    dir_mer  nmer(mer);
+    int      count = 0;
+    for(uint64_t i = 0; i < (uint64_t)4; ++i) {
+      nmer.replace(0, i);
+      if((val = get_val(nmer.canonical()))) {
+        counts[i] = val;
+        if(val >= (uint64_t)min_count_) {
+          count++;
+          ucode = i;
+        }
+      } else {
+        counts[i] = 0;
+      }
+    }
+    return count;
+  }
+};
 
 
 template<class instance_t>
 class error_correct_t : public thread_exec {
-  jellyfish::parse_read  *_parser;
-  hashes_t               *_hashes;
-  int                     _mer_len;
-  int                     _skip;
-  int                     _good;
-  int                     _anchor;
-  std::string             _prefix;
-  int                     _min_count;
-  int                     _window;
-  int                     _error;
-  bool                    _gzip;
-  jflib::o_multiplexer *  _output;
-  jflib::o_multiplexer *  _log;
+  jellyfish::parse_read* _parser;
+  hashes_t*              _hashes;
+  alternative_finder*    _af;
+  int                    _mer_len;
+  int                    _skip;
+  int                    _good;
+  int                    _anchor;
+  std::string            _prefix;
+  int                    _min_count;
+  int                    _window;
+  int                    _error;
+  bool                   _gzip;
+  int                    _combined;
+  jflib::o_multiplexer * _output;
+  jflib::o_multiplexer * _log;
 public:
-  error_correct_t(jellyfish::parse_read *parser, hashes_t *hashes) :
-    _parser(parser), _hashes(hashes), 
-    _mer_len(_hashes->front().get_key_len() / 2),
-    _skip(0), _good(1), _min_count(1), _window(0), _error(0) {
-  }
+  error_correct_t(jellyfish::parse_read* parser, hashes_t *hashes) :
+    _parser(parser), _hashes(hashes),
+    _mer_len(_hashes->begin()->get_key_len() / 2),
+    _skip(0), _good(1), _min_count(1), _window(0), _error(0), _gzip(false),
+    _combined(0) { }
 
 private:
   std::ostream *open_file(const char *suffix) {
@@ -114,11 +205,9 @@ public:
   error_correct_t & window(int w) { _window = w; return *this; }
   error_correct_t & error(int e) { _error = e; return *this; }
   error_correct_t & gzip(bool g) { _gzip = g; return *this; }
+  error_correct_t & combined(bool c) { _combined = c; return *this; }
 
-  inline hashes_t::const_iterator begin_hash() { return _hashes->begin(); }
-  inline hashes_t::const_iterator end_hash() { return _hashes->end(); }
-
-  jellyfish::parse_read *parser() const { return _parser; }
+  jellyfish::parse_read* parser() const { return _parser; }
   int skip() const { return _skip; }
   int good() const { return _good; }
   int anchor() const { return _anchor; }
@@ -129,8 +218,15 @@ public:
   int window() const { return _window ? _window : _mer_len; }
   int error() const { return _error ? _error : _mer_len / 2; }
   bool gzip() const { return _gzip; }
+  int combined() const { return _combined; }
   jflib::o_multiplexer &output() { return *_output; }
   jflib::o_multiplexer &log() { return *_log; }
+
+  alternative_finder* new_af() {
+    if(_combined == 0)
+      return new alternative_multiple_dbs(_hashes, _min_count);
+    throw std::runtime_error("Combined database is not supported yet");
+  }
 };
 
 class error_correct_instance {
@@ -142,16 +238,16 @@ private:
   int                       _id;
   size_t                    _buff_size;
   char                     *_buffer;
-  hashes_t::const_iterator  chash;
+  alternative_finder*       _af;
   
 public:
   error_correct_instance(ec_t *ec, int id) :
-    _ec(ec), _id(id), _buff_size(0), _buffer(0) {
-    
-  }
+    _ec(ec), _id(id), _buff_size(0), _buffer(0) { }
 
   void start() {
     jellyfish::parse_read::thread parser = _ec->parser()->new_thread();
+    _af = _ec->new_af();
+    
     const jellyfish::read_parser::read_t *read;
 
     jflib::omstream output(_ec->output());
@@ -169,7 +265,7 @@ public:
       char       *out   = _buffer + _ec->skip();
       DBG << V(_ec->skip()) << V((void*)read->seq_s) << V((void*)input);
       //Prime system. Find and write starting k-mer
-      chash = _ec->begin_hash();
+      _af->reset_level();
       if(!find_starting_mer(mer, input, read->seq_e, out)) {
         details << "Skipped " << substr(read->header, read->hlen) << "\n";
         details << jflib::endr;
@@ -230,7 +326,6 @@ private:
       cpos = pos;
       ++pos;
 
-      chash = _ec->begin_hash();
       uint64_t ori_code;
       if(!mer.shift(base)) {
         ori_code = 5; // Invalid base
@@ -239,21 +334,15 @@ private:
         ori_code = mer.code(0);
       }
       uint64_t counts[4];
-      uint64_t ucode;
+      uint64_t ucode = 0;
       int      count;
-      
-      while(true) {
-        ucode = 0;
-        count = get_all_alternatives(mer, counts, ucode);
-        DBG << V(*cpos) << V(count) << V(counts[0]) << V(counts[1]) << V(counts[2]) << V(counts[3]);
 
-        if(count == 0) {
-          if(++chash == _ec->end_hash()) {
-            log.truncation(cpos);
-            goto done; // No continuation -> stop
-          }
-        } else
-          break;
+      count = _af->get_best_alternatives(mer, counts, ucode);
+      DBG << V(*cpos) << V(count) << V(counts[0]) << V(counts[1]) << V(counts[2]) << V(counts[3]);
+
+      if(count == 0) {
+        log.truncation(cpos);
+        goto done;
       }
       if(count == 1) { // One continuation. Is it an error?
         if(ucode != ori_code) {
@@ -302,7 +391,7 @@ private:
         continue;
       }
 
-      // Check that it continues at least one more base
+      // Check that it continues at least one more base with that quality
       dir_mer    nmer   = mer;
       //      in_dir_ptr ninput = input;
       nmer.replace(0, check_code);
@@ -313,7 +402,7 @@ private:
       uint64_t   ncounts[4];
       int        ncount;
       uint64_t   nucode = 0;
-      ncount = get_all_alternatives(nmer, ncounts, nucode);
+      ncount = _af->get_alternatives(nmer, ncounts, nucode);
       DBG << V(*cpos) << V(ncount) << V(ncounts[0]) << V(ncounts[1]) << V(ncounts[2]) << V(ncounts[3]);
       if(ncount > 0) {
         mer.replace(0, check_code);
@@ -346,27 +435,6 @@ private:
     goto done;
   }
 
-  template <typename dir_mer>
-  int get_all_alternatives(const dir_mer &mer, uint64_t counts[], uint64_t &ucode) {
-    uint64_t val   = 0;
-    dir_mer  nmer(mer);
-    int      count = 0;
-    for(uint64_t i = 0; i < (uint64_t)4; ++i) {
-      nmer.replace(0, i);
-      if((*chash).get_val(nmer.canonical(), val, true)) {
-        counts[i] = val;
-        if(val >= (uint64_t)_ec->min_count()) {
-          count++;
-          ucode = i;
-        }
-      } else {
-        counts[i] = 0;
-      }
-    }
-  
-    return count;
-  }
-
   void insure_length_buffer(size_t len) {
     if(len > _buff_size) {
       _buff_size = len > 2 * _buff_size ? len + 100 : 2 * _buff_size;
@@ -388,9 +456,7 @@ private:
       }
       int found = 0;
       while(input < end) {
-        hval_t val = 0;
-        if(!(*chash).get_val(mer.canonical(), val, true))
-          val = 0;
+        hval_t val = _af->get_val(mer.canonical());
      
         found = (int)val >= _ec->anchor() ? found + 1 : 0;
         if(found >= _ec->good())
@@ -409,10 +475,13 @@ int main(int argc, char *argv[])
 {
   args_t args(argc, argv);
 
+  if(args.combined_given && args.db_arg.size() > 1)
+    die << "Only one Jellyfish database when using combined mode";
+
   // Open Jellyfish databases
   hashes_t hashes;
   unsigned int key_len = 0;
-  for(args_t::db_arg_const_it it = args.db_arg.begin(); it != args.db_arg.end(); ++it) {
+  for(auto it = args.db_arg.begin(); it != args.db_arg.end(); ++it) {
     mapped_file dbf(*it);
     dbf.random().will_need().load();
     hashes.push_back(*raw_inv_hash_query_t(dbf).get_ary());
@@ -424,7 +493,7 @@ int main(int argc, char *argv[])
           << " != " << key_len
           << ") for hash '" << *it << "'";
   }
-  
+
   jellyfish::parse_read parser(args.file_arg.begin(), args.file_arg.end(), 100);
 
   kmer_t::k(key_len / 2);
@@ -432,9 +501,10 @@ int main(int argc, char *argv[])
   correct.skip(args.skip_arg).good(args.good_arg)
     .anchor(args.anchor_count_given ? args.anchor_count_arg : args.min_count_arg)
     .prefix(args.output_arg).min_count(args.min_count_arg)
-    .window(args.window_given ? args.window_arg : key_len / 2)
-    .error(args.error_given ? args.error_arg : key_len / 4)
-    .gzip(args.gzip_flag);
+    .window(args.window_given ? args.window_arg : kmer_t::k())
+    .error(args.error_given ? args.error_arg : kmer_t::k() / 2)
+    .gzip(args.gzip_flag)
+    .combined(args.combined_arg);
   correct.do_it(args.thread_arg);
 
   return 0;
