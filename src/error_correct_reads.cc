@@ -21,6 +21,7 @@
 #define typeof __typeof__
 #endif
 
+// #define DEBUG 1
 #include <jellyfish/dbg.hpp>
 #include <jellyfish/atomic_gcc.hpp>
 #include <jellyfish/mer_counting.hpp>
@@ -115,11 +116,102 @@ private:
     uint64_t val   = 0;
     dir_mer  nmer(mer);
     int      count = 0;
+    DBG << V(mer);
     for(uint64_t i = 0; i < (uint64_t)4; ++i) {
       nmer.replace(0, i);
       if((val = get_val(nmer.canonical()))) {
         counts[i] = val;
         if(val >= (uint64_t)min_count_) {
+          count++;
+          ucode = i;
+        }
+      } else {
+        counts[i] = 0;
+      }
+    }
+    return count;
+  }
+};
+
+class alternative_combined_dbs : public alternative_finder {
+  hashes_t::const_iterator hash_;
+  const int                nb_levels_;
+  int                      min_count_;
+  int                      level_;
+
+public:
+  alternative_combined_dbs(const hashes_t* hashes, int levels,  int min_count) :
+    hash_(hashes->begin()), nb_levels_(levels), min_count_(min_count), level_(0) { }
+
+  virtual ~alternative_combined_dbs() { }
+  virtual void reset_level() { level_ = 0; }
+  virtual hval_t get_val(uint64_t mer) {
+    hval_t res = 0;
+    if(!hash_->get_val(mer, res, true))
+      return 0;
+    if(res % nb_levels_ != (hval_t)level_)
+      return 0;
+    return res / nb_levels_;
+  }
+  virtual int get_best_alternatives(forward_mer& m, uint64_t counts[], uint64_t& ucode) {
+    return get_best_alternatives__(m, counts, ucode);
+  }
+  virtual int get_best_alternatives(backward_mer& m, uint64_t counts[], uint64_t& ucode) {
+    return get_best_alternatives__(m, counts, ucode);
+  }
+  virtual int get_alternatives(forward_mer& m, uint64_t counts[], uint64_t& ucode) {
+    return get_alternatives__(m, counts, ucode);
+  }
+  virtual int get_alternatives(backward_mer& m, uint64_t counts[], uint64_t& ucode) {
+    return get_alternatives__(m, counts, ucode);
+  }
+
+private:
+  template<typename dir_mer>
+  int get_best_alternatives__(dir_mer& mer, uint64_t counts[], uint64_t& ucode) {
+    level_         = nb_levels_ - 1;
+    int      nlevel;
+    uint64_t val;
+    dir_mer  nmer(mer);
+    int      count = 0;
+
+    for(uint64_t i = 0; i < (uint64_t)4; ++i) {
+      nmer.replace(0, i);
+      if(!hash_->get_val(nmer.canonical(), val, true))
+        val = 0;
+      nlevel = val % nb_levels_;
+      val    = val / nb_levels_;
+      if(val == 0 || nlevel > level_) {
+        counts[i] = 0;
+      } else {
+        if(val >= (uint64_t)min_count_) {
+          if(nlevel < level_) {
+            for(uint64_t j = 0; j < (uint64_t)i; ++j)
+              counts[j] = 0;
+            count = 0;
+            level_ = nlevel;
+          }
+          counts[i] = val;
+          count++;
+          ucode = i;
+        }
+      }
+    }
+    return count;
+  }
+
+  template<typename dir_mer>
+  int get_alternatives__(dir_mer& mer, uint64_t counts[], uint64_t& ucode) {
+    uint64_t val   = 0;
+    dir_mer  nmer(mer);
+    int      count = 0;
+
+    for(uint64_t i = 0; i < (uint64_t)4; ++i) {
+      nmer.replace(0, i);
+      val = get_val(nmer.canonical());
+      if(val > 0 && val % nb_levels_ == (hval_t)level_) {
+        counts[i] = val / nb_levels_;
+        if(counts[i] >= (uint64_t)min_count_) {
           count++;
           ucode = i;
         }
@@ -205,7 +297,7 @@ public:
   error_correct_t & window(int w) { _window = w; return *this; }
   error_correct_t & error(int e) { _error = e; return *this; }
   error_correct_t & gzip(bool g) { _gzip = g; return *this; }
-  error_correct_t & combined(bool c) { _combined = c; return *this; }
+  error_correct_t & combined(int c) { _combined = c; return *this; }
 
   jellyfish::parse_read* parser() const { return _parser; }
   int skip() const { return _skip; }
@@ -225,7 +317,8 @@ public:
   alternative_finder* new_af() {
     if(_combined == 0)
       return new alternative_multiple_dbs(_hashes, _min_count);
-    throw std::runtime_error("Combined database is not supported yet");
+    else
+      return new alternative_combined_dbs(_hashes, _combined, _min_count);
   }
 };
 
@@ -263,7 +356,7 @@ public:
       kmer_t      mer;
       const char *input = read->seq_s + _ec->skip();
       char       *out   = _buffer + _ec->skip();
-      DBG << V(_ec->skip()) << V((void*)read->seq_s) << V((void*)input);
+      //      DBG << V(_ec->skip()) << V((void*)read->seq_s) << V((void*)input);
       //Prime system. Find and write starting k-mer
       _af->reset_level();
       if(!find_starting_mer(mer, input, read->seq_e, out)) {
@@ -272,7 +365,8 @@ public:
         output << jflib::endr;
         continue;
       }
-      DBG << V((void*)read->seq_s) << V((void*)input) << V(kmer_t::k());
+      //      DBG << V((void*)read->seq_s) << V((void*)input) << V(kmer_t::k());
+      DBG << V(std::string(read->header, 15));
       // Extend forward and backward
       forward_log fwd_log(_ec->window(), _ec->error());
       char *end_out = 
@@ -338,7 +432,7 @@ private:
       int      count;
 
       count = _af->get_best_alternatives(mer, counts, ucode);
-      DBG << V(*cpos) << V(count) << V(counts[0]) << V(counts[1]) << V(counts[2]) << V(counts[3]);
+      DBG << V(*cpos) << V(mer) << V(count) << V(counts[0]) << V(counts[1]) << V(counts[2]) << V(counts[3]);
 
       if(count == 0) {
         log.truncation(cpos);

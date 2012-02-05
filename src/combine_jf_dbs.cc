@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 
   // Get information from the first database. Other database must
   // match.
-  auto db_it = args.db_jf_arg.begin();
+  auto db_it = args.db_jf_arg.rbegin();
   {
     mapped_file dbf(*db_it);
     dbf.will_unmap(true);
@@ -29,18 +29,19 @@ int main(int argc, char *argv[])
       raw_inv_hash_query_t hash(dbf);
       klen        = hash.get_key_len();
       if(args.verbose_flag)
-        std::cerr << "Key len: " << klen << "\n";
+        std::cerr << "Key len: " << klen 
+                  << " size: " << hash.get_size() << "\n";
       ary = new inv_hash_storage_t(hash.get_size(), klen, 
-                                   hash.get_val_len() + ceilLog2(N-1),
+                                   hash.get_val_len() + ceilLog2(N),
                                    hash.get_max_reprobe(),
                                    jellyfish::quadratic_reprobes);
       SquareBinaryMatrix hash_matrix = hash.get_hash_matrix();
       ary->set_matrix(hash_matrix);
       if(args.verbose_flag)
-        std::cerr << "Loading database: " << *db_it << "\n";
+        std::cerr << "Loading database: " << *db_it << " level " << (N-1) << "\n";
       auto it = hash.get_iterator();
       while(it.next())
-        if(!ary->map(it.get_key(), it.get_val() * N))
+        if(!ary->map(it.get_key(), it.get_val() * N + N - 1))
           die << "Output hash is full";
     } else {
       die << "Invalid file type '" << err::substr(type, sizeof(type)) << "'.";
@@ -48,7 +49,7 @@ int main(int argc, char *argv[])
   }
 
   ++db_it;
-  for(uint64_t nb = 1; db_it != args.db_jf_arg.end(); ++db_it, ++nb) {
+  for(uint64_t nb = N - 2; db_it != args.db_jf_arg.rend(); ++db_it, --nb) {
     mapped_file dbf(*db_it);
     dbf.will_unmap(true);
     dbf.sequential().will_need();
@@ -60,7 +61,7 @@ int main(int argc, char *argv[])
         die << "Invalid key len for '" << *db_it << "': " << hash.get_key_len()
             << " expected " << klen;
       if(args.verbose_flag)
-        std::cerr << "Loading database: " << *db_it << "\n";
+        std::cerr << "Loading database: " << *db_it << " level " << nb << "\n";
       auto it = hash.get_iterator();
       while(it.next())
         if(!ary->map(it.get_key(), it.get_val() * N + nb))

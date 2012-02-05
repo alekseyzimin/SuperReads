@@ -78,9 +78,8 @@ public:
               << std::endl;
     exit(1);
   }
-#define combine_jf_dbs_HELP "Combine Jellyfish databases for use with error correcter\n\nN databases are merged, read in order of appearence on\n" \
-  "the command line. The lowest quality k-mers are in the first database\n" \
-  "and the highest quality k-mers are in the last.\n" \
+#define combine_jf_dbs_HELP "Combine Jellyfish databases for use with error correcter\n\nN databases are merged. The highest quality k-mers are in the first database\n" \
+  "and the lowest quality k-mers are in the last.\n" \
   "\n" \
   "The output database contains for every k-mer the number of the highest\n" \
   "quality database containing this k-mer and its count in this\n" \
