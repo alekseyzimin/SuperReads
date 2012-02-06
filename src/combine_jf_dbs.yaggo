@@ -19,6 +19,9 @@ All the databases must use the same k-mer size."
 # option("min-count", "m") {
 #   description "Minimum count for a k-mer to be considered \"good\""
 #   uint32; default "2" }
+option("min-count", "m") {
+  description "Minimum count for a k-mer to be considered \"good\""
+  uint32; default "2" }
 option("output", "o") {
   description "Output file"
   c_string; default "combined.jf"; typestr "prefix" }

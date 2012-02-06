@@ -41,8 +41,9 @@ int main(int argc, char *argv[])
         std::cerr << "Loading database: " << *db_it << " level " << (N-1) << "\n";
       auto it = hash.get_iterator();
       while(it.next())
-        if(!ary->map(it.get_key(), it.get_val() * N + N - 1))
-          die << "Output hash is full";
+        if(it.get_val() >= args.min_count_arg)
+          if(!ary->map(it.get_key(), it.get_val() * N + N - 1))
+            die << "Output hash is full";
     } else {
       die << "Invalid file type '" << err::substr(type, sizeof(type)) << "'.";
     }
@@ -64,8 +65,9 @@ int main(int argc, char *argv[])
         std::cerr << "Loading database: " << *db_it << " level " << nb << "\n";
       auto it = hash.get_iterator();
       while(it.next())
-        if(!ary->map(it.get_key(), it.get_val() * N + nb))
-          die << "Output hash is full";
+        if(it.get_val() >= args.min_count_arg)
+          if(!ary->map(it.get_key(), it.get_val() * N + nb))
+            die << "Output hash is full";
     } else {
       die << "Invalid file type '" << err::substr(type, sizeof(type)) << "'.";
     }    

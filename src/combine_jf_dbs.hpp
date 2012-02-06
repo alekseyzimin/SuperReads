@@ -7,6 +7,8 @@
 
 class combine_jf_dbs {
 public:
+  uint32_t                       min_count_arg;
+  bool                           min_count_given;
   const char *                   output_arg;
   bool                           output_given;
   bool                           verbose_flag;
@@ -19,10 +21,12 @@ public:
   };
 
   combine_jf_dbs(int argc, char *argv[]) :
+    min_count_arg(2), min_count_given(false),
     output_arg("combined.jf"), output_given(false),
     verbose_flag(false)
   {
     static struct option long_options[] = {
+      {"min-count", 1, 0, 'm'},
       {"output", 1, 0, 'o'},
       {"verbose", 0, 0, 'v'},
       {"help", 0, 0, 'h'},
@@ -30,8 +34,9 @@ public:
       {"version", 0, 0, 'V'},
       {0, 0, 0, 0}
     };
-    static const char *short_options = "hVo:v";
+    static const char *short_options = "hVm:o:v";
 
+    std::string err;
 #define CHECK_ERR(type,val,which) if(!err.empty()) { std::cerr << "Invalid " #type " '" << val << "' for [" which "]: " << err << "\n"; exit(1); }
     while(true) { 
       int index = -1;
@@ -55,6 +60,11 @@ public:
       case '?':
         std::cerr << "Use --usage or --help for some help\n";
         exit(1);
+      case 'm':
+        min_count_given = true;
+        min_count_arg = yaggo::conv_uint<uint32_t>((const char *)optarg, err, false);
+        CHECK_ERR(uint32_t, optarg, "-m, --min-count=uint32")
+        break;
       case 'o':
         output_given = true;
         output_arg = optarg;
@@ -87,6 +97,7 @@ public:
   "\n" \
   "All the databases must use the same k-mer size.\n\n" \
   "Options (default value in (), *required):\n" \
+  " -m, --min-count=uint32                   Minimum count for a k-mer to be considered \"good\" (2)\n" \
   " -o, --output=prefix                      Output file (combined.jf)\n" \
   " -v, --verbose                            Be verbose (false)\n" \
   "     --usage                              Usage\n" \
@@ -104,6 +115,7 @@ public:
     os << PACKAGE_VERSION << "\n";
   }
   void dump(std::ostream &os = std::cout) {
+    os << "min_count_given:" << min_count_given << " min_count_arg:" << min_count_arg << "\n";
     os << "output_given:" << output_given << " output_arg:" << output_arg << "\n";
     os << "verbose_flag:" << verbose_flag << "\n";
     os << "db_jf_arg:" << yaggo::vec_str(db_jf_arg) << "\n";
