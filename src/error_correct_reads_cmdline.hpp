@@ -173,7 +173,7 @@ public:
 #define args_t_HELP "Error correct reads from a fastq file based on the k-mer frequencies.\n\n" \
   "Options (default value in (), *required):\n" \
   " -d, --db=jellyfish.db                   *Jellyfish database\n" \
-  " -c, --combined=Nb-DB                     Combined jellyfish database (0)\n" \
+  " -c, --combined=Nb-DB                     Number of Jellyfish databases combined (0)\n" \
   " -t, --thread=uint32                      Number of threads (1)\n" \
   " -C, --both-strands                       Canonical k-mers in database (true)\n" \
   " -m, --min-count=uint32                   Minimum count for a k-mer to be considered \"good\" (2)\n" \

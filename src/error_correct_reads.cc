@@ -21,7 +21,7 @@
 #define typeof __typeof__
 #endif
 
-// #define DEBUG 1
+#define DEBUG 1
 #include <jellyfish/dbg.hpp>
 #include <jellyfish/atomic_gcc.hpp>
 #include <jellyfish/mer_counting.hpp>
@@ -54,72 +54,61 @@ class alternative_finder {
 public:
   virtual ~alternative_finder() { }
 
-  // Reset to highest level/quality
-  virtual void reset_level() = 0;
-  // Get count at current level for a k-mer. If the k-mer is not
+  // Get count at highest level for a k-mer. If the k-mer is not
   // found, 0 is returned
   virtual hval_t get_val(uint64_t m) = 0;
-  virtual int get_best_alternatives(forward_mer& m, uint64_t counts[], uint64_t &ucode) = 0;
-  virtual int get_best_alternatives(backward_mer& m, uint64_t counts[], uint64_t &ucode) = 0;
-
-  virtual int get_alternatives(forward_mer& m, uint64_t counts[], uint64_t &ucode) = 0;
-  virtual int get_alternatives(backward_mer& m, uint64_t counts[], uint64_t &ucode) = 0;
+  virtual int get_best_alternatives(forward_mer& m, uint64_t counts[], uint64_t &ucode, int& level) = 0;
+  virtual int get_best_alternatives(backward_mer& m, uint64_t counts[], uint64_t &ucode, int& level) = 0;
 };
 
 class alternative_multiple_dbs : public alternative_finder {
   const hashes_t*          hashes_;
-  hashes_t::const_iterator chash_;
   int                      min_count_;
 
 public:
   alternative_multiple_dbs(const hashes_t* hashes, int min_count) :
-    hashes_(hashes), chash_(hashes_->begin()), min_count_(min_count) { }
+    hashes_(hashes), min_count_(min_count) { }
 
   virtual ~alternative_multiple_dbs() { std::cerr << __PRETTY_FUNCTION__ << "\n"; }
 
-  virtual void reset_level() { chash_ = hashes_->begin(); }
-
   virtual hval_t get_val(uint64_t mer) {
-    hval_t res = 0;
-    if(!chash_->get_val(mer, res, true))
+    hashes_t::const_iterator chash = hashes_->begin();
+    hval_t                   res   = 0;
+
+    if(!chash->get_val(mer, res, true))
       return 0;
     return res;
   }
-  virtual int get_best_alternatives(forward_mer& m, uint64_t counts[], uint64_t &ucode) {
-    return get_best_alternatives__(m, counts, ucode);
+  virtual int get_best_alternatives(forward_mer& m, uint64_t counts[], uint64_t &ucode, int& level) {
+    return get_best_alternatives__(m, counts, ucode, level);
   }
-  virtual int get_best_alternatives(backward_mer& m, uint64_t counts[], uint64_t &ucode) {
-    return get_best_alternatives__(m, counts, ucode);
-  }
-  virtual int get_alternatives(forward_mer& m, uint64_t counts[], uint64_t &ucode) {
-    return get_alternatives__(m, counts, ucode);
-  }
-  virtual int get_alternatives(backward_mer& m, uint64_t counts[], uint64_t &ucode) {
-    return get_alternatives__(m, counts, ucode);
+  virtual int get_best_alternatives(backward_mer& m, uint64_t counts[], uint64_t &ucode, int& level) {
+    return get_best_alternatives__(m, counts, ucode, level);
   }
 
 private:  
   template<typename dir_mer>
-  int get_best_alternatives__(const dir_mer &mer, uint64_t counts[], uint64_t &ucode) {
-    reset_level();
-    int count = 0;
+  int get_best_alternatives__(const dir_mer &mer, uint64_t counts[], uint64_t &ucode, int& level) {
+    hashes_t::const_iterator chash = hashes_->begin();
+    int                      count = 0;
     while(count == 0) {
-      count = get_alternatives__(mer, counts, ucode);
-      if(count == 0 && ++chash_ == hashes_->end())
+      count = get_alternatives__(chash, mer, counts, ucode);
+      if(count == 0 && ++chash == hashes_->end())
         return 0;
     }
+    level = (hashes_->end() - chash) - 1 ;
     return count;
   }
 
   template <typename dir_mer>
-  int get_alternatives__(const dir_mer &mer, uint64_t counts[], uint64_t &ucode) {
-    uint64_t val   = 0;
+  int get_alternatives__(hashes_t::const_iterator& chash, const dir_mer &mer, uint64_t counts[], uint64_t &ucode) {
     dir_mer  nmer(mer);
     int      count = 0;
     DBG << V(mer);
     for(uint64_t i = 0; i < (uint64_t)4; ++i) {
       nmer.replace(0, i);
-      if((val = get_val(nmer.canonical()))) {
+      hval_t val = 0;
+      if(chash->get_val(nmer.canonical(), val, true)) {
         counts[i] = val;
         if(val >= (uint64_t)min_count_) {
           count++;
@@ -137,43 +126,37 @@ class alternative_combined_dbs : public alternative_finder {
   hashes_t::const_iterator hash_;
   const int                nb_levels_;
   int                      min_count_;
-  int                      level_;
 
 public:
   alternative_combined_dbs(const hashes_t* hashes, int levels,  int min_count) :
-    hash_(hashes->begin()), nb_levels_(levels), min_count_(min_count), level_(0) { }
+    hash_(hashes->begin()), nb_levels_(levels), min_count_(min_count) { }
 
   virtual ~alternative_combined_dbs() { }
-  virtual void reset_level() { level_ = 0; }
   virtual hval_t get_val(uint64_t mer) {
     hval_t res = 0;
-    if(!hash_->get_val(mer, res, true))
+    bool found = hash_->get_val(mer, res, true);
+    DBG << V(forward_mer(mer)) << V(found) << V(res) << V(res % nb_levels_) << V(res / nb_levels_);
+    if(!found)
       return 0;
-    if(res % nb_levels_ != (hval_t)level_)
+    if(res % nb_levels_ != (hval_t)(nb_levels_ - 1))
       return 0;
     return res / nb_levels_;
   }
-  virtual int get_best_alternatives(forward_mer& m, uint64_t counts[], uint64_t& ucode) {
-    return get_best_alternatives__(m, counts, ucode);
+  virtual int get_best_alternatives(forward_mer& m, uint64_t counts[], uint64_t& ucode, int& level) {
+    return get_best_alternatives__(m, counts, ucode, level);
   }
-  virtual int get_best_alternatives(backward_mer& m, uint64_t counts[], uint64_t& ucode) {
-    return get_best_alternatives__(m, counts, ucode);
-  }
-  virtual int get_alternatives(forward_mer& m, uint64_t counts[], uint64_t& ucode) {
-    return get_alternatives__(m, counts, ucode);
-  }
-  virtual int get_alternatives(backward_mer& m, uint64_t counts[], uint64_t& ucode) {
-    return get_alternatives__(m, counts, ucode);
+  virtual int get_best_alternatives(backward_mer& m, uint64_t counts[], uint64_t& ucode, int& level) {
+    return get_best_alternatives__(m, counts, ucode, level);
   }
 
 private:
   template<typename dir_mer>
-  int get_best_alternatives__(dir_mer& mer, uint64_t counts[], uint64_t& ucode) {
-    level_         = nb_levels_ - 1;
+  int get_best_alternatives__(dir_mer& mer, uint64_t counts[], uint64_t& ucode, int& level) {
     int      nlevel;
     uint64_t val;
     dir_mer  nmer(mer);
     int      count = 0;
+    level = 0;
 
     for(uint64_t i = 0; i < (uint64_t)4; ++i) {
       nmer.replace(0, i);
@@ -181,42 +164,20 @@ private:
         val = 0;
       nlevel = val % nb_levels_;
       val    = val / nb_levels_;
-      if(val == 0 || nlevel > level_) {
+      if(val == 0 || nlevel < level) {
         counts[i] = 0;
       } else {
         if(val >= (uint64_t)min_count_) {
-          if(nlevel < level_) {
+          if(nlevel > level) {
             for(uint64_t j = 0; j < (uint64_t)i; ++j)
               counts[j] = 0;
-            count = 0;
-            level_ = nlevel;
+            count  = 0;
+            level = nlevel;
           }
           counts[i] = val;
-          count++;
-          ucode = i;
+          ucode     = i;
+          ++count;
         }
-      }
-    }
-    return count;
-  }
-
-  template<typename dir_mer>
-  int get_alternatives__(dir_mer& mer, uint64_t counts[], uint64_t& ucode) {
-    uint64_t val   = 0;
-    dir_mer  nmer(mer);
-    int      count = 0;
-
-    for(uint64_t i = 0; i < (uint64_t)4; ++i) {
-      nmer.replace(0, i);
-      val = get_val(nmer.canonical());
-      if(val > 0 && val % nb_levels_ == (hval_t)level_) {
-        counts[i] = val / nb_levels_;
-        if(counts[i] >= (uint64_t)min_count_) {
-          count++;
-          ucode = i;
-        }
-      } else {
-        counts[i] = 0;
       }
     }
     return count;
@@ -358,7 +319,6 @@ public:
       char       *out   = _buffer + _ec->skip();
       //      DBG << V(_ec->skip()) << V((void*)read->seq_s) << V((void*)input);
       //Prime system. Find and write starting k-mer
-      _af->reset_level();
       if(!find_starting_mer(mer, input, read->seq_e, out)) {
         details << "Skipped " << substr(read->header, read->hlen) << "\n";
         details << jflib::endr;
@@ -430,9 +390,10 @@ private:
       uint64_t counts[4];
       uint64_t ucode = 0;
       int      count;
+      int      level;
 
-      count = _af->get_best_alternatives(mer, counts, ucode);
-      DBG << V(*cpos) << V(mer) << V(count) << V(counts[0]) << V(counts[1]) << V(counts[2]) << V(counts[3]);
+      count = _af->get_best_alternatives(mer, counts, ucode, level);
+      DBG << V(*cpos) << V(mer) << V(count) << V(level) << V(counts[0]) << V(counts[1]) << V(counts[2]) << V(counts[3]);
 
       if(count == 0) {
         log.truncation(cpos);
@@ -496,9 +457,10 @@ private:
       uint64_t   ncounts[4];
       int        ncount;
       uint64_t   nucode = 0;
-      ncount = _af->get_alternatives(nmer, ncounts, nucode);
-      DBG << V(*cpos) << V(ncount) << V(ncounts[0]) << V(ncounts[1]) << V(ncounts[2]) << V(ncounts[3]);
-      if(ncount > 0) {
+      int        nlevel;
+      ncount = _af->get_best_alternatives(nmer, ncounts, nucode, nlevel);
+      DBG << V(*cpos) << V(ncount) << V(nlevel) << V(level) << V(ncounts[0]) << V(ncounts[1]) << V(ncounts[2]) << V(ncounts[3]);
+      if(ncount > 0 && nlevel >= level) {
         mer.replace(0, check_code);
         *out++ = mer.base(0);
         if(check_code != ori_code)
@@ -545,6 +507,7 @@ private:
       for(int i = 0; input < end && i < _ec->mer_len(); ++i) {
         char base = *input++;
         *out++ = base;
+        DBG << V(base) << V(mer);
         if(!mer.shift_left(base))
           i = -1;        // If an N, skip to next k-mer
       }
@@ -553,6 +516,7 @@ private:
         hval_t val = _af->get_val(mer.canonical());
      
         found = (int)val >= _ec->anchor() ? found + 1 : 0;
+        DBG << V(val) << V(mer) << V(_ec->anchor()) << V(*input) << V(found);
         if(found >= _ec->good())
           return true;
         char base = *input++;

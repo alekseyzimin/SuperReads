@@ -8,7 +8,7 @@ option("db", "d") {
   description "Jellyfish database"
   c_string; required; multiple; typestr "jellyfish.db" }
 option("combined", "c") {
-  description "Combined jellyfish database"
+  description "Number of Jellyfish databases combined"
   uint32; typestr "Nb-DB"; default "0" }
 option("thread", "t") {
   description "Number of threads"
