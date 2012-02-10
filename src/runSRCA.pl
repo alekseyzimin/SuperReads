@@ -380,7 +380,8 @@ print FILE "\n\n\n";
 ######################################################error correct PE#############################################################
 if(not(-e "pe.cor.fa")){
     print FILE "echo -n 'error correct PE ';date;\n";
-    print FILE "\nerror_correct_reads -d pe_trim_0 -d pe_all_0 -C -m 1 -s 1 -g 1 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files\n";
+    print FILE "combine_jf_dbs pe_trim_0 pe_all_0 -o combined -m 1\n";
+    print FILE "error_correct_reads -d combined_0 -c 2 -C -m 1 -s 1 -g 1 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files\n";
     print FILE "cat error_corrected.fa  | homo_trim $TRIM_PARAM > pe.cor.fa\n";
 }
 #compute average PE read length -- we will need this for Astat later
@@ -392,7 +393,7 @@ print FILE "\n";
 if(scalar(@jump_info_array)>0){
     if(not(-e "sj.cor.fa")){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
-	print FILE "\nerror_correct_reads -d pe_trim_0 -d pe_all_0 -C -m 1 -s 1 -g 2 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files\n";
+	print FILE "error_correct_reads -d combined_0 -c 2 -C -m 1 -s 1 -g 2 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files\n";
 	print FILE "cat error_corrected.fa  | homo_trim $TRIM_PARAM > sj.cor.fa\n";
     }
 #############################################################done error correct JUMP#############################################
