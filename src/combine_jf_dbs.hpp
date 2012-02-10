@@ -20,11 +20,19 @@ public:
     USAGE_OPT = 1000
   };
 
-  combine_jf_dbs(int argc, char *argv[]) :
+  combine_jf_dbs() : 
     min_count_arg(2), min_count_given(false),
     output_arg("combined.jf"), output_given(false),
     verbose_flag(false)
-  {
+  { }
+
+  combine_jf_dbs(int argc, char* argv[]) :
+    min_count_arg(2), min_count_given(false),
+    output_arg("combined.jf"), output_given(false),
+    verbose_flag(false)
+  { parse(argc, argv); }
+
+  void parse(int argc, char* argv[]) {
     static struct option long_options[] = {
       {"min-count", 1, 0, 'm'},
       {"output", 1, 0, 'o'},
@@ -92,8 +100,8 @@ public:
   "and the lowest quality k-mers are in the last.\n" \
   "\n" \
   "The output database contains for every k-mer the number of the highest\n" \
-  "quality database containing this k-mer and its count in this\n" \
-  "database.\n" \
+  "quality database (N-1 for the best quality and 0 for the worst\n" \
+  "quality) containing this k-mer and its count in this database.\n" \
   "\n" \
   "All the databases must use the same k-mer size.\n\n" \
   "Options (default value in (), *required):\n" \

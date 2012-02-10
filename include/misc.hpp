@@ -60,5 +60,8 @@ int appendFldsFromLine(char *line, T &res) {
   return numFlds;
 }
 
+#include <signal.h>
+
+#define BREAKPOINT raise(SIGINT);
 
 #endif

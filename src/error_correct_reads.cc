@@ -21,7 +21,7 @@
 #define typeof __typeof__
 #endif
 
-#define DEBUG 1
+//#define DEBUG 1
 #include <jellyfish/dbg.hpp>
 #include <jellyfish/atomic_gcc.hpp>
 #include <jellyfish/mer_counting.hpp>
@@ -134,7 +134,7 @@ public:
   virtual ~alternative_combined_dbs() { }
   virtual hval_t get_val(uint64_t mer) {
     hval_t res = 0;
-    bool found = hash_->get_val(mer, res, true);
+    bool found = hash_->get_val(mer, res, true, true);
     DBG << V(forward_mer(mer)) << V(found) << V(res) << V(res % nb_levels_) << V(res / nb_levels_);
     if(!found)
       return 0;
@@ -160,7 +160,7 @@ private:
 
     for(uint64_t i = 0; i < (uint64_t)4; ++i) {
       nmer.replace(0, i);
-      if(!hash_->get_val(nmer.canonical(), val, true))
+      if(!hash_->get_val(nmer.canonical(), val, true, true))
         val = 0;
       nlevel = val % nb_levels_;
       val    = val / nb_levels_;

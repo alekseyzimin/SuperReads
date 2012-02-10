@@ -38,19 +38,20 @@ int main(int argc, char *argv[])
       SquareBinaryMatrix hash_matrix = hash.get_hash_matrix();
       ary->set_matrix(hash_matrix);
       if(args.verbose_flag)
-        std::cerr << "Loading database: " << *db_it << " level " << (N-1) << "\n";
+        std::cerr << "Loading database: " << *db_it << " level " << 0 << "\n";
       auto it = hash.get_iterator();
       while(it.next())
-        if(it.get_val() >= args.min_count_arg)
-          if(!ary->map(it.get_key(), it.get_val() * N + N - 1))
+        if(it.get_val() >= args.min_count_arg) {
+          if(!ary->map(it.get_key(), it.get_val() * N))
             die << "Output hash is full";
+        }
     } else {
       die << "Invalid file type '" << err::substr(type, sizeof(type)) << "'.";
     }
   }
 
   ++db_it;
-  for(uint64_t nb = N - 2; db_it != args.db_jf_arg.rend(); ++db_it, --nb) {
+  for(uint64_t nb = 1; db_it != args.db_jf_arg.rend(); ++db_it, ++nb) {
     mapped_file dbf(*db_it);
     dbf.will_unmap(true);
     dbf.sequential().will_need();
