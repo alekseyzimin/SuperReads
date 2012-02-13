@@ -28,12 +28,12 @@
 
 // For the friend business to work
 template<typename R> class basic_charb;
-template<typename R> char *fgets(basic_charb<R> &b, FILE *stream, char *cptr);
-template<typename R> int vsprintf(basic_charb<R> &b, const char *format, va_list ap);
-template<typename R> ssize_t getline(basic_charb<R> &b, FILE *stream);
-template<typename R> ssize_t getdelim(basic_charb<R> &b, int delim, FILE *stream);
-template<typename R> char *strcat(basic_charb<R> &b, const char *src);
-template<typename R> std::istream& getline(std::istream& is, basic_charb<R> &b, char delim, char *cptr);
+template<typename R> char *fgets(basic_charb<R>& b, FILE* stream, char* cptr);
+template<typename R> int vsprintf(basic_charb<R>& b, char*, const char* format, va_list ap);
+template<typename R> ssize_t getline(basic_charb<R>& b, FILE* stream);
+template<typename R> ssize_t getdelim(basic_charb<R>& b, int delim, FILE* stream);
+template<typename R> char *strcat(basic_charb<R>& b, const char* src);
+template<typename R> std::istream& getline(std::istream& is, basic_charb<R>& b, char delim, char *cptr);
 
 template<typename R>
 class basic_charb : public ExpBuffer<char, R> {
@@ -77,7 +77,7 @@ public:
   }
 
   friend char *fgets <> (basic_charb<R> &b, FILE *stream, char *cptr);
-  friend int vsprintf <> (basic_charb<R> &b, const char *format, va_list ap);
+  friend int vsprintf <> (basic_charb<R> &b, char* start, const char *format, va_list ap);
   friend ssize_t getline <> (basic_charb<R> &b, FILE *stream);
   friend ssize_t getdelim <> (basic_charb<R> &b, int delim, FILE *stream);
   friend char *strcat <> (basic_charb<R> &b, const char *src);
@@ -249,7 +249,7 @@ int sprintf(basic_charb<R> &b, const char *format, ...) {
   va_list ap;
 
   va_start(ap, format);
-  int res = vsprintf(b, format, ap);
+  int res = vsprintf(b, (char*)b, format, ap);
   va_end(ap);
 
   return res;
@@ -261,7 +261,7 @@ template<typename T, typename R>
 int snprintf(basic_charb<R> &b, T size, const char *format, ...) {
   va_list ap;
   va_start(ap, format);
-  int res = vsprintf(b, format, ap);
+  int res = vsprintf(b, (char*)b, format, ap);
   va_end(ap);
 
   return res;
@@ -270,25 +270,67 @@ int snprintf(basic_charb<R> &b, T size, const char *format, ...) {
 /** Vsnprintf for backward compatibility.
  */
 template<typename T, typename R>
-int vsnprintf(basic_charb<R> &b, T size, const char *format, va_list ap) {
-  return vsprintf(b, format, ap);
+inline int vsnprintf(basic_charb<R> &b, T size, const char *format, va_list ap) {
+  return vsprintf(b, (char*)b, format, ap);
 }
 
 template<typename R>
-int vsprintf(basic_charb<R> &b, const char *format, va_list _ap) {
+inline int vsprintf(basic_charb<R>& b, const char* format, va_list _ap) {
+  return vsprintf(b, (char*)b, format, _ap);
+}
+
+// Extension that append
+template<typename R>
+int sprintf_append(basic_charb<R>& b, const char* format, ...) {
+  va_list ap;
+  
+  va_start(ap, format);
+  int res = vsprintf(b, b.ptr(), format, ap);
+  va_end(ap);
+
+  return res;
+}
+
+template<typename T, typename R>
+int snprintf_append(basic_charb<R> &b, T size, const char *format, ...) {
+  va_list ap;
+  va_start(ap, format);
+  int res = vsprintf(b, b.ptr(), format, ap);
+  va_end(ap);
+
+  return res;
+}
+
+template<typename T, typename R>
+inline int vsnprintf_append(basic_charb<R> &b, T size, const char *format, va_list ap) {
+  return vsprintf(b, b.ptr(), format, ap);
+}
+
+template<typename R>
+inline int vsprintf_append(basic_charb<R>& b, const char* format, va_list _ap) {
+  return vsprintf(b, b.ptr(), format, _ap);
+}
+
+
+// Internal function. start must be a pointer within the dynamic buffer. The text will be written starting with start.
+template<typename R>
+int vsprintf(basic_charb<R> &b, char* start, const char* format, va_list _ap) {
   int res = 0;
   while(true) {
     va_list ap;
     va_copy(ap, _ap);
-    res = vsnprintf((char*)b, b.capacity(), format, ap);
+    size_t remain = b.end_ - start;
+    res = vsnprintf(start, remain, format, ap);
     va_end(ap);
     if(res < 0)
       return res;
-    if((size_t)res < b.capacity())
+    if((size_t)res < remain)
       break;
-    b.reserve(res + 1);
+    size_t offset = start - b.base_;
+    b.reserve(offset + res + 1);
+    start = b.base_ + offset;
   }
-  b.ptr_ = b.base_ + res;
+  b.ptr_ = start + res;
   return res;
 }
 

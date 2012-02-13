@@ -255,6 +255,12 @@ TEST(CharbBasic, sprintf) {
   EXPECT_EQ(strlen(str_res), (size_t)res);
   EXPECT_STREQ(str_res, b);
   EXPECT_EQ(strlen(str_res), b.len());
+
+  res = sprintf_append(b, fmt, 1000);
+  EXPECT_EQ(strlen(str_res), (size_t)res);
+  EXPECT_EQ(2 * strlen(str_res), b.len());
+  EXPECT_EQ(2 * strlen(str_res), strlen(b));
+  EXPECT_STREQ(str_res, b + strlen(str_res));
 }
 
 TEST(CharbBasic, chomp) {
