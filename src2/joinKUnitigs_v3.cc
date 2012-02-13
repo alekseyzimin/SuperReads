@@ -285,15 +285,28 @@ unitig_print_path::iterator find_within(unitig_print_path& tree,
 #endif
 
 // #define DEBUG
+int process_input_file(const char* input_prefix, const char* output_prefix, int index) {
+  charb readVsKUnitigFileName(256), outputFileName(256);
+  sprintf(readVsKUnitigFileName, "%s_%d", input_prefix, index);
+  sprintf(outputFileName,"%s_%d", output_prefix, index);
+  int ret = processKUnitigVsReadMatches(readVsKUnitigFileName, outputFileName);
+  fprintf (stderr, 
+           "Num pairs with both reads in same unitig: %d\n"
+           "Num pairs uniquely joinable: %d\n"
+           "Num pairs after disambiguation to beginning of insert: %d\n"
+           "Num pairs after disambiguation to end of insert: %d\n"
+           "Num still joinable but not uniquely joinable: %d\n", 
+           numPairsInOneUnitig, numSimplyJoinable, numJoinableAfterRead1Analysis, numJoinableAfterBothReadAnalysis, numJoinableUnresolvedAtEnd);
+  return ret;
+}
 
 int main (int argc, char **argv)
 {
      joinKUnitigs_v3 args(argc, argv);
      FILE *infile;
-     charb line(2000),readVsKUnitigFileName(256), outputFileName(256);
+     charb line(2000);
      int unitig1, unitig2, overlapCount = 0;
      int unitigNum, numUnitigs, firstUnitigNum = 0;
-     int i, *iptr;
      int numFlds;
 
      maxTotAllowableMissingOnEnds = 2;
@@ -333,7 +346,7 @@ int main (int argc, char **argv)
      rewind (infile);
      if (numFlds == 1) {
 	  int retCode; // For the stupid new compiler
-	  for (i = 0, iptr = unitigLengths + firstUnitigNum; i < numUnitigs; i++, iptr++)
+	  for (int i = 0, *iptr = unitigLengths + firstUnitigNum; i < numUnitigs; i++, iptr++)
 	       retCode = fscanf (infile, "%d\n", iptr);
      }
      else {
@@ -424,25 +437,45 @@ int main (int argc, char **argv)
 	  fprintf (outfile, "%d %d\n", j, startOverlapIndexByUnitig2[j]);
      fclose (outfile);
 #endif
-     int ret;
-     for(int i = 0; i < args.num_file_names_arg; ++i) {
-	  switch(fork()) {
-	  case -1:
-	       perror("fork failed");
-	       exit(1);
-	       
-	  case 0:
-               sprintf(readVsKUnitigFileName,"%s_%d",args.input_prefix_arg,i);
-               sprintf(outputFileName,"%s_%d",args.prefix_arg,i);
-	       ret=processKUnitigVsReadMatches(readVsKUnitigFileName,outputFileName);
-	       fprintf (stderr, "Num pairs with both reads in same unitig: %d\nNum pairs uniquely joinable: %d\nNum pairs after disambiguation to beginning of insert: %d\nNum pairs after disambiguation to end of insert: %d\nNum still joinable but not uniquely joinable: %d\n", numPairsInOneUnitig, numSimplyJoinable, numJoinableAfterRead1Analysis, numJoinableAfterBothReadAnalysis, numJoinableUnresolvedAtEnd);
-	       exit(ret);
-	       
-	  default:
-	       break;
-	  }
+
+     if(args.num_file_names_arg > 1) {
+       // More than one input file -> process each file in a sub-process
+       for(int i = 0; i < args.num_file_names_arg; ++i) {
+         switch(fork()) {
+         case -1:
+           perror("fork failed");
+           exit(1);
+	   
+         case 0:
+           exit(process_input_file(args.input_prefix_arg, args.prefix_arg, i));
+	   
+         default:
+           break;
+         }
+       }
+       
+       int status;
+       for(int i = 0; i < args.num_file_names_arg; ++i) {
+         if(wait(&status) == -1) {
+           perror("wait failed");
+           exit(1);
+         }
+         if(WIFEXITED(status)) {
+           fprintf(stderr,"sub %d exit status %d\n", i, WEXITSTATUS(status));
+         } else if(WIFSIGNALED(status)) {
+           fprintf(stderr,"sub %d signaled %d coredumped %d\n",
+                   i, WTERMSIG(status), WCOREDUMP(status));
+         } else {
+           fprintf(stderr,"sub %d at a loss\n", i);
+         }
+       }
+     } else {
+       // One input file, process it in this process
+       int ret = process_input_file(args.input_prefix_arg, args.prefix_arg, 0);
+       if(ret != 0)
+         fprintf(stderr, "exit status %d", ret);
      }
-     
+
      munmap(overlapData, stat_buf.st_size);
      
      return (0);
@@ -542,6 +575,7 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
      // Output the stuff for the old pair
      getSuperReadsForInsert();
      fclose(outputFile);
+
      return (0);
 }
 
