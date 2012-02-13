@@ -400,7 +400,7 @@ print FILE "\n";
 
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
-    print FILE "\nerror_correct_reads -d combined_0 -c 2 -d pe_all_0 -C -m 1 -s 1 -g 1 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files\n";
+    print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m 1 -s 1 -g 1 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files\n";
     print FILE "cat error_corrected.fa  | homo_trim $TRIM_PARAM > pe.cor.fa\n";
     $rerun_pe=1;
 }
