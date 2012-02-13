@@ -24,6 +24,7 @@
 #include <iterator>
 
 #include <err.hpp>
+#include <misc.hpp>
 #include <heap.hpp>
 #include <exp_buffer.hpp>
 #include <src2/joinKUnitigs_v3.hpp>
@@ -176,7 +177,6 @@ int minOverlapLength;
 int maxDiffInsertSizesForPrinting;
 int maxTotAllowableMissingOnEnds;
 FILE *outfile, *outputFile;
-char *flds[1000];
 charb outputString(200), stderrOutputString(200);
 double mean[256][256], stdev[256][256];
 char rdPrefix[3], rdPrefixHold[3];
@@ -186,7 +186,7 @@ double insertLengthMeanBetweenKUnisForInsertGlobal, insertLengthStdevGlobal;
 // The following keeps track of the distance the 2 read mates are from the
 // ends of the k-unitigs at the end
 int lengthAdjustment1, lengthAdjustment2;
-char superReadName[100000];
+charb superReadName;
 int splitJoinWindowMin, splitJoinWindowMax;
 int numUnitigConnectionsForPathData;
 int numPairsInOneUnitig, numSimplyJoinable, numJoinableAfterRead1Analysis,
@@ -220,9 +220,6 @@ void findSingleReadSuperReads(char *readName);
 void getSuperReadsForInsert (void);
 int processKUnitigVsReadMatches (char *inputFilename, char *outputFilename);
 int getInt (const char *fname);
-
-// extern "C" {
-     int getFldsFromLine (char *cptrHold);
 
 // RB tree data stuff
 typedef std::set<abbrevUnitigLocStruct> unitig_ori_offsets;
@@ -308,6 +305,7 @@ int main (int argc, char **argv)
      int unitig1, unitig2, overlapCount = 0;
      int unitigNum, numUnitigs, firstUnitigNum = 0;
      int numFlds;
+     ExpBuffer<char*> flds;
 
      maxTotAllowableMissingOnEnds = 2;
      minOverlapLength = 40;
@@ -321,7 +319,7 @@ int main (int argc, char **argv)
      rdPrefix[2] = rdPrefixHold[2] = 0;
      infile = Fopen (args.mean_and_stdev_by_prefix_file_arg, "r");
      while (fgets (line, 2000, infile)) {
-	  getFldsFromLine(line);
+          getFldsFromLine(line, flds);
 	  mean[(int)flds[0][0]][(int)flds[0][1]] = atof (flds[1]);
 	  stdev[(int)flds[0][0]][(int)flds[0][1]] = atof (flds[2]);
      }
@@ -342,7 +340,7 @@ int main (int argc, char **argv)
      infile = Fopen (args.unitig_lengths_file_arg, "r");
      if (! fgets (line, 2000, infile))
        die << "File '" << args.unitig_lengths_file_arg << "' is of length 0 or can't be read";
-     numFlds = getFldsFromLine (line);
+     numFlds = getFldsFromLine (line, flds);
      rewind (infile);
      if (numFlds == 1) {
 	  int retCode; // For the stupid new compiler
@@ -351,7 +349,7 @@ int main (int argc, char **argv)
      }
      else {
 	  while (fgets (line, 2000, infile)) {
-	       getFldsFromLine (line);
+               getFldsFromLine (line, flds);
 	       unitigLengths[atoi(flds[0])] = atoi (flds[1]);
 	  }
      }
@@ -520,6 +518,7 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
      charb cmd(500), line(2000);
      FILE *infile;
      int numFlds;
+     ExpBuffer<char*> flds;
    
      sprintf (cmd, "zcat -f %s", readVsKUnitigFile);
      infile = Popen (cmd, "r");
@@ -527,7 +526,7 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
 	  return (1); // A critical file doesn't exist
      outputFile=Fopen(outputFileName,"w");
      // Load the appropriate stuff
-     numFlds = getFldsFromLine(line);
+     numFlds = getFldsFromLine(line, flds);
      cptr = flds[numFlds-1];
      rdPrefixHold[0] = cptr[0];
      rdPrefixHold[1] = cptr[1];
@@ -538,7 +537,7 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
      updateMatchRecords(readNum, cptr, flds);
 
      while (fgets (line, 2000, infile)) {
-	  numFlds = getFldsFromLine(line);
+       numFlds = getFldsFromLine(line, flds);
 	  cptr = flds[numFlds-1];
 	  rdPrefix[0] = cptr[0];
 	  rdPrefix[1] = cptr[1];
@@ -1125,13 +1124,13 @@ void completePathPrint (T& ptr)
 	  // the following uses augmentedUnitigPathPrintData
 	  superReadLength = getSuperReadLength ();
 	  isReversed = setSuperReadNameFromAugmentedPath ();
-	  sprintf (outputString,"%s%lld %s ", rdPrefixHold, readNumHold-1, superReadName);
+	  sprintf (outputString,"%s%lld %s ", rdPrefixHold, readNumHold-1, (char*)superReadName);
 	  if (! isReversed)
 	       sprintf (tempOutputString,"%d F\n", lengthAdjustment1);
 	  else
 	       sprintf (tempOutputString,"%d R\n", superReadLength - lengthAdjustment1);
 	  strcat (outputString, tempOutputString);
-	  sprintf (tempOutputString,"%s%lld %s ", rdPrefixHold, readNumHold, superReadName);
+	  sprintf (tempOutputString,"%s%lld %s ", rdPrefixHold, readNumHold, (char*)superReadName);
 	  strcat (outputString, tempOutputString);
 	  if (! isReversed)
 	       sprintf (tempOutputString,"%d R\n", superReadLength - lengthAdjustment2);
@@ -1156,13 +1155,13 @@ void generateSuperReadPlacementLinesForJoinedMates (void)
      // the following uses augmentedUnitigPathPrintData
      superReadLength = getSuperReadLength ();
      isReversed = setSuperReadNameFromAugmentedPath ();
-     sprintf (outputString,"%s%lld %s ", rdPrefixHold, readNumHold-1, superReadName);
+     sprintf (outputString,"%s%lld %s ", rdPrefixHold, readNumHold-1, (char*)superReadName);
      if (! isReversed)
 	  sprintf (tempOutputString,"%d F\n", lengthAdjustment1);
      else
 	  sprintf (tempOutputString,"%d R\n", superReadLength - lengthAdjustment1);
      strcat (outputString, tempOutputString);
-     sprintf (tempOutputString,"%s%lld %s ", rdPrefixHold, readNumHold, superReadName);
+     sprintf (tempOutputString,"%s%lld %s ", rdPrefixHold, readNumHold, (char*)superReadName);
      strcat (outputString, tempOutputString);
      if (! isReversed)
 	  sprintf (tempOutputString,"%d R\n", superReadLength - lengthAdjustment2);
@@ -1174,7 +1173,7 @@ void generateSuperReadPlacementLinesForJoinedMates (void)
 int setSuperReadNameFromAugmentedPath (void)
 {
      int isReversed=0, i;
-     char *cptr;
+
      for (i=0; i<numUnitigPathPrintRecsOnPath/2; i++) {
 	  if (augmentedUnitigPathPrintData[i].unitig1 != augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath-i-1].unitig1) {
 	       if (augmentedUnitigPathPrintData[i].unitig1 < augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath-i-1].unitig1)
@@ -1191,21 +1190,17 @@ int setSuperReadNameFromAugmentedPath (void)
 	       break;
 	  }
      }
-     cptr = superReadName;
+     superReadName.clear();
      if (isReversed == 0) {
-	  sprintf (cptr, "%d%c", augmentedUnitigPathPrintData[0].unitig1, augmentedUnitigPathPrintData[0].ori);
-	  cptr += strlen (cptr);
+	  sprintf_append (superReadName, "%d%c", augmentedUnitigPathPrintData[0].unitig1, augmentedUnitigPathPrintData[0].ori);
 	  for (i=1; i<numUnitigPathPrintRecsOnPath; i++) {
-	       sprintf (cptr, "_%d%c", augmentedUnitigPathPrintData[i].unitig1, augmentedUnitigPathPrintData[i].ori);
-	       cptr += strlen (cptr);
+               sprintf_append (superReadName, "_%d%c", augmentedUnitigPathPrintData[i].unitig1, augmentedUnitigPathPrintData[i].ori);
 	  }
      }
      else {
-	  sprintf (cptr, "%d%c", augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath-1].unitig1, (augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath-1].ori == 'F') ? 'R' : 'F');
-	  cptr += strlen (cptr);
+	  sprintf_append (superReadName, "%d%c", augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath-1].unitig1, (augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath-1].ori == 'F') ? 'R' : 'F');
 	  for (i=numUnitigPathPrintRecsOnPath-2; i>=0; i--) {
-	       sprintf (cptr, "_%d%c", augmentedUnitigPathPrintData[i].unitig1, (augmentedUnitigPathPrintData[i].ori == 'F') ? 'R' : 'F');
-	       cptr += strlen (cptr);
+	       sprintf_append (superReadName, "_%d%c", augmentedUnitigPathPrintData[i].unitig1, (augmentedUnitigPathPrintData[i].ori == 'F') ? 'R' : 'F');
 	  }
      }
      return (isReversed);
@@ -1335,22 +1330,6 @@ int getInt (const char *fname)
      return (tval);
 }
 
-int getFldsFromLine (char *cptrHold)
-{
-     int numFlds=0, state = 0;
-     char *cptr;
-
-     for (cptr=cptrHold; *cptr; cptr++) {
-          if (isspace (*cptr)) { state = 0;*cptr = 0; }
-          else {
-               if (state == 1) continue;
-               flds[numFlds] = cptr;
-               ++numFlds;
-               state = 1;
-          }
-     }
-     return (numFlds);
-}
 
 void findSingleReadSuperReads(char *readName)
 {
@@ -1418,14 +1397,13 @@ void findSingleReadSuperReads(char *readName)
 	  if (j<=i)
 	       break;
      }
-     cptr = superReadName;
+     superReadName.clear();
      if (isReversed == 0) {
 	  for (i=0; 1; i++)
 	       if (matchStructIsUsed[i])
 		    break;
 	  recNumToUse = i;
-	  sprintf (cptr, "%d%c", kUTRMSptr[i].kUnitigNumber, kUTRMSptr[i].ori);
-	  cptr += strlen(cptr);
+	  sprintf_append (superReadName, "%d%c", kUTRMSptr[i].kUnitigNumber, kUTRMSptr[i].ori);
 	  maxReadOffset = kUTRMSptr[i].readMatchEnd;
 	  for (++i; i<countOfMatchingKUnitigs; i++) {
 	       if (! matchStructIsUsed[i])
@@ -1433,8 +1411,7 @@ void findSingleReadSuperReads(char *readName)
 	       // The next is the overlap amount between k-unitigs, which we now require to be minOverlapLength
 	       if (maxReadOffset-kUTRMSptr[i].readMatchBegin != minOverlapLength)
 		    return;
-	       sprintf (cptr, "_%d%c", kUTRMSptr[i].kUnitigNumber, kUTRMSptr[i].ori);
-	       cptr += strlen(cptr);
+	       sprintf_append(superReadName, "_%d%c", kUTRMSptr[i].kUnitigNumber, kUTRMSptr[i].ori);
 	       maxReadOffset = kUTRMSptr[i].readMatchEnd;
 	  }
 	  // Must do the output here
@@ -1442,15 +1419,14 @@ void findSingleReadSuperReads(char *readName)
 	       offsetOfReadInSuperRead = kUTRMSptr[recNumToUse].kUnitigMatchBegin - kUTRMSptr[recNumToUse].readMatchBegin;
 	  else
 	       offsetOfReadInSuperRead = unitigLengths[kUTRMSptr[recNumToUse].kUnitigNumber] - kUTRMSptr[recNumToUse].kUnitigMatchEnd - kUTRMSptr[recNumToUse].readMatchBegin;
-	  fprintf (outputFile, "%s %s %d %c\n", readName, superReadName, offsetOfReadInSuperRead, 'F');	  
+	  fprintf (outputFile, "%s %s %d %c\n", readName, (char*)superReadName, offsetOfReadInSuperRead, 'F');	  
      }
      else { // The k-unitigs are reversed from those reported
 	  for (i=countOfMatchingKUnitigs-1; 1; i--)
 	       if (matchStructIsUsed[i])
 		    break;
 	  recNumToUse = i;
-	  sprintf (cptr, "%d%c", kUTRMSptr[i].kUnitigNumber, (kUTRMSptr[i].ori == 'F') ? 'R' : 'F');
-	  cptr += strlen(cptr);
+	  sprintf_append(superReadName, "%d%c", kUTRMSptr[i].kUnitigNumber, (kUTRMSptr[i].ori == 'F') ? 'R' : 'F');
 	  minReadOffset = kUTRMSptr[i].readMatchBegin;
 	  for (--i; i>=0; i--) {
 	       if (! matchStructIsUsed[i])
@@ -1458,8 +1434,7 @@ void findSingleReadSuperReads(char *readName)
 	       // The next is the overlap amount between k-unitigs, which we now require to be minOverlapLength
 	       if (kUTRMSptr[i].readMatchEnd-minReadOffset != minOverlapLength)
 		    return;
-	       sprintf (cptr, "_%d%c", kUTRMSptr[i].kUnitigNumber, (kUTRMSptr[i].ori == 'F') ? 'R' : 'F');
-	       cptr += strlen(cptr);
+	       sprintf_append(superReadName, "_%d%c", kUTRMSptr[i].kUnitigNumber, (kUTRMSptr[i].ori == 'F') ? 'R' : 'F');
 	       minReadOffset = kUTRMSptr[i].readMatchBegin;
 	  }
 	  // Must do the output here
@@ -1468,7 +1443,7 @@ void findSingleReadSuperReads(char *readName)
 	  else
 	       offsetOfReadInSuperRead = kUTRMSptr[recNumToUse].kUnitigMatchEnd + kUTRMSptr[recNumToUse].readMatchBegin;
 	  // The k-unitigs are reversed from those reported
-	  fprintf (outputFile, "%s %s %d %c\n", readName, superReadName, offsetOfReadInSuperRead, 'R');
+	  fprintf (outputFile, "%s %s %d %c\n", readName, (char*)superReadName, offsetOfReadInSuperRead, 'R');
      }
 //     printf ("At 50\n");
 }
