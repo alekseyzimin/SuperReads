@@ -300,15 +300,24 @@ print FILE "export PATH=$CA_PATH:$SR_PATH:$JELLYFISH_PATH:\$PATH\n";
 $i=0;
 $list_pe_files="";
 $list_jump_files="";
-##################################################renaming reads####################################################
-print FILE "echo -n 'processing PE library reads ';date;\n";
+$list_of_frg_files="";
+$rerun_pe=0;
+$rerun_sj=0;
+###renaming reads###
 
+print FILE "echo -n 'processing PE library reads ';date;\n";
 print FILE "rm -rf meanAndStdevByPrefix.pe.txt\n";
 foreach $v(@pe_info_array){
     @f=split(/\s+/,$v);
     $list_pe_files.="$f[0].renamed.fastq ";
     print FILE "echo '$f[0] $f[1] $f[2]' >> meanAndStdevByPrefix.pe.txt\n";
-    next if(-e "$f[0].renamed.fastq");
+    if(-e "$f[0].renamed.fastq"){
+	    next;
+	}
+    else{
+	    $rerun_pe=1;
+            $rerun_sj=1;
+	}
     if($f[3] eq $f[4]){
 	print FILE "zcat -cf $f[3] | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";\$readnumber+=2;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
     }
@@ -336,7 +345,12 @@ if(scalar(@jump_info_array)>0){
 	@f=split(/\s+/,$v);
 	print FILE "echo '$f[0] 300 50' >> meanAndStdevByPrefix.sj.txt\n";
 	$list_jump_files.="$f[0].renamed.fastq ";
-	next if(-e "$f[0].renamed.fastq");
+	if(-e "$f[0].renamed.fastq"){
+            next;
+        }
+        else{
+            $rerun_sj=1;
+        }
 	if($f[3] eq $f[4]){
 	    die("duplicate jump library $f[0] files");
 	}
@@ -356,75 +370,99 @@ if(scalar(@jump_info_array)>0){
 	print FILE "MAX_$f[0]=`tail $f[0].renamed.fastq |grep '^\@$f[0]' |tail -n 1|awk '{print substr(\$1,4)}'`\n"
     }
 }
-######################################################done renaming reads####################################################################
-
-########################################################Jellyfish#################################
+###done renaming reads###
+print FILE "\n";
+###Jellyfish###
 
 print FILE "echo -n 'running Jellyfish ';date;\n";
 print FILE "MIN_Q_CHAR=`cat $list_pe_files |head -n 50000 | awk 'BEGIN{flag=0}{if(\$0 ~ /^\+/){flag=1}else if(flag==1){print \$0;flag=0}}'  | perl -ne 'BEGIN{\$q0_char=\"\@\";}{chomp;\@f=split \"\";foreach \$v(\@f){if(ord(\$v)<ord(\$q0_char)){\$q0_char=\$v;}}}END{\$ans=ord(\$q0_char);if(\$ans<64){print \"33\\n\"}else{print \"64\\n\"}}'`\n";
 print FILE "echo MIN_Q_CHAR: \$MIN_Q_CHAR\n";
 
-#for our error correctin we run jellyfish twice: once on all pe bases and once on pe bases with quality >2 
-print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_trim -s $JF_SIZE -m 24 --quality-start \$MIN_Q_CHAR --min-quality 5 $list_pe_files\n"  if(not(-e "pe_trim_0"));
-print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_all -s $JF_SIZE -m 24 $list_pe_files\n"  if(not(-e "pe_all_0"));
+#for our error correction we run jellyfish twice: once on all pe bases and once on pe bases with quality >2 
+if(not(-e "combined_0") || $rerun_pe==1){
+print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_trim -s $JF_SIZE -m 24 --quality-start \$MIN_Q_CHAR --min-quality 5 $list_pe_files\n";
+print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_all -s $JF_SIZE -m 24 $list_pe_files\n";
+print FILE "combine_jf_dbs -m 1 pe_trim_0 pe_all_0 -o combined\n";
+print FILE "rm pe_trim_0 pe_all_0\n";
+$rerun_pe=1;
+$rerun_sj=1;
+}
 
 #check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
 print FILE "if [[ -e pe_trim_1 || -e pe_all_1 ]];then\n";
-print FILE "echo \"Increase JF_SIZE\"\n";
+print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage\"\n";
 print FILE "exit\n";
 print FILE "fi\n";
-########################################################done Jellyfish#################################
-#initialize list of frg files
-$list_of_frg_files="";
-print FILE "\n\n\n";
-######################################################error correct PE#############################################################
-if(not(-e "pe.cor.fa")){
+
+###done Jellyfish###
+print FILE "\n";
+###error correct PE###
+
+if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
-    print FILE "combine_jf_dbs pe_trim_0 pe_all_0 -o combined -m 1\n";
-    print FILE "error_correct_reads -d combined_0 -c 2 -C -m 1 -s 1 -g 1 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files\n";
+    print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m 1 -s 1 -g 1 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files\n";
     print FILE "cat error_corrected.fa  | homo_trim $TRIM_PARAM > pe.cor.fa\n";
+    $rerun_pe=1;
 }
 #compute average PE read length -- we will need this for Astat later
 print FILE "PE_AVG_READ_LENGTH=`head -n 1000000 pe.cor.fa |tail -n 500000| grep -v '^>' | awk 'BEGIN{n=0;m=0;}{m+=length(\$0);n++;}END{print int(m/n)}'`\n";
 print FILE "echo \"Average PE read length after error correction: \$PE_AVG_READ_LENGTH\"\n"; 
-######################################################done error correcct PE##########################################################
+
+###done error correct PE###
 print FILE "\n";
-########################################################error correct, super reads for JUMP#################################
+###error correct JUMP###
+
 if(scalar(@jump_info_array)>0){
-    if(not(-e "sj.cor.fa")){
+    if(not(-e "sj.cor.fa")||$rerun_sj==1){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
-	print FILE "error_correct_reads -d combined_0 -c 2 -C -m 1 -s 1 -g 2 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files\n";
+	print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m 1 -s 1 -g 2 -a 3 -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files\n";
 	print FILE "cat error_corrected.fa  | homo_trim $TRIM_PARAM > sj.cor.fa\n";
+        $rerun_sj=1;
     }
-#############################################################done error correct JUMP#############################################
-#
-    print FILE "\n\n\n";
-#######################################################build k-unitigs##############################################################
-    print FILE "\n";
-    if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")){
+}
+
+###done error correct JUMP###
+print FILE "\n";
+###build k-unitigs###
+
+if(scalar(@jump_info_array)>0){
+    if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
 	print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa sj.cor.fa\n";
 	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
 	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+        $rerun_pe=1;
+	$rerun_sj=1;
     }
 }
 else{
-    if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")){
+    if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
 	print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s $JF_SIZE -o k_u_hash pe.cor.fa\n";
 	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
 	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+        $rerun_pe=1;
+        $rerun_sj=1;
     }
 }
+
+###done build k-unitigs###
+print FILE "\n";
+###estimate genome size###
+
 print FILE "ESTIMATED_GENOME_SIZE=`perl -ane '{if(\$F[0]=~/^>/){print \"\\n\"}else{print \$F[0]}}'  guillaumeKUnitigsAtLeast32bases_all.fasta | wc|awk '{print int(\$3)-(30*(int(\$1)-1));}'`\n";
 print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
-######################################################done k-unitigs#################################################################
-print FILE "\n\n\n";
-########################################super reads for jump#######################################################################
+
+###done estimate genome size###
+print FILE "\n";
+###super reads and filtering for jump###
+
 if(scalar(@jump_info_array)>0){
     print FILE "echo -n 'filtering JUMP ';date;\n";
 
-#creating super reads. for filtering
-    print FILE "createSuperReadsForDirectory.perl -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n" if(not(-e "work2"));;
-    print FILE "\n";
+#creating super reads for filtering
+    if($rerun_pe==1||$rerun_sj==1){
+    print FILE "rm -rf work2\n";
+    }
+    print FILE "createSuperReadsForDirectory.perl -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
     print FILE "if [[ ! -e work2/superReads.success ]];then\n";
@@ -433,42 +471,29 @@ if(scalar(@jump_info_array)>0){
     print FILE "fi\n";
 
 #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
-    if(not(-e "chimeric_sj.txt")){
+    if(not(-e "chimeric_sj.txt")||$rerun_pe==1||$rerun_sj==1){
 	print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$3\" \"\$2\" \"\$1;}else{print \$3\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 1| awk 'BEGIN{insert=\"\";}{if(\$3!=insert){start=\$1;insert=\$3}else{if(start>\$1){print insert\" \"start-\$1}else{print insert\" \"\$1-start}}}' | perl -ane '{if(\$F[1]<700&&\$F[1]>128){print STDOUT \"\$F[0]\\n\",substr(\$F[0],0,2),int(substr(\$F[0],2))+1,\"\\n\";}}' 1> chimeric_sj.txt \n";
-	print FILE "\n";
-#	print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$4\" \"\$2\" \"\$1;}else{print \$4\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -d | perl -ane '{print STDOUT \"\$F[2]\\n\",substr(\$F[2],0,2),int(substr(\$F[2],2))+1,\"\\n\";}' 1>> chimeric_sj.txt \n";
-#	print FILE "\n";
+    $rerun_sj=1;
     }
+
 #we also do initial redundancy filtering here, based on positions of reads in suoer reads
-    print FILE "cat work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt | awk '{rn=int(substr(\$1,3));if(rn%2==1 && int(substr(pr,3))+1==rn){print ps\" \"po\" \"pr\"\\n\"\$2\" \"\$3\" \"pr}else{pr=\$1;ps=\$2;po=\$3}}' |awk 'BEGIN{flag=0}{if(flag==1){index1=int(substr(c1_1,1,length(c1_1)-1))*20000+c1_2;index2=int(substr(\$1,1,length(\$1)-1))*20000+\$2;if(index1>index2){print c1_1\" \"\$1\" \"c1_2\" \"\$2\" \"c}else{print \$1\" \"c1_1\" \"\$2\" \"c1_2\" \"c}}c=\$3;c1_1=\$1;c1_2=\$2;flag=1-flag;}'|perl -ane '{chomp;\$range=2;\$code=0;for(\$i=-\$range;\$i<=\$range;\$i++){for(\$j=-\$range;\$j<=\$range;\$j++){\$code++ if(defined(\$h{\"\$F[0] \$F[1] \".(\$F[2]+\$i).\" \".(\$F[3]+\$j)}))}}if(\$code==0){\$h{\"\$F[0] \$F[1] \$F[2] \$F[3]\"}=1}else{print \"\$F[4]\\n\",substr(\$F[4],0,2),int(substr(\$F[4],2))+1,\"\\n\"}}' > redundant_sj.txt\n" if(not(-e "redundant_sj.txt")); 
+    if(not(-e "redundant_sj.txt")||$rerun_pe==1||$rerun_sj==1){
+        print FILE "cat work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt | awk '{rn=int(substr(\$1,3));if(rn%2==1 && int(substr(pr,3))+1==rn){print ps\" \"po\" \"pr\"\\n\"\$2\" \"\$3\" \"pr}else{pr=\$1;ps=\$2;po=\$3}}' |awk 'BEGIN{flag=0}{if(flag==1){index1=int(substr(c1_1,1,length(c1_1)-1))*20000+c1_2;index2=int(substr(\$1,1,length(\$1)-1))*20000+\$2;if(index1>index2){print c1_1\" \"\$1\" \"c1_2\" \"\$2\" \"c}else{print \$1\" \"c1_1\" \"\$2\" \"c1_2\" \"c}}c=\$3;c1_1=\$1;c1_2=\$2;flag=1-flag;}'|perl -ane '{chomp;\$range=2;\$code=0;for(\$i=-\$range;\$i<=\$range;\$i++){for(\$j=-\$range;\$j<=\$range;\$j++){\$code++ if(defined(\$h{\"\$F[0] \$F[1] \".(\$F[2]+\$i).\" \".(\$F[3]+\$j)}))}}if(\$code==0){\$h{\"\$F[0] \$F[1] \$F[2] \$F[3]\"}=1}else{print \"\$F[4]\\n\",substr(\$F[4],0,2),int(substr(\$F[4],2))+1,\"\\n\"}}' > redundant_sj.txt\n";
+    $rerun_sj=1;
+    } 
 
     print FILE "echo 'Chimeric/Redundant jump reads:';wc -l  chimeric_sj.txt redundant_sj.txt;\n";
 
 #remove all chimeric and all redundant reads from sj.cor.fa
-    print FILE "extractreads.pl <(cat chimeric_sj.txt redundant_sj.txt | perl -e '{while(\$line=<STDIN>){chomp(\$line);\$h{\$line}=1}open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);print \$line,\"\\n\" if(not(defined(\$h{\$line})));}}' <(awk '{print \$1}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 |reverse_complement > sj.cor.clean.fa\n" if(not(-e "sj.cor.clean.fa"));
-
-#we extend the filtered and reverse complemented jump reads if asked -- the reason to do that is that sometimes the jump library reads are shorter than 64 bases and CA cannot use them
-    if($EXTEND_JUMP_READS==1 && 0){#this is not supported
-	print FILE "createSuperReadsForDirectory.perl -noreduce -minreadsinsuperread 1 -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -l 31 -s $JF_SIZE -t $NUM_THREADS -M 2 -m 2 -jumplibraryreads -mkudisr 0 work3 sj.cor.clean.fa 1>super3.err 2>&1\n" if(not(-e "work3"));
-	print FILE "ln -sf work3/superReadSequences.jumpLibrary.fasta sj.cor.ext.fa\n";
-#check if the super reads pipeline finished successfully
-	print FILE "if [[ ! -e work3/superReads.success ]];then\n";
-	print FILE "echo \"Super reads failed, check super3.err and files in ./work3/\"\n";
-	print FILE "exit\n";
-	print FILE "fi\n";
-
+    if(not(-e "sj.cor.clean.fa")||$rerun_pe==1||$rerun_sj==1){
+    print FILE "extractreads.pl <(cat chimeric_sj.txt redundant_sj.txt | perl -e '{while(\$line=<STDIN>){chomp(\$line);\$h{\$line}=1}open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);print \$line,\"\\n\" if(not(defined(\$h{\$line})));}}' <(awk '{print \$1}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 |reverse_complement > sj.cor.clean.fa\n";
+    $rerun_sj=1;
     }
-    else{
-	print FILE "ln -sf sj.cor.clean.fa sj.cor.ext.fa\n";
-    } 
-
-    print FILE "\n";
 
 #here we create the frg files for CA from the jump libraries: each jump library will contribute one jump frg file and one additional frg file of linking information from "chimers"
     print FILE "echo -n 'creating FRG files ';date;\n";
-
     print FILE "rm -rf compute_jump_coverage.txt\n";
-
+    print FILE "ln -sf sj.cor.clean.fa sj.cor.ext.fa\n";
     for($i=0;$i<scalar(@jump_info_array);$i++){
 	@f=split(/\s+/,$jump_info_array[$i]);
 	$list_of_frg_files.="$f[0].cor.clean.frg ";
@@ -478,8 +503,9 @@ if(scalar(@jump_info_array)>0){
 	print FILE "rm $f[0].tmp\n";
     }
     print FILE "JUMP_BASES_COVERED=`awk 'BEGIN{b=0}{b+=\$1*\$2;}END{print b}' compute_jump_coverage.txt`\n";
+
 #here we reduce jump library coverage: we know the genome size (from k-unitigs) and JUMP_BASES_COVERED contains total jump library coverage :)
-    print FILE "perl -e '{\$cov='\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'; print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=60;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.cor.clean.fa\");while(\$line=<FILE>){next if(not(\$line =~ /^>/));chomp(\$line);if(int(substr(\$line,3))%2==0) {print STDERR substr(\$line,1),\"\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>mates_to_break.txt\n";
+    print FILE "perl -e '{\$cov='\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'; print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=1000;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.cor.clean.fa\");while(\$line=<FILE>){next if(not(\$line =~ /^>/));chomp(\$line);if(int(substr(\$line,3))%2==0) {print STDERR substr(\$line,1),\"\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>mates_to_break.txt\n";
 
     for($i=0;$i<scalar(@jump_info_array);$i++){
 	@f=split(/\s+/,$jump_info_array[$i]);
@@ -489,13 +515,18 @@ if(scalar(@jump_info_array)>0){
 	print FILE "rm $f[0].cor.clean.frg.tmp\n";
     }
 }
-###############################################################done with JUMP library################################################################
-print FILE "\n\n\n";
-########################################################error correct, super reads for PE#################################
+
+###done with super reads and filtering for jump###
+print FILE "\n";
+##super reads for PE###
+
 print FILE "echo -n 'computing super reads from PE ';date;\n";
 
-#we create super reads from PE    
-print FILE "createSuperReadsForDirectory.perl -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1"));;
+#create super reads from PE    
+if($rerun_pe==1){
+    print FILE "rm -rf work1\n";
+print FILE "createSuperReadsForDirectory.perl -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+    }
 
 #check if the super reads pipeline finished successfully
 print FILE "if [[ ! -e work1/superReads.success ]];then\n";
@@ -503,38 +534,45 @@ print FILE "echo \"Super reads failed, check super1.err and files in ./work1/\"\
 print FILE "exit\n";
 print FILE "fi\n";
 
-print FILE "\n";
-
-
 #now we extract those PE mates that did not end up in the same super read -- we call them linking mates, they will be useful for scaffolding
-print FILE "extractreads.pl <( awk '{if(int(substr(\$1,3))%2==0){print \$1\" \"\$2\" \"\$1;}else{print \$1\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 2 | uniq -u -f 1 | awk '{print \$1}' )  pe.cor.fa 1 > pe.linking.fa\n" if(not(-e "pe.linking.fa"));
-print FILE "\n";
+if(not(-e "pe.linking.fa")||$rerun_pe==1){
+    print FILE "extractreads.pl <( awk '{if(int(substr(\$1,3))%2==0){print \$1\" \"\$2\" \"\$1;}else{print \$1\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 2 | uniq -u -f 1 | awk '{print \$1}' )  pe.cor.fa 1 > pe.linking.fa\n";
+    $rerun_pe=1;
+    }
 
 #create frg files for PE data
 foreach $v(@pe_info_array){
     @f=split(/\s+/,$v);
     $list_of_frg_files.="$f[0].linking.frg ";
-    if(not(-e "$f[0].linking.frg")){
+    if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
 	print FILE "grep -A 1 '^>$f[0]' pe.linking.fa > $f[0].tmp\n";
 	print FILE "error_corrected2frg $f[0] $f[1] $f[2] \$MAX_$f[0] $f[0].tmp > $f[0].linking.frg\n";
 	print FILE "rm $f[0].tmp\n";
     }
 }
 print FILE "echo -n 'Linking PE reads ';\ncat ??.linking.frg |grep '^{FRG' |wc -l;\n";
-print FILE "\n";
+
 #create frg file for super reads
-print FILE "awk 'BEGIN{f=1}{if(f==0){print l\" \"\$1\" \"length(\$1)}else{l=\$1}f=1-f;}' work1/superReadSequences.fasta |sort -grk3,3 -S 20%| awk '{print \$1\"\\n\"\$2}' | create_sr_frg.pl | fasta2frg.pl sr >  superReadSequences_shr.frg\n" if(not(-e "superReadSequences_shr.frg"));
-print FILE "\n\n\n";
-################################################################done with PE library################################################################
+if(not(-e "superReadSequences_shr.frg")||$rerun_pe==1){
+    print FILE "awk 'BEGIN{f=1}{if(f==0){print l\" \"\$1\" \"length(\$1)}else{l=\$1}f=1-f;}' work1/superReadSequences.fasta |sort -grk3,3 -S 20%| awk '{print \$1\"\\n\"\$2}' | create_sr_frg.pl | fasta2frg.pl sr >  superReadSequences_shr.frg\n";
+}
+
+###done with super reads for PE###
+print FILE "\n";
+###processing other FRG###
+
 foreach $v(@other_info_array){
     $list_of_frg_files.="$v ";
 }
-print FILE "\n\n\n";
-###############################################################Celera Assembler################################################################
+
+###done processing other FRG###
+print FILE "\n";
+###Celera Assembler###
 
 print FILE "\necho -n 'Celera Assembler ';date;\n";
-
+if($rerun_sj==1||$rerun_pe==1){
 print FILE "rm -rf CA\n";
+}
 
 #data filtering
 if(scalar(@jump_info_array)>0){
@@ -637,12 +675,10 @@ print FILE "fi\n";
 #here we close gaps in scaffolds:  we use create_k_unitigs allowing to continue on count 1 sequence and then generate fake reads from the 
 #end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps
 
-#Done !!!! Hoorayyyy!!! :)
+###Done !!!! Hoorayyyy!!! :)###
 print FILE "echo -n 'All done ';date;\n";
-
 
 close(FILE);
 system("chmod 0755 assemble.sh");
 print "done.\nexecute assemble.sh to run the assembly\n";
-
 
