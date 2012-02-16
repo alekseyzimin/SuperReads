@@ -70,6 +70,10 @@ public:
     return *this;
   }
   size_t len() const { return super::size(); }
+  void clear() {
+    super::clear();
+    *super::ptr_ = '\0';
+  }
   void chomp() {
     while(super::ptr_ > super::base_ && isspace(*(super::ptr_ - 1)))
       --super::ptr_;

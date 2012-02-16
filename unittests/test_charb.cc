@@ -143,6 +143,16 @@ TEST_F(CharbStd, Strcpy) {
   EXPECT_EQ(strlen(s1), b.len());
 }
 
+TEST_F(CharbStd, Clear) {
+  charb b(s1);
+
+  EXPECT_STREQ(s1, b);
+  b.clear();
+  EXPECT_STREQ("", b);
+  EXPECT_EQ((size_t)0, strlen(b));
+  EXPECT_EQ((size_t)0, b.len());
+}
+
 class IOTest : public ::testing::Test {
 protected:
   virtual void SetUp() {
