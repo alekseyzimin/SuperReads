@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-AM_CXXFLAGS = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -Werror $(JELLYFISH_CFLAGS) -std=c++0x
+AM_CXXFLAGS = -I$(top_srcdir)/include -I$(top_srcdir) -Wall $(JELLYFISH_CFLAGS) -std=c++0x
 AM_LDFLAGS = -lpthread $(JELLYFISH_LIBS)
 
 noinst_HEADERS =
@@ -133,3 +133,8 @@ all_tests_LDADD = libgtest.la
 noinst_HEADERS += unittests/test_main.hpp unittests/misc.hpp
 
 include gtest.mk
+
+##############################
+# Extra configuration for development tree
+##############################
+-include $(top_srcdir)/development.mk
