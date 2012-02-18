@@ -13,6 +13,8 @@ public:
   bool                           mean_and_stdev_by_prefix_file_given;
   const char *                   unitig_lengths_file_arg;
   bool                           unitig_lengths_file_given;
+  const char *                   kunitigs_translation_file_arg;
+  bool                           kunitigs_translation_file_given;
   const char *                   overlaps_file_arg;
   bool                           overlaps_file_given;
   const char *                   num_kunitigs_file_arg;
@@ -26,23 +28,39 @@ public:
   enum {
     USAGE_OPT = 1000,
     MIN_OVERLAP_LENGTH_OPT,
+    KUNITIGS_TRANSLATION_FILE_OPT,
     NUM_KUNITIGS_FILE_OPT,
     NUM_FILE_NAMES_OPT
   };
 
-  joinKUnitigs_v3(int argc, char *argv[]) :
+  joinKUnitigs_v3() : 
     min_overlap_length_arg(), min_overlap_length_given(false),
     mean_and_stdev_by_prefix_file_arg(""), mean_and_stdev_by_prefix_file_given(false),
     unitig_lengths_file_arg(""), unitig_lengths_file_given(false),
+    kunitigs_translation_file_arg(""), kunitigs_translation_file_given(false),
     overlaps_file_arg(""), overlaps_file_given(false),
     num_kunitigs_file_arg(""), num_kunitigs_file_given(false),
     num_file_names_arg(1), num_file_names_given(false),
     prefix_arg("super_reads_output"), prefix_given(false)
-  {
+  { }
+
+  joinKUnitigs_v3(int argc, char* argv[]) :
+    min_overlap_length_arg(), min_overlap_length_given(false),
+    mean_and_stdev_by_prefix_file_arg(""), mean_and_stdev_by_prefix_file_given(false),
+    unitig_lengths_file_arg(""), unitig_lengths_file_given(false),
+    kunitigs_translation_file_arg(""), kunitigs_translation_file_given(false),
+    overlaps_file_arg(""), overlaps_file_given(false),
+    num_kunitigs_file_arg(""), num_kunitigs_file_given(false),
+    num_file_names_arg(1), num_file_names_given(false),
+    prefix_arg("super_reads_output"), prefix_given(false)
+  { parse(argc, argv); }
+
+  void parse(int argc, char* argv[]) {
     static struct option long_options[] = {
       {"min-overlap-length", 1, 0, MIN_OVERLAP_LENGTH_OPT},
       {"mean-and-stdev-by-prefix-file", 1, 0, 'm'},
       {"unitig-lengths-file", 1, 0, 'u'},
+      {"kunitigs-translation-file", 1, 0, KUNITIGS_TRANSLATION_FILE_OPT},
       {"overlaps-file", 1, 0, 'o'},
       {"num-kunitigs-file", 1, 0, NUM_KUNITIGS_FILE_OPT},
       {"num-file-names", 1, 0, NUM_FILE_NAMES_OPT},
@@ -91,6 +109,10 @@ public:
         unitig_lengths_file_given = true;
         unitig_lengths_file_arg = optarg;
         break;
+      case KUNITIGS_TRANSLATION_FILE_OPT:
+        kunitigs_translation_file_given = true;
+        kunitigs_translation_file_arg = optarg;
+        break;
       case 'o':
         overlaps_file_given = true;
         overlaps_file_arg = optarg;
@@ -138,10 +160,11 @@ public:
   "     --min-overlap-length=int            *Minimum length of an overlap between unitigs\n" \
   " -m, --mean-and-stdev-by-prefix-file=path\n                                         *File containing the mean and stdev for each prefix library.\n" \
   " -u, --unitig-lengths-file=path          *File containing the length of the unitigs.\n" \
+  "     --kunitigs-translation-file=path     File containing map from original unitigs to new (longer) unitigs.\n" \
   " -o, --overlaps-file=path                *Celera-style overlap file between unitigs in binary format.\n" \
   "     --num-kunitigs-file=path            *File containing the number of k-unitigs.\n" \
   "     --num-file-names=int                 Number of files containing read_unitig_overlaps. (1)\n" \
-  " -p, --prefix=c_string                    Output file prefix. (super_reads_output)\n" \
+  " -p, --prefix=string                      Output file prefix. (super_reads_output)\n" \
   "     --usage                              Usage\n" \
   " -h, --help                               This message\n" \
   " -V, --version                            Version"
@@ -160,6 +183,7 @@ public:
     os << "min_overlap_length_given:" << min_overlap_length_given << " min_overlap_length_arg:" << min_overlap_length_arg << "\n";
     os << "mean_and_stdev_by_prefix_file_given:" << mean_and_stdev_by_prefix_file_given << " mean_and_stdev_by_prefix_file_arg:" << mean_and_stdev_by_prefix_file_arg << "\n";
     os << "unitig_lengths_file_given:" << unitig_lengths_file_given << " unitig_lengths_file_arg:" << unitig_lengths_file_arg << "\n";
+    os << "kunitigs_translation_file_given:" << kunitigs_translation_file_given << " kunitigs_translation_file_arg:" << kunitigs_translation_file_arg << "\n";
     os << "overlaps_file_given:" << overlaps_file_given << " overlaps_file_arg:" << overlaps_file_arg << "\n";
     os << "num_kunitigs_file_given:" << num_kunitigs_file_given << " num_kunitigs_file_arg:" << num_kunitigs_file_arg << "\n";
     os << "num_file_names_given:" << num_file_names_given << " num_file_names_arg:" << num_file_names_arg << "\n";

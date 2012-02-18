@@ -1,11 +1,20 @@
 #!/usr/bin/perl
 # Cat the k-unitig fasta file through
-$numKUnitigsFile = "numKUnitigs.txt";
-$maxKUnitigNumberFile = "maxKUnitigNumber.txt";
-$totBasesInKUnitigsFile = "totBasesInKUnitigs.txt";
 $workingDir = ".";
-if ($#ARGV >= 0) {
-    $workingDir = $ARGV[0]; }
+$outputPrefix = "";
+for ($i=0; $i<=$#ARGV; $i++) {
+    $arg = $ARGV[$i];
+    if ($arg eq "-output-prefix") {
+	++$i;
+	$outputPrefix = $ARGV[$i];
+	if ($outputPrefix !~ /\.$/) { $outputPrefix .= "."; }
+	next; }
+    $workingDir = $arg;
+}
+
+$numKUnitigsFile = $outputPrefix . "numKUnitigs.txt";
+$maxKUnitigNumberFile = $outputPrefix . "maxKUnitigNumber.txt";
+$totBasesInKUnitigsFile = $outputPrefix . "totBasesInKUnitigs.txt";
 $isFirstRead = 1;
 while ($line = <STDIN>) {
     if ($line =~ /^>/) {

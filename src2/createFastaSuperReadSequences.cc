@@ -40,6 +40,9 @@ VI)  Make sure you allow for an appropriate set of params
 	H) -kunitigsfile filename specifies the input k-unitig filename instead
 	     of using the default:
 	     $workingDir/guillaumeKUnitigsAtLeast32bases_all.fasta
+	I) -maxunitignumberfile filename specifies the file which contains
+	     the largest k-unitig number. The default is
+	     maxKUnitigNumber.txt within the working directory
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -79,7 +82,7 @@ if (name == NULL) { fprintf (stderr, "Couldn't allocate space for '%s'\nBye!\n",
 int main (int argc, char **argv)
 {
      char *workingDir;
-     charb superReadListFile(512), fname(512), kUnitigFilename(512);
+     charb superReadListFile(512), fname(512), kUnitigFilename(512), maxUnitigsFilename(512);
      struct stat statbuf;
      uint64_t kUnitigSeqFileSize, fsize;
      uint64_t i64, j64=0;
@@ -132,6 +135,10 @@ int main (int argc, char **argv)
 	       ++i;
 	       strcpy (kUnitigFilename, argv[i]);
 	       continue; }
+	  if (strcmp (argv[i], "-maxunitignumberfile") == 0) {
+	       ++i;
+	       strcpy (maxUnitigsFilename, argv[i]);
+	       continue; }
 	  if (argNum == 0)
 	       workingDir = argv[i];
 	  else if (argNum == 1)
@@ -162,11 +169,12 @@ int main (int argc, char **argv)
 
      // (III) above
      // Find out the last kUnitig number
-     sprintf (fname, "%s/%s", workingDir, NUM_KUNITIGS_FILENAME);
-     infile = Fopen (fname, "r");
+     if (maxUnitigsFilename[0] == 0)
+	  sprintf (maxUnitigsFilename, "%s/%s", workingDir, NUM_KUNITIGS_FILENAME);
+     infile = Fopen (maxUnitigsFilename, "r");
      int fields_read = fscanf (infile, "%d\n", &lastKUnitigNumber);
      if(fields_read != 1) {
-       fprintf(stderr, "Failed to read one int from '%s'. Bye!\n", (char*)kUnitigFilename);
+       fprintf(stderr, "Failed to read one int from '%s'. Bye!\n", (char*)maxUnitigsFilename);
        exit(2);
      }
      fclose (infile);
