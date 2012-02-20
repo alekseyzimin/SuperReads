@@ -10,6 +10,9 @@ option("mean-and-stdev-by-prefix-file", "m") {
 option("unitig-lengths-file", "u") {
   description "File containing the length of the unitigs."
   c_string; typestr "path"; required }
+option("kunitigs-translation-file") {
+  description "File containing map from original unitigs to new (longer) unitigs."
+  c_string; typestr "path" }
 option("overlaps-file", "o") {
   description "Celera-style overlap file between unitigs in binary format."
   c_string; typestr "path"; required }
