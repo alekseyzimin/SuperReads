@@ -31,7 +31,8 @@ noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/rb_node.hpp				\
                   $(UTILS_I)/binary_search_tree_iterator.hpp		\
                   $(UTILS_I)/skip_list_common.hpp			\
-                  $(UTILS_I)/multi_thread_skip_list_set.hpp
+                  $(UTILS_I)/multi_thread_skip_list_set.hpp		\
+                  $(UTILS_I)/tmpstream.hpp
 
 noinst_LIBRARIES = libutils.a
 libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp
@@ -62,7 +63,8 @@ noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/fibonacci_coding.hpp src/sr_names.hpp	\
                   src/bloom_filter.hpp src/MurmurHash3.h	\
                   src/bloom_hash.hpp src/bloom_counter2.hpp	\
-                  src/combine_jf_dbs.hpp
+                  src/combine_jf_dbs.hpp src/mer_dna.hpp	\
+                  src/read_parser.hpp
 
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 homo_trim_SOURCES = src/homo_trim.cc 
@@ -123,9 +125,12 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_skip_list_set.cc			\
                     unittests/test_skip_list_map.cc			\
                     unittests/test_rbtree.cc				\
-                    unittests/test_multi_thread_skip_list_set.cc
+                    unittests/test_multi_thread_skip_list_set.cc	\
+                    unittests/test_mer_dna.cc				\
+                    unittests/test_read_parser.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
-                     src/gcc_builtins.cc unittests/misc.cc
+                     src/gcc_builtins.cc src/mer_dna.cc			\
+                     src/read_parser.cc unittests/misc.cc
 all_tests_CXXFLAGS = $(AM_CXXFLAGS)					\
 -I$(top_srcdir)/unittests/gtest/include -I$(top_srcdir)unittests/gtest	\
 -I$(top_srcdir)/include -I$(top_srcdir)

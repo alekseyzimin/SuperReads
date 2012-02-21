@@ -72,7 +72,8 @@ public:
   size_t len() const { return super::size(); }
   void clear() {
     super::clear();
-    *super::ptr_ = '\0';
+    if(super::ptr_)
+      *super::ptr_ = '\0';
   }
   void chomp() {
     while(super::ptr_ > super::base_ && isspace(*(super::ptr_ - 1)))
@@ -215,7 +216,7 @@ std::istream& getline(std::istream &is, basic_charb<R> &b, char delim, char *cpt
     is.getline(cptr, b.capacity() - (cptr - b.base_), delim);
     if(is.bad()) // Bad, we quit
       break;
-    cptr += is.gcount();
+    cptr += strlen(cptr);
     if(is.eof())  // Eof, we quit
       break;
     if(!is.fail()) // Found delim, done
@@ -237,10 +238,10 @@ template<typename R>
 std::istream& getline(std::istream& is, basic_charb<R>& b, char delim) { return getline(is, b, delim, b.base_); }
 
 template<typename R>
-std::istream& getline_append(std::istream& is, basic_charb<R>& b) { return getline(is, b, '\n', b.ptr_); }
+std::istream& getline_append(std::istream& is, basic_charb<R>& b) { return getline(is, b, '\n', b.ptr()); }
 
 template<typename R>
-std::istream& getline_append(std::istream& is, basic_charb<R>& b, char delim) { return getline(is, b, delim, b.ptr_); }
+std::istream& getline_append(std::istream& is, basic_charb<R>& b, char delim) { return getline(is, b, delim, b.ptr()); }
 
 
 /** sprintf, snprintf, vsprintf, vsnprintf - formatted output

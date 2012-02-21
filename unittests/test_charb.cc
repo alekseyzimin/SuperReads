@@ -219,6 +219,24 @@ TEST_F(IOTest, getline) {
   EXPECT_EQ(-1, res);
 }
 
+TEST_F(IOTest, getline_append) {
+  charb                          b(5);
+  __gnu_cxx::stdio_filebuf<char> ib(tf, std::ios::in);
+  std::istream                   is(&ib);
+
+  getline_append(is, b);
+  EXPECT_TRUE(is.good());
+  std::string res(l1, strlen(l1) - 1); // Everything but "\n"
+  EXPECT_STREQ(res.c_str(), b);
+  
+  std::cout << b << "\n";
+  getline_append(is, b);
+  std::cout << b << "\n";
+  EXPECT_EQ(strlen(l1) + strlen(l2) - 1, b.len());
+  EXPECT_EQ(strlen(l1) + strlen(l2) - 1, strlen(b));
+
+}
+
 TEST_F(IOTest, fgets_append) {
   charb b(5);
   char *res;

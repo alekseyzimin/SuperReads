@@ -85,7 +85,7 @@ namespace jflib {
           s_->release(i_);
         v_ = 0;
       }
-      bool is_empty() { return v_ == 0; }
+      bool is_empty() const { return v_ == 0; }
       T &operator*() { return *v_; }
       T *operator->() { return v_; }
 
