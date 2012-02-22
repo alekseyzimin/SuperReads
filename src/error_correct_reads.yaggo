@@ -37,6 +37,9 @@ option("error", "e") {
 option("output", "o") {
   description "Output file prefix"
   string; default "error_corrected"; typestr "prefix" }
+option("contaminant") {
+  description "Jellyfish database of contaminant k-mers"
+  c_string; typestr "path" }
 option("gzip") {
   description "Gzip output file"
   flag; off }

@@ -30,6 +30,8 @@ public:
   bool                           error_given;
   yaggo::string                  output_arg;
   bool                           output_given;
+  const char *                   contaminant_arg;
+  bool                           contaminant_given;
   bool                           gzip_flag;
   std::vector<const char *>      file_arg;
   typedef std::vector<const char *>::iterator file_arg_it;
@@ -37,10 +39,11 @@ public:
 
   enum {
     USAGE_OPT = 1000,
+    CONTAMINANT_OPT,
     GZIP_OPT
   };
 
-  args_t(int argc, char *argv[]) :
+  args_t() : 
     db_arg(), db_given(false),
     combined_arg(0), combined_given(false),
     thread_arg(1), thread_given(false),
@@ -52,8 +55,27 @@ public:
     window_arg(), window_given(false),
     error_arg(5), error_given(false),
     output_arg("error_corrected"), output_given(false),
+    contaminant_arg(""), contaminant_given(false),
     gzip_flag(false)
-  {
+  { }
+
+  args_t(int argc, char* argv[]) :
+    db_arg(), db_given(false),
+    combined_arg(0), combined_given(false),
+    thread_arg(1), thread_given(false),
+    both_strands_flag(true),
+    min_count_arg(2), min_count_given(false),
+    skip_arg(2), skip_given(false),
+    good_arg(2), good_given(false),
+    anchor_count_arg(), anchor_count_given(false),
+    window_arg(), window_given(false),
+    error_arg(5), error_given(false),
+    output_arg("error_corrected"), output_given(false),
+    contaminant_arg(""), contaminant_given(false),
+    gzip_flag(false)
+  { parse(argc, argv); }
+
+  void parse(int argc, char* argv[]) {
     static struct option long_options[] = {
       {"db", 1, 0, 'd'},
       {"combined", 1, 0, 'c'},
@@ -66,6 +88,7 @@ public:
       {"window", 1, 0, 'w'},
       {"error", 1, 0, 'e'},
       {"output", 1, 0, 'o'},
+      {"contaminant", 1, 0, CONTAMINANT_OPT},
       {"gzip", 0, 0, GZIP_OPT},
       {"help", 0, 0, 'h'},
       {"usage", 0, 0, USAGE_OPT},
@@ -149,6 +172,10 @@ public:
         output_given = true;
         output_arg.assign(optarg);
         break;
+      case CONTAMINANT_OPT:
+        contaminant_given = true;
+        contaminant_arg = optarg;
+        break;
       case GZIP_OPT:
         gzip_flag = true;
         break;
@@ -183,6 +210,7 @@ public:
   " -w, --window=uint32                      Size of window (default=mer length)\n" \
   " -e, --error=uint32                       Maximum number of error in a window (5)\n" \
   " -o, --output=prefix                      Output file prefix (error_corrected)\n" \
+  "     --contaminant=path                   Jellyfish database of contaminant k-mers\n" \
   "     --gzip                               Gzip output file (false)\n" \
   "     --usage                              Usage\n" \
   " -h, --help                               This message\n" \
@@ -210,6 +238,7 @@ public:
     os << "window_given:" << window_given << " window_arg:" << window_arg << "\n";
     os << "error_given:" << error_given << " error_arg:" << error_arg << "\n";
     os << "output_given:" << output_given << " output_arg:" << output_arg << "\n";
+    os << "contaminant_given:" << contaminant_given << " contaminant_arg:" << contaminant_arg << "\n";
     os << "gzip_flag:" << gzip_flag << "\n";
     os << "file_arg:" << yaggo::vec_str(file_arg) << "\n";
   }

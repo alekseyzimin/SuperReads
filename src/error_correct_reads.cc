@@ -184,6 +184,32 @@ private:
   }
 };
 
+// Contaminant database. If a Jellyfish database is given, return true
+// iff the k-mer is in the database. With no database, it always
+// returns false.
+class contaminant_check {
+public:
+  virtual ~contaminant_check() { }
+  
+  virtual bool is_contaminant(uint64_t m) = 0;
+};
+
+class contaminant_no_database : public contaminant_check {
+public:
+  virtual ~contaminant_no_database() { }
+  virtual bool is_contaminant(uint64_t m) { return false; }
+};
+
+class contaminant_database : public contaminant_check {
+  inv_hash_storage_t* ary_;
+public:
+  contaminant_database(inv_hash_storage_t* ary) : ary_(ary) { }
+  virtual ~contaminant_database() { }
+  virtual bool is_contaminant(uint64_t m) {
+    hval_t val = 0;
+    return ary_->get_val(m, val, false);
+  }
+};
 
 template<class instance_t>
 class error_correct_t : public thread_exec {
@@ -200,6 +226,7 @@ class error_correct_t : public thread_exec {
   int                    _error;
   bool                   _gzip;
   int                    _combined;
+  contaminant_check*     _contaminant;
   jflib::o_multiplexer * _output;
   jflib::o_multiplexer * _log;
 public:
@@ -207,7 +234,7 @@ public:
     _parser(parser), _hashes(hashes),
     _mer_len(_hashes->begin()->get_key_len() / 2),
     _skip(0), _good(1), _min_count(1), _window(0), _error(0), _gzip(false),
-    _combined(0) { }
+    _combined(0), _contaminant(0) { }
 
 private:
   std::ostream *open_file(const char *suffix) {
@@ -259,6 +286,7 @@ public:
   error_correct_t & error(int e) { _error = e; return *this; }
   error_correct_t & gzip(bool g) { _gzip = g; return *this; }
   error_correct_t & combined(int c) { _combined = c; return *this; }
+  error_correct_t & contaminant(contaminant_check* c) { _contaminant = c; return *this; }
 
   jellyfish::parse_read* parser() const { return _parser; }
   int skip() const { return _skip; }
@@ -272,6 +300,7 @@ public:
   int error() const { return _error ? _error : _mer_len / 2; }
   bool gzip() const { return _gzip; }
   int combined() const { return _combined; }
+  contaminant_check* contaminant() const { return _contaminant; }
   jflib::o_multiplexer &output() { return *_output; }
   jflib::o_multiplexer &log() { return *_log; }
 
@@ -385,6 +414,10 @@ private:
         ori_code = 5; // Invalid base
         mer.shift((uint64_t)0);
       } else {
+        if(_ec->contaminant()->is_contaminant(mer.canonical())) {
+          log.truncation(cpos);
+          goto done;
+        }
         ori_code = mer.code(0);
       }
       uint64_t counts[4];
@@ -402,6 +435,10 @@ private:
       if(count == 1) { // One continuation. Is it an error?
         if(ucode != ori_code) {
           mer.replace(0, ucode);
+          if(_ec->contaminant()->is_contaminant(mer.canonical())) {
+            log.truncation(cpos);
+            goto done;
+          }
           if(log.substitution(cpos, base, mer.base(0)))
             goto truncate;
         }
@@ -427,9 +464,7 @@ private:
 
       uint64_t max_count = 10000000000;
       if(ori_count <= (uint64_t)_ec->anchor())
-        {
         max_count  = 3 * ori_count;
-        }
 
       for(int i = 0; i < 4; i++) {
         if(counts[i] < (uint64_t)_ec->min_count())
@@ -460,8 +495,12 @@ private:
       int        nlevel;
       ncount = _af->get_best_alternatives(nmer, ncounts, nucode, nlevel);
       DBG << V(*cpos) << V(ncount) << V(nlevel) << V(level) << V(ncounts[0]) << V(ncounts[1]) << V(ncounts[2]) << V(ncounts[3]);
-      if(ncount > 0 && nlevel >= level) {
+      if(ncount > 0 && nlevel >= level) { // TODO: Shouldn't we break if this test is false?
         mer.replace(0, check_code);
+        if(_ec->contaminant()->is_contaminant(mer.canonical())) {
+          log.truncation(cpos);
+          goto done;
+        }
         *out++ = mer.base(0);
         if(check_code != ori_code)
           if(log.substitution(cpos, base, mer.base(0)))
@@ -513,12 +552,14 @@ private:
       }
       int found = 0;
       while(input < end) {
-        hval_t val = _af->get_val(mer.canonical());
+        if(!_ec->contaminant()->is_contaminant(mer.canonical())) {
+          hval_t val = _af->get_val(mer.canonical());
      
-        found = (int)val >= _ec->anchor() ? found + 1 : 0;
-        DBG << V(val) << V(mer) << V(_ec->anchor()) << V(*input) << V(found);
-        if(found >= _ec->good())
-          return true;
+          found = (int)val >= _ec->anchor() ? found + 1 : 0;
+          DBG << V(val) << V(mer) << V(_ec->anchor()) << V(*input) << V(found);
+          if(found >= _ec->good())
+            return true;
+        }
         char base = *input++;
         *out++ = base;
         if(!mer.shift_left(base))
@@ -552,6 +593,16 @@ int main(int argc, char *argv[])
           << ") for hash '" << *it << "'";
   }
 
+  // Open contaminant database
+  contaminant_check* contaminant = 0;
+  if(args.contaminant_given) {
+    mapped_file dbf(args.contaminant_arg);
+    dbf.random().will_need().load();
+    contaminant = new contaminant_database(raw_inv_hash_query_t(dbf).get_ary());
+  } else {
+    contaminant = new contaminant_no_database();
+  }
+
   jellyfish::parse_read parser(args.file_arg.begin(), args.file_arg.end(), 100);
 
   kmer_t::k(key_len / 2);
@@ -562,7 +613,8 @@ int main(int argc, char *argv[])
     .window(args.window_given ? args.window_arg : kmer_t::k())
     .error(args.error_given ? args.error_arg : kmer_t::k() / 2)
     .gzip(args.gzip_flag)
-    .combined(args.combined_arg);
+    .combined(args.combined_arg)
+    .contaminant(contaminant);
   correct.do_it(args.thread_arg);
 
   return 0;
