@@ -5,11 +5,21 @@ my $total_count=0;
 my $uidfile=$ARGV[0];
 my $countsfile=$ARGV[1];
 my $readlen=$ARGV[2];
+my $renamed_sr=$ARGV[3];
+
+my %r_sr;
+open(FILE,$renamed_sr);
+while($line=<FILE>){
+chomp($line);
+@f=split(/\s+/,$line);
+$r_sr{$f[0]}=$f[1];
+}
+close(FILE);
+
 
 my @uid;
 open(FILE,$uidfile);
-while($line=<FILE>)
-{
+while($line=<FILE>){
 chomp($line);
 push(@uid,$line);
 }
@@ -17,15 +27,12 @@ close(FILE);
 
 my %counts;
 open(FILE,$countsfile);
-while($line=<FILE>)
-{
+while($line=<FILE>){
 @f=split(/\s+/,$line);
-if(defined($counts{$f[1]}))
-{
+if(defined($counts{$f[1]})){
 $counts{$f[1]}++;
 }
-else
-{
+else{
 $counts{$f[1]}=1;
 }
 }
@@ -36,27 +43,21 @@ close(FILE);
 my $total_rho=0;
 my $total_count=0;
 my $utg=-1;
-while($line=<STDIN>)
-{
-if($line=~/^unitig/)
-{
+while($line=<STDIN>){
+if($line=~/^unitig/){
 chomp($line);
 @l=split(/\s+/,$line);
-if($utg ==-1)
-{
+if($utg ==-1){
 $utg=$l[1];
 $c=0;
 $r=-1;
 }
-else
-{
-if($c>0)
-{
+else{
+if($c>0){
 $count{$utg}=$c;
 $rho{$utg}=$r-$readlen;
 $rho{$utg}=1 if($rho{$utg}<0);
-if($r>2000)
-{
+if($r>2000){
 $total_rho+=$rho{$utg};
 $total_count+=$c;
 }
@@ -66,31 +67,34 @@ $r=-1;
 $utg=$l[1];
 }
 }
-elsif($line =~ /^cns/)
-{
+elsif($line =~ /^cns/){
 chomp($line);
 @s=split(//,substr($line,4));
 $cg=0;
 $base_count=0;
-foreach $v(@s)
-{
+foreach $v(@s){
 $cg++ if($v eq "G" || $v eq "C");
 $base_count++;
 } 
 $cg_content{$utg}=$cg/$base_count;
 }
-elsif($line =~ /^FRG/)
-{
+elsif($line =~ /^FRG/){
 @l=split(/\s+/,$line);
 @f=split(/\:/,$uid[$l[4]]);
 
-if(defined($counts{$f[0]}))
-{
+if(defined($counts{$f[0]})){
 $r=$l[13] if($l[13]>$r);
 $r=$l[14] if($l[14]>$r);
 
 $c+=$counts{$f[0]};
 $counts{$f[0]}=0;
+}
+elsif(defined($counts{$r_sr{$f[0]}})){
+$r=$l[13] if($l[13]>$r);
+$r=$l[14] if($l[14]>$r);
+
+$c+=$counts{$r_sr{$f[0]}};
+$counts{$r_sr{$f[0]}}=0;
 }
 }
 }

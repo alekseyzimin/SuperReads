@@ -459,8 +459,9 @@ if(scalar(@jump_info_array)>0){
     print FILE "echo -n 'filtering JUMP ';date;\n";
 
 #creating super reads for filtering
-    if($rerun_pe==1||$rerun_sj==1){
+    if($rerun_pe==1||$rerun_sj==1||not(-e "work2")){
     print FILE "rm -rf work2\n";
+    $rerun_sj=1;
     }
     print FILE "createSuperReadsForDirectory.perl -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
 
@@ -523,10 +524,12 @@ print FILE "\n";
 print FILE "echo -n 'computing super reads from PE ';date;\n";
 
 #create super reads from PE    
-if($rerun_pe==1){
+if($rerun_pe==1|| not(-e "work1")){
     print FILE "rm -rf work1\n";
+    $rerun_pe=1;
+	}
+
 print FILE "createSuperReadsForDirectory.perl -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
-    }
 
 #check if the super reads pipeline finished successfully
 print FILE "if [[ ! -e work1/superReads.success ]];then\n";
@@ -554,7 +557,7 @@ print FILE "echo -n 'Linking PE reads ';\ncat ??.linking.frg |grep '^{FRG' |wc -
 
 #create frg file for super reads
 if(not(-e "superReadSequences_shr.frg")||$rerun_pe==1){
-    print FILE "awk 'BEGIN{f=1}{if(f==0){print l\" \"\$1\" \"length(\$1)}else{l=\$1}f=1-f;}' work1/superReadSequences.fasta |sort -grk3,3 -S 20%| awk '{print \$1\"\\n\"\$2}' | create_sr_frg.pl | fasta2frg.pl sr >  superReadSequences_shr.frg\n";
+    print FILE "awk 'BEGIN{f=1}{if(f==0){print l\" \"\$1\" \"length(\$1)}else{l=\$1}f=1-f;}' work1/superReadSequences.fasta |sort -grk3,3 -S 20%| awk '{print \$1\"\\n\"\$2}' | create_sr_frg.pl 2>renamed_sr.txt | fasta2frg.pl sr >  superReadSequences_shr.frg\n";
 }
 
 ###done with super reads for PE###
