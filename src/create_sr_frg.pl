@@ -4,12 +4,6 @@ $shooting_index=0;
 while($line=<STDIN>){
     if($line =~ /^>/){
 	if(not($rn eq "")){
-
-	    if(length($rn)>110){
-		$rn=">SHOOTING_LONG_NAME_".($shooting_index);
-		$shooting_index++;
-	    }
-
 	    $l=length($seq);
 	    $rev_seq=reverse_complement($seq);
 	    $seq=$rev_seq lt $seq ? $rev_seq : $seq;
@@ -32,7 +26,13 @@ while($line=<STDIN>){
 	}
 	chomp($line); 
 	@l=split(/\s+/,$line);
-	$rn=$l[0].":super-read";
+	if(length($l[0])>100){
+            print STDERR "SHOOTING_LONG_NAME_$shooting_index ",substr($l[0],1),"\n";
+            $rn=">SHOOTING_LONG_NAME_".($shooting_index).":super-read";
+            $shooting_index++;
+        }else{
+        $rn=$l[0].":super-read";
+	}
 	$seq="";
     }else{
 	chomp($line); 
