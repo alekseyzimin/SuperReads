@@ -29,17 +29,19 @@ void read_parser::start_parsing_thread() {
     eraise(std::runtime_error) << "Invalid input file format";
   }
 
-  // // Finish initialization of the read_groups
-  // for(auto it = pool_.begin(); it != pool_.end(); ++it) {
-  //   it->reads.resize(group_size_);
-  //   it->nb_filled = 0;
-  // }
-  auto self = new self_pointer;
+  // Finish initialization of the read_groups
+  for(auto it = pool_.begin(); it != pool_.end(); ++it) {
+    it->reads.resize(group_size_);
+    it->nb_filled = 0;
+  }
+
+  auto self  = new self_pointer;
   self->self = this;
-  int res = pthread_create(&reader_id_, 0, start_reader_loop , (void*)self);
+  int  res   = pthread_create(&reader_id_, 0, start_reader_loop , (void*)self);
   if(res) {
     delete self;
-    eraise(std::runtime_error) << "Failed to create the reader thread: " << err::str(res);
+    eraise(std::runtime_error) << "Failed to create the reader thread: "
+                               << err::str(res);
   }
   reader_started_ = true;
 }
@@ -50,14 +52,20 @@ void read_parser::fasta_reader_loop() {
     read_pool::elt e(pool_.get_A());
     if(e.is_empty())
       break;
-    getline(input_, e->header);
-    e->sequence.clear();
-    nextc = input_.peek();
-    while(nextc != EOF && nextc != '>') {
-      getline_append(input_, e->sequence);
-      e->sequence.chomp();
+
+    int i = 0;
+    for( ; nextc != EOF && i < group_size_; ++i) {
+      read& r = e->reads[i];
+      getline(input_, r.header);
+      r.sequence.clear();
       nextc = input_.peek();
+      while(nextc != EOF && nextc != '>') {
+        getline_append(input_, r.sequence);
+        r.sequence.chomp();
+        nextc = input_.peek();
+      }
     }
+    e->nb_filled = i;
   }
   pool_.close_A_to_B();
 

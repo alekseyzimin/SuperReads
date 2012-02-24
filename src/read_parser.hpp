@@ -16,17 +16,17 @@ class read_parser {
     charb header;
     charb sequence;
   };
-  // struct read_group {
-  //   std::vector<read> reads;
-  //   int nb_filled;
-  // };
-  typedef jflib::pool<read> read_pool;
-  std::istream              input_;
-  bool                      close_input_;
-  int                       group_size_;
-  read_pool                 pool_;
-  bool                      reader_started_;
-  pthread_t                 reader_id_;
+  struct read_group {
+    std::vector<read> reads;
+    int nb_filled;
+  };
+  typedef jflib::pool<read_group> read_pool;
+  std::istream                    input_;
+  bool                            close_input_;
+  int                             group_size_;
+  read_pool                       pool_;
+  bool                            reader_started_;
+  pthread_t                       reader_id_;
 
   std::filebuf* open_file(const char* path) {
     auto res = new std::filebuf();
@@ -46,15 +46,15 @@ public:
       The total number of buffer created is 3 * nb_threads * group_size
    */
   read_parser(const char* path, int nb_threads = 16, int group_size = 100) :
-    input_(open_file(path)), close_input_(true),
-    pool_(3 * nb_threads * group_size), reader_started_(false)
+    input_(open_file(path)), close_input_(true), group_size_(group_size),
+    pool_(3 * nb_threads), reader_started_(false)
   { start_parsing_thread(); }
 
   /** Same as above reading from an already open istream. In this case
       the stream is not closed by this class destructor.
    */
   read_parser(std::istream& input, int nb_threads = 16, int group_size = 100) :
-    input_(input.rdbuf()), close_input_(false),
+    input_(input.rdbuf()), close_input_(false), group_size_(group_size),
     pool_(3 * nb_threads * group_size), reader_started_(false)
   { start_parsing_thread(); }
 
@@ -64,19 +64,28 @@ public:
   class stream { 
     read_pool&     pool_;
     read_pool::elt elt_;
+    int            i_;
   public:
-    stream(read_parser& rp) : pool_(rp.pool_), elt_(pool_.get_B()) { }
+    stream(read_parser& rp) : pool_(rp.pool_), elt_(pool_.get_B()), i_(0) { 
+      while(!elt_.is_empty() && elt_->nb_filled == 0)
+        elt_ = pool_.get_B();
+    }
     // Probably useless
     stream() = default;
     // Non copyable
     stream(const stream& rhs) = delete;
     stream& operator=(const stream& rhs) = delete;
 
-    read& operator*() { return *elt_; }
-    read* operator->() { return elt_.operator->(); }
+    read& operator*() { return elt_->reads[i_]; }
+    read* operator->() { return &elt_->reads[i_]; }
 
     stream& operator++() {
-      elt_ = pool_.get_B();
+      if(++i_ < elt_->nb_filled)
+        return *this;
+      i_ = 0;
+      do {
+        elt_ = pool_.get_B();
+      } while(!elt_.is_empty() && elt_->nb_filled == 0);
       return *this;
     }
     operator void*() const { return elt_.is_empty() ? (void*)0 : (void*)&elt_; }

@@ -3,7 +3,7 @@
 #include <src/read_parser.hpp>
 #include <tmpstream.hpp>
 
-static const int nb_sequences = 10000;
+static const int nb_sequences = 100000;
 static const int nb_bases_dev = 100;
 static const int nb_threads   = 5;
 
