@@ -55,7 +55,7 @@ public:
    */
   read_parser(std::istream& input, int nb_threads = 16, int group_size = 100) :
     input_(input.rdbuf()), close_input_(false), group_size_(group_size),
-    pool_(3 * nb_threads * group_size), reader_started_(false)
+    pool_(3 * nb_threads), reader_started_(false)
   { start_parsing_thread(); }
 
   virtual ~read_parser();
