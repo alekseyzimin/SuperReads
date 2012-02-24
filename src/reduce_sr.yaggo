@@ -9,3 +9,11 @@ arg("largestkunitig") {
   description "Largest kunitigs number"
   uint64
 }
+arg("kunitigLengthsFile") {
+  description "K-unitig lengths file"
+  c_string; typestr "path"
+}
+arg("kmerlen") {
+  description "K-mer length"
+  int
+}

@@ -9,10 +9,23 @@
 #include <ctype.h>
 #include <string>
 #include <set>
+#include <vector>
 #include <charb.hpp>
+#include <map>
+#include <iostream>
+#include <misc.hpp>
 using namespace std;
 
+struct oldSuperReadPlacementStruct
+{
+     string newSuperReadName;
+     int newOffsetToStart;
+     char newOri;
+};
+
 charb line(1000000);
+vector<char *> flds;
+map<string, struct oldSuperReadPlacementStruct> oldSuperReadToNewSuperReadMap;
 
 FILE *Fopen (const char *fn, const char *mode);
 
@@ -20,9 +33,41 @@ int main (int argc, char **argv)
 {
      set<string> isGoodSuperRead;
      FILE *infile;
-     char *goodFilename=argv[2];
-     char *readPlacementFilename = argv[1];
-     char *cptr, *cptr2;
+     char *goodFilename=NULL;
+     char *readPlacementFilename = NULL;
+     char *superReadReductionFile = NULL;
+     char *cptr;
+     int numUnassignedArgs = 0;
+     for (int i=1; i<argc; i++) {
+	  if (strcmp(argv[i], "-super-read-reduction-file") == 0) {
+	       ++i;
+	       superReadReductionFile = argv[i];
+	       continue; }
+	  if (argv[i][0] == '-') {
+	       fprintf (stderr, "Unrecognized flag '%s'. Bye!\n", argv[i]);
+	       exit (1); }
+	  if (numUnassignedArgs == 0)
+	       readPlacementFilename = argv[i];
+	  else if (numUnassignedArgs == 1)
+	       goodFilename = argv[i];
+	  else {
+	       fprintf (stderr, "Too many files specified; so far we have seen\n'%s', '%s', and '%s'. Bye!\n", readPlacementFilename, goodFilename, argv[i]);
+	       exit (1); }
+	  ++numUnassignedArgs;
+     }
+
+     if (superReadReductionFile != NULL) {
+	  infile = Fopen (superReadReductionFile, "r");
+	  while (fgets (line, 1000000, infile)) {
+	       oldSuperReadPlacementStruct osrps;
+	       getFldsFromLine (line, flds);
+	       osrps.newSuperReadName = string(flds[1]);
+	       osrps.newOri = *flds[2];
+	       osrps.newOffsetToStart = atoi(flds[3]);
+	       oldSuperReadToNewSuperReadMap[string(flds[0])] = osrps;
+	  }
+	  fclose (infile);
+     }
      
 
      infile = Fopen (goodFilename, "r");
@@ -38,17 +83,38 @@ int main (int argc, char **argv)
 
      infile = Fopen (readPlacementFilename, "r");
      while (fgets (line, 1000000, infile)) {
-	  cptr = line;
-	  while (! isspace (*cptr)) ++cptr;
-	  while (isspace (*cptr)) ++cptr;
-          // Now points to super-read name
-	  cptr2 = cptr;
-	  while (! isspace (*cptr2)) ++cptr2;
-	  *cptr2 = 0;
-	  if (isGoodSuperRead.find (string(cptr)) == isGoodSuperRead.end())
+	  getFldsFromLine (line, flds);
+	  string superRead = string(flds[1]);
+	  if (isGoodSuperRead.find (superRead) == isGoodSuperRead.end())
 	       continue;
-	  cptr2[0] = ' ';
-	  fputs (line, stdout);
+	  if (superReadReductionFile == NULL) {
+	       for (int i=0; i<4; i++) {
+		    fputs (flds[i], stdout);
+		    if (i<3)
+			 fputc (' ', stdout);
+		    else
+			 fputc ('\n', stdout); }
+	       continue; }
+	       
+	  // We only get here if there is a superReadReductionFile
+	  auto it = oldSuperReadToNewSuperReadMap.find(superRead);
+	  if (it == oldSuperReadToNewSuperReadMap.end()) {
+	       for (int i=0; i<4; i++) {
+		    fputs (flds[i], stdout);
+		    if (i<3)
+			 fputc (' ', stdout);
+		    else
+			 fputc ('\n', stdout); }
+	       continue; }
+	  int offset = atoi(flds[2]);
+	  char ori = *flds[3];
+	  if (it->second.newOri == 'F') {
+	       offset += (it->second).newOffsetToStart; }
+	  else {
+	       ori = (ori == 'F') ? 'R' : 'F';
+	       offset = (it->second).newOffsetToStart - offset;
+	  }
+	  cout << flds[0] << " " << (it->second).newSuperReadName << " " << offset << " " << ori << '\n';
      }
      fclose (infile);
 }

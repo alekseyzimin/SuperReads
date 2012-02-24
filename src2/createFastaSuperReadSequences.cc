@@ -43,14 +43,22 @@ VI)  Make sure you allow for an appropriate set of params
 	I) -maxunitignumberfile filename specifies the file which contains
 	     the largest k-unitig number. The default is
 	     maxKUnitigNumber.txt within the working directory
+	J) -good-sequence-output-file filename sends the output super-reads
+	     to 'filename' instead of to stdout
+	H) -super-read-name-and-lengths-file filename creates the file
+	     'filename' which has the super-read name and length for
+	     each good super-read.
+
 */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <vector>
+#include <string>
 #include <charb.hpp>
 
 #define NUM_KUNITIGS_FILENAME "maxKUnitigNumber.txt"
@@ -65,6 +73,8 @@ char *kUnitigSpace, **kUnitigSeq;
 int *kUnitigLengths;
 charb line(1000000);
 charb reverseComplementSpace(1000000), outputSeqSpace(3000000);
+ExpandingBuffer<std::vector<std::string> > superReadsByLength(200);
+ExpandingBuffer<int> countByLength(200);
 
 void generateReverseComplement (char *seq, int seqLen);
 FILE *Fopen (const char *fn, const char *mode);
@@ -83,6 +93,7 @@ int main (int argc, char **argv)
 {
      char *workingDir;
      charb superReadListFile(512), fname(512), kUnitigFilename(512), maxUnitigsFilename(512);
+     charb goodSequenceOutputFilename(512), superReadNameAndLengthsFilename(512);
      struct stat statbuf;
      uint64_t kUnitigSeqFileSize, fsize;
      uint64_t i64, j64=0;
@@ -94,7 +105,7 @@ int main (int argc, char **argv)
      char* superReadName;
      char ori, oriHold;
      int overlap = 30;
-     int outputSeqLen;
+     int outputSeqLen = 0;
      int seqDiffMax;
      int fail;
      charb errorMessage(2000), errorMessageLine(2000);
@@ -111,6 +122,10 @@ int main (int argc, char **argv)
      goodFilename[0] = 0;
      argNum = 0;
      strcpy (kUnitigFilename, "");
+     strcpy (maxUnitigsFilename, "");
+     strcpy (goodSequenceOutputFilename, "");
+     strcpy (superReadNameAndLengthsFilename, "");
+
      for (i=1; i<argc; i++) {
 	  if (strcmp (argv[i], "-nosequence") == 0) {
 	       noSequence = 1;
@@ -139,15 +154,27 @@ int main (int argc, char **argv)
 	       ++i;
 	       strcpy (maxUnitigsFilename, argv[i]);
 	       continue; }
+	  if (strcmp (argv[i], "-good-sequence-output-file") == 0) {
+	       ++i;
+	       strcpy (goodSequenceOutputFilename, argv[i]);
+	       continue; }
+	  if (strcmp (argv[i], "-super-read-name-and-lengths-file") == 0) {
+	       ++i;
+	       strcpy (superReadNameAndLengthsFilename, argv[i]);
+	       continue; }
 	  if (argNum == 0)
 	       workingDir = argv[i];
 	  else if (argNum == 1)
 	       strcpy (superReadListFile, argv[i]);
 	  else {
-	       fprintf (stderr, "The program %s is called incorrectly. Too many args. Bye!\n", argv[0]);
+	       fprintf (stderr, "The program %s is called incorrectly. Too many args. The extra arg is '%s'. Bye!\n", argv[0], argv[i]);
 	       exit (1); }
 	  ++argNum; }
      
+     if (strlen (goodSequenceOutputFilename) != 0)
+	  if (noSequence != 0) {
+	       fprintf (stderr, "-good-sequence-output-file arg used, as well as -nosequence flag.\n-nosequence flag is ignored.\n");
+	       noSequence = 0; }
      if (strlen (goodFilename) == 0)
 	  sprintf (goodFilename, "%s/superReadNames.txt", workingDir);
 
@@ -183,6 +210,7 @@ int main (int argc, char **argv)
 
      // (IV) above
      state = AFTER_NEWLINE;
+     
      for (i64=0; i64<kUnitigSeqFileSize; i64++) {
 	  if (kUnitigSpace[i64] == '\n') {
 	       kUnitigSpace[j64] = 0;
@@ -216,10 +244,16 @@ int main (int argc, char **argv)
 	       printf ("i = %d ; len = %d ; seq = %s\n", i, kUnitigLengths[i], kUnitigSeq[i]);
 #endif
 
+     FILE *outfile;
+     if (strlen (goodSequenceOutputFilename) != 0)
+	  outfile = Fopen (goodSequenceOutputFilename, "w");
+     else
+	  outfile = stdout;
      // (V) above
      strcpy (fname, superReadListFile);
      infile = Fopen (fname, "r");
      goodFile = Fopen (goodFilename, "w");
+     std::vector<std::string> emptyStringVector;
      while (fgets (line, MAX_READ_LEN, infile)) {
 	  sscanf (line, "%d", &numReads);
 	  cptr = line;
@@ -299,16 +333,35 @@ int main (int argc, char **argv)
 	       fputs (errorMessage, stderr); 
 	       continue; }
 	  if (! noSequence)
-	       fputc ('>', stdout);
-	  fputs (superReadName, stdout); fputc ('\n', stdout);
+	       fputc ('>', outfile);
+	  fputs (superReadName, outfile); fputc ('\n', outfile);
           fputs (superReadName,goodFile); fputc ('\n',goodFile);
 	  if (! noSequence) {
-	       fputs (outputSeqSpace, stdout); fputc ('\n', stdout); }
+	       fputs (outputSeqSpace, outfile); fputc ('\n', outfile); }
+	  if (strlen (superReadNameAndLengthsFilename) != 0) {
+	       if (countByLength[outputSeqLen] == 0)
+		    superReadsByLength[outputSeqLen] = emptyStringVector;
+	       superReadsByLength[outputSeqLen].push_back (std::string(superReadName));
+	       ++countByLength[outputSeqLen];
+	  }
      }
 
      fclose (infile);
      fclose (goodFile);
-	  
+     if (strlen(goodSequenceOutputFilename) != 0)
+	  fclose (outfile);
+
+     if (strlen(superReadNameAndLengthsFilename) != 0) {
+	  outfile = Fopen (superReadNameAndLengthsFilename, "w");
+	  for (unsigned int i=superReadsByLength.size()-1; i!=0; i--) {
+	       if (countByLength[i] == 0)
+		    continue;
+	       for (unsigned int j=0; j<superReadsByLength[i].size(); j++)
+		    fprintf (outfile, "%s %d\n", superReadsByLength[i][j].c_str(), i);
+	  }
+	  fclose (outfile);
+     }
+     
      return (0);
 }
 

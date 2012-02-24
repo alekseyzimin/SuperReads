@@ -96,6 +96,7 @@ $readsAfterAddingMissingMates = "$workingDirectory/inputreads.fa";
 $numReadsFile = "$workingDirectory/numReads.txt";
 $prefixForOverlapsBetweenKUnitigs = "$workingDirectory/overlap";
 $kUnitigOverlapsFile = "${prefixForOverlapsBetweenKUnitigs}.overlaps";
+$superReadCountsFile = "$workingDirectory/superReadCounts.all";
 
 $joinerOutputPrefix = "$workingDirectory/readPositionsInSuperReads";
 $myProgOutput1_1 = "$workingDirectory/testOutput.nucmerLinesOnly.txt";
@@ -166,30 +167,36 @@ if ($mergedUnitigDataPrefix) {
 $cmd = "$exeDir/joinKUnitigs_v3 --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 --prefix $joinerOutputPrefix $mergedUnitigDataFileStr --num-file-names $numProcessors $myProgOutput1_1prefix";
 &runCommandAndExitIfBad ($cmd, $joinerOutputPrefix . "*", 1, "joinKUnitigs", "$workingDirectory/readPositionsInSuperReads_*");
 
-$cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile` -o $workingDirectory/superReadCounts.all ${joinerOutputPrefix}_*";
-&runCommandAndExitIfBad ($cmd,"$workingDirectory/superReadCounts.all", 1, "getSuperReadInsertCounts", "$workingDirectory/superReadCounts.all");
+$cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile` -o $superReadCountsFile ${joinerOutputPrefix}_*";
+&runCommandAndExitIfBad ($cmd, $superReadCountsFile, 1, "getSuperReadInsertCounts", $superReadCountsFile);
 
 if ($mergedUnitigDataPrefix) {
-        $mergedUnitigDataFileStr = "-maxunitignumberfile $mergedMaxKUnitigNumberFile"; }
+    $mergedUnitigDataFileStr = "-maxunitignumberfile $mergedMaxKUnitigNumberFile"; }
+
+$goodSuperReadsNamesFile = "$workingDirectory/superReadNames.txt";
+    $fastaSuperReadErrorsFile = "$workingDirectory/createFastaSuperReadSequences.errors.txt";
 
 if($noReduce==0) {
-    $cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $workingDirectory/superReadNames.txt -kunitigsfile $mergedUnitigInputKUnitigsFile 2> $sequenceCreationErrorFile | tee $finalSuperReadSequenceFile.all | perl -ane 'BEGIN{my \$seq_length=0}{if(\$F[0] =~ /^>/){if(\$seq_length>0){print \$seq_length,\"\\n\";} print substr(\$F[0],1),\" \";\$seq_length=0;}else{\$seq_length+=length(\$F[0]);}}END{if(\$seq_length>0){print \$seq_length,\"\\n\";}}' | sort -nrk2,2 -S 40% -T ./ > $workingDirectory/sr_sizes.tmp";
-    &runCommandAndExitIfBad ($cmd,"$workingDirectory/sr_sizes.tmp", 1, "createFastaSuperReadSequences", "$workingDirectory/superReadSequences.fasta.all", "$workingDirectory/superReadNames.txt", "$workingDirectory/sr_sizes.tmp");
+    $localGoodSequenceOutputFile = "${finalSuperReadSequenceFile}.all";
+    $superReadNameAndLengthsFile = "$workingDirectory/sr_sizes.tmp";
+    $reduceFile = "$workingDirectory/reduce.tmp";
+    $cmd = "cat $superReadCountsFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile -good-sequence-output-file $localGoodSequenceOutputFile -super-read-name-and-lengths-file $superReadNameAndLengthsFile 2> $sequenceCreationErrorFile";
+    &runCommandAndExitIfBad ($cmd, $superReadNameAndLengthsFile, 1, "createFastaSuperReadSequences", $localGoodSequenceOutputFile, $goodSuperReadsNamesFile, $superReadNameAndLengthsFile);
 
-    $cmd = "cat $workingDirectory/sr_sizes.tmp| $exeDir/reduce_sr $maxKUnitigNumber  > $workingDirectory/reduce.tmp";
-    &runCommandAndExitIfBad ($cmd,"$workingDirectory/reduce.tmp", 1, "reduceSuperReads", "$workingDirectory/reduce.tmp", "$workingDirectory/createFastaSuperReadSequences.errors.txt");
+    $cmd = "cat $superReadNameAndLengthsFile| $exeDir/reduce_sr $maxKUnitigNumber $mergedKUnitigLengthsFile $merLen > $reduceFile";
+    &runCommandAndExitIfBad ($cmd, $reduceFile, 1, "reduceSuperReads", $reduceFile, $fastaSuperReadErrorsFile);
 
-    $cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $workingDirectory/superReadNames.txt | perl -e '{open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);\@F=split(\" \",\$line);\$sr{\$F[0]}=\$F[1]} while(\$line=<STDIN>){chomp(\$line);\@l=split(\" \",\$line);if(defined(\$sr{\$l[1]})){print \"\$l[0] \",\$sr{\$l[1]},\" \$l[2] \$l[3]\\n\";}else{print \"\$line\\n\";}}}' $workingDirectory/reduce.tmp >  $finalReadPlacementFile"; 
-    &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1, "createFinalReadPlacementFile", "$workingDirectory/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt");
+    $cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $goodSuperReadsNamesFile -super-read-reduction-file $reduceFile > $finalReadPlacementFile";
+    &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1, "createFinalReadPlacementFile", $finalReadPlacementFile);
 
-    $cmd = "awk '{print \$1}' $workingDirectory/reduce.tmp > $workingDirectory/sr_to_eliminate.tmp; $exeDir/extractreads_not.pl $workingDirectory/sr_to_eliminate.tmp $finalSuperReadSequenceFile.all 1 > $finalSuperReadSequenceFile";
-    &runCommandAndExitIfBad ($cmd,$finalSuperReadSequenceFile, 1, "createFinalSuperReadFastaSequences", "$workingDirectory/superReadSequences.fasta", "$workingDirectory/sr_to_eliminate.tmp"); }
+    $cmd = "$exeDir/outputRecordsNotOnList $reduceFile $localGoodSequenceOutputFile 0 --fld-num 0 > $finalSuperReadSequenceFile";
+    &runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1, "createFinalSuperReadFastaSequences", $finalSuperReadSequenceFile); }
 else {
-    $cmd = "cat $workingDirectory/superReadCounts.all | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $workingDirectory/superReadNames.txt -kunitigsfile $mergedUnitigInputKUnitigsFile 2> $sequenceCreationErrorFile > $finalSuperReadSequenceFile";
-    &runCommandAndExitIfBad ($cmd,$finalSuperReadSequenceFile, 1, "createFastaSuperReadSequences", "$workingDirectory/superReadSequences.fasta", "$workingDirectory/superReadNames.txt");
+    $cmd = "cat $superReadCountsFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile 2> $sequenceCreationErrorFile > $finalSuperReadSequenceFile";
+    &runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1, "createFastaSuperReadSequences", $finalSuperReadSequenceFile, $goodSuperReadsNamesFile);
 
-    $cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $workingDirectory/superReadNames.txt > $finalReadPlacementFile";
-    &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1, "createFinalReadPlacementFile", "$workingDirectory/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt", "$workingDirectory/createFastaSuperReadSequences.errors.txt");
+    $cmd = "cat ${joinerOutputPrefix}_* | $exeDir/eliminateBadSuperReadsUsingList /dev/fd/0 $goodSuperReadsNamesFile > $finalReadPlacementFile";
+    &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1, "createFinalReadPlacementFile", $finalReadPlacementFile, $fastaSuperReadErrorsFile);
 }
 
 $cmd = "touch $successFile";

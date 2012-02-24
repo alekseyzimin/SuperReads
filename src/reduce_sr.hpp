@@ -10,14 +10,22 @@ public:
   int                            maximum_search_depth_arg;
   bool                           maximum_search_depth_given;
   uint64_t                       largestkunitig_arg;
+  const char *                   kunitigLengthsFile_arg;
+  int                            kmerlen_arg;
 
   enum {
     USAGE_OPT = 1000
   };
 
-  reduce_sr(int argc, char *argv[]) :
+  reduce_sr() : 
     maximum_search_depth_arg(100), maximum_search_depth_given(false)
-  {
+  { }
+
+  reduce_sr(int argc, char* argv[]) :
+    maximum_search_depth_arg(100), maximum_search_depth_given(false)
+  { parse(argc, argv); }
+
+  void parse(int argc, char* argv[]) {
     static struct option long_options[] = {
       {"maximum-search-depth", 1, 0, 'd'},
       {"help", 0, 0, 'h'},
@@ -58,13 +66,18 @@ public:
         break;
       }
     }
-    if(argc - optind != 1)
-      error("Requires exactly 1 argument.");
+    if(argc - optind != 3)
+      error("Requires exactly 3 arguments.");
     largestkunitig_arg = yaggo::conv_uint<uint64_t>((const char *)argv[optind], err, false);
     CHECK_ERR(uint64_t, argv[optind], "largestkunitig")
     ++optind;
+    kunitigLengthsFile_arg = argv[optind];
+    ++optind;
+    kmerlen_arg = yaggo::conv_int<int>((const char *)argv[optind], err, false);
+    CHECK_ERR(int_t, argv[optind], "kmerlen")
+    ++optind;
   }
-#define reduce_sr_USAGE "Usage: reduce_sr [options] largestkunitig:uint64"
+#define reduce_sr_USAGE "Usage: reduce_sr [options] largestkunitig:uint64 kunitigLengthsFile:path kmerlen:int"
   const char * usage() const { return reduce_sr_USAGE; }
   void error(const char *msg) { 
     std::cerr << "Error: " << msg << "\n" << usage()
@@ -92,6 +105,8 @@ public:
   void dump(std::ostream &os = std::cout) {
     os << "maximum_search_depth_given:" << maximum_search_depth_given << " maximum_search_depth_arg:" << maximum_search_depth_arg << "\n";
     os << "largestkunitig_arg:" << largestkunitig_arg << "\n";
+    os << "kunitigLengthsFile_arg:" << kunitigLengthsFile_arg << "\n";
+    os << "kmerlen_arg:" << kmerlen_arg << "\n";
   }
 private:
 };
