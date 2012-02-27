@@ -15,6 +15,7 @@ class read_parser {
   struct read {
     charb header;
     charb sequence;
+    charb quals;
   };
   struct read_group {
     std::vector<read> reads;
@@ -27,6 +28,7 @@ class read_parser {
   read_pool                       pool_;
   bool                            reader_started_;
   pthread_t                       reader_id_;
+  const char*                     error_;
 
   std::filebuf* open_file(const char* path) {
     auto res = new std::filebuf();
@@ -47,7 +49,7 @@ public:
    */
   read_parser(const char* path, int nb_threads = 16, int group_size = 100) :
     input_(open_file(path)), close_input_(true), group_size_(group_size),
-    pool_(3 * nb_threads), reader_started_(false)
+    pool_(3 * nb_threads), reader_started_(false), error_(0)
   { start_parsing_thread(); }
 
   /** Same as above reading from an already open istream. In this case
@@ -55,10 +57,21 @@ public:
    */
   read_parser(std::istream& input, int nb_threads = 16, int group_size = 100) :
     input_(input.rdbuf()), close_input_(false), group_size_(group_size),
-    pool_(3 * nb_threads), reader_started_(false)
+    pool_(3 * nb_threads), reader_started_(false), error_ (0)
   { start_parsing_thread(); }
 
   virtual ~read_parser();
+
+  // Check that no error has occurred so far. Theses errors are
+  // reported by the parsing thread.
+
+  // good if no error and not end_of_file
+  bool good() const { return !pool_.is_closed_A_to_B() && error() == 0; }
+  bool eof() const { return pool_.is_closed_A_to_B(); }
+  // fail if an error occurred. end_of_file does not set fail
+  bool fail() const { return error() != 0; }
+  // error message
+  const char* error() const { return jflib::a_load_ptr((const char*&)error_); }
 
   // Stream of reads
   class stream { 
@@ -108,8 +121,9 @@ private:
   // Start the approriate reader loop based on examining the beginning of the file
   void reader_loop();
 
-  // Main loop parsing fasta format
+  // Main loop parsing fasta & fastq format
   void fasta_reader_loop();
+  void fastq_reader_loop();
 };
 
 #endif /* __READ_PARSER_HPP__ */

@@ -13,7 +13,7 @@ read_parser::~read_parser() {
 void read_parser::reader_loop() {
   switch(input_.peek()) {
   case '>': fasta_reader_loop(); break;
-    //  case '@': fastq_reader_loop(); break;
+  case '@': fastq_reader_loop(); break;
   default:
     break; // Should never be reached
   }
@@ -23,8 +23,7 @@ void read_parser::start_parsing_thread() {
   // Check input format
   switch(input_.peek()) {
   case EOF: pool_.close_A_to_B(); return; // Empty file -> don't do anything
-  case '>': break;
-  case '@': eraise(std::runtime_error) << "Fastq parsing not yet implemented";
+  case '>': case '@': break;
   default:
     eraise(std::runtime_error) << "Invalid input file format";
   }
@@ -68,19 +67,45 @@ void read_parser::fasta_reader_loop() {
     e->nb_filled = i;
   }
   pool_.close_A_to_B();
+}
 
-    // Code with read groups
-    // int& i = e.nb_filled;
-    // for(i = 0; i < group_size_; ++i) {
-    //   read& r = e.reads[i];
-    //   getline(input_, r.header);
-    //   r.sequence.clear();
-    //   int nextc = input_.peek();
-    //   while(nextc != EOF && nextc != '>') {
-    //     getline_append(input_, r.sequence);
-    //     r.sequence.chomp();
-    //     nextc = input_.peek();
-    //   }
-    // }
+void read_parser::fastq_reader_loop() {
+  charb unused_line;
+  int nextc = input_.peek();
+  while(nextc != EOF) {
+    read_pool::elt e(pool_.get_A());
+    if(e.is_empty())
+      break;
+
+    for(e->nb_filled = 0; nextc != EOF && e->nb_filled < group_size_; ++e->nb_filled) {
+      read& r = e->reads[e->nb_filled];
+      getline(input_, r.header);
+      if(r.header[0] != '@') {
+        jflib::a_store_ptr(error_,"Found bad sequence header");
+        nextc = EOF;
+        break;
+      }
+      r.sequence.clear();
+      r.quals.clear();
+      nextc = input_.peek();
+      while(nextc != EOF && nextc != '+') {
+        getline_append(input_, r.sequence);
+        r.sequence.chomp();
+        nextc = input_.peek();
+      }
+      getline(input_, unused_line); // read quals header: ignored
+      while(nextc != EOF && r.quals.size() < r.sequence.size()) {
+        getline_append(input_, r.quals);
+        r.quals.chomp();
+        nextc = input_.peek();
+      }
+      if(r.quals.size() != r.sequence.size()) { // Invalid input file
+        jflib::a_store_ptr(error_, "Number of qual values != number of bases");
+        nextc = EOF;
+        break;
+      }
+    }
+  }
+  pool_.close_A_to_B();
 }
 

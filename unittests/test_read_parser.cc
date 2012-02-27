@@ -10,40 +10,70 @@ static const int nb_threads   = 5;
 class ReadParserRandomSeq : public ::testing::Test {
 protected:
   static void SetUpTestCase() {
-    total_bases = 0;
-    char bases[4] = { 'A', 'C', 'G', 'T' };
+    static const char bases[4] = { 'A', 'C', 'G', 'T' };
+
+    fasta_total_bases = 0;
     for(int i = 0; i < nb_sequences; ++i) {
       random_fasta << ">" << i << "\n";
       int nb_bases = 50 + (random() % nb_bases_dev);
       for(int j = 0; j < nb_bases; ++j) {
         long r = random();
         random_fasta << bases[random() % 4];
-        if((r >> 2) % 100 == 0)
+        if(j != nb_bases - 1 && (r >> 2) % 100 == 0)
           random_fasta << "\n";
       }
       random_fasta << "\n";
-      total_bases += nb_bases;
+      fasta_total_bases += nb_bases;
+    }
+
+    fastq_total_bases = 0;
+    for(int i = 0; i < nb_sequences; ++i) {
+      random_fastq << "@" << i << "\n";
+      int nb_bases = 50 + (random() % nb_bases_dev);
+      for(int j = 0; j < nb_bases; ++j) {
+        long r = random();
+        random_fastq << bases[random() % 4];
+        if((r >> 2) % 100 == 0)
+          random_fastq << "\n";
+      }
+      random_fastq << "\n+\n";
+      for(int j = 0; j < nb_bases; ++j) {
+        long r = random();
+        random_fastq << (char)('!' + (r % 40));
+        if(j != nb_bases - 1 && (r >> 6) % 100 == 0)
+          random_fastq << "\n";
+      }
+      random_fastq << "\n";
+      fastq_total_bases += nb_bases;
     }
   }
 
   std::istream fasta_stream;
-  int actual_bases;
+  std::istream fastq_stream;
 public:
   ReadParserRandomSeq() :
-    fasta_stream(random_fasta.rdbuf()), actual_bases(total_bases) { }
+    fasta_stream(random_fasta.rdbuf()),
+    fastq_stream(random_fastq.rdbuf())
+  { }
 
   virtual void SetUp() {
     fasta_stream.seekg(0);
     fasta_stream.clear();
+    fastq_stream.seekg(0);
+    fastq_stream.clear();
   }
 
 
   static tmpstream random_fasta;
-  static int total_bases;
+  static tmpstream random_fastq;
+  static int fasta_total_bases;
+  static int fastq_total_bases;
 };
 
 tmpstream ReadParserRandomSeq::random_fasta;
-int ReadParserRandomSeq::total_bases = 0;
+tmpstream ReadParserRandomSeq::random_fastq;
+int ReadParserRandomSeq::fasta_total_bases = 0;
+int ReadParserRandomSeq::fastq_total_bases = 0;
 
 struct sum_line_lengths_data {
   read_parser              parser;
@@ -62,9 +92,37 @@ void* sum_line_lengths(void* d) {
   return 0;
 }
 
-TEST_F(ReadParserRandomSeq, Lengths) {
+TEST_F(ReadParserRandomSeq, FastaLengths) {
   sum_line_lengths_data data(fasta_stream);
+
+  EXPECT_TRUE(data.parser.good());
+  EXPECT_FALSE(data.parser.eof());
+  EXPECT_FALSE(data.parser.fail());
+  
   pdo(nb_threads, sum_line_lengths, (void*)&data);
 
-  EXPECT_EQ(actual_bases, jflib::a_load(data.sum));
+  EXPECT_EQ(fasta_total_bases, jflib::a_load(data.sum));
+  EXPECT_TRUE(data.parser.eof());
+  EXPECT_FALSE(data.parser.fail());
+  EXPECT_FALSE(data.parser.good());
 }
+
+TEST_F(ReadParserRandomSeq, FastqLengths) {
+  sum_line_lengths_data data(fastq_stream);
+
+  EXPECT_TRUE(data.parser.good());
+  EXPECT_FALSE(data.parser.eof());
+  EXPECT_FALSE(data.parser.fail());
+  
+  pdo(nb_threads, sum_line_lengths, (void*)&data);
+
+  EXPECT_EQ(fastq_total_bases, jflib::a_load(data.sum));
+  EXPECT_TRUE(data.parser.eof());
+  EXPECT_FALSE(data.parser.fail());
+  EXPECT_FALSE(data.parser.good());
+}
+
+// TODO: test invalid input
+// TEST(ReadParser, "Invalid input") {
+  
+// }

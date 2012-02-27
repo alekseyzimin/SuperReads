@@ -13,6 +13,11 @@ namespace jflib {
   T a_store(T* lhs, const U& rhs) {
     return (*(volatile T*)lhs = rhs);
   }
+  template<typename T>
+  T* a_load_ptr(T* x) { return a_load((T**)&x); }
+  template<typename T, typename U>
+  T* a_store_ptr(T* x, const U& rhs) { return a_store((T**)&x, rhs); }
+
   /** Set value to f(value).
    * @return f(value)
    *
