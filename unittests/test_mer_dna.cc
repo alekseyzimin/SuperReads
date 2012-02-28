@@ -85,9 +85,9 @@ TEST_P(KMer, Equality) {
   EXPECT_FALSE(m1 != m2);
   EXPECT_EQ(m1.to_str(), m2.to_str());
 
-  mer_dna m3(GetParam());
-  m3[0] = 0;
-  EXPECT_FALSE(m1 == m3);
+  // mer_dna m3(GetParam());
+  // m3[0] = 0;
+  // EXPECT_FALSE(m1 == m3);
 
   mer_dna m4(GetParam().size() + 1);
   EXPECT_FALSE(m1 == m4);
