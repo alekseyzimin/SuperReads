@@ -33,9 +33,7 @@
 #define DEFAULT_MAX_OFFSET_CONSIDERED_SAME 5
 #define MAX_OFFSET_TO_TEST 10000
 
-#define MAX_NODES_ALLOWED 4000
-
-#define NEWLY_ADDED_MAXIMAL_UNITIG 2
+// #define MAX_NODES_ALLOWED 4000
 
 #define FRONT_END 1
 #define BACK_END 2
@@ -200,6 +198,7 @@ int numUnitigConnectionsForPathData;
 int numPairsInOneUnitig, numSimplyJoinable, numJoinableAfterRead1Analysis,
      numJoinableAfterBothReadAnalysis, numJoinableUnresolvedAtEnd;
 int kunitigs_translation_file_given;
+int maxNodesAllowed;
 
 bool firstNodeSort (struct nodePair val1, struct nodePair val2);
 bool secondNodeSort (struct nodePair val1, struct nodePair val2);
@@ -329,6 +328,7 @@ int main (int argc, char **argv)
      maxDiffInsertSizesForPrinting = 5;
      minOverlapLength              = args.min_overlap_length_arg;
      kunitigs_translation_file_given = args.kunitigs_translation_file_given;
+     maxNodesAllowed = args.max_nodes_allowed_arg;
 
      rdPrefix[2] = rdPrefixHold[2] = 0;
      infile = Fopen (args.mean_and_stdev_by_prefix_file_arg, "r");
@@ -643,11 +643,15 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
 	      (readNum % 2 == 0)) {
 	       // Get the super-read for the insert we just finished reading
 	       approxNumPaths = 0;
+//	       puts ("Entering getSuperReadsForInsert\n"); fflush (stdout);
 	       getSuperReadsForInsert();
+//	       puts ("Leaving getSuperReadsForInsert\n"); fflush (stdout);
 	       // Set up and load the new data
                evenReadMatchStructs.clear();
                oddReadMatchStructs.clear();
+//	       puts ("Entering updateMatchRecords\n"); fflush (stdout);
 	       updateMatchRecords(readNum, cptr, flds);
+//	       puts ("Leaving updateMatchRecords\n"); fflush (stdout);
 	       // Update what the old data is
 	       strcpy (rdPrefixHold, rdPrefix);
 	       readNumHold = readNum;
@@ -682,8 +686,10 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
      int ahg, bhg;
      int forcedStop;
 
-     //     fprintf (stderr, "In joinKUnitigsFromMates\n");
-     lastOffsetToTest = insertLengthMean+4*insertLengthStdev;
+//     fprintf (stderr, "In joinKUnitigsFromMates\n");
+     lastOffsetToTest = insertLengthMean+5*insertLengthStdev;
+     if (lastOffsetToTest > MAX_OFFSET_TO_TEST)
+	  lastOffsetToTest = MAX_OFFSET_TO_TEST;
      // The following assumes that all the overlaps are of length
      // minOverlapLength
      lastOffsetToTestIfNotMate2 = lastOffsetToTest - (unitigLengths[mateUnitig2]-minOverlapLength);
@@ -705,27 +711,33 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 #if 0
      fprintf (stderr, "Inserting at 1 in the RB tree at %d: fEO = %d, pN = %u ori = %c\n", mateUnitig1, abbrevUnitigLocVal.frontEdgeOffset, abbrevUnitigLocVal.pathNum, abbrevUnitigLocVal.ori);
 #endif     
+//     puts ("At 101\n"); fflush (stdout);
      forward_path_unitigs.clear();
+     int numUnitigsPushed = 0;
      forward_path_unitigs.push(unitigLocVal);
+     ++numUnitigsPushed;
      
+//     puts ("At 102\n"); fflush (stdout);
      startingNodes.clear();
      startingNodes.insert(unitigLocVal);
      nodeArray.clear();
      nodeToIndexMap.clear();
+//     puts ("At 103\n"); fflush (stdout);
 //     fwdEdgeList.clear();
 //     revEdgeList.clear();
      nodeArray.push_back(unitigLocVal);
      nodeToIndexMap.insert (std::pair<unitigLocStruct, int> (unitigLocVal, nodeArray.size()-1) );
      maxNodes = 1;
      forcedStop = 0;
+//     puts ("At 104\n"); fflush (stdout);
      while (!forward_path_unitigs.empty())
      {
-       if (forward_path_unitigs.size() > maxNodes)
-         maxNodes = forward_path_unitigs.size();
+	  if (forward_path_unitigs.size() > maxNodes)
+	       maxNodes = forward_path_unitigs.size();
 #if DEBUG
 	  printf ("Starting new offset: "); fflush (stdout);
 	  for(min_heap::iterator it = forward_path_unitigs.begin(); it != forward_path_unitigs.end(); ++it)
-            printf("%d ", it->frontEdgeOffset); fflush(stdout);
+	       printf("%d ", it->frontEdgeOffset); fflush(stdout);
 	  printf ("\n"); fflush (stdout);
 #endif
           unitigLocVal = forward_path_unitigs.pop();
@@ -824,6 +836,7 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	       unitigLocVal.frontEdgeOffset = abbrevUnitigLocVal.frontEdgeOffset;
 	       unitigLocVal.ori = abbrevUnitigLocVal.ori;
                forward_path_unitigs.push(unitigLocVal);
+	       ++numUnitigsPushed;
 	       abbrevUnitigLocVal.pathNum = 0;
 	       // Add offset to list for tree
                treeArr[unitig2].insert(abbrevUnitigLocVal);
@@ -835,7 +848,9 @@ int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 	       //   Make sure the root of the tree is updated (if needed)
 	  }			// End of going through overlaps for unitig
 //	  if (maxNodes > MAX_NODES_ALLOWED)
-          if (treeArr[unitig2].size() > MAX_NODES_ALLOWED) {
+//	  if (forward_path_unitigs.size() > MAX_NODES_ALLOWED) {
+	  if (numUnitigsPushed > maxNodesAllowed) {
+//          if (treeArr[unitig2].size() > MAX_NODES_ALLOWED) {
 	       forcedStop = 1;
 	       break; }
      }			// Ends !forward_path_unitigs.empty() line
@@ -1572,6 +1587,7 @@ void getSuperReadsForInsert (void)
      if (evenReadMatchStructs.empty() || oddReadMatchStructs.empty()) {
 	  findSingleReadSuperReads(readNameSpace);
 	  return; }
+//     puts ("Got to 1\n"); fflush (stdout);
      // If we get here both the even read and the odd read have
      // matches to k-unitigs
      // The next takes care of the case where both the source and
@@ -1580,12 +1596,15 @@ void getSuperReadsForInsert (void)
      mateUnitig2 = oddReadMatchStructs[0].kUnitigNumber;
      if (mateUnitig1 == mateUnitig2) {
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold-1);
+//	  puts ("Entering findSingleReadSuperReads from 1\n"); fflush (stdout);
 	  findSingleReadSuperReads (readNameSpace);
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
+//	  puts ("Entering findSingleReadSuperReads from 2\n"); fflush (stdout);
 	  findSingleReadSuperReads (readNameSpace);
 	  ++numPairsInOneUnitig;
 	  return;
      }
+//     puts ("Got to 2\n"); fflush (stdout);
      if ((evenReadMatchStructs[0].readMatchBegin + oddReadMatchStructs[0].readMatchBegin <= maxTotAllowableMissingOnEnds)) {
 	  mateUnitig1ori = evenReadMatchStructs[0].ori;
 	  if (oddReadMatchStructs[0].ori == 'F')
@@ -1608,10 +1627,13 @@ void getSuperReadsForInsert (void)
 	  // The following to check what we're doing
 	  insertLengthMeanBetweenKUnisForInsertGlobal = insertLengthMean;
 	  insertLengthStdevGlobal = stdev[(int)rdPrefixHold[0]][(int)rdPrefixHold[1]];
+//	  puts ("Entering joinKUnitigsFromMates from 3\n"); fflush (stdout);
 	  successCode = joinKUnitigsFromMates (insertLengthMean, stdev[(int)rdPrefixHold[0]][(int)rdPrefixHold[1]]);
+//	  puts ("Leaving joinKUnitigsFromMates\n"); fflush (stdout);
 	  if (! successCode)
 	       goto afterSuperRead;
 	  // Now doing the back trace
+//	  puts ("Got to 5\n"); fflush (stdout);
 	  curPathNum = 0;
 	  approxNumPaths = 0;
 	  beginUnitig = mateUnitig1; beginUnitigOri = mateUnitig1ori;

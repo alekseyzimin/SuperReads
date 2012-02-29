@@ -22,6 +22,9 @@ option("num-kunitigs-file") {
 option("num-file-names") {
   description "Number of files containing read_unitig_overlaps."
   int; default "1" }
+option("max-nodes-allowed") {
+  description "Max records allowed when trying to join a mate pair."
+  int; default "4000" }			  
 option("prefix", "p") {
   description "Output file prefix."
   c_string; default "super_reads_output" }
