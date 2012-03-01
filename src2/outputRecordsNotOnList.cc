@@ -53,9 +53,9 @@ int main(int argc, char **argv)
 	       // Special for the first field of the line
 	       ++flds[0];
 	       if (readnames.find(string(flds[fieldNum])) == readnames.end())
-		    isOn = 0;
+		    isOn = 1;
 	       else
-		    isOn = 1; }
+		    isOn = 0; }
 	  if (isOn)
 	       fputs (line, stdout);
      }
