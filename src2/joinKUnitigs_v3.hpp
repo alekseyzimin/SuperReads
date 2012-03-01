@@ -21,6 +21,8 @@ public:
   bool                           num_kunitigs_file_given;
   int                            num_file_names_arg;
   bool                           num_file_names_given;
+  int                            max_nodes_allowed_arg;
+  bool                           max_nodes_allowed_given;
   const char *                   prefix_arg;
   bool                           prefix_given;
   const char *                   input_prefix_arg;
@@ -30,7 +32,8 @@ public:
     MIN_OVERLAP_LENGTH_OPT,
     KUNITIGS_TRANSLATION_FILE_OPT,
     NUM_KUNITIGS_FILE_OPT,
-    NUM_FILE_NAMES_OPT
+    NUM_FILE_NAMES_OPT,
+    MAX_NODES_ALLOWED_OPT
   };
 
   joinKUnitigs_v3() : 
@@ -41,6 +44,7 @@ public:
     overlaps_file_arg(""), overlaps_file_given(false),
     num_kunitigs_file_arg(""), num_kunitigs_file_given(false),
     num_file_names_arg(1), num_file_names_given(false),
+    max_nodes_allowed_arg(4000), max_nodes_allowed_given(false),
     prefix_arg("super_reads_output"), prefix_given(false)
   { }
 
@@ -52,6 +56,7 @@ public:
     overlaps_file_arg(""), overlaps_file_given(false),
     num_kunitigs_file_arg(""), num_kunitigs_file_given(false),
     num_file_names_arg(1), num_file_names_given(false),
+    max_nodes_allowed_arg(4000), max_nodes_allowed_given(false),
     prefix_arg("super_reads_output"), prefix_given(false)
   { parse(argc, argv); }
 
@@ -64,6 +69,7 @@ public:
       {"overlaps-file", 1, 0, 'o'},
       {"num-kunitigs-file", 1, 0, NUM_KUNITIGS_FILE_OPT},
       {"num-file-names", 1, 0, NUM_FILE_NAMES_OPT},
+      {"max-nodes-allowed", 1, 0, MAX_NODES_ALLOWED_OPT},
       {"prefix", 1, 0, 'p'},
       {"help", 0, 0, 'h'},
       {"usage", 0, 0, USAGE_OPT},
@@ -126,12 +132,19 @@ public:
         num_file_names_arg = yaggo::conv_int<int>((const char *)optarg, err, false);
         CHECK_ERR(int_t, optarg, "    --num-file-names=int")
         break;
+      case MAX_NODES_ALLOWED_OPT:
+        max_nodes_allowed_given = true;
+        max_nodes_allowed_arg = yaggo::conv_int<int>((const char *)optarg, err, false);
+        CHECK_ERR(int_t, optarg, "    --max-nodes-allowed=int")
+        break;
       case 'p':
         prefix_given = true;
         prefix_arg = optarg;
         break;
       }
     }
+
+    // Check that required switches are present
     if(!min_overlap_length_given)
       error("[    --min-overlap-length=int] required switch");
     if(!mean_and_stdev_by_prefix_file_given)
@@ -142,12 +155,15 @@ public:
       error("[-o, --overlaps-file=path] required switch");
     if(!num_kunitigs_file_given)
       error("[    --num-kunitigs-file=path] required switch");
+
+    // Parse arguments
     if(argc - optind != 1)
       error("Requires exactly 1 argument.");
     input_prefix_arg = argv[optind];
     ++optind;
   }
-#define joinKUnitigs_v3_USAGE "Usage: joinKUnitigs_v3 [options] input-prefix:c_string"
+
+#define joinKUnitigs_v3_USAGE "Usage: joinKUnitigs_v3 [options] input-prefix:string"
   const char * usage() const { return joinKUnitigs_v3_USAGE; }
   void error(const char *msg) { 
     std::cerr << "Error: " << msg << "\n" << usage()
@@ -155,6 +171,7 @@ public:
               << std::endl;
     exit(1);
   }
+
 #define joinKUnitigs_v3_HELP "Join k-unitigs overlapping mate pairs of an insert.\n\nFor this exec we are using the unitig numbers starting from 0.\n\n" \
   "Options (default value in (), *required):\n" \
   "     --min-overlap-length=int            *Minimum length of an overlap between unitigs\n" \
@@ -164,6 +181,7 @@ public:
   " -o, --overlaps-file=path                *Celera-style overlap file between unitigs in binary format.\n" \
   "     --num-kunitigs-file=path            *File containing the number of k-unitigs.\n" \
   "     --num-file-names=int                 Number of files containing read_unitig_overlaps. (1)\n" \
+  "     --max-nodes-allowed=int              Max records allowed when trying to join a mate pair. (4000)\n" \
   " -p, --prefix=string                      Output file prefix. (super_reads_output)\n" \
   "     --usage                              Usage\n" \
   " -h, --help                               This message\n" \
@@ -187,6 +205,7 @@ public:
     os << "overlaps_file_given:" << overlaps_file_given << " overlaps_file_arg:" << overlaps_file_arg << "\n";
     os << "num_kunitigs_file_given:" << num_kunitigs_file_given << " num_kunitigs_file_arg:" << num_kunitigs_file_arg << "\n";
     os << "num_file_names_given:" << num_file_names_given << " num_file_names_arg:" << num_file_names_arg << "\n";
+    os << "max_nodes_allowed_given:" << max_nodes_allowed_given << " max_nodes_allowed_arg:" << max_nodes_allowed_arg << "\n";
     os << "prefix_given:" << prefix_given << " prefix_arg:" << prefix_arg << "\n";
     os << "input_prefix_arg:" << input_prefix_arg << "\n";
   }
