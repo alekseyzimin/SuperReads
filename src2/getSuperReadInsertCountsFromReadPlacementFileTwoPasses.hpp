@@ -12,6 +12,7 @@ public:
   bool                           fib_flag;
   uint64_t                       number_reads_arg;
   bool                           number_reads_given;
+  bool                           debug_flag;
   std::vector<const char *>      input_arg;
   typedef std::vector<const char *>::iterator input_arg_it;
   typedef std::vector<const char *>::const_iterator input_arg_const_it;
@@ -20,21 +21,32 @@ public:
     USAGE_OPT = 1000
   };
 
-  getSuperReadInsertCountsFromReadPlacementFileTwoPasses(int argc, char *argv[]) :
+  getSuperReadInsertCountsFromReadPlacementFileTwoPasses() : 
     output_arg(""), output_given(false),
     fib_flag(false),
-    number_reads_arg(1000000), number_reads_given(false)
-  {
+    number_reads_arg(1000000), number_reads_given(false),
+    debug_flag(false)
+  { }
+
+  getSuperReadInsertCountsFromReadPlacementFileTwoPasses(int argc, char* argv[]) :
+    output_arg(""), output_given(false),
+    fib_flag(false),
+    number_reads_arg(1000000), number_reads_given(false),
+    debug_flag(false)
+  { parse(argc, argv); }
+
+  void parse(int argc, char* argv[]) {
     static struct option long_options[] = {
       {"output", 1, 0, 'o'},
       {"fib", 0, 0, 'f'},
       {"number-reads", 1, 0, 'n'},
+      {"debug", 0, 0, 'd'},
       {"help", 0, 0, 'h'},
       {"usage", 0, 0, USAGE_OPT},
       {"version", 0, 0, 'V'},
       {0, 0, 0, 0}
     };
-    static const char *short_options = "hVo:fn:";
+    static const char *short_options = "hVo:fn:d";
 
     std::string err;
 #define CHECK_ERR(type,val,which) if(!err.empty()) { std::cerr << "Invalid " #type " '" << val << "' for [" which "]: " << err << "\n"; exit(1); }
@@ -69,8 +81,11 @@ public:
         break;
       case 'n':
         number_reads_given = true;
-        number_reads_arg = yaggo::conv_uint<uint64_t>((const char *)optarg, err, false);
+        number_reads_arg = yaggo::conv_uint<uint64_t>((const char *)optarg, err, true);
         CHECK_ERR(uint64_t, optarg, "-n, --number-reads=uint64")
+        break;
+      case 'd':
+        debug_flag = true;
         break;
       }
     }
@@ -93,6 +108,7 @@ public:
   " -o, --output=path                        Output file\n" \
   " -f, --fib                                Use fibonacci encoding (false)\n" \
   " -n, --number-reads=uint64                Estimated number of super-reads (1000000)\n" \
+  " -d, --debug                              Output debugging information (false)\n" \
   "     --usage                              Usage\n" \
   " -h, --help                               This message\n" \
   " -V, --version                            Version"
@@ -111,6 +127,7 @@ public:
     os << "output_given:" << output_given << " output_arg:" << output_arg << "\n";
     os << "fib_flag:" << fib_flag << "\n";
     os << "number_reads_given:" << number_reads_given << " number_reads_arg:" << number_reads_arg << "\n";
+    os << "debug_flag:" << debug_flag << "\n";
     os << "input_arg:" << yaggo::vec_str(input_arg) << "\n";
   }
 private:

@@ -36,7 +36,7 @@ const char* fib_decode(const char* str) {
 // Parse the input input stream is. Delegate to s the decision of
 // where to store the read name
 template<typename store>
-void parse_store_input(std::istream &is, store &s) {
+size_t parse_store_input(std::istream &is, store &s) {
   const char*       superReadHold = "";
   const char*       prefixHold    = "";
   long long         readNumHold   = 0;
@@ -45,6 +45,8 @@ void parse_store_input(std::istream &is, store &s) {
   charb*            lines = new charb[2];
   int               line  = 0;
   charb*            cptr  = &lines[line];
+
+  size_t            inserted = 0;
 
   while(getline(is, *cptr)) {
     getFldsFromLine(*cptr, flds);
@@ -55,32 +57,49 @@ void parse_store_input(std::istream &is, store &s) {
        strncmp(prefixHold, *cptr, 2) == 0)
       continue; // Exclude second read from a mate-pair
     s(flds[1]);
+    ++inserted;
     superReadHold = flds[1];
     prefixHold    = flds[0];
     readNumHold   = readNum;
     cptr = &lines[(line = !line)];
   }
+
+  return inserted;
 }
 
 // Store in a bloom filter
 struct bloom_store {
   bloom_counter2<const char*> bc;
-  bloom_store(size_t n) : bc(0.01, n) { }
-  void operator()(const char *s) { bc.insert(s); }
+  size_t existing;
+  bloom_store(size_t n) : bc(0.01, n), existing(0) { }
+  void operator()(const char *s) { 
+    existing += bc.insert(s) >= 1;
+  }
 };
 
 // Store in a map provided that the entry has been seen more than once
 struct map_store {
-  bloom_counter2<const char*>& bc;
+  bloom_counter2<const char*>&                 bc;
   typedef std::map<const char*, int, str_comp> map_type;
-  typedef map_type::const_iterator iterator;
-  map_type map;
-  coding_fn encode;
+  typedef map_type::const_iterator             iterator;
+  map_type                                     map;
+  coding_fn                                    encode;
+  size_t                                       inserted;
+  size_t                                       distinct;
   map_store(bloom_counter2<const char*>& bc_, coding_fn encode_) :
-    bc(bc_), map(), encode(encode_) { }
+    bc(bc_), map(), encode(encode_), inserted(0), distinct(0) { }
   void operator()(const char *s) {
-    if(bc.check(s) > (unsigned int)1)
-      ++map[encode(s)];
+    if(bc.check(s) > (unsigned int)1) {
+      ++inserted;
+      const char* to_insert = encode(s);
+      auto insert_res = map.insert(std::make_pair(to_insert, 1));
+      if(insert_res.second)
+        ++distinct;
+      else {
+        free((void*)to_insert);
+        ++insert_res.first->second;
+      }
+    }
   }
 };
 
@@ -93,27 +112,44 @@ int main (int argc, char **argv)
   if(!output.good())
     die << "Can't open output file '" << args.output_arg << "'" << err::no;
 
+  if(args.debug_flag)
+    std::cerr << "First pass" << std::endl;
   // Parse input into bloom counter
   bloom_store bs(args.number_reads_arg);
   for(arg_parse::input_arg_const_it file = args.input_arg.begin(); file != args.input_arg.end(); ++file) {
+    if(args.debug_flag)
+      std::cerr << "Parsing " << *file << std::endl;
     std::ifstream input(*file);
-    parse_store_input(input, bs);
+    size_t inserted = parse_store_input(input, bs);
+    if(args.debug_flag)
+      std::cerr << "Inserted " << inserted << " existing " << bs.existing << std::endl;
   }
-
+  
+  if(args.debug_flag)
+    std::cerr << "Second pass" << std::endl;
   // Parse input into map, if count > 1
   coding_fn encode = args.fib_flag ? (coding_fn)sr_name::from_str : str_dup;
   map_store ms(bs.bc, encode);
   for(arg_parse::input_arg_const_it file = args.input_arg.begin(); file != args.input_arg.end(); ++file) {
+    if(args.debug_flag)
+      std::cerr << "Parsing " << *file << std::endl;
     std::ifstream input(*file);
-    parse_store_input(input, ms);
+    size_t inserted = parse_store_input(input, ms);
+    if(args.debug_flag)
+      std::cerr << "Elements " << inserted << " inserted " << ms.inserted << " distinct " << ms.distinct << std::endl;
   }
 
   // Output result
   coding_fn decode = args.fib_flag ? fib_decode : str_identity;
+  size_t output_nb = 0;
   for (map_store::iterator it = ms.map.begin(); it != ms.map.end(); ++it)
-    if(it->second > 1)
+    if(it->second > 1) {
+      ++output_nb;
       output << it->second << " " << decode(it->first) << "\n";
+    }
   output.close();
+  if(args.debug_flag)
+    std::cerr << "Output " << output_nb << std::endl;
 
   return (0);
 }
