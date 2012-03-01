@@ -167,7 +167,7 @@ if ($mergedUnitigDataPrefix) {
 $cmd = "$exeDir/joinKUnitigs_v3 --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 --prefix $joinerOutputPrefix $mergedUnitigDataFileStr --num-file-names $numProcessors $myProgOutput1_1prefix";
 &runCommandAndExitIfBad ($cmd, $joinerOutputPrefix . "*", 1, "joinKUnitigs", "$workingDirectory/readPositionsInSuperReads_*");
 
-$cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile` -o $superReadCountsFile ${joinerOutputPrefix}_*";
+$cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile | awk '{print \$1*100}'` -o $superReadCountsFile ${joinerOutputPrefix}_*";
 &runCommandAndExitIfBad ($cmd, $superReadCountsFile, 1, "getSuperReadInsertCounts", $superReadCountsFile);
 
 if ($mergedUnitigDataPrefix) {
