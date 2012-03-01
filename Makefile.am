@@ -43,7 +43,8 @@ LDADD = libutils.a
 ##############################
 bin_PROGRAMS += create_k_unitigs error_correct_reads			\
                 error_corrected2frg homo_trim reverse_complement	\
-                reduce_sr sorted_merge combine_jf_dbs
+                reduce_sr sorted_merge combine_jf_dbs			\
+                create_k_unitigs_large_k
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/reduce_sr.pl src/create_end_pairs.pl		\
                     src/close_gaps.sh src/compute_sr_cov.pl		\
@@ -52,19 +53,19 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/filter_library.sh src/fix_unitigs.sh		\
                     src/recompute_astat_superreads.sh src/runSRCA.pl	\
                     src/extractreads_not.pl
-noinst_HEADERS += src/aligned_simple_array.hpp			\
-                  src/diskBasedUnitigger.h			\
-                  src/create_k_unitigs_cmdline.hpp		\
-                  src/error_correct_reads_cmdline.hpp		\
-                  src/error_correct_reads.hpp src/err_log.hpp	\
-                  src/kmer.hpp src/create_k_unitigs_cmdline.hpp	\
-                  src/error_corrected2frg_cmdline.hpp		\
-                  src/reduce_sr.hpp src/sorted_merge.hpp	\
-                  src/fibonacci_coding.hpp src/sr_names.hpp	\
-                  src/bloom_filter.hpp src/MurmurHash3.h	\
-                  src/bloom_hash.hpp src/bloom_counter2.hpp	\
-                  src/combine_jf_dbs.hpp src/mer_dna.hpp	\
-                  src/read_parser.hpp
+noinst_HEADERS += src/aligned_simple_array.hpp				\
+                  src/diskBasedUnitigger.h				\
+                  src/create_k_unitigs_cmdline.hpp			\
+                  src/error_correct_reads_cmdline.hpp			\
+                  src/error_correct_reads.hpp src/err_log.hpp		\
+                  src/kmer.hpp src/create_k_unitigs_cmdline.hpp		\
+                  src/error_corrected2frg_cmdline.hpp			\
+                  src/reduce_sr.hpp src/sorted_merge.hpp		\
+                  src/fibonacci_coding.hpp src/sr_names.hpp		\
+                  src/bloom_filter.hpp src/MurmurHash3.h		\
+                  src/bloom_hash.hpp src/bloom_counter2.hpp		\
+                  src/combine_jf_dbs.hpp src/mer_dna.hpp		\
+                  src/read_parser.hpp src/create_k_unitigs_large_k.hpp
 
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 homo_trim_SOURCES = src/homo_trim.cc 
@@ -75,6 +76,8 @@ error_correct_reads_SOURCES = src/error_correct_reads.cc src/kmer.cc	\
 reduce_sr_SOURCES = src/reduce_sr.cc
 sorted_merge_SOURCES = src/sorted_merge.cc
 combine_jf_dbs_SOURCES = src/combine_jf_dbs.cc
+create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
+                                   src/read_parser.cc src/mer_dna.cc
 
 ##############################
 # src2 pipeline
@@ -128,7 +131,8 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_rbtree.cc				\
                     unittests/test_multi_thread_skip_list_set.cc	\
                     unittests/test_mer_dna.cc				\
-                    unittests/test_read_parser.cc
+                    unittests/test_read_parser.cc			\
+                    unittests/test_hash.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
                      src/gcc_builtins.cc src/mer_dna.cc			\
                      src/read_parser.cc unittests/misc.cc

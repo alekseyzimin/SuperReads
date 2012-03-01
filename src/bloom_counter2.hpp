@@ -113,6 +113,24 @@ public:
     return res;
   }
 
+  // Limited std::map interface compatibility
+  class element_proxy {
+    bloom_counter2& bc_;
+    const Key&      k_;
+
+  public:
+    element_proxy(bloom_counter2& bc, const Key& k) : bc_(bc), k_(k) { }
+
+    unsigned int operator++() { 
+      unsigned res = bc_.insert(k_);
+      return res == 0 ? 1 : 2;
+    }
+
+    unsigned int operator++(int) { return bc_.insert(k_); }
+    unsigned int operator*() { return bc_.check(k_); }
+    operator unsigned int() { return bc_.check(k_); }
+  };
+  element_proxy operator[](const Key& k) { return element_proxy(*this, k); }
 };
 
 #endif // __BLOOM_COUNTER2_HPP__

@@ -1,0 +1,21 @@
+purpose "Create k-unitigs with support for large k (k>31)."
+description ""
+
+option("m", "mer") {
+  description "k-mer size"
+  int; required }
+option("n", "nb-mers") {
+  description "Estimated number of distinct k-mers"
+  uint64; required } 
+option("t", "threads") {
+  description "Number of threads"
+  int; default "1" }
+option("o", "output") {
+  description "Ouput file (stdout)"
+  c_string; typestr "path" }
+option("f", "false-positive") {
+  description "False positive rate in bloom filter"
+  double; default "0.01" }
+arg("input") {
+  description "Read sequence"
+  c_string; typestr "path" }

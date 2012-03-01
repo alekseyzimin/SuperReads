@@ -34,28 +34,28 @@ inline std::ostream & operator<<(std::ostream &os, const substr &ss) {
 }
 
 template<typename T>
-int getFldsFromLine(char *line, T &res) {
+int getFldsFromLine(char *line, T &res, const char* sep = " \t\n") {
   char *saveptr;
   res.clear();
 
-  char *tok = strtok_r(line, " \t\n", &saveptr);
+  char *tok = strtok_r(line, sep, &saveptr);
   while(tok) {
     res.push_back(tok);
-    tok = strtok_r(0, " \t\n", &saveptr);
+    tok = strtok_r(0, sep, &saveptr);
   }
   return res.size();
 }
 
 template<typename T>
-int appendFldsFromLine(char *line, T &res) {
+int appendFldsFromLine(char *line, T &res, const char* sep = " \t\n") {
   char *saveptr;
   int numFlds = 0;
 
-  char *tok = strtok_r(line, " \t\n", &saveptr);
+  char *tok = strtok_r(line, sep, &saveptr);
   while(tok) {
     res.push_back(tok);
     ++numFlds;
-    tok = strtok_r(0, " \t\n", &saveptr);
+    tok = strtok_r(0, sep, &saveptr);
   }
   return numFlds;
 }
