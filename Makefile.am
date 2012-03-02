@@ -45,7 +45,7 @@ bin_PROGRAMS += create_k_unitigs error_correct_reads			\
                 error_corrected2frg homo_trim reverse_complement	\
                 reduce_sr sorted_merge combine_jf_dbs
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
-                    src/reduce_sr.pl src/create_end_pairs.pl		\
+                    src/create_end_pairs.pl		\
                     src/close_gaps.sh src/compute_sr_cov.pl		\
                     src/create_sr_frg.pl src/extractreads.pl		\
                     src/extract_unjoined_pairs.pl src/fasta2frg.pl	\
