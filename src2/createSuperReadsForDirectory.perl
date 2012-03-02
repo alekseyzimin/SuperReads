@@ -50,6 +50,7 @@ $pwd = cwd;
 if ($exeDir !~ /^\//) {
     $exeDir = "$pwd/$exeDir"; }
 
+$maxNodes=2000;
 $noReduce=0;
 &processArgs;
 $merLenMinus1 = $merLen - 1;
@@ -164,7 +165,7 @@ $cmd = "$exeDir/createKUnitigMaxOverlaps $mergedUnitigInputKUnitigsFile -kmerval
 # Do the shooting method here
 if ($mergedUnitigDataPrefix) {
     $mergedUnitigDataFileStr = "--kunitigs-translation-file $mergedUnitigInputKUnitigMappingFile"; }
-$cmd = "$exeDir/joinKUnitigs_v3 --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 --prefix $joinerOutputPrefix $mergedUnitigDataFileStr --num-file-names $numProcessors $myProgOutput1_1prefix";
+$cmd = "$exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 --prefix $joinerOutputPrefix $mergedUnitigDataFileStr --num-file-names $numProcessors $myProgOutput1_1prefix";
 &runCommandAndExitIfBad ($cmd, $joinerOutputPrefix . "*", 1, "joinKUnitigs", "$workingDirectory/readPositionsInSuperReads_*");
 
 $cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile | awk '{print \$1*100}'` -o $superReadCountsFile ${joinerOutputPrefix}_*";
@@ -248,6 +249,10 @@ sub processArgs
 	    ++$i;
 	    $minReadsInSuperRead = $ARGV[$i];
 	    next; }
+        elsif ($ARGV[$i] eq "-maxnodes") {
+            ++$i;
+            $maxNodes = $ARGV[$i];
+            next; }
 	elsif ($ARGV[$i] eq "-merged-unitig-data-prefix") {
 	    ++$i;
 	    $mergedUnitigDataPrefix = $ARGV[$i];
