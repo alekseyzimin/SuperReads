@@ -568,8 +568,15 @@ foreach $v(@other_info_array){
 
 ###done processing other FRG###
 print FILE "\n";
-###Celera Assembler###
+###figure out the optimal parameters for CA###
+print FILE "TOTAL_READS=`cat $list_of_frg_files |grep '^{FRG'|wc -l`\n";
+print FILE "ovlRefBlockSize=`perl -e 'print int('\$TOTAL_READS'/8)'`\n";
+print FILE "ovlHashBlockSize=`perl -e 'print int('\$TOTAL_READS'/80)'`\n";
+print FILE "ovlCorrBatchSize=\$ovlHashBlockSize\n";
+###done figuring out CA parameters###
 
+
+###Celera Assembler###
 print FILE "\necho -n 'Celera Assembler ';date;\n";
 if($rerun_sj==1||$rerun_pe==1){
 print FILE "rm -rf CA\n";
@@ -577,11 +584,7 @@ print FILE "rm -rf CA\n";
 
 #data filtering
 if(scalar(@jump_info_array)>0){
-#we run CA fully for small data sets (under 10M reads) and only up to the unitigs for large genomes (over 10M reads)
-
-    print FILE "let TOTAL_READS=`wc -l pe.cor.fa| awk '{print \$1}'`\n";
-
-    print FILE "runCA jellyfishHashSize=\$JF_SIZE utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=300 bogBreakAtIntersections=0 doOverlapBasedTrimming=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
+    print FILE "runCA jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=200 bogBreakAtIntersections=0 doOverlapBasedTrimming=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
 
 #here we filter libraries for chimerism and redundancy
 #we also reduce the insert coverage by jump libraries if necessary: no more than 100x insert coverage by all libraries
@@ -607,13 +610,15 @@ if(scalar(@jump_info_array)>0){
     print FILE "cd ../\nrm -rf *.tigStore\nrm -rf *.ovlStore\nrm -rf 0-* 1-* 2-* 3-*\ncd ../\n\n";
     print FILE "\n";
 }
-#this if statement is here because if OTHER frg is specified, we will have to do OBT, it will slow us down, but it has to be done :(
+#this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
 if(scalar(@other_info_array)>0){
-    print FILE "runCA $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE stopAfter=consensusAfterUnitigger doOverlapBasedTrimming=1 unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+$other_parameters="doOverlapBasedTrimming=1 doExtendClearRanges=2"; 
+}else{
+$other_parameters="doOverlapBasedTrimming=0 doExtendClearRanges=0";
 }
-else{
-    print FILE "runCA $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE stopAfter=consensusAfterUnitigger doOverlapBasedTrimming=0 unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
-}
+
+print FILE "runCA $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+
 #now we check if the unitig consensus which is sometimes problematic, failed, and fix the unitigs
 print FILE "if [[ -e \"CA/5-consensus/consensus.success\" ]];then\n";
 print FILE "echo \"unitig consensus OK\"\n";
@@ -629,13 +634,8 @@ print FILE "fi\n";
 #we now recompute the A-stat for the unitigs based on positions of PE reads in the super-reads
 print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
 
-#and we continue into the scaffolder... we do ECR only if OTHER data is specified
-if(scalar(@other_info_array)>0){
-    print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=1  1>runCA2.out 2>&1\n";
-}
-else{
-    print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=1  1>runCA2.out 2>&1\n";
-}
+#and we continue into the scaffolder...
+print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=1 $other_parameters 1>runCA2.out 2>&1\n";
 
 print FILE "if [[ -e \"CA/9-terminator/genome.qc\" ]];then\n";
 print FILE "echo \"CA success\"\n";
