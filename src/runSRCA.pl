@@ -606,35 +606,6 @@ if(scalar(@jump_info_array)>0){
     print FILE "gatekeeper --edit gkp.edits.msg ../genome.gkpStore 1>gatekeeper.err 2>&1\n";
     print FILE "cd ../\nrm -rf *.tigStore\nrm -rf *.ovlStore\nrm -rf 0-* 1-* 2-* 3-*\ncd ../\n\n";
     print FILE "\n";
-    print FILE "if [[ \$TOTAL_READS -lt 20000000 ]];then \n";#run the assember to completion, for better filtering
-    print FILE "runCA $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE stopAfter=consensusAfterUnitigger doOverlapBasedTrimming=0 unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
-#now we check if the unitig consensus which is sometimes problematic, failed, and fix the unitigs
-    print FILE "if [[ -e \"CA/5-consensus/consensus.success\" ]];then\n";
-    print FILE "echo \"unitig consensus OK\"\n";
-    print FILE "else\n";
-    print FILE "echo \"fixing unitig consensus...\"\n";
-    print FILE "mkdir CA/fix_unitig_consensus\n";
-    print FILE "cd CA/fix_unitig_consensus\n";
-    print FILE "cp `which fix_unitigs.sh` .\n";
-    print FILE "./fix_unitigs.sh genome \n";
-    print FILE "cd ../../\n";
-    print FILE "fi\n";
-#we now recompute the A-stat for the unitigs based on positions of PE reads in the super-reads
-    print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
-    print FILE "runCA $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=0 doExtendClearRanges=0 1>runCA2.out 2>&1\n";
-    print FILE "if [[ -e \"CA/9-terminator/genome.qc\" ]];then\n";
-    print FILE "echo \"CA success, checking for chimeric mates\"\n";
-    print FILE "else\n";
-    print FILE "echo \"CA failed, check output under CA/ and runCA2.out\"\n";
-    print FILE "exit\n";
-    print FILE "fi\n";
-    print FILE "cd CA/4-unitigger-filter\n";
-    print FILE "echo -n 'Found additional chimeric mates: '\n";
-    print FILE "grep badOuttie ../9-terminator/genome.posmap.mates | perl -ane 'BEGIN{open(FILE,\"sj.uid\");while(\$line=<FILE>){chomp(\$line); \$h{\$line}=1;}}{print \"frg uid \$F[0] isdeleted 1\\nfrg uid \$F[1] isdeleted 1\\n\" if(defined(\$h{\$F[0]}));}' |tee gkp.edits.final.msg | wc -l\n";
-    print FILE "gatekeeper --edit gkp.edits.final.msg ../genome.gkpStore 1>gatekeeper.err 2>&1\n"; 
-    print FILE "cd ../\nrm -rf *.tigStore\nrm -rf *.ovlStore\nrm -rf 0-* 1-* 2-* 3-* 4-unitigger 5-* 6-* 7-* 8-* 9-*\ncd ../\n\n";
-    print FILE "fi\n";
-    print FILE "\n\n";
 }
 #this if statement is here because if OTHER frg is specified, we will have to do OBT, it will slow us down, but it has to be done :(
 if(scalar(@other_info_array)>0){
@@ -660,10 +631,10 @@ print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/r
 
 #and we continue into the scaffolder... we do ECR only if OTHER data is specified
 if(scalar(@other_info_array)>0){
-    print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=0 doExtendClearRanges=1 1>runCA2.out 2>&1\n";
+    print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=1  1>runCA2.out 2>&1\n";
 }
 else{
-    print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=0 doExtendClearRanges=0 1>runCA2.out 2>&1\n";
+    print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=1  1>runCA2.out 2>&1\n";
 }
 
 print FILE "if [[ -e \"CA/9-terminator/genome.qc\" ]];then\n";
