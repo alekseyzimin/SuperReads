@@ -4,23 +4,6 @@
 #include <skip_list_set.hpp>
 #include <utility>
 
-template<typename Pair, class Compare>
-struct first_comp {
-  typedef Pair pair_type;
-  typedef Compare comp_type;
-  Compare comp;
-  bool operator()(const pair_type& p1, const pair_type& p2) const {
-    return comp(p1.first, p2.first);
-  }
-  bool operator()(const typename pair_type::first_type& p1, const pair_type& p2) const {
-    return comp(p1, p2.first);
-  }
-  bool operator()(const pair_type& p1, const typename pair_type::first_type& p2) const {
-    return comp(p1.first, p2);
-  }
-  first_comp(const Compare& comp_ = Compare()) : comp(comp_) { }
-};
-
 template<typename Key, typename T, class Compare = std::less<Key>,
          int p_ = 4, typename Random = xor_random>
 class skip_list_map : 
