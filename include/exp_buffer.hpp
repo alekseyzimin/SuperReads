@@ -67,7 +67,8 @@ public:
     CHECK;
   }
   virtual ~ExpBuffer() {
-    realloc(base_, 0, 0);
+    if(base_)
+      realloc(base_, 0, 0);
   }
 
   void check() const { CHECK; }

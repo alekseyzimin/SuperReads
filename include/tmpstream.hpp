@@ -17,7 +17,13 @@ public:
   basic_tmpstream() : std::iostream(open_tmp()) { }
   virtual ~basic_tmpstream() { close(); delete rdbuf(); }
   bool is_open() { return ((stdbuf*)rdbuf())->is_open(); }
-  void close() { ((stdbuf*)rdbuf())->close(); }
+  void close() { 
+    if(is_open()) {
+      stdbuf* buf = (stdbuf*)rdbuf();
+      ::fclose(buf->file());
+      buf->close();
+    }
+  }
 private:
   static stdbuf * open_tmp() {
     FILE *f = tmpfile();

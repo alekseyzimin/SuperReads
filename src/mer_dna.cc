@@ -1,4 +1,5 @@
 #include <src/mer_dna.hpp>
+#include <iostream>
 
 const uint64_t mer_dna::codes[256] = {
   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
@@ -34,12 +35,13 @@ uint64_t mer_dna::shift_left(uint64_t c) {
     c1 = _data[i+3] >> 62;   _data[i+3] = (_data[i+3] << 2) | c2;
   }
   c2 = c1;
+
   switch(nb_words() - i) {
   case 3: c2 = _data[i] >> 62;   _data[i] = (_data[i] << 2) | c1;   ++i;
   case 2: c1 = _data[i] >> 62;   _data[i] = (_data[i] << 2) | c2;   ++i;
   case 1:                        _data[i] = (_data[i] << 2) | c1;
   }
-  _data[i] = _data[i] & msw();
+  _data[nb_words() - 1] = _data[nb_words() - 1] & msw();
 
   return r;
 }

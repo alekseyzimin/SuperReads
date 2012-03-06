@@ -73,8 +73,8 @@ char *kUnitigSpace, **kUnitigSeq;
 int *kUnitigLengths;
 charb line(1000000);
 charb reverseComplementSpace(1000000), outputSeqSpace(3000000);
-ExpandingBuffer<std::vector<std::string> > superReadsByLength(200);
-ExpandingBuffer<int> countByLength(200);
+typedef ExpandingBuffer<charb, remaper<charb> > twoD_charb_buf;
+ExpandingBuffer<twoD_charb_buf>  superReadsByLength(50000);
 
 void generateReverseComplement (char *seq, int seqLen);
 FILE *Fopen (const char *fn, const char *mode);
@@ -338,12 +338,8 @@ int main (int argc, char **argv)
           fputs (superReadName,goodFile); fputc ('\n',goodFile);
 	  if (! noSequence) {
 	       fputs (outputSeqSpace, outfile); fputc ('\n', outfile); }
-	  if (strlen (superReadNameAndLengthsFilename) != 0) {
-	       if (countByLength[outputSeqLen] == 0)
-		    superReadsByLength[outputSeqLen] = emptyStringVector;
-	       superReadsByLength[outputSeqLen].push_back (std::string(superReadName));
-	       ++countByLength[outputSeqLen];
-	  }
+	  if (strlen (superReadNameAndLengthsFilename) != 0) 
+			superReadsByLength[outputSeqLen].push_back((charb)superReadName);
      }
 
      fclose (infile);
@@ -354,10 +350,10 @@ int main (int argc, char **argv)
      if (strlen(superReadNameAndLengthsFilename) != 0) {
 	  outfile = Fopen (superReadNameAndLengthsFilename, "w");
 	  for (unsigned int i=superReadsByLength.size()-1; i!=0; i--) {
-	       if (countByLength[i] == 0)
+	       if (superReadsByLength[i].size() == 0)
 		    continue;
 	       for (unsigned int j=0; j<superReadsByLength[i].size(); j++)
-		    fprintf (outfile, "%s %d\n", superReadsByLength[i][j].c_str(), i);
+		    fprintf (outfile, "%s %d\n", (char*)superReadsByLength[i][j], i);
 	  }
 	  fclose (outfile);
      }

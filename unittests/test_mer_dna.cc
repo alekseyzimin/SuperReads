@@ -48,6 +48,7 @@ TEST_P(KMer, InitFromStr) {
 
 TEST_P(KMer, ShiftLeft) {
   mer_dna m(GetParam().size());
+  m.polyA(); // Avoid valgrind error with unizitialized values
   for(auto it = GetParam().begin(); it != GetParam().end(); ++it)
     m.shift_left(*it);
   EXPECT_EQ(GetParam(), m.to_str());
@@ -55,6 +56,7 @@ TEST_P(KMer, ShiftLeft) {
 
 TEST_P(KMer, ShiftRight) {
   mer_dna m(GetParam().size());
+  m.polyA(); // Avoid valgrind error with unizitialized values
   for(auto it = GetParam().rbegin();
       it != GetParam().rend(); ++it) {
     m.shift_right(*it);

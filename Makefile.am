@@ -46,7 +46,7 @@ bin_PROGRAMS += create_k_unitigs error_correct_reads			\
                 reduce_sr sorted_merge combine_jf_dbs			\
                 create_k_unitigs_large_k
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
-                    src/reduce_sr.pl src/create_end_pairs.pl		\
+                    src/create_end_pairs.pl		\
                     src/close_gaps.sh src/compute_sr_cov.pl		\
                     src/create_sr_frg.pl src/extractreads.pl		\
                     src/extract_unjoined_pairs.pl src/fasta2frg.pl	\
@@ -130,6 +130,7 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_skip_list_map.cc			\
                     unittests/test_rbtree.cc				\
                     unittests/test_multi_thread_skip_list_set.cc	\
+                    unittests/test_multi_thread_skip_list_map.cc	\
                     unittests/test_mer_dna.cc				\
                     unittests/test_read_parser.cc			\
                     unittests/test_hash.cc
