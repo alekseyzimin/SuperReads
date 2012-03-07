@@ -11,6 +11,7 @@ typedef ExpandingBuffer<int> int_buf;
 typedef ExpandingBuffer<int_buf, remaper<int_buf> > twoD_int_buf;
 typedef ExpandingBuffer<charb, remaper<charb> > twoD_charb_buf;
 
+
 FILE *Fopen (const char *fn, const char *mode);
 
 static int int_compare(const void *p1, const void *p2){
@@ -91,6 +92,7 @@ int main(int argc,char *argv[]){
      FILE *infile = Fopen (args.kunitigLengthsFile_arg, "r");
      FILE *sr_sizes = Fopen (args.SuperReads_sizes_arg, "r");
 
+
      while (fgets (line, infile)) {
 	  int uniNum, uniLen;
 	  sscanf (line, "%d %d", &uniNum, &uniLen);
@@ -102,21 +104,25 @@ int main(int argc,char *argv[]){
 	  if(l%500000==0){
 	       fprintf(stderr,"Processed %d super reads, irreducible %d, processing %d super reads per second\n",l,irreducibleSuperReadIndex,(int)floor(500000/difftime(time(NULL),time_start)));
 	       time_start=time(NULL);
-		//int mem=0;
-		//for (size_t k=0;k<irreducibleSuperReadNames.size();k++)
-		//	mem+=irreducibleSuperReadNames[k].size();
-		//fprintf(stderr,"irreducibleSuperReadNames takes %d bytes\n",mem);
-		//mem=0;
-                //for (size_t k=0;k<superReadIndicesForKUnitig.size();k++)
-                //        mem+=superReadIndicesForKUnitig[k].size()*4;
-                //fprintf(stderr,"superReadIndicesForKUnitig takes %d bytes\n",mem);
-		//fprintf(stderr,"line takes %d bytes\n",(int)line.size());
-		//fprintf(stderr,"kUnitigLengths takes %d bytes\n",(int)kUnitigLengths.size()*4);
-		//fprintf(stderr,"candidates takes %d bytes\n",(int)candidates.size()*4);
-                //fprintf(stderr,"kUnitigsInSuperRead takes %d bytes\n",(int)kUnitigsInSuperRead.size()*4);
-		//fprintf(stderr,"superReadName_save takes %d bytes\n",(int)superReadName_save.size());
-                //fprintf(stderr,"superReadName_reverse takes %d bytes\n",(int)superReadName_reverse.size());
-                //fprintf(stderr,"superReadName takes %d bytes\n",(int)superReadName.size());
+		fprintf(stderr,"USAGE:\n");
+                int mem=0;
+		for (size_t k=0;k<irreducibleSuperReadNames.size();k++)
+			mem+=irreducibleSuperReadNames[k].size();
+		fprintf(stderr,"irreducibleSuperReadNames takes %d bytes\n",mem);
+		mem=0;
+                for (size_t k=0;k<args.largestkunitig_arg;k++)
+                        mem+=superReadIndicesForKUnitig[k].size()*4;
+                fprintf(stderr,"superReadIndicesForKUnitig takes %d bytes\n",mem);
+
+                fprintf(stderr,"CAPACITY:\n");
+                mem=0;
+                for (size_t k=0;k<irreducibleSuperReadNames.capacity();k++)
+                        mem+=irreducibleSuperReadNames[k].capacity();
+                fprintf(stderr,"irreducibleSuperReadNames takes %d bytes\n",mem);
+                mem=0;
+                for (size_t k=0;k<args.largestkunitig_arg;k++)
+                        mem+=superReadIndicesForKUnitig[k].capacity()*4;
+                fprintf(stderr,"superReadIndicesForKUnitig takes %d bytes\n",mem);
 	  }
 	  //first we parse the super read line, space separated, to get the name
 	  token=strtok_r(line," ",&saveptr);
