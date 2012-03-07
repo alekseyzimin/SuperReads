@@ -3,7 +3,9 @@
 read_parser::~read_parser() {
   if(reader_started_) {
     pool_.close_B_to_A();
-    pthread_cancel(reader_id_);
+    // XXX: Do we need to cancel the thread? This seems to leak memory and
+    // may not be necessary or desirable.
+    //    pthread_cancel(reader_id_);
     pthread_join(reader_id_, 0);
   }
   if(close_input_)

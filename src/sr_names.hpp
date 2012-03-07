@@ -30,7 +30,7 @@ public:
   iterator end() const { return iterator(); }
 
   const char* raw() const { return data; }
-  const char* to_str() { charb res; to_str(data, res); return strdup(res); }
+  void to_str(charb& str) { to_str(data, str); }
   
 public:
   const char* copy(const char *str) {

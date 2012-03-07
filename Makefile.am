@@ -127,6 +127,7 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_skip_list_map.cc			\
                     unittests/test_rbtree.cc				\
                     unittests/test_multi_thread_skip_list_set.cc	\
+                    unittests/test_multi_thread_skip_list_map.cc	\
                     unittests/test_mer_dna.cc				\
                     unittests/test_read_parser.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\

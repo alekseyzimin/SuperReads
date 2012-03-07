@@ -117,15 +117,7 @@ public:
   };
 
 
-  explicit multi_thread_skip_list_set(const Compare& comp = Compare(), 
-                                      const Random& rand = Random()) :
-    heads_(new node*[10]), max_height_(10),
-    comp_(comp), rand_(rand)
-  {
-    memset(heads_, '\0', sizeof(node*) * max_height_);    
-  }
-
-  explicit multi_thread_skip_list_set(int max_height,
+  explicit multi_thread_skip_list_set(int max_height = 10,
                                       const Compare& comp = Compare(), 
                                       const Random& rand = Random()) :
     heads_(new node*[max_height]), max_height_(max_height),
@@ -175,6 +167,12 @@ public:
 
   /* The following methods are thread safe.
    */
+  size_t size() const {
+    size_t res = 0;
+    for(node* ptr = jflib::a_load(heads_); ptr; ptr = jflib::a_load(ptr->tower))
+      ++res;
+    return res;
+  }
   bool empty() const { return jflib::a_load(heads_) == (node*)0; }
   size_type max_size() const {
     size_type res = 1;
