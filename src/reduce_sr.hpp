@@ -9,31 +9,37 @@ class reduce_sr {
 public:
   int                            maximum_search_depth_arg;
   bool                           maximum_search_depth_given;
+  const char *                   output_arg;
+  bool                           output_given;
   uint64_t                       largestkunitig_arg;
   const char *                   kunitigLengthsFile_arg;
   int                            kmerlen_arg;
+  const char *                   SuperReads_sizes_arg;
 
   enum {
     USAGE_OPT = 1000
   };
 
   reduce_sr() : 
-    maximum_search_depth_arg(100), maximum_search_depth_given(false)
+    maximum_search_depth_arg(100), maximum_search_depth_given(false),
+    output_arg("reduce.tmp"), output_given(false)
   { }
 
   reduce_sr(int argc, char* argv[]) :
-    maximum_search_depth_arg(100), maximum_search_depth_given(false)
+    maximum_search_depth_arg(100), maximum_search_depth_given(false),
+    output_arg("reduce.tmp"), output_given(false)
   { parse(argc, argv); }
 
   void parse(int argc, char* argv[]) {
     static struct option long_options[] = {
       {"maximum-search-depth", 1, 0, 'd'},
+      {"output", 1, 0, 'o'},
       {"help", 0, 0, 'h'},
       {"usage", 0, 0, USAGE_OPT},
       {"version", 0, 0, 'V'},
       {0, 0, 0, 0}
     };
-    static const char *short_options = "hVd:";
+    static const char *short_options = "hVd:o:";
 
     std::string err;
 #define CHECK_ERR(type,val,which) if(!err.empty()) { std::cerr << "Invalid " #type " '" << val << "' for [" which "]: " << err << "\n"; exit(1); }
@@ -64,10 +70,16 @@ public:
         maximum_search_depth_arg = yaggo::conv_int<int>((const char *)optarg, err, false);
         CHECK_ERR(int_t, optarg, "-d, --maximum-search-depth=int")
         break;
+      case 'o':
+        output_given = true;
+        output_arg = optarg;
+        break;
       }
     }
-    if(argc - optind != 3)
-      error("Requires exactly 3 arguments.");
+
+    // Parse arguments
+    if(argc - optind != 4)
+      error("Requires exactly 4 arguments.");
     largestkunitig_arg = yaggo::conv_uint<uint64_t>((const char *)argv[optind], err, false);
     CHECK_ERR(uint64_t, argv[optind], "largestkunitig")
     ++optind;
@@ -76,8 +88,11 @@ public:
     kmerlen_arg = yaggo::conv_int<int>((const char *)argv[optind], err, false);
     CHECK_ERR(int_t, argv[optind], "kmerlen")
     ++optind;
+    SuperReads_sizes_arg = argv[optind];
+    ++optind;
   }
-#define reduce_sr_USAGE "Usage: reduce_sr [options] largestkunitig:uint64 kunitigLengthsFile:path kmerlen:int"
+
+#define reduce_sr_USAGE "Usage: reduce_sr [options] largestkunitig:uint64 kunitigLengthsFile:path kmerlen:int SuperReads_sizes:path"
   const char * usage() const { return reduce_sr_USAGE; }
   void error(const char *msg) { 
     std::cerr << "Error: " << msg << "\n" << usage()
@@ -85,9 +100,11 @@ public:
               << std::endl;
     exit(1);
   }
+
 #define reduce_sr_HELP "Reduce contained SuperReads to their largest container.\n\nLong description\n\n" \
   "Options (default value in (), *required):\n" \
   " -d, --maximum-search-depth=int           Check at most this many possible containing SuperReads (100)\n" \
+  " -o, --output=path                        Output file name (reduce.tmp)\n" \
   "     --usage                              Usage\n" \
   " -h, --help                               This message\n" \
   " -V, --version                            Version"
@@ -104,9 +121,11 @@ public:
   }
   void dump(std::ostream &os = std::cout) {
     os << "maximum_search_depth_given:" << maximum_search_depth_given << " maximum_search_depth_arg:" << maximum_search_depth_arg << "\n";
+    os << "output_given:" << output_given << " output_arg:" << output_arg << "\n";
     os << "largestkunitig_arg:" << largestkunitig_arg << "\n";
     os << "kunitigLengthsFile_arg:" << kunitigLengthsFile_arg << "\n";
     os << "kmerlen_arg:" << kmerlen_arg << "\n";
+    os << "SuperReads_sizes_arg:" << SuperReads_sizes_arg << "\n";
   }
 private:
 };
