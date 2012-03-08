@@ -36,6 +36,7 @@
 #include <jflib/pool.hpp>
 #include <gzip_stream.hpp>
 #include <src/aligned_simple_array.hpp>
+#include <misc.hpp>
 
 // Structure and thread for writing out results
 struct output_pair {
@@ -47,37 +48,23 @@ typedef jflib::pool<output_pair> output_pool;
 typedef uint64_t hkey_t;
 typedef uint64_t hval_t;
 
-class key_count_array {
-  struct kvp {
-    hkey_t key;
-    hval_t val;
-  };
-  size_t      index;
-  size_t      capacity;
-  struct kvp *storage;
+struct kvp {
+  hkey_t key;
+  hval_t val;
+  //  kvp(hkey_t& k, hval_t& v) : key(k), val(v) { }
+};
 
-  void enlarge() {
-    capacity *= 2;
-    storage = (struct kvp *)::realloc(storage, sizeof(struct kvp) * capacity);
-  }
+class key_count_array : public ExpBuffer<kvp> {
 public:
-  key_count_array() : index(0), capacity(16), storage(0) {
-    storage = (struct kvp *)realloc(storage, sizeof(struct kvp) * capacity);
-  }
+  key_count_array() : ExpBuffer<kvp>(16) { }
 
-  void push_back(const hkey_t k, const hval_t v) {
-    const size_t i = index++;
-    if(i >= capacity)
-      enlarge();
-    storage[i].key = k;
-    storage[i].val = v;
+  void push_back(hkey_t k, hval_t v) {
+    kvp x = { k, v };
+    ExpBuffer<kvp>::push_back(x); 
   }
-
-  void clear() { index = 0; }
-  size_t size() const { return index; }
-  hkey_t key(size_t i) { return storage[i].key; }
-  hkey_t val(size_t i) { return storage[i].val; }
-  void chop(size_t n) { index -= (n > index ? index : n); }
+  hkey_t key(size_t i) const { return this->operator[](i).key; }
+  hkey_t val(size_t i) const { return this->operator[](i).val; }
+  void chop(size_t n) { resize(n > size() ? 0 : size() - n); }
 };
 
 
@@ -123,6 +110,15 @@ public:
     }
   };
   block get_block(uint64_t bs = 100) { return block(this, bs); }
+};
+
+struct singleton_iterator {
+  uint64_t key;
+  uint64_t val;
+  uint64_t id;
+  uint64_t get_key() const { return key; }
+  uint64_t get_val() const { return val; }
+  uint64_t get_id() const { return id; }
 };
 
 class collapse_kmers : public thread_exec {
@@ -276,51 +272,69 @@ public:
       output_thread();
       return;
     }
-      
+
     volatile struct counters *my_counters = &stats[th_id];
-
     counter_t::block frag_id = fragment_counter.get_block();
-    const char *forward_term, *backward_term;
     seq_t forward, backward;
-    uint64_t min_cov = args.min_cov_arg;
 
-    for(size_t i = slice_counter++; i <= nb_slices; i = slice_counter++) {
-      my_counters->slices++;
-      iterator_t it = hash->iterator_slice(i, nb_slices);
+    if(args.start_given) { // Create one k-unitig starting at given k-mer
+      if(strlen(args.start_arg) == mer_len) {
+        singleton_iterator it;
+        it.key = jellyfish::parse_dna::mer_string_to_binary(args.start_arg, mer_len);
+        uint64_t akey = jellyfish::parse_dna::reverse_complement(it.key, mer_len);
+        akey = std::min(it.key, akey);
+        if(hash->get_val(akey, it.id, it.val, true))
+          start_k_unitig(it, forward, backward, frag_id, my_counters, th_id);
+      }
+    } else { // Create all k-unitigs from all possible k-mers
+      for(size_t i = slice_counter++; i <= nb_slices; i = slice_counter++) {
+        my_counters->slices++;
+        iterator_t it = hash->iterator_slice(i, nb_slices);
 
-      while(it.next()) {
-        forward.clear();
-        backward.clear();
-
-        if(it.get_val() < min_cov) {
-          my_counters->aborted++;
-          continue;
-        }
-        forward.push_back(it.get_key(), it.get_val());
-        forward_term = grow_sequence((unsigned char)(th_id & 0xff), it.get_key(),
-                                     it.get_id(),
-                                     &forward, dir_forward, &my_counters->added);
-        if(!forward_term) {
-          my_counters->aborted++;
-          continue;
-        }
-
-        backward_term = grow_sequence((unsigned char)(th_id & 0xff), it.get_key(), 
-                                      it.get_id(),
-                                      &backward, dir_backward, &my_counters->added);
-        if(!backward_term) {
-          my_counters->aborted++;
-          continue;
-        }
-        if((backward.size() + forward.size()) >= min_nb_kmers) {
-          my_counters->outputed++;
-          output_sequence(frag_id++, &forward, &backward,
-                          forward_term, backward_term);
-        }
+        while(it.next())
+          start_k_unitig(it, forward, backward, frag_id, my_counters, th_id);
       }
     }
+    
     if(done_barrier.wait() == PTHREAD_BARRIER_SERIAL_THREAD)
       pool.close_A_to_B();
+  }
+  
+  // Start a k_unitig from k-mer pointed to by iterator it.
+  template<typename mer_it>
+  void start_k_unitig(mer_it& it, seq_t& forward, seq_t& backward, counter_t::block& frag_id,
+                      volatile counters* my_counters, int th_id) {
+    const char               *forward_term, *backward_term;
+    uint64_t                  min_cov     = args.min_cov_arg;
+
+    forward.clear();
+    backward.clear();
+
+    if(it.get_val() < min_cov) {
+      my_counters->aborted++;
+      return;
+    }
+    forward.push_back(it.get_key(), it.get_val());
+    forward_term = grow_sequence((unsigned char)(th_id & 0xff), it.get_key(),
+                                 it.get_id(),
+                                 &forward, dir_forward, &my_counters->added);
+    if(!forward_term) {
+      my_counters->aborted++;
+      return;
+    }
+
+    backward_term = grow_sequence((unsigned char)(th_id & 0xff), it.get_key(), 
+                                  it.get_id(),
+                                  &backward, dir_backward, &my_counters->added);
+    if(!backward_term) {
+      my_counters->aborted++;
+      return;
+    }
+    if((backward.size() + forward.size()) >= min_nb_kmers) {
+      my_counters->outputed++;
+      output_sequence(frag_id++, &forward, &backward,
+                      forward_term, backward_term);
+    }
   }
   
   /* Return true if sequence has grown. Return (char *)0 if encounter a
@@ -400,6 +414,11 @@ public:
         jellyfish::parse_dna::mer_binary_to_string(bnext_key, mer_len, mer2_string);
         jellyfish::parse_dna::mer_binary_to_string(next_key, mer_len, mer3_string);
         std::cerr << "Backward unique next key not equal to current: " << mer1_string << " != " << mer2_string << " next was " << mer3_string << " pfound '" << (pfound ? pfound : "") << "' found '" << (found ? found : "") << "'" << " low_cont " << low_cont << std::endl;
+        // for(auto it = vec.begin(); it != vec.end(); ++it) {
+        //   jellyfish::parse_dna
+        // }
+        BREAKPOINT;
+        continue;
         die << "Failed";
       }
 
@@ -421,7 +440,7 @@ public:
   const char * unique_continuation(const hkey_t in_key, hkey_t *out_key, 
                                    hkey_t *cannon_out_key, uint64_t *out_id,
                                    hval_t *value, 
-                                   const int direction)
+                                   const int direction) const
   {
     int      found    = 0;
     int      lfound   = 0;
@@ -562,7 +581,9 @@ int main(int argc, char *argv[])
   create_k_unitigs_args args(argc, argv);
 
   mapped_file dbf(args.file_arg);
-  dbf.random().will_need().load();
+  dbf.random().will_need();
+  if(!args.no_load_flag)
+    dbf.load();
   raw_inv_hash_query_t hash(dbf);
 
   // By default, the minimum length is k+1

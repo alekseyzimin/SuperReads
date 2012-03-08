@@ -101,3 +101,34 @@ TYPED_TEST(ExpandingBufferInit, Initialization) {
   EXPECT_EQ(b.size() - 1, (size_t)std::count(b.begin(), b.end(), -1));
 }
 
+TYPED_TEST(ExpandingBufferDefault, Resize) {
+  TypeParam b;
+
+  EXPECT_EQ((size_t)0, b.size());
+  b.resize(10);
+  EXPECT_EQ((size_t)10, b.size());
+  b.resize(5);
+  EXPECT_EQ((size_t)5, b.size());
+  b.resize(15, 2345);
+  for(auto it = b.begin() + 5; it != b.end(); ++it)
+    EXPECT_EQ(2345, *it);
+}
+
+TYPED_TEST(ExpandingBufferInit, Resize) {
+  TypeParam b;
+
+  EXPECT_EQ((size_t)0, b.size());
+  b.resize(10);
+  EXPECT_EQ((size_t)10, b.size());
+  for(auto it = b.begin(); it != b.end(); ++it)
+    EXPECT_EQ(-1, *it);
+
+  b.resize(5);
+  EXPECT_EQ((size_t)5, b.size());
+
+  b.resize(15, 2345);
+  for(auto it = b.begin(); it != b.begin() + 5; ++it)
+    EXPECT_EQ(-1, *it);
+  for(auto it = b.begin() + 5; it != b.end(); ++it)
+    EXPECT_EQ(2345, *it);
+}
