@@ -1587,6 +1587,12 @@ void getSuperReadsForInsert (void)
      if (evenReadMatchStructs.empty() || oddReadMatchStructs.empty()) {
 	  findSingleReadSuperReads(readNameSpace);
 	  return; }
+     if (maxNodesAllowed == 0) {
+	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold-1);
+	  findSingleReadSuperReads (readNameSpace);
+	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
+	  findSingleReadSuperReads (readNameSpace);
+	  return; }
 //     puts ("Got to 1\n"); fflush (stdout);
      // If we get here both the even read and the odd read have
      // matches to k-unitigs

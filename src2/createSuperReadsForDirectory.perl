@@ -53,6 +53,8 @@ if ($exeDir !~ /^\//) {
 $maxNodes=2000;
 $noReduce=0;
 &processArgs;
+if ($jumpLibraryReads) {
+    $maxNodes = 0; }
 $merLenMinus1 = $merLen - 1;
 $maxHashFillFactor = .8;
 
@@ -110,10 +112,6 @@ $finalReadPlacementFile = "$workingDirectory/readPlacementsInSuperReads.final.re
 # $reducedReadPlacementFile = "$workingDirectory/readPlacementsInSuperReads.reduced.read.superRead.offset.ori.txt";
 
 if ($jumpLibraryReads) {
-    $myProgOutput1_1 = "$workingDirectory/testOutput.nucmerLinesOnly.jumpLibrary.txt";
-    $myProgOutput1_1prefix = "$workingDirectory/newTestOutput.nucmerLinesOnly.jumpLibrary";
-    $myProgOutput8 = "$workingDirectory/superReadSequences.jumpLibrary.bothSidesExtended.fasta";
-    $myProgOutput12 = "$workingDirectory/readPlacementsInSuperReads.forJumpLibraryWBothSidesExtended.read.superRead.offset.ori.txt";
     $finalSuperReadSequenceFile = "$workingDirectory/superReadSequences.jumpLibrary.fasta";
 }
 
@@ -146,9 +144,6 @@ $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t 
 &runCommandAndExitIfBad ($cmd, $myProgOutput1_1prefix . "*", 1, "findReadKUnitigMatches", "$workingDirectory/newTestOutput.nucmerLinesOnly_*");
 if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile, $readsAfterAddingMissingMates); }
 
-if ($jumpLibraryReads) {
-    goto jumpLibraryCalculations; }
-
 # In addition to obvious output file, this also generates the files
 # mergedKUnitigs.numKUnitigs.txt, mergedKUnitigs.maxKUnitigNumber.txt, and mergedKUnitigs.totBasesInKUnitigs.txt in
 # $workingDirectory
@@ -168,6 +163,9 @@ if ($mergedUnitigDataPrefix) {
 $cmd = "$exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 --prefix $joinerOutputPrefix $mergedUnitigDataFileStr --num-file-names $numProcessors $myProgOutput1_1prefix";
 &runCommandAndExitIfBad ($cmd, $joinerOutputPrefix . "*", 1, "joinKUnitigs", "$workingDirectory/readPositionsInSuperReads_*");
 
+if ($jumpLibraryReads) {
+    goto jumpLibraryCalculations; }
+
 $cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile | awk '{print \$1*100}'` -o $superReadCountsFile ${joinerOutputPrefix}_*";
 &runCommandAndExitIfBad ($cmd, $superReadCountsFile, 1, "getSuperReadInsertCounts", $superReadCountsFile);
 
@@ -175,7 +173,7 @@ if ($mergedUnitigDataPrefix) {
     $mergedUnitigDataFileStr = "-maxunitignumberfile $mergedMaxKUnitigNumberFile"; }
 
 $goodSuperReadsNamesFile = "$workingDirectory/superReadNames.txt";
-    $fastaSuperReadErrorsFile = "$workingDirectory/createFastaSuperReadSequences.errors.txt";
+$fastaSuperReadErrorsFile = "$workingDirectory/createFastaSuperReadSequences.errors.txt";
 
 if($noReduce==0) {
     $localGoodSequenceOutputFile = "${finalSuperReadSequenceFile}.all";
@@ -206,11 +204,11 @@ system ($cmd);
 exit (0);
 
  jumpLibraryCalculations:
-# Must run createFastaSuperReadSequences here
+$minReadLength = 64;
+$maxReadLength = 2047;
+$cmd = "cat ${joinerOutputPrefix}_* | $exeDir/createFastaSuperReadSequences -jump-library $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread 1 $mergedUnitigDataFileStr -kunitigsfile $mergedUnitigInputKUnitigsFile -maxunitignumberfile $mergedMaxKUnitigNumberFile -min-read-length $minReadLength -max-read-length $maxReadLength -good-sequence-output-file $finalSuperReadSequenceFile  2> $sequenceCreationErrorFile";
+&runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1, "createFastaSequencesForJumpingLibrary", $finalSuperReadSequenceFile, $sequenceCreationErrorFile);
     
-$cmd = "$exeDir/outputSuperReadSeqForJumpLibrary.perl $myProgOutput8 $myProgOutput12 > $finalSuperReadSequenceFile";
-&runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1, "createFastaSuperReadSequences");
-
 $cmd = "touch $successFile";
 system ($cmd);
 
