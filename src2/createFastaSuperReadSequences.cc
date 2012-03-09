@@ -54,12 +54,15 @@ VI)  Make sure you allow for an appropriate set of params
 #include <cstdlib>
 #include <cstring>
 #include <cctype>
+#include <iostream>
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <vector>
 #include <string>
 #include <charb.hpp>
+#include <misc.hpp>
+using namespace std;
 
 #define NUM_KUNITIGS_FILENAME "maxKUnitigNumber.txt"
 #define KUNITIG_FILE_COMPLETE "guillaumeKUnitigsAtLeast32bases_all.fasta"
@@ -75,7 +78,11 @@ charb line(1000000);
 charb reverseComplementSpace(1000000), outputSeqSpace(3000000);
 typedef ExpandingBuffer<charb, remaper<charb> > twoD_charb_buf;
 ExpandingBuffer<twoD_charb_buf>  superReadsByLength(50000);
+ExpBuffer<char*> flds;
+bool isJumpLibrary;
 
+
+void reverseTheString (char *str);
 void generateReverseComplement (char *seq, int seqLen);
 FILE *Fopen (const char *fn, const char *mode);
 
@@ -98,7 +105,7 @@ int main (int argc, char **argv)
      uint64_t kUnitigSeqFileSize, fsize;
      uint64_t i64, j64=0;
      charb goodFilename(500);
-     FILE *infile, *goodFile;
+     FILE *infile, *goodFile = stdout; // goodFile initted makes compiler happy
      int lastKUnitigNumber, kUnitigNumber=0, kUnitigNumberHold, i, argNum;
      int state;
      char *cptr, *cptr2;
@@ -109,11 +116,12 @@ int main (int argc, char **argv)
      int seqDiffMax;
      int fail;
      charb errorMessage(2000), errorMessageLine(2000);
-     int numReads;
+     int numReads=0;
      char pluralStr[2];
      int noSequence = 0;
      int minReadsInSuperRead = 2;
      int minOvlLen = 30;
+     int minReadLength = 64, maxReadLength = 2047;
      
      // (VI) above
      workingDir = (char *) ".";
@@ -126,6 +134,7 @@ int main (int argc, char **argv)
      strcpy (goodSequenceOutputFilename, "");
      strcpy (superReadNameAndLengthsFilename, "");
 
+     isJumpLibrary = false;
      for (i=1; i<argc; i++) {
 	  if (strcmp (argv[i], "-nosequence") == 0) {
 	       noSequence = 1;
@@ -161,6 +170,17 @@ int main (int argc, char **argv)
 	  if (strcmp (argv[i], "-super-read-name-and-lengths-file") == 0) {
 	       ++i;
 	       strcpy (superReadNameAndLengthsFilename, argv[i]);
+	       continue; }
+	  if (strcmp (argv[i], "-min-read-length") == 0) {
+	       ++i;
+	       minReadLength = atoi(argv[i]);
+	       continue; }
+	  if (strcmp (argv[i], "-max-read-length") == 0) {
+	       ++i;
+	       maxReadLength = atoi(argv[i]);
+	       continue; }
+	  if (strcmp (argv[i], "-jump-library") == 0) {
+	       isJumpLibrary = true;
 	       continue; }
 	  if (argNum == 0)
 	       workingDir = argv[i];
@@ -252,24 +272,33 @@ int main (int argc, char **argv)
      // (V) above
      strcpy (fname, superReadListFile);
      infile = Fopen (fname, "r");
-     goodFile = Fopen (goodFilename, "w");
+     if (! isJumpLibrary)
+	  goodFile = Fopen (goodFilename, "w");
      std::vector<std::string> emptyStringVector;
+     char *outputSeqPtr;
      while (fgets (line, MAX_READ_LEN, infile)) {
-	  sscanf (line, "%d", &numReads);
-	  cptr = line;
-	  while (isspace(*cptr)) ++cptr;
-	  while (isdigit(*cptr)) ++cptr;
-	  while (isspace(*cptr)) ++cptr;
-	  superReadName = cptr;
-	  superReadName[strlen(superReadName)-1] = 0;
-	  if (numReads < minReadsInSuperRead) {
-	       if (numReads == 1)
-		    strcpy (pluralStr, "");
-	       else
-		    strcpy (pluralStr, "s");
-	       sprintf (errorMessageLine, "%s has only %d insert%s, which is less than %d. Skipping.\n", superReadName, numReads, pluralStr, minReadsInSuperRead);
-	       fputs (errorMessageLine, stderr);
-	       continue;
+	  int readStart=0, readOri='F';
+	  char *readName = (char *)0;
+	  getFldsFromLine (line, flds);
+	  superReadName = flds[1];
+	  cptr = superReadName;
+	  if (isJumpLibrary) {
+	       readStart = atoi(flds[2]);
+	       if (readStart < 0)
+		    readStart = 0;
+	       readOri = *(flds[3]);
+	       readName = flds[0]; }
+	  else {
+	       numReads = atoi (flds[0]);
+	       if (numReads < minReadsInSuperRead) {
+		    if (numReads == 1)
+			 strcpy (pluralStr, "");
+		    else
+			 strcpy (pluralStr, "s");
+		    sprintf (errorMessageLine, "%s has only %d insert%s, which is less than %d. Skipping.\n", superReadName, numReads, pluralStr, minReadsInSuperRead);
+		    fputs (errorMessageLine, stderr);
+		    continue;
+	       }
 	  }
 	  kUnitigNumber = atoi (cptr);
 	  while (isdigit (*cptr)) ++cptr;
@@ -318,7 +347,6 @@ int main (int argc, char **argv)
 	       strcat (outputSeqSpace, cptr2);
 	       kUnitigNumberHold = kUnitigNumber;
 	       oriHold = ori; }
-//     int outputSeqLen;
 	  outputSeqLen = strlen (outputSeqSpace);
 #if 0
 	  printf ("superReadName = %s ; seq = %s\n", superReadName, outputSeqSpace);
@@ -328,22 +356,56 @@ int main (int argc, char **argv)
 		    strcpy (pluralStr, "");
 	       else
 		    strcpy (pluralStr, "s");
-	       sprintf (errorMessageLine, "%s (with %d read%s) fails\n", (char *)superReadName, numReads, pluralStr);
+	       if (isJumpLibrary)
+		    sprintf (errorMessageLine, "super-read %s for read %s fails\n", (char *)superReadName, readName);
+	       else
+		    sprintf (errorMessageLine, "%s (with %d read%s) fails\n", (char *)superReadName, numReads, pluralStr);
 	       fputs (errorMessageLine, stderr);
 	       fputs (errorMessage, stderr); 
 	       continue; }
+	  if (isJumpLibrary) {
+	       int amtOfSequenceToOutput;
+	       if (readOri == 'F')
+		    amtOfSequenceToOutput = outputSeqLen - readStart;
+	       else {
+		    if (readStart > outputSeqLen)
+			 readStart = outputSeqLen;
+		    amtOfSequenceToOutput = readStart; }
+	       if (amtOfSequenceToOutput < minReadLength) {
+//		    sprintf (errorMessageLine, "super-read for read %s is too short\n", readName);
+//		    fputs (errorMessageLine, stderr);
+		    continue; }
+	       if (amtOfSequenceToOutput > maxReadLength)
+		    amtOfSequenceToOutput = maxReadLength;
+	       if (readOri == 'F') {
+		    outputSeqSpace[readStart+amtOfSequenceToOutput] = 0;
+		    outputSeqPtr = outputSeqSpace+readStart;
+	       }
+	       else {
+		    outputSeqSpace[readStart] = 0;
+		    outputSeqPtr = outputSeqSpace + (readStart - amtOfSequenceToOutput);
+		    reverseTheString(outputSeqPtr); }
+	       fputc ('>', outfile);
+	       fputs (readName, outfile); fputc('\n', outfile);
+	       fputs (outputSeqPtr, outfile); fputc ('\n', outfile);
+	       continue;
+	  }
+			 
+	  // If we get here it's a regular super-reads run,
+	  // not a jumping library
 	  if (! noSequence)
 	       fputc ('>', outfile);
 	  fputs (superReadName, outfile); fputc ('\n', outfile);
-          fputs (superReadName,goodFile); fputc ('\n',goodFile);
+	  fputs (superReadName,goodFile); fputc ('\n',goodFile);
 	  if (! noSequence) {
 	       fputs (outputSeqSpace, outfile); fputc ('\n', outfile); }
 	  if (strlen (superReadNameAndLengthsFilename) != 0) 
-			superReadsByLength[outputSeqLen].push_back((charb)superReadName);
+	       superReadsByLength[outputSeqLen].push_back((charb)superReadName);
      }
 
      fclose (infile);
-     fclose (goodFile);
+     if (! isJumpLibrary)
+	  fclose (goodFile);
      if (strlen(goodSequenceOutputFilename) != 0)
 	  fclose (outfile);
 
@@ -359,6 +421,40 @@ int main (int argc, char **argv)
      }
      
      return (0);
+}
+
+void reverseTheString (char *str)
+{
+     int len = strlen(str);
+//     printf ("Begin reverseTheString, string is %s\n", str);
+     for (int i=0, j=len-1; i<=j; i++, j--) {
+	  char tmp = str[i];
+	  switch (str[j]) {
+	  case 'a': str[i] = 't'; break;
+	  case 'c': str[i] = 'g'; break;
+	  case 'g': str[i] = 'c'; break;
+	  case 't': str[i] = 'a'; break;
+	  case 'A': str[i] = 'T'; break;
+	  case 'C': str[i] = 'G'; break;
+	  case 'G': str[i] = 'C'; break;
+	  case 'T': str[i] = 'A'; break;
+	  default: str[i] = str[j]; break;
+	  }
+	  if (i == j)
+	       break;
+	  switch (tmp) {
+	  case 'a': str[j] = 't'; break;
+	  case 'c': str[j] = 'g'; break;
+	  case 'g': str[j] = 'c'; break;
+	  case 't': str[j] = 'a'; break;
+	  case 'A': str[j] = 'T'; break;
+	  case 'C': str[j] = 'G'; break;
+	  case 'G': str[j] = 'C'; break;
+	  case 'T': str[j] = 'A'; break;
+	  default: str[j] = tmp; break;
+	  }
+     }
+//     printf ("After reverseTheString, string is %s\n", str);
 }
 
 void generateReverseComplement (char *seq, int seqLen)
