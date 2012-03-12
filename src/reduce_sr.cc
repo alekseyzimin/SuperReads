@@ -104,6 +104,7 @@ int main(int argc,char *argv[]){
 	  if(l%500000==0){
 	       fprintf(stderr,"Processed %d super reads, irreducible %d, processing %d super reads per second\n",l,irreducibleSuperReadIndex,(int)floor(500000/difftime(time(NULL),time_start)));
 	       time_start=time(NULL);
+#if DEBUG
 		fprintf(stderr,"USAGE:\n");
                 int mem=0;
 		for (size_t k=0;k<irreducibleSuperReadNames.size();k++)
@@ -123,6 +124,7 @@ int main(int argc,char *argv[]){
                 for (size_t k=0;k<args.largestkunitig_arg;k++)
                         mem+=superReadIndicesForKUnitig[k].capacity()*4;
                 fprintf(stderr,"superReadIndicesForKUnitig takes %d bytes\n",mem);
+#endif
 	  }
 	  //first we parse the super read line, space separated, to get the name
 	  token=strtok_r(line," ",&saveptr);

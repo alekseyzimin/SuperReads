@@ -414,12 +414,7 @@ public:
         jellyfish::parse_dna::mer_binary_to_string(bnext_key, mer_len, mer2_string);
         jellyfish::parse_dna::mer_binary_to_string(next_key, mer_len, mer3_string);
         std::cerr << "Backward unique next key not equal to current: " << mer1_string << " != " << mer2_string << " next was " << mer3_string << " pfound '" << (pfound ? pfound : "") << "' found '" << (found ? found : "") << "'" << " low_cont " << low_cont << std::endl;
-        // for(auto it = vec.begin(); it != vec.end(); ++it) {
-        //   jellyfish::parse_dna
-        // }
-        BREAKPOINT;
-        continue;
-        die << "Failed";
+        die << "Bug. Should never happen.";
       }
 
       vec->push_back(next_key, next_val);

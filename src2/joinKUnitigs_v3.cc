@@ -514,6 +514,7 @@ void loadKUnitigTranslationTable(const char *fileName)
 	  kubos.kUnitig = atoll(flds[1]);
 	  kubos.begin = atoi(flds[2]);
 	  kubos.end = atoi(flds[3]);
+	  unitigLengths[origUnitigNumber] = -(abs(kubos.end - kubos.begin)+1);
 	  maxVal = (kubos.begin < kubos.end) ? kubos.end : kubos.begin;
 	  origUnitigToNewUnitigPlacement[origUnitigNumber] = kubos; }
      fclose (infile);
@@ -530,29 +531,31 @@ void updateMatchRecords(int readNum, char *cptr, ExpBuffer<char*>& flds)
 	  structs = &oddReadMatchStructs;
      structs->push_back(kuniToReadMatchStruct());
      struct kuniToReadMatchStruct &kUTRMS = structs->back();
-     cptr = flds[1]+1;
-     kUTRMS.matchRgnBegin = atoi (cptr);		
-     kUTRMS.matchRgnEnd = atoi (flds[2]);				
-     cptr = flds[3]+1; kUTRMS.ahg = atoi (cptr);			
-     while(*cptr != ',') ++cptr;	++cptr;                                 
-     kUTRMS.bhg = atoi (cptr);                                         
-     kUTRMS.kUnitigMatchBegin = atoi (flds[4])-1;			
-     kUTRMS.kUnitigMatchEnd = atoi (flds[5]);                          
-     kUTRMS.orientedReadMatchBegin = atoi (flds[6]);                   
-     kUTRMS.orientedReadMatchEnd = atoi (flds[7]);			
-     if (kUTRMS.orientedReadMatchBegin < kUTRMS.orientedReadMatchEnd) { 
-	  --kUTRMS.orientedReadMatchBegin;				
-	  kUTRMS.ori = 'F';						
-	  kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchBegin;      
-	  kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchEnd; }	
-     else {								
-	  --kUTRMS.orientedReadMatchEnd;                                  
-	  kUTRMS.ori = 'R';						
-	  kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchEnd;	
-	  kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchBegin; }      
-     kUTRMS.kUnitigLength = atoi (flds[8]);				
-     kUTRMS.readLength = atoi (flds[9]);				
-     kUTRMS.kUnitigNumber = atoi (flds[10]); 
+     kUTRMS.ori = *(flds[0]);
+     kUTRMS.ahg = atoi (flds[1]);
+     kUTRMS.readLength = atoi (flds[2]);
+     kUTRMS.kUnitigNumber = atoi (flds[3]);
+     kUTRMS.kUnitigLength = abs (unitigLengths[kUTRMS.kUnitigNumber]);
+     kUTRMS.bhg = kUTRMS.ahg + kUTRMS.readLength - kUTRMS.kUnitigLength;
+     if (kUTRMS.ahg <= 0)
+	  kUTRMS.kUnitigMatchBegin = 0;
+     else
+	  kUTRMS.kUnitigMatchBegin = kUTRMS.ahg;
+     if (kUTRMS.bhg > 0)
+	  kUTRMS.kUnitigMatchEnd = kUTRMS.kUnitigLength;
+     else
+	  kUTRMS.kUnitigMatchEnd = kUTRMS.kUnitigLength + kUTRMS.bhg;
+     // orientedReadMatchBegin is 0-based for now
+     kUTRMS.orientedReadMatchBegin = kUTRMS.kUnitigMatchBegin - kUTRMS.ahg;
+     kUTRMS.orientedReadMatchEnd = kUTRMS.kUnitigMatchEnd - kUTRMS.ahg;
+     if (kUTRMS.ori == 'F') {
+	  kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchBegin;
+	  kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchEnd; }
+     else {
+	  kUTRMS.orientedReadMatchBegin = kUTRMS.readLength - kUTRMS.orientedReadMatchBegin;
+	  kUTRMS.orientedReadMatchEnd = kUTRMS.readLength - kUTRMS.orientedReadMatchEnd;
+	  kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchEnd;
+	  kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchBegin; }
 //     fprintf (stderr, "readMatchBegin = %d, readMatchEnd = %d, orientedReadMatchBegin = %d, orientedReadMatchEnd = %d, ahg = %d, bhg = %d, kUnitigNumber = %d\n", kUTRMS.readMatchBegin, kUTRMS.readMatchEnd, kUTRMS.orientedReadMatchBegin, kUTRMS.orientedReadMatchEnd, kUTRMS.ahg, kUTRMS.bhg, kUTRMS.kUnitigNumber);
      if (! kunitigs_translation_file_given)
 	  return;
@@ -1586,6 +1589,12 @@ void getSuperReadsForInsert (void)
      sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
      if (evenReadMatchStructs.empty() || oddReadMatchStructs.empty()) {
 	  findSingleReadSuperReads(readNameSpace);
+	  return; }
+     if (maxNodesAllowed == 0) {
+	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold-1);
+	  findSingleReadSuperReads (readNameSpace);
+	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
+	  findSingleReadSuperReads (readNameSpace);
 	  return; }
 //     puts ("Got to 1\n"); fflush (stdout);
      // If we get here both the even read and the odd read have

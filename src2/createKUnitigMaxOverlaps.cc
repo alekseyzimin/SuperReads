@@ -71,7 +71,7 @@ unsigned char *endIsDone;
 int *kUnitigLengths, largestKUnitigNumber;
 int kmerLen;
 char *inputPrefix, *outputPrefix;
-int *startOverlapByUnitig;
+uint64_t *startOverlapByUnitig;
 struct overlapDataStruct *overlapDataToSave;
 
 void reportKUnitigEndMatches (void);
@@ -105,7 +105,7 @@ int main (int argc, char *argv[])
      mallocOrDie (kUnitigSequences, largestKUnitigNumber+1, char *);
      mallocOrDie (kUnitigLengths, largestKUnitigNumber+1, int);
      mallocOrDie (overlapData, (largestKUnitigNumber+1) * EST_OVLS_PER_KUNITIG, struct overlapDataStruct);
-     mallocOrDie (startOverlapByUnitig, largestKUnitigNumber+2, int);
+     mallocOrDie (startOverlapByUnitig, largestKUnitigNumber+2, uint64_t);
      loadKUnitigSequences (inputPrefix, numInputFiles);
 
      mallocOrDie (kMerMinusOneValuesAtEndOfKUnitigs, 4*(largestKUnitigNumber+1), struct endKUnitigKmerStruct);
@@ -252,7 +252,7 @@ void reportKUnitigEndMatches (void)
 	  int unitig1 = overlapData[j].kUni1, unitig2 = overlapData[j].kUni2;
 	  int ahg = overlapData[j].ahg, bhg = overlapData[j].bhg;
 	  char ori = overlapData[j].netOri;
-	  int itemp, itempHold;
+	  uint64_t itemp, itempHold;
 	  
 #if 0
 	  if (unitig1 > unitig2) 
