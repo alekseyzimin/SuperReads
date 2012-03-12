@@ -325,11 +325,6 @@ for(my $j=0;$j<$i;$j++){
 }
 print FILE "\n";
 
-foreach $v(@pe_info_array){
-    @f=split(/\s+/,$v);
-    print FILE "MAX_$f[0]=`tail $f[0].renamed.fastq |grep '^\@$f[0]' |tail -n 1|awk '{print substr(\$1,4)}'`\n"
-}
-
 print FILE "rm -rf meanAndStdevByPrefix.sj.txt\n";
 if(scalar(@jump_info_array)>0){
     print FILE "echo -n 'processing JUMP library reads ';date;\n";
@@ -358,10 +353,6 @@ if(scalar(@jump_info_array)>0){
     }
     print FILE "\n";
 
-    foreach $v(@jump_info_array){
-	@f=split(/\s+/,$v);
-	print FILE "MAX_$f[0]=`tail $f[0].renamed.fastq |grep '^\@$f[0]' |tail -n 1|awk '{print substr(\$1,4)}'`\n"
-    }
 }
 ###done renaming reads###
 print FILE "\n";
@@ -498,7 +489,7 @@ if(scalar(@jump_info_array)>0){
 	$list_of_frg_files.="$f[0].cor.clean.frg ";
 	print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
 	print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.fa > $f[0].tmp\n";
-	print FILE "error_corrected2frg $f[0] $f[1] $f[2] \$MAX_$f[0] $f[0].tmp |tee $f[0].cor.clean.frg | grep '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
+	print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp |tee $f[0].cor.clean.frg | grep '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
 	print FILE "rm $f[0].tmp\n";
     }
     print FILE "JUMP_BASES_COVERED=`awk 'BEGIN{b=0}{b+=\$1*\$2;}END{print b}' compute_jump_coverage.txt`\n";
@@ -547,7 +538,7 @@ foreach $v(@pe_info_array){
     $list_of_frg_files.="$f[0].linking.frg ";
     if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
 	print FILE "grep -A 1 '^>$f[0]' pe.linking.fa > $f[0].tmp\n";
-	print FILE "error_corrected2frg $f[0] $f[1] $f[2] \$MAX_$f[0] $f[0].tmp > $f[0].linking.frg\n";
+	print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].linking.frg\n";
 	print FILE "rm $f[0].tmp\n";
     }
 }
