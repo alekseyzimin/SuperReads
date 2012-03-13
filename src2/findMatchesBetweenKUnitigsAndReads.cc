@@ -22,12 +22,18 @@
 #include <jellyfish/invertible_hash_array.hpp>
 #include <jellyfish/allocators_mmap.hpp>
 #include <stdint.h>
+#include <cstdio>
 
 #include <iostream>
+#include <fstream>
 
 #include <src/diskBasedUnitigger.h>
 #define KUNITIG_FILE "/genome8/raid/tri/kUnitigStudy/arg_ant/afterAlekseyAndMikeRedundentKill/guillaumeKUnitigsAtLeast32bases_all.fasta"
 #define READ_DATA_FILE "/genome8/raid/tri/testDirForReadPlacementRoutines/brucellaData/brucella.pass5reads.fasta"
+
+#include <charb.hpp>
+#include <gzip_stream.hpp>
+#include <jflib/multiplexed_io.hpp>
 
 unsigned int  *kunitigNumber, *kunitigOffset;
 unsigned long *kUnitigLengths;
@@ -54,48 +60,50 @@ typedef inv_hash_storage_t::iterator iterator_t;
 
 void initializeValues (void);
 void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd, 
-                        const char *readName, inv_hash_storage_t *hashPtr, FILE *out);
+                        const char *readName, inv_hash_storage_t *hashPtr, jflib::omstream& out);
 
 
 class ProcessReads : public thread_exec {
      jellyfish::parse_read  read_parser;
      inv_hash_storage_t     *hash;
-     const char             *prefix;
+    jflib::o_multiplexer    multiplexer;
 
 public:
-     ProcessReads(int argc, char *argv[], inv_hash_storage_t *h, const char *pref) : 
-	  read_parser(argc, argv, 100), hash(h), prefix(pref) {}
+    ProcessReads(int argc, char *argv[], inv_hash_storage_t *h, std::ostream& out_stream) : 
+      read_parser(argc, argv, 100), hash(h), multiplexer(&out_stream, 300, 4096) {}
 
      virtual void start(int id) {
 	  jellyfish::parse_read::thread  read_stream(read_parser.new_thread());
 	  jellyfish::parse_read::read_t *read;
 	  char                           readBases[100000];
 	  char                           header[3000];
-	  char                           out_file[3000];
-	  FILE                          *out;
-	  if(!prefix) {
-	       out = stdout;
-	  } else {
-	       sprintf(out_file, " gzip -1 > %s_%d", prefix, id);
-	       out = popen(out_file, "w");
-	       if(!out)
-		    die << "Can't open output file '" << out_file << "'" << err::no;
-	  }
+          jflib::omstream                out(multiplexer);
+          char                           read_prefix[3], prev_read_prefix[3];
+          uint64_t                       read_id = 0, prev_read_id = 0;
+          memset(read_prefix, '\0', sizeof(read_prefix));
 
 	  while((read = read_stream.next_read())) {
-	       strncpy(header, read->header, read->hlen);
-	       header[read->hlen] = '\0';
-	       strtok(header, " ");
-	       char *optr = readBases;
-	       for(const char *iptr = read->seq_s; iptr < read->seq_e; iptr++) {
-		    if(!isspace(*iptr)) {
-			 *optr = *iptr;
-			 optr++;
-		    }
+              memcpy(prev_read_prefix, read_prefix, sizeof(read_prefix));
+              prev_read_id = read_id;
+
+              strncpy(header, read->header, read->hlen);
+	      header[read->hlen] = '\0';
+              sscanf(header, "%2s%ld", read_prefix, &read_id);
+              
+	      strtok(header, " ");
+              char *optr = readBases;
+              for(const char *iptr = read->seq_s; iptr < read->seq_e; iptr++) {
+                  if(!isspace(*iptr)) {
+                      *optr = *iptr;
+                      optr++;
+                  }
 	       }
-	       getMatchesForRead(readBases, optr, header, hash, out);
+              // Keep mated read together in output.
+              if((read_id % 2 == 0) || (read_id != (prev_read_id + 1)) ||
+                 strcmp(read_prefix, prev_read_prefix))
+                  out << jflib::endr;
+              getMatchesForRead(readBases, optr, header, hash, out);
 	  }
-	  pclose(out);
      }
 };
 
@@ -165,6 +173,9 @@ int main(int argc, char *argv[])
      mallocOrDie (kunitigNumber, hash_size, unsigned int);
      mallocOrDie (kunitigOffset, hash_size, unsigned int);
      mallocOrDie (kmerOriInKunitig, hash_size, unsigned char);
+
+     // Open output file
+     gzipstream out(prefix);
      
      initializeValues ();
 
@@ -262,7 +273,7 @@ int main(int argc, char *argv[])
      }
      //exit (0); // For debugging
 
-     ProcessReads process_reads(numFilenames - 3, filenames + 3, hash, prefix);
+     ProcessReads process_reads(numFilenames - 3, filenames + 3, hash, out);
      process_reads.exec_join(nb_threads);
      
      // Now working with the reads
@@ -332,7 +343,7 @@ void initializeValues (void)
 
 void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd, 
                         const char *readName, inv_hash_storage_t *hashPtr,
-                        FILE *out)
+                        jflib::omstream& out)
 {
      int readLength;
      uint64_t readKmer, readKmerTmp, readRevCompKmer, readRevCompKmerTmp;
@@ -352,7 +363,9 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 
      readLength = readBasesEnd - readBasesBegin;
      if (longOutput)
-	  fprintf (out, "readNumber = %d, readLength = %d\n", readNumber, readLength);
+         out << "readNumber = " << readNumber 
+             << " readLength = " << readLength << "\n";
+       //fprintf (out, "readNumber = %d, readLength = %d\n", readNumber, readLength);
      readKmer = readRevCompKmer = 0;
      if (readLength >= mer_len)
 	  for (int j=0; j<mer_len; j++) {
@@ -428,7 +441,10 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 		    fprintf (out, " %lu %d %d %s", kUnitigLengths[kUnitigNumberHold], readLength, kUnitigNumberHold, readName);
 		    fprintf (out, "\n");
 #else
-		    fprintf (out, "%c %d %d %d %s\n", (netOriHold == 0) ? 'F' : 'R', ahg, readLength, kUnitigNumberHold, readName);
+                    out << ((netOriHold == 0) ? 'F' : 'R') << " "
+                        << ahg << " " << readLength << " " << kUnitigNumberHold << " "
+                        << readName << "\n";
+                    //		    fprintf (out, "%c %d %d %d %s\n", (netOriHold == 0) ? 'F' : 'R', ahg, readLength, kUnitigNumberHold, readName);
 #endif
 	       }
 	       kUnitigOffsetOfFirstBaseInReadHold = kUnitigOffsetOfFirstBaseInRead;
@@ -558,7 +574,10 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	  fprintf (out, " %lu %d %d %s", kUnitigLengths[kUnitigNumberHold], readLength, kUnitigNumberHold, readName);
 	  fprintf (out, "\n");
 #else
-	  fprintf (out, "%c %d %d %d %s\n", (netOriHold == 0) ? 'F' : 'R', ahg, readLength, kUnitigNumberHold, readName);
+          //	  fprintf (out, "%c %d %d %d %s\n", (netOriHold == 0) ? 'F' : 'R', ahg, readLength, kUnitigNumberHold, readName);
+          out << ((netOriHold == 0) ? 'F' : 'R') << " "
+              << ahg << " " << readLength << " " << kUnitigNumberHold << " "
+              << readName << "\n";
 #endif
      }
 }
