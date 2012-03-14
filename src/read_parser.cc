@@ -27,7 +27,8 @@ void read_parser::start_parsing_thread() {
   case EOF: pool_.close_A_to_B(); return; // Empty file -> don't do anything
   case '>': case '@': break;
   default:
-    eraise(std::runtime_error) << "Invalid input file format";
+    throw std::runtime_error("Invalid input file format");
+    //eraise(std::runtime_error) << "Invalid input file format";
   }
 
   // Finish initialization of the read_groups
@@ -41,8 +42,9 @@ void read_parser::start_parsing_thread() {
   int  res   = pthread_create(&reader_id_, 0, start_reader_loop , (void*)self);
   if(res) {
     delete self;
-    eraise(std::runtime_error) << "Failed to create the reader thread: "
-                               << err::str(res);
+    throw std::runtime_error("Failed to create the reader thread");
+    //    eraise(std::runtime_error) << "Failed to create the reader thread: "
+    //                               << err::str(res);
   }
   reader_started_ = true;
 }

@@ -6,7 +6,7 @@
 #include <memory>
 #include <jflib/pool.hpp>
 #include <charb.hpp>
-#include <err.hpp>
+//#include <err.hpp>
 
 // Return reads from a fasta or fastq file. The parsing is done in a
 // dedicated thread.
@@ -33,8 +33,11 @@ class read_parser {
   std::filebuf* open_file(const char* path) {
     auto res = new std::filebuf();
     res->open(path, std::ios::in);
+    std::string err("Failed to open file ");
+    err += path;
     if(!res->is_open())
-      eraise(std::runtime_error) << "Failed to open file '" << path << "'" << err::no;
+      throw std::runtime_error(err);
+      //      eraise(std::runtime_error) << "Failed to open file '" << path << "'" << err::no;
     return res;
   }
 public:
