@@ -115,6 +115,20 @@ public:
   void clear() { ptr_ = base_; }
   bool empty() const { return ptr_ == base_; }
   bool is_null() const { return !base_ || base_ == end_; }
+
+  void resize(size_type s) {
+    reserve(s);
+    ptr_ = base_ + s;
+  }
+
+  void resize(size_type s, T c) {
+    if(s > size()) {
+      reserve(s);
+      for( ; ptr_ < base_ + s; ++ptr_)
+        *ptr_ = c;
+    } else
+      ptr_ = base_ + s;
+  }
   
   void reserve(size_type s = 0) {
     CHECK;
