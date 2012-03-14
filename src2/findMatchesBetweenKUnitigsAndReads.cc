@@ -20,7 +20,6 @@
 
 // #include <jellyfish/err.hpp>
 #include <jellyfish/mer_counting.hpp>
-#include <jellyfish/parse_read.hpp>
 #include <jellyfish/mapped_file.hpp>
 #include <jellyfish/invertible_hash_array.hpp>
 #include <jellyfish/allocators_mmap.hpp>
@@ -119,46 +118,40 @@ public:
 };
 
 class ProcessReads : public thread_exec {
-     jellyfish::parse_read  read_parser;
-     inv_hash_storage_t     *hash;
-    jflib::o_multiplexer    multiplexer;
+  read_parser           parser;
+  inv_hash_storage_t   *hash;
+  jflib::o_multiplexer  multiplexer;
 
 public:
-    ProcessReads(int argc, char *argv[], inv_hash_storage_t *h, std::ostream& out_stream) : 
-      read_parser(argc, argv, 100), hash(h), multiplexer(&out_stream, 300, 4096) {}
+  template<typename Iterator>
+  ProcessReads(Iterator file_start, Iterator file_end, 
+               inv_hash_storage_t *h, std::ostream& out_stream, int nb_threads) : 
+    parser(file_start, file_end, nb_threads), 
+    hash(h),
+    multiplexer(&out_stream, 3 * nb_threads, 4096)
+  {}
 
      virtual void start(int id) {
-	  jellyfish::parse_read::thread  read_stream(read_parser.new_thread());
-	  jellyfish::parse_read::read_t *read;
-	  char                           readBases[100000];
-	  char                           header[3000];
-          jflib::omstream                out(multiplexer);
-          char                           read_prefix[3], prev_read_prefix[3];
-          uint64_t                       read_id = 0, prev_read_id = 0;
-          memset(read_prefix, '\0', sizeof(read_prefix));
-
-	  while((read = read_stream.next_read())) {
-              memcpy(prev_read_prefix, read_prefix, sizeof(read_prefix));
-              prev_read_id = read_id;
-
-              strncpy(header, read->header, read->hlen);
-	      header[read->hlen] = '\0';
-              sscanf(header, "%2s%ld", read_prefix, &read_id);
-              
-	      strtok(header, " ");
-              char *optr = readBases;
-              for(const char *iptr = read->seq_s; iptr < read->seq_e; iptr++) {
-                  if(!isspace(*iptr)) {
-                      *optr = *iptr;
-                      optr++;
-                  }
-	       }
-              // Keep mated read together in output.
-              if((read_id % 2 == 0) || (read_id != (prev_read_id + 1)) ||
-                 strcmp(read_prefix, prev_read_prefix))
-                  out << jflib::endr;
-              getMatchesForRead(readBases, optr, header, hash, out);
-	  }
+       read_parser::stream read_stream(parser);
+       jflib::omstream     out(multiplexer);
+       char                read_prefix[3], prev_read_prefix[3];
+       uint64_t            read_id = 0, prev_read_id = 0;
+       memset(read_prefix, '\0', sizeof(read_prefix));
+       
+       for( ; read_stream; ++read_stream) {
+         memcpy(prev_read_prefix, read_prefix, sizeof(read_prefix));
+         prev_read_id = read_id;
+         
+         strtok(read_stream->header, " ");
+         sscanf(read_stream->header, ">%2s%ld", read_prefix, &read_id);
+         
+         // Keep mated read together in output.
+         if((read_id % 2 == 0) || (read_id != (prev_read_id + 1)) ||
+            strcmp(read_prefix, prev_read_prefix))
+           out << jflib::endr;
+         getMatchesForRead(read_stream->sequence, read_stream->sequence.end(),
+                           read_stream->header + 1, hash, out);
+       }
      }
 };
 
@@ -167,7 +160,6 @@ int main(int argc, char *argv[])
      FILE *infile;
      int i;
      char *kUnitigFilename;
-     //  char readName[1000];
      char *numKUnitigsFile;
 
      /* Database file name is first argument. The k-unitig filename
@@ -230,9 +222,8 @@ int main(int argc, char *argv[])
      initializeValues ();
 
      // create our mask
-     mask = 0;
-     for (i=0; i<mer_len; i++)
-	  mask = (mask << 2) + 0x3;
+     mask = ((uint64_t)1 << (mer_len * 2)) - 1;
+
      // Find out the last kUnitig number
      infile = fopen (numKUnitigsFile, "r");
      if(!infile)
@@ -251,7 +242,7 @@ int main(int argc, char *argv[])
      }
      
 
-     ProcessReads process_reads(numFilenames - 3, filenames + 3, hash, out);
+     ProcessReads process_reads(filenames + 3, filenames + numFilenames, hash, out, nb_threads);
      process_reads.exec_join(nb_threads);
      
      // Now working with the reads
