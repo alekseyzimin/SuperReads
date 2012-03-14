@@ -15,7 +15,10 @@
 #define typeof __typeof__
 #endif
 
-#include <jellyfish/err.hpp>
+#include <src/mer_dna.hpp>
+#include <src/read_parser.hpp>
+
+// #include <jellyfish/err.hpp>
 #include <jellyfish/mer_counting.hpp>
 #include <jellyfish/parse_read.hpp>
 #include <jellyfish/mapped_file.hpp>
@@ -40,10 +43,9 @@ unsigned long *kUnitigLengths;
 uint64_t       hash_size;
 int            lastKUnitigNumber;
 unsigned char *kmerOriInKunitig;
-char           line[1000000], kUnitigBases[1000000], kUnitigBasesRevComp[1000000];
-uint64_t       kUnitigKmers[1000000], kUnitigRevCompKmers[1000000], mask;
+charb          line(1000);
+uint64_t       mask;
 int            readDataFile;
-char           hdrLine[10000];
 int            readNumber;
 int            numFilenames, longOutput;
 char          *filenames[1000];
@@ -62,6 +64,59 @@ void initializeValues (void);
 void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd, 
                         const char *readName, inv_hash_storage_t *hashPtr, jflib::omstream& out);
 
+class ReadKunitigs : public thread_exec {
+  read_parser         unitig_parser;
+  inv_hash_storage_t* hash;
+  
+public:
+  ReadKunitigs(const char* kUnitigFile, inv_hash_storage_t* hashPtr, int nb_threads) :
+    unitig_parser(kUnitigFile, nb_threads), hash(hashPtr) { }
+
+  virtual void start(int th_id) {
+    read_parser::stream unitig_stream(unitig_parser);
+    mer_dna fwd_mer(mer_len), rev_mer(mer_len);
+    for( ; unitig_stream; ++unitig_stream) {
+      // Parse header
+      int kUnitigNumber, kUnitigLength;
+      int fields_read = sscanf(unitig_stream->header, ">%d length:%d", &kUnitigNumber, &kUnitigLength);
+      kUnitigLengths[kUnitigNumber] = kUnitigLength;
+      if(fields_read != 2)
+        die << "Fasta header of file does not match pattern '>UnitigiNumber length:UnitigLength'\n"
+            << unitig_stream->header << "\n";
+      if(unitig_stream->sequence.size() < (size_t)mer_len)
+        continue;
+      char* cptr = unitig_stream->sequence;
+      // Prime the k-mers
+      for(int i = 0; i < mer_len - 1; ++i, ++cptr) {
+        fwd_mer.shift_left(*cptr);
+        rev_mer.shift_right(0x3 - (fwd_mer[0] & 0x3));
+      }
+
+      for( ; cptr < unitig_stream->sequence.end(); ++cptr) {
+        fwd_mer.shift_left(*cptr);
+        rev_mer.shift_right(0x3 - (fwd_mer[0] & 0x3));
+         
+        uint64_t searchValue;
+        unsigned char ori;
+        if(fwd_mer[0] < rev_mer[0]) {
+          searchValue = fwd_mer[0];
+          ori = 0;
+        } else {
+          searchValue = rev_mer[0];
+          ori = 1;
+        }
+        uint64_t id = 0, val;
+        if(!hash->get_val(searchValue, id, val, false)) {
+          fprintf (stderr, "mer %lx was not found. Bye!\n", searchValue);
+          //		    exit (1); // WAS OUT FOR DEBUGGING
+        }
+        kunitigNumber[id]             = kUnitigNumber;
+        kunitigOffset[id]             = cptr - unitig_stream->sequence.begin() - (mer_len - 1);
+        kmerOriInKunitig[id]          = ori;
+      }
+    }
+  }
+};
 
 class ProcessReads : public thread_exec {
      jellyfish::parse_read  read_parser;
@@ -110,15 +165,10 @@ public:
 int main(int argc, char *argv[])
 {
      FILE *infile;
-     int i, kUnitigNumber;
+     int i;
      char *kUnitigFilename;
-     uint64_t searchValue;
-     uint64_t val, id;
-     char *cptr;
      //  char readName[1000];
      char *numKUnitigsFile;
-     int kUnitigLength;
-     unsigned char ori;
 
      /* Database file name is first argument. The k-unitig filename
 	is the second; The file with the number of k-unitigs is third;
@@ -194,84 +244,12 @@ int main(int argc, char *argv[])
      fclose (infile);
      fprintf (stderr, "The largest kUnitigNumber was %d\n", lastKUnitigNumber);
      mallocOrDie (kUnitigLengths, (lastKUnitigNumber+2), uint64_t);
-     
-     fprintf (stderr, "Opening file %s...\n", kUnitigFilename);
-     infile = fopen (kUnitigFilename, "r");
-     if(!fgets (line, sizeof(line), infile)) // This is a header line
-	  die << "Failed to read header line from file '"
-	      << kUnitigFilename << "'" << err::no;
-     fields_read = sscanf (line, ">%d length:%d", &kUnitigNumber, &kUnitigLength);
-     if(fields_read != 2)
-	  die << "Header of file '" << kUnitigFilename
-	      << "' does not match pattern '>UnitigiNumber length:UnitigLength'";
-     kUnitigLengths[kUnitigNumber] = kUnitigLength;
-     if (kUnitigNumber % 100 == 0)
-	  fprintf (stderr, "\rkUnitigNumber = %d", kUnitigNumber);
-     //printf ("kUnitigNumber = %d; kUnitigLength = %d\n", kUnitigNumber, kUnitigLength);
-     cptr = kUnitigBases;
-     while (1) {
-	  int atEof = 0;
-	  if (! fgets(line, sizeof(line), infile)) {
-	       atEof = 1;
-	       goto processTheKUnitig; }
-	  if (line[0] == '>')
-	       goto processTheKUnitig;
-	  strcpy (cptr, line);
-	  while (! isspace(*cptr)) {
-	       switch (*cptr) {
-	       case 'a': case 'A': *cptr = 0; break;
-	       case 'c': case 'C': *cptr = 1; break;
-	       case 'g': case 'G': *cptr = 2; break;
-	       case 't': case 'T': *cptr = 3; break; }
-	       ++cptr; }
-	  continue;
-     processTheKUnitig:
-	  for (int j=0, k=kUnitigLength-1; j<kUnitigLength; j++, k--)
-	       kUnitigBasesRevComp[k] = 3 - kUnitigBases[j];
-	  // The kUnitigRevCompKmers are where they are placed in the
-	  // reverse complement; we will need to adjust at the end to
-	  // place them in relation to the forward direction of the k-unitig
-	  kUnitigKmers[0] = kUnitigRevCompKmers[0] = 0;
-	  for (int j=0; j<mer_len; j++) {
-	       kUnitigKmers[0] = (kUnitigKmers[0] << 2) + kUnitigBases[j];
-	       //	    printf ("j=%d, kmer=%x; ", j, kUnitigKmers[0]);
-	       kUnitigRevCompKmers[0] = (kUnitigRevCompKmers[0] << 2) + kUnitigBasesRevComp[j]; }
-	  //     printf ("\n");
-	  for (int j=mer_len, k=1; j<kUnitigLength; j++, k++) {
-	       kUnitigKmers[k] = (kUnitigKmers[k-1] << 2) + kUnitigBases[j];
-	       kUnitigKmers[k] &= mask;
-	       kUnitigRevCompKmers[k] = (kUnitigRevCompKmers[k-1] << 2) + kUnitigBasesRevComp[j];
-	       kUnitigRevCompKmers[k] &= mask; }
-	  if (kUnitigNumber % 100 == 0)
-	       fprintf (stderr, "\rkUnitigNumber = %d", kUnitigNumber);
-	  for (int j=0, k=kUnitigLength-mer_len; k>=0; j++, k--) {
-	       if (kUnitigKmers[j] < kUnitigRevCompKmers[k]) {
-		    searchValue = kUnitigKmers[j];
-		    ori = 0; }
-	       else {
-		    searchValue = kUnitigRevCompKmers[k];
-		    ori = 1; }
-	       //	    fprintf (stdout, "offset = %d, forward mer value = %llx, backwards mer value = %llx\n", j, kUnitigKmers[j], kUnitigRevCompKmers[k]);
-	       // Here you have to search for the index, then install the
-	       // information into your arrays at the index
-	       if (! hash->get_val(searchValue, id, val, false)) {
-		    fprintf (stderr, "mer %lx was not found. Bye!\n", searchValue);
-		    exit (1); // WAS OUT FOR DEBUGGING
-	       }
-	       //	    fprintf (stdout, "id = %lld, val = %lld\n", id, val);
-	       kunitigNumber[id] = kUnitigNumber;
-	       kunitigOffset[id] = j;
-	       kmerOriInKunitig[id] = ori;
-	  }
-	  //     break; // For debugging
-	  if (atEof)
-	       break;
-	  sscanf (line, ">%d length:%d", &kUnitigNumber, &kUnitigLength);
-	  kUnitigLengths[kUnitigNumber] = kUnitigLength;
-	  //     printf ("kUnitigNumber = %d; kUnitigLength = %d\n", kUnitigNumber, kUnitigLength);
-	  cptr = kUnitigBases;
+
+     { // Read k-unitigs k-mers and positions
+       ReadKunitigs KUnitigReader(kUnitigFilename, hash, nb_threads);
+       KUnitigReader.exec_join(nb_threads);
      }
-     //exit (0); // For debugging
+     
 
      ProcessReads process_reads(numFilenames - 3, filenames + 3, hash, out);
      process_reads.exec_join(nb_threads);

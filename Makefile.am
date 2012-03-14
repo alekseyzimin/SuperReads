@@ -98,7 +98,7 @@ noinst_HEADERS += src2/redBlackTreesInsertOnly.h					\
 
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
 findMatchesBetweenKUnitigsAndReads_SOURCES =    \
-src2/findMatchesBetweenKUnitigsAndReads.cc
+src2/findMatchesBetweenKUnitigsAndReads.cc src/read_parser.cc src/mer_dna.cc
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\
