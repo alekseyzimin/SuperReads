@@ -245,7 +245,14 @@ private:
     std::ostream *res;
     std::string file(_prefix);
     file += suffix;
-    if(_gzip) {
+
+    if(strcmp(file.c_str(),"default.fa")==0)
+      file=std::string("/dev/fd/1");
+    else
+      if(strcmp(file.c_str(),"default.log")==0)
+        file=std::string("/dev/fd/2");
+
+    if(_gzip && strcmp(_prefix.c_str(),"default")!=0) {
       file += ".gz";
       res = new gzipstream(file.c_str());
     } else {
@@ -263,7 +270,6 @@ public:
   void do_it(int nb_threads) {
     std::auto_ptr<std::ostream> details(open_file(".log"));
     std::auto_ptr<std::ostream> output(open_file(".fa"));
-
     std::auto_ptr<jflib::o_multiplexer> 
       log_m(new jflib::o_multiplexer(details.get(), 3 * nb_threads, 1024));
     std::auto_ptr<jflib::o_multiplexer>
