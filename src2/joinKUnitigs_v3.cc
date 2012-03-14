@@ -612,8 +612,8 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
      int numFlds;
      ExpBuffer<char*> flds;
    
-     sprintf (cmd, "zcat -f %s", readVsKUnitigFile);
-     infile = Popen (cmd, "r");
+     sprintf (cmd, "%s", readVsKUnitigFile);
+     infile = Fopen (cmd, "r");
      if (! fgets (line, 2000, infile))
 	  return (1); // A critical file doesn't exist
      outputFile=Fopen(outputFileName,"w");
