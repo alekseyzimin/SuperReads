@@ -37,6 +37,8 @@
 #include <gzip_stream.hpp>
 #include <jflib/multiplexed_io.hpp>
 
+#include <src2/findMatchesBetweenKUnitigsAndReads.hpp>
+
 unsigned int  *kunitigNumber, *kunitigOffset;
 unsigned long *kUnitigLengths;
 uint64_t       hash_size;
@@ -44,15 +46,11 @@ int            lastKUnitigNumber;
 unsigned char *kmerOriInKunitig;
 charb          line(1000);
 uint64_t       mask;
-int            readDataFile;
-int            readNumber;
-int            numFilenames, longOutput;
-char          *filenames[1000];
+int            readNumber; // TODO: Remove: it is not really used
+int            longOutput;
 char           charToBaseValue[256];
 uint64_t       charToRevCompBaseValue[256];
 int            mer_len;
-int            nb_threads = 5;
-const char    *prefix = 0;
 
 /* Our types.
  */
@@ -157,45 +155,12 @@ public:
 
 int main(int argc, char *argv[])
 {
-     FILE *infile;
-     int i;
-     char *kUnitigFilename;
-     char *numKUnitigsFile;
+     FILE                               *infile;
+     findMatchesBetweenKUnitigsAndReads  args(argc, argv);
 
-     /* Database file name is first argument. The k-unitig filename
-	is the second; The file with the number of k-unitigs is third;
-	after that follow the read file(s)
-     */
-     longOutput = 0;
-     filenames[1] = (char *) KUNITIG_FILE;
-     filenames[3] = (char *) READ_DATA_FILE;
-     numFilenames = 0;
-     for (i=1; i<argc; i++) {
-	  if (strcmp(argv[i], "-l") == 0) {
-	       longOutput = 1;
-	       continue; }
-	  if(strcmp(argv[i], "-p") == 0) {
-	       ++i;
-	       prefix = argv[i];
-	       continue;
-	  }
-	  if(strcmp(argv[i], "-t") == 0) {
-	       ++i;
-	       nb_threads = atoi (argv[i]);
-	       continue;
-	  }
-	  filenames[numFilenames] = argv[i];
-	  ++numFilenames; }
+     longOutput = args.long_flag;
 
-     numKUnitigsFile = filenames[2];
-     kUnitigFilename = filenames[1];
-     // Get input data reads directly from filenames
-     // if (numFilenames > 3)
-     //   readDataFile = filenames[3];
-
-     /* Map the hash in memory. Yeah, it should/could be shorter.
-      */
-     mapped_file dbf(filenames[0]);
+     mapped_file dbf(args.jellyfishdb_arg);
      if(memcmp(dbf.base(), "JFRHSHDN", 8))
 	  die << "Invalid database format, expected 'JFRHSHDN'";
      dbf.random().load();
@@ -217,7 +182,7 @@ int main(int argc, char *argv[])
      mallocOrDie (kmerOriInKunitig, hash_size, unsigned char);
 
      // Open output file
-     gzipstream out(prefix);
+     gzipstream out(args.output_arg);
      
      initializeValues ();
 
@@ -225,25 +190,26 @@ int main(int argc, char *argv[])
      mask = ((uint64_t)1 << (mer_len * 2)) - 1;
 
      // Find out the last kUnitig number
-     infile = fopen (numKUnitigsFile, "r");
+     infile = fopen (args.numKUnitigsFile_arg, "r");
      if(!infile)
-	  die << "Failed to open file '" << numKUnitigsFile << "'" << err::no;
+	  die << "Failed to open file '" << args.numKUnitigsFile_arg << "'" << err::no;
      int fields_read = fscanf (infile, "%d\n", &lastKUnitigNumber);
      if(fields_read != 1)
 	  die << "Failed to read the last k-unitig number from file '"
-	      << numKUnitigsFile << "'" << err::no;
+	      << args.numKUnitigsFile_arg << "'" << err::no;
      fclose (infile);
      fprintf (stderr, "The largest kUnitigNumber was %d\n", lastKUnitigNumber);
      mallocOrDie (kUnitigLengths, (lastKUnitigNumber+2), uint64_t);
 
      { // Read k-unitigs k-mers and positions
-       ReadKunitigs KUnitigReader(kUnitigFilename, hash, nb_threads);
-       KUnitigReader.exec_join(nb_threads);
+       ReadKunitigs KUnitigReader(args.kUnitigFile_arg, hash, args.threads_arg);
+       KUnitigReader.exec_join(args.threads_arg);
      }
      
 
-     ProcessReads process_reads(filenames + 3, filenames + numFilenames, hash, out, nb_threads);
-     process_reads.exec_join(nb_threads);
+     ProcessReads process_reads(args.readFiles_arg.begin(), args.readFiles_arg.end(),
+                                hash, out, args.threads_arg);
+     process_reads.exec_join(args.threads_arg);
      
      // Now working with the reads
      // fprintf (stderr, "Opening the read file: %s...\n", readDataFile);
