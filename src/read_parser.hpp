@@ -22,6 +22,7 @@ class read_parser {
     int nb_filled;
   };
   typedef jflib::pool<read_group> read_pool;
+  std::vector<std::filebuf*>      filebufs_;
   std::istream                    input_;
   bool                            close_input_;
   int                             group_size_;
@@ -60,8 +61,19 @@ public:
    */
   read_parser(std::istream& input, int nb_threads = 16, int group_size = 100) :
     input_(input.rdbuf()), close_input_(false), group_size_(group_size),
-    pool_(3 * nb_threads), reader_started_(false), error_ (0)
+    pool_(3 * nb_threads), reader_started_(false), error_(0)
   { start_parsing_thread(); }
+
+  /** Open multiple files
+   */
+  template<typename Iterator>
+  read_parser(Iterator file_start, Iterator file_end, int nb_threads = 16, int group_size = 100) :
+    input_(0), group_size_(group_size), pool_(3 * nb_threads), reader_started_(false), error_(0)
+  {
+    for( ; file_start != file_end; ++file_start)
+      filebufs_.push_back(open_file(*file_start));
+    start_parsing_thread();
+  }
 
   virtual ~read_parser();
 
@@ -121,8 +133,11 @@ private:
   // support. Finish initialization and start the parsing thread.
   void start_parsing_thread();
 
-  // Start the approriate reader loop based on examining the beginning of the file
+  // Start the parse_input_stream on each file/stream
   void reader_loop();
+
+  // Start the appropriate loop based on type of file
+  void parse_input_stream();
 
   // Main loop parsing fasta & fastq format
   void fasta_reader_loop();

@@ -8,11 +8,29 @@ read_parser::~read_parser() {
     //    pthread_cancel(reader_id_);
     pthread_join(reader_id_, 0);
   }
-  if(close_input_)
-    delete input_.rdbuf();
+  if(filebufs_.empty()) {
+    if(close_input_)
+      delete input_.rdbuf();
+  } else {
+    for(auto it = filebufs_.begin(); it != filebufs_.end(); ++it)
+      delete *it;
+  }
 }
 
 void read_parser::reader_loop() {
+  if(filebufs_.empty())
+    parse_input_stream();
+  else {
+    for(auto it = filebufs_.begin(); it != filebufs_.end(); ++it) {
+      input_.rdbuf(*it);
+      parse_input_stream();
+    }
+  }
+  pool_.close_A_to_B();
+}
+
+
+void read_parser::parse_input_stream() {
   switch(input_.peek()) {
   case '>': fasta_reader_loop(); break;
   case '@': fastq_reader_loop(); break;
@@ -22,15 +40,6 @@ void read_parser::reader_loop() {
 }
 
 void read_parser::start_parsing_thread() {
-  // Check input format
-  switch(input_.peek()) {
-  case EOF: pool_.close_A_to_B(); return; // Empty file -> don't do anything
-  case '>': case '@': break;
-  default:
-    throw std::runtime_error("Invalid input file format");
-    //eraise(std::runtime_error) << "Invalid input file format";
-  }
-
   // Finish initialization of the read_groups
   for(auto it = pool_.begin(); it != pool_.end(); ++it) {
     it->reads.resize(group_size_);
@@ -70,7 +79,6 @@ void read_parser::fasta_reader_loop() {
     }
     e->nb_filled = i;
   }
-  pool_.close_A_to_B();
 }
 
 void read_parser::fastq_reader_loop() {
@@ -110,6 +118,5 @@ void read_parser::fastq_reader_loop() {
       }
     }
   }
-  pool_.close_A_to_B();
 }
 
