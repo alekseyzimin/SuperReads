@@ -16,5 +16,4 @@ public:
   }
 };
 
-
 #endif // __BLOOM_HASH_HPP__
