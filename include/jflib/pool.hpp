@@ -27,9 +27,8 @@ namespace jflib {
    */
   template<typename T, typename CV = locks::cond>
   class pool {
-    class side;
-
   public:
+    class side;
     //    typedef typename std::vector<T> Tvec;
     typedef T* iterator;
     pool(size_t size) :
@@ -100,8 +99,10 @@ namespace jflib {
     };
     static const elt closed;
 
-  private:
+  protected:
     typedef circular_buffer<uint32_t> cbT;
+
+  public:
     /** A circular buffer with a conditional variable to wait in the
      * empty event and a pointer to the other direction circular
      * buffer. Every method is private and are accessible only by its
