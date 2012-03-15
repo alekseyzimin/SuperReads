@@ -27,6 +27,7 @@
 #include <misc.hpp>
 #include <heap.hpp>
 #include <exp_buffer.hpp>
+#include <thread_exec.hpp>
 #include <src2/joinKUnitigs_v3.hpp>
 #include <rb_tree.hpp>
 
@@ -37,6 +38,18 @@
 
 #define FRONT_END 1
 #define BACK_END 2
+
+
+// Global / Constant / parameter. Merge into switches parsing
+int               minOverlapLength; // Const / Parameter
+static const int  maxDiffInsertSizesForPrinting = 5; // Const / Parameter
+static const int  maxTotAllowableMissingOnEnds  = 2; // Const / Parameter
+FILE             *outfile;      // Debug, remove
+// The following keeps track of the distance the 2 read mates are from the
+// ends of the k-unitigs at the end
+int               kunitigs_translation_file_given; // Parameter
+int               maxNodesAllowed; // Const / Parameter
+
 
 struct overlapDataStruct
 {
@@ -111,8 +124,6 @@ struct kuniToReadMatchStruct
      int kUnitigNumber;
      char ori;
 };
-ExpBuffer<struct kuniToReadMatchStruct> evenReadMatchStructs, oddReadMatchStructs;
-ExpandingBuffer<unsigned char> matchStructIsUsed;
 struct unitigConnectionsForPathStruct
 {
      int unitig1;
@@ -122,7 +133,6 @@ struct unitigConnectionsForPathStruct
      char ori1;
      char ori2;
 };
-ExpandingBuffer<struct unitigConnectionsForPathStruct> unitigConnectionsForPathData;
 
 struct augmentedUnitigPathPrintStruct
 {
@@ -134,10 +144,6 @@ struct augmentedUnitigPathPrintStruct
      int endOffset;
      char ori;
 };
-ExpandingBuffer<struct augmentedUnitigPathPrintStruct> augmentedUnitigPathPrintData;
-int numUnitigPathPrintRecsOnPath;
-ExpandingBuffer<int> fwdStartIndices, revStartIndices, fwdNumIndices, revNumIndices;
-ExpandingBuffer<int> newNodeNumsFromOld;
 
 struct kUniBeginOffsetStruct
 {
@@ -146,59 +152,162 @@ struct kUniBeginOffsetStruct
      int end;
 };
 
-std::map<unsigned int, struct kUniBeginOffsetStruct> origUnitigToNewUnitigPlacement;
+// Global variables. Read only after initialization in main
+int                      *startOverlapByUnitig, *unitigLengths; // RO
+struct overlapDataStruct *overlapData; // RO
+int                       maxOffsetToConsiderTheSame; // Constant / Parameter
+int                      *startOverlapIndexByUnitig2, *unitig2OverlapIndex; // RO
+std::map<unsigned         int, struct kUniBeginOffsetStruct>    origUnitigToNewUnitigPlacement; // RO
 
-int *startOverlapByUnitig, *unitigLengths;
-struct overlapDataStruct *overlapData;
-struct unitigLocStruct *unitigLocData1, *unitigLocData2;
-int maxOffsetToConsiderTheSame;
-int *treeReinitList, numTreesUsed;
-int *startOverlapIndexByUnitig2, *unitig2OverlapIndex;
-int mateUnitig1, mateUnitig2;
-unsigned char mateUnitig1ori, mateUnitig2ori;
-int beginUnitig, endUnitig;
-unsigned char beginUnitigOri, endUnitigOri;
+double mean[256][256], stdev[256][256]; // RO. Clarify why 256x256. Convert to ExpBuffer
+
 typedef heap<unitigLocStruct>::min min_heap;
 typedef heap<unitigLocStruct>::max max_heap;
-min_heap forward_path_unitigs;
-max_heap backward_path_unitigs;
-std::set<unitigLocStruct> startingNodes, endingNodes;
-int startingNodeNumber;
-std::vector<unitigLocStruct> nodeArray;
-std::map<unitigLocStruct, int> nodeToIndexMap;
 typedef std::map<unitigLocStruct, int>::iterator unitigLocMap_iterator;
-std::set<std::pair<int, int> > edgeList, sortedEdgeList;
 typedef std::set<std::pair<int, int> >::iterator edge_iterator;
-std::vector<int> unitigNodeNumbersForPath;
-// std::vector<int, std::set <int> > fwdEdgeList, revEdgeList;
 struct nodePair {
      int node1;
      int node2;
 };
-std::vector<struct nodePair> fwdConnections, revConnections;
+// RB tree data stuff
+typedef std::set<abbrevUnitigLocStruct> unitig_ori_offsets;
+typedef std::map<int, unitig_ori_offsets> unitig_to_ori_offsets;
 
-int curPathNum;
-int treeSize;
-int minOverlapLength;
-int maxDiffInsertSizesForPrinting;
-int maxTotAllowableMissingOnEnds;
-FILE *outfile, *outputFile;
-charb outputString(200), stderrOutputString(200);
-double mean[256][256], stdev[256][256];
-char rdPrefix[3], rdPrefixHold[3];
-long long readNum, readNumHold;
-int approxNumPaths;
-double insertLengthMeanBetweenKUnisForInsertGlobal, insertLengthStdevGlobal;
-// The following keeps track of the distance the 2 read mates are from the
-// ends of the k-unitigs at the end
-int lengthAdjustment1, lengthAdjustment2;
-charb superReadName;
-int splitJoinWindowMin, splitJoinWindowMax;
-int numUnitigConnectionsForPathData;
-int numPairsInOneUnitig, numSimplyJoinable, numJoinableAfterRead1Analysis,
-     numJoinableAfterBothReadAnalysis, numJoinableUnresolvedAtEnd;
-int kunitigs_translation_file_given;
-int maxNodesAllowed;
+// Main worker class
+class KUnitigsJoinerThread {
+  ExpBuffer<kuniToReadMatchStruct>                 evenReadMatchStructs;
+  ExpBuffer<kuniToReadMatchStruct>                 oddReadMatchStructs;
+  ExpandingBuffer<unsigned char>                   matchStructIsUsed;
+  ExpandingBuffer<unitigConnectionsForPathStruct>  unitigConnectionsForPathData;
+  ExpandingBuffer<augmentedUnitigPathPrintStruct>  augmentedUnitigPathPrintData;
+  int                                              numUnitigPathPrintRecsOnPath;
+  ExpandingBuffer<int>                             fwdStartIndices;
+  ExpandingBuffer<int>                             revStartIndices;
+  ExpandingBuffer<int>                             fwdNumIndices;
+  ExpandingBuffer<int>                             revNumIndices;
+  ExpandingBuffer<int>                             newNodeNumsFromOld;
+  unitigLocStruct                                 *unitigLocData1;
+  unitigLocStruct                                 *unitigLocData2;
+  int                                              mateUnitig1;
+  // Make mateUnitig2 a 'static thread local' instead of instance
+  // variable as it should be. It is a trick so that the operator< of
+  // unitigPathPrintStruct can find it. This is a major code smell.
+  static __thread int                              mateUnitig2;
+  unsigned char                                    mateUnitig1ori;
+  unsigned char                                    mateUnitig2ori;
+  int                                              beginUnitig;
+  int                                              endUnitig;
+  unsigned char                                    beginUnitigOri;
+  unsigned char                                    endUnitigOri;
+  min_heap                                         forward_path_unitigs;
+  max_heap                                         backward_path_unitigs;
+  std::set<unitigLocStruct>                        startingNodes;
+  std::set<unitigLocStruct>                        endingNodes;
+  int                                              startingNodeNumber;
+  std::vector<unitigLocStruct>                     nodeArray;
+  std::map<unitigLocStruct, int>                   nodeToIndexMap;
+  std::set<std::pair<int, int>>                    edgeList;
+  std::set<std::pair<int, int>>                    sortedEdgeList;
+  std::vector<int>                                 unitigNodeNumbersForPath;
+  std::vector<nodePair>                            fwdConnections;
+  std::vector<nodePair>                            revConnections;
+  int                                              curPathNum;
+  int                                              treeSize;
+  charb                                            outputString;
+  charb                                            stderrOutputString;
+  char                                             rdPrefix[3];
+  char                                             rdPrefixHold[3];
+  long long                                        readNum;
+  long long                                        readNumHold;
+  int                                              approxNumPaths;
+  double                                           insertLengthMeanBetweenKUnisForInsertGlobal;
+  double                                           insertLengthStdevGlobal;
+  int                                              lengthAdjustment1;
+  int                                              lengthAdjustment2;
+  charb                                            superReadName;
+  int                                              splitJoinWindowMin;
+  int                                              splitJoinWindowMax;
+  int                                              numUnitigConnectionsForPathData;
+  int                                              numPairsInOneUnitig;
+  int                                              numSimplyJoinable;
+  int                                              numJoinableAfterRead1Analysis;
+  int                                              numJoinableAfterBothReadAnalysis;
+  int                                              numJoinableUnresolvedAtEnd;
+  int                                             *treeReinitList;
+  int                                              numTreesUsed;
+
+public:
+  struct unitigPathPrintStruct
+  {
+    int unitig1;
+    int frontEdgeOffset;
+    mutable int numOverlapsIn;
+    mutable int numOverlapsOut;
+    char ori;
+  
+    bool operator<(const unitigPathPrintStruct& rhs) const {
+      if(unitig1 == mateUnitig2) return false;
+      if(rhs.unitig1 == mateUnitig2) return true;
+      if(frontEdgeOffset != rhs.frontEdgeOffset) return frontEdgeOffset < rhs.frontEdgeOffset;
+      if(unitig1 != rhs.unitig1) return unitig1 < rhs.unitig1;
+      return ori < rhs.ori;
+    }
+  };
+  typedef std::set<unitigPathPrintStruct> unitig_print_path;
+
+private:
+  unitig_to_ori_offsets                                   treeArr;
+  unitig_print_path                                       treeArr2;
+
+  friend struct unitigPathPrintStruct;
+
+public:
+  KUnitigsJoinerThread() :
+    mateUnitig1ori('F'), mateUnitig2ori('R'),
+    numPairsInOneUnitig(0), numSimplyJoinable(0), numJoinableAfterBothReadAnalysis(0),
+    numJoinableUnresolvedAtEnd(0)
+  {
+    rdPrefix[2] = rdPrefixHold[2] = '\0';
+  }
+
+  int process_input_file(const char* readVsKUnitigFilePrefix, 
+                         const char* outputPrefix, int index);
+  
+private:
+  void generateSuperReadPlacementLinesForJoinedMates ();
+  void updateMatchRecords(int readNum, char *cptr, ExpBuffer<char*>& flds);
+  int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev);
+  void printIfGood (struct abbrevUnitigLocStruct *ptr);
+  template<typename T>
+  void printPathNode (const T& ptr);
+  template<typename T>
+  void completePathPrint (const T& ptr);
+  int setSuperReadNameFromAugmentedPath (void);
+  int getSuperReadLength(void);
+  template<typename T>
+  void funcToGetTreeSize (const T& ptr); // Adds 1 to treeSize each time
+  void findSingleReadSuperReads(char *readName, FILE* outputFile);
+  void getSuperReadsForInsert (FILE* outputFile);
+  int processKUnitigVsReadMatches (char *inputFilename, char *outputFilename);
+};
+
+class KUnitigsJoiner : public thread_exec {
+  const char* const readVsKUnitigFilePrefix;
+  const char* const outputPrefix;
+
+public:
+  KUnitigsJoiner(const char* input_prefix, const char* output_prefix) :
+    readVsKUnitigFilePrefix(input_prefix), outputPrefix(output_prefix)
+  { }
+  virtual void start(int thid) {
+    KUnitigsJoinerThread joiner;
+    int ret = joiner.process_input_file(readVsKUnitigFilePrefix, outputPrefix, thid);
+    std::cerr << "joiner thread " << thid << " returned " << ret << std::endl;
+  }
+};
+
+// The static tread local variable trick...
+__thread int KUnitigsJoinerThread::mateUnitig2;
 
 bool firstNodeSort (struct nodePair val1, struct nodePair val2);
 bool secondNodeSort (struct nodePair val1, struct nodePair val2);
@@ -207,53 +316,15 @@ bool unitigLocStructCompare (struct unitigLocStruct ptr1,
 			    struct unitigLocStruct ptr2);
 bool unitigLocStructCompareReversed (struct unitigLocStruct ptr1,
 				    struct unitigLocStruct ptr2);
-void generateSuperReadPlacementLinesForJoinedMates (void);
 void loadKUnitigTranslationTable(const char *fileName);
-void updateMatchRecords(int readNum, char *cptr, ExpBuffer<char*>& flds);
-int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev);
 FILE *Fopen (const char *fn, const char *mode);
 FILE *Popen (const char *fn, const char *mode);
 // The following returns the overlap length if it is greater than the
 // existing largest overlap on the end. It returns -1 if not.
 int getOvlLenFromOvlIndicesPlus (int maxOvlIndex, int j, int maxOvlLen, int whichEnd);
 int findOtherOverlapIndex (int ovlIndex1);
-void printIfGood (struct abbrevUnitigLocStruct *ptr);
-template<typename T>
-void completePathPrint (const T& ptr);
-template<typename T>
-void printPathNode (const T& ptr);
-int setSuperReadNameFromAugmentedPath (void);
-int getSuperReadLength(void);
-template<typename T>
-void funcToGetTreeSize (const T& ptr); // Adds 1 to treeSize (a global) each time
-void findSingleReadSuperReads(char *readName);
-void getSuperReadsForInsert (void);
-int processKUnitigVsReadMatches (char *inputFilename, char *outputFilename);
+
 int getInt (const char *fname);
-
-// RB tree data stuff
-typedef std::set<abbrevUnitigLocStruct> unitig_ori_offsets;
-typedef std::map<int, unitig_ori_offsets> unitig_to_ori_offsets;
-unitig_to_ori_offsets treeArr;
-
-struct unitigPathPrintStruct
-{
-     int unitig1;
-     int frontEdgeOffset;
-  mutable int numOverlapsIn;
-  mutable int numOverlapsOut;
-     char ori;
-
-  bool operator<(const unitigPathPrintStruct& rhs) const {
-    if(unitig1 == mateUnitig2) return false;
-    if(rhs.unitig1 == mateUnitig2) return true;
-    if(frontEdgeOffset != rhs.frontEdgeOffset) return frontEdgeOffset < rhs.frontEdgeOffset;
-    if(unitig1 != rhs.unitig1) return unitig1 < rhs.unitig1;
-    return ori < rhs.ori;
-  }
-};
-typedef std::set<unitigPathPrintStruct> unitig_print_path;
-unitig_print_path treeArr2;
 
 
 // TODO: merge and template the following two functions
@@ -268,8 +339,9 @@ unitig_ori_offsets::iterator find_within(unitig_ori_offsets& tree,
   return res;
 }
 
-unitig_print_path::iterator find_within(unitig_print_path& tree,
-                                        unitigPathPrintStruct x, int delta) {
+  KUnitigsJoinerThread::unitig_print_path::iterator find_within(KUnitigsJoinerThread::unitig_print_path& tree,
+                                                          KUnitigsJoinerThread::unitigPathPrintStruct x, 
+                                                          int delta) {
   x.frontEdgeOffset -= (delta - 1);
   auto res = tree.lower_bound(x);
   while (1) {
@@ -292,11 +364,12 @@ unitig_print_path::iterator find_within(unitig_print_path& tree,
 #endif
 
 // #define DEBUG
-int process_input_file(const char* input_prefix, const char* output_prefix, int index)
+int KUnitigsJoinerThread::process_input_file(const char* readVsKUnitigFilePrefix,
+                                       const char* outputPrefix, int index)
 {
      charb readVsKUnitigFileName(256), outputFileName(256);
-     sprintf(readVsKUnitigFileName, "%s_%d", input_prefix, index);
-     sprintf(outputFileName,"%s_%d", output_prefix, index);
+     sprintf(readVsKUnitigFileName, "%s_%d", readVsKUnitigFilePrefix, index);
+     sprintf(outputFileName,"%s_%d", outputPrefix, index);
      int ret = processKUnitigVsReadMatches(readVsKUnitigFileName, outputFileName);
      fprintf (stderr, 
 	      "Num pairs with both reads in same unitig: %d\n"
@@ -319,18 +392,17 @@ int main (int argc, char **argv)
      int numFlds;
      ExpBuffer<char*> flds;
 
-     maxTotAllowableMissingOnEnds = 2;
+     //     maxTotAllowableMissingOnEnds = 2;
      minOverlapLength = 40;
      //#if KILLED111115
      outfile = stderr;
      //#endif
 
-     maxDiffInsertSizesForPrinting = 5;
+     //     maxDiffInsertSizesForPrinting = 5;
      minOverlapLength              = args.min_overlap_length_arg;
      kunitigs_translation_file_given = args.kunitigs_translation_file_given;
      maxNodesAllowed = args.max_nodes_allowed_arg;
 
-     rdPrefix[2] = rdPrefixHold[2] = 0;
      infile = Fopen (args.mean_and_stdev_by_prefix_file_arg, "r");
      while (fgets (line, 2000, infile)) {
 	  getFldsFromLine(line, flds);
@@ -339,11 +411,7 @@ int main (int argc, char **argv)
      }
      fclose (infile);
 
-     numPairsInOneUnitig = numSimplyJoinable = numJoinableAfterRead1Analysis =
-	  numJoinableAfterBothReadAnalysis = numJoinableUnresolvedAtEnd = 0;
-
-     mateUnitig1ori = 'F'; mateUnitig2ori = 'R';
-// Get the number of unitigs
+     // Get the number of unitigs
      numUnitigs = getInt (args.num_kunitigs_file_arg) + 1;
      mallocOrDie (startOverlapByUnitig, numUnitigs + 1 + firstUnitigNum, int);
      mallocOrDie (startOverlapIndexByUnitig2, numUnitigs + 1 + firstUnitigNum, int);
@@ -449,42 +517,9 @@ int main (int argc, char **argv)
      fclose (outfile);
 #endif
      free(startOverlapIndexByUnitig2);
-     if (args.num_file_names_arg > 1) {
-	  // More than one input file -> process each file in a sub-process
-	  for(int i = 0; i < args.num_file_names_arg; ++i) {
-	       switch(fork()) {
-	       case -1:
-		    perror("fork failed");
-		    exit(1);
-		    
-	       case 0:
-		    exit(process_input_file(args.input_prefix_arg, args.prefix_arg, i));
-		    
-	       default:
-		    break;
-	       }
-	  }
-	  
-	  int status;
-	  for(int i = 0; i < args.num_file_names_arg; ++i) {
-	       if(wait(&status) == -1) {
-		    perror("wait failed");
-		    exit(1);
-	       }
-	       if(WIFEXITED(status))
-		    fprintf(stderr,"sub %d exit status %d\n", i, WEXITSTATUS(status));
-	       else if(WIFSIGNALED(status))
-		    fprintf(stderr,"sub %d signaled %d coredumped %d\n",
-			    i, WTERMSIG(status), WCOREDUMP(status));
-	       else
-		    fprintf(stderr,"sub %d at a loss\n", i); 
-	  }  }
-     else {
-	  // One input file, process it in this process
-	  int ret = process_input_file(args.input_prefix_arg, args.prefix_arg, 0);
-	  if(ret != 0)
-	       fprintf(stderr, "exit status %d", ret);
-     }
+
+     KUnitigsJoiner joiners(args.input_prefix_arg, args.prefix_arg);
+     joiners.exec_join(args.num_file_names_arg);
      
      munmap(overlapData, stat_buf.st_size);
      
@@ -497,17 +532,8 @@ void loadKUnitigTranslationTable(const char *fileName)
      struct kUniBeginOffsetStruct kubos;
      charb line;
      ExpBuffer<char*> flds;
+     unsigned long origUnitigNumber;
 
-     if (! fgets (line, 2000, infile)) {
-	  fclose (infile);
-	  return; }
-     getFldsFromLine(line, flds);
-     unsigned long origUnitigNumber = atoll(flds[0]);
-     kubos.kUnitig = atoll(flds[1]);
-     kubos.begin = atoi(flds[2]);
-     kubos.end = atoi(flds[3]);
-     int maxVal = (kubos.begin < kubos.end) ? kubos.end : kubos.begin;
-     origUnitigToNewUnitigPlacement[origUnitigNumber] = kubos;
      while (fgets (line, 2000, infile)) {
 	  getFldsFromLine(line, flds);
 	  origUnitigNumber = atoll(flds[0]);
@@ -515,14 +541,14 @@ void loadKUnitigTranslationTable(const char *fileName)
 	  kubos.begin = atoi(flds[2]);
 	  kubos.end = atoi(flds[3]);
 	  unitigLengths[origUnitigNumber] = -(abs(kubos.end - kubos.begin)+1);
-	  maxVal = (kubos.begin < kubos.end) ? kubos.end : kubos.begin;
-	  origUnitigToNewUnitigPlacement[origUnitigNumber] = kubos; }
+	  origUnitigToNewUnitigPlacement[origUnitigNumber] = kubos;
+     }
      fclose (infile);
 
      return;
 }
 
-void updateMatchRecords(int readNum, char *cptr, ExpBuffer<char*>& flds)
+void KUnitigsJoinerThread::updateMatchRecords(int readNum, char *cptr, ExpBuffer<char*>& flds)
 {
      ExpBuffer<struct kuniToReadMatchStruct> *structs;
      if (readNum % 2 == 0) 
@@ -604,7 +630,7 @@ void updateMatchRecords(int readNum, char *cptr, ExpBuffer<char*>& flds)
 //     fprintf (stderr, "After change: readMatchBegin = %d, readMatchEnd = %d, orientedReadMatchBegin = %d, orientedReadMatchEnd = %d, ahg = %d, bhg = %d, kUnitigNumber = %d\n", kUTRMS.readMatchBegin, kUTRMS.readMatchEnd, kUTRMS.orientedReadMatchBegin, kUTRMS.orientedReadMatchEnd, kUTRMS.ahg, kUTRMS.bhg, kUTRMS.kUnitigNumber);
 }
 
-int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
+int KUnitigsJoinerThread::processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
 {
      char *cptr;
      charb cmd(500), line(2000);
@@ -616,7 +642,7 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
      infile = Fopen (cmd, "r");
      if (! fgets (line, 2000, infile))
 	  return (1); // A critical file doesn't exist
-     outputFile=Fopen(outputFileName,"w");
+     FILE* outputFile=Fopen(outputFileName,"w");
      // Load the appropriate stuff
      numFlds = getFldsFromLine(line, flds);
      cptr = flds[numFlds-1];
@@ -647,7 +673,7 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
 	       // Get the super-read for the insert we just finished reading
 	       approxNumPaths = 0;
 //	       puts ("Entering getSuperReadsForInsert\n"); fflush (stdout);
-	       getSuperReadsForInsert();
+	       getSuperReadsForInsert(outputFile);
 //	       puts ("Leaving getSuperReadsForInsert\n"); fflush (stdout);
 	       // Set up and load the new data
                evenReadMatchStructs.clear();
@@ -668,13 +694,13 @@ int processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
      }
      fclose (infile);
      // Output the stuff for the old pair
-     getSuperReadsForInsert();
+     getSuperReadsForInsert(outputFile);
      fclose(outputFile);
      return (0);
 }
 
 // returns 1 if successful, 0 if too many nodes (so failure)
-int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
+int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 {
      
      int lastOffsetToTest = 6000, lastOffsetToTestIfNotMate2, maxOffsetToAllow;
@@ -909,7 +935,7 @@ int findOtherOverlapIndex (int ovlIndex1)
      return (itemp);
 }
 
-void printIfGood (struct abbrevUnitigLocStruct *ptr)
+void KUnitigsJoinerThread::printIfGood (struct abbrevUnitigLocStruct *ptr)
 {
      int val;
      if (ptr->ori == 'R') {
@@ -923,7 +949,7 @@ void printIfGood (struct abbrevUnitigLocStruct *ptr)
 }
 
 template<typename T>
-void printPathNode (const T& ptr) // take a ptr/iterator to a unitigPathPrintStruct
+void KUnitigsJoinerThread::printPathNode (const T& ptr) // take a ptr/iterator to a unitigPathPrintStruct
 {
      int beginOffset, endOffset;
      if (ptr->ori == 'F') {
@@ -950,7 +976,7 @@ void printPathNode (const T& ptr) // take a ptr/iterator to a unitigPathPrintStr
 }
 
 template<typename T> // A pointer/iterator to a struct abbrevUnitigLocStruct
-void completePathPrint (T& ptr)
+void KUnitigsJoinerThread::completePathPrint (const T& ptr)
 {
   struct abbrevUnitigLocStruct abbrevUnitigLocVal;
      struct unitigLocStruct unitigLocVal;
@@ -1254,7 +1280,7 @@ void completePathPrint (T& ptr)
      treeArr2.clear();
 }
 
-void generateSuperReadPlacementLinesForJoinedMates (void)
+void KUnitigsJoinerThread::generateSuperReadPlacementLinesForJoinedMates ()
 {
      int isReversed, superReadLength;
      charb tempOutputString(100);
@@ -1276,7 +1302,7 @@ void generateSuperReadPlacementLinesForJoinedMates (void)
      strcat (outputString, tempOutputString);
 }
 
-int setSuperReadNameFromAugmentedPath (void)
+int KUnitigsJoinerThread::setSuperReadNameFromAugmentedPath (void)
 {
      int isReversed=0, i;
      for (i=0; i<numUnitigPathPrintRecsOnPath/2; i++) {
@@ -1311,7 +1337,7 @@ int setSuperReadNameFromAugmentedPath (void)
      return (isReversed);
 }
 
-int getSuperReadLength(void)
+int KUnitigsJoinerThread::getSuperReadLength(void)
 {
      int totLen, i;
      totLen = unitigLengths[augmentedUnitigPathPrintData[0].unitig1];
@@ -1322,7 +1348,7 @@ int getSuperReadLength(void)
 }
 
 template<typename T> // A ptr/iterator to a abbrevUnitigLocStruct
-void funcToGetTreeSize (const T& ptr)
+void KUnitigsJoinerThread::funcToGetTreeSize (const T& ptr)
 {
      struct unitigLocStruct localUnitigLoc;
      if (ptr->ori == endUnitigOri) {
@@ -1336,7 +1362,7 @@ void funcToGetTreeSize (const T& ptr)
 }
 
 bool unitigLocStructCompare (struct unitigLocStruct uLS1,
-			    struct unitigLocStruct uLS2)
+                             struct unitigLocStruct uLS2)
 {
      if (uLS1.frontEdgeOffset != uLS2.frontEdgeOffset)
 	  return (uLS1.frontEdgeOffset < uLS2.frontEdgeOffset);
@@ -1346,7 +1372,7 @@ bool unitigLocStructCompare (struct unitigLocStruct uLS1,
 }
 
 bool unitigLocStructCompareReversed (struct unitigLocStruct uLS1,
-				    struct unitigLocStruct uLS2)
+                                     struct unitigLocStruct uLS2)
 {
      if (uLS1.frontEdgeOffset < uLS2.frontEdgeOffset)
 	  return (-1);
@@ -1435,7 +1461,7 @@ int getInt (const char *fname)
      return (tval);
 }
 
-void findSingleReadSuperReads(char *readName)
+void KUnitigsJoinerThread::findSingleReadSuperReads(char *readName, FILE* outputFile)
 {
      long long tempInt;
      char *cptr=readName+2;
@@ -1552,7 +1578,7 @@ void findSingleReadSuperReads(char *readName)
 //     printf ("At 50\n");
 }
 
-void getSuperReadsForInsert (void)
+void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
 {
      char readNameSpace[200];
      charb tempStderrStr(200);
@@ -1582,19 +1608,19 @@ void getSuperReadsForInsert (void)
      abbULS1.ori = 'F';
 
      // Output the stuff for the old pair
-     stderrOutputString[0] = 0;
+     stderrOutputString.clear();
 #ifdef KILLED111115
      fprintf (stderr, "%s%lld %ld %ld\n", rdPrefixHold, readNumHold, evenReadMatchStructs.size(), oddReadMatchStructs.size());
 #endif
      sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
      if (evenReadMatchStructs.empty() || oddReadMatchStructs.empty()) {
-	  findSingleReadSuperReads(readNameSpace);
+       findSingleReadSuperReads(readNameSpace, outputFile);
 	  return; }
      if (maxNodesAllowed == 0) {
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold-1);
-	  findSingleReadSuperReads (readNameSpace);
+	  findSingleReadSuperReads (readNameSpace, outputFile);
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
-	  findSingleReadSuperReads (readNameSpace);
+	  findSingleReadSuperReads (readNameSpace, outputFile);
 	  return; }
 //     puts ("Got to 1\n"); fflush (stdout);
      // If we get here both the even read and the odd read have
@@ -1606,10 +1632,10 @@ void getSuperReadsForInsert (void)
      if (mateUnitig1 == mateUnitig2) {
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold-1);
 //	  puts ("Entering findSingleReadSuperReads from 1\n"); fflush (stdout);
-	  findSingleReadSuperReads (readNameSpace);
+	  findSingleReadSuperReads (readNameSpace, outputFile);
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
 //	  puts ("Entering findSingleReadSuperReads from 2\n"); fflush (stdout);
-	  findSingleReadSuperReads (readNameSpace);
+	  findSingleReadSuperReads (readNameSpace, outputFile);
 	  ++numPairsInOneUnitig;
 	  return;
      }
@@ -2149,9 +2175,9 @@ void getSuperReadsForInsert (void)
 
      outputTheReadsIndividually:
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold-1);
-	  findSingleReadSuperReads(readNameSpace);
+	  findSingleReadSuperReads(readNameSpace, outputFile);
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
-	  findSingleReadSuperReads(readNameSpace);
+	  findSingleReadSuperReads(readNameSpace, outputFile);
      }
      return;
 }
