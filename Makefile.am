@@ -32,6 +32,7 @@ noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/binary_search_tree_iterator.hpp		\
                   $(UTILS_I)/skip_list_common.hpp			\
                   $(UTILS_I)/multi_thread_skip_list_set.hpp		\
+                  $(UTILS_I)/multi_thread_skip_list_map.hpp		\
                   $(UTILS_I)/tmpstream.hpp
 
 noinst_LIBRARIES = libutils.a

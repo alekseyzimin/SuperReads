@@ -312,10 +312,10 @@ foreach $v(@pe_info_array){
             $rerun_sj=1;
 	}
     if($f[3] eq $f[4]){
-	print FILE "zcat -cf $f[3] | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";\$readnumber+=2;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
+	print FILE "zcat -cf $f[3] | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);if(\$seq[0] !~ /[^ACGTN]/){print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";}\$readnumber+=2;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
     }
     else{
-	print FILE "paste <(zcat -cf $f[3]) <(zcat -cf $f[4]) | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";\$readnumber++;print \"\@\",\"\$library\$readnumber\\n\$seq[1]\\n+\\n\$qlt[1]\\n\";\$readnumber++;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
+	print FILE "paste <(zcat -cf $f[3]) <(zcat -cf $f[4]) | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);if(\$seq[0] !~ /[^ACGTN]/){print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";}\$readnumber++;if(\$seq[1] !~ /[^ACGTN]/){print \"\@\",\"\$library\$readnumber\\n\$seq[1]\\n+\\n\$qlt[1]\\n\";}\$readnumber++;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
     }
     $i++;
 }
@@ -324,11 +324,6 @@ for(my $j=0;$j<$i;$j++){
     print FILE "\$PID$j ";
 }
 print FILE "\n";
-
-foreach $v(@pe_info_array){
-    @f=split(/\s+/,$v);
-    print FILE "MAX_$f[0]=`tail $f[0].renamed.fastq |grep '^\@$f[0]' |tail -n 1|awk '{print substr(\$1,4)}'`\n"
-}
 
 print FILE "rm -rf meanAndStdevByPrefix.sj.txt\n";
 if(scalar(@jump_info_array)>0){
@@ -348,7 +343,7 @@ if(scalar(@jump_info_array)>0){
 	    die("duplicate jump library $f[0] files");
 	}
 	else{
-	    print FILE "paste <(zcat -cf $f[3]) <(zcat -cf $f[4]) | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";\$readnumber++;print \"\@\",\"\$library\$readnumber\\n\$seq[1]\\n+\\n\$qlt[1]\\n\";\$readnumber++;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
+	    print FILE "paste <(zcat -cf $f[3]) <(zcat -cf $f[4]) | perl -e '{\$library=\$ARGV[0];\$readnumber=0;while(\$line=<STDIN>){if(\$line=~ /^@/){\$line=<STDIN>;chomp(\$line);\@seq=split(/\\s+/,\$line);\$line=<STDIN>;\$line=<STDIN>;\@qlt=split(/\\s+/,\$line);if(\$seq[0] !~ /[^ACGTN]/){print \"\@\",\"\$library\$readnumber\\n\$seq[0]\\n+\\n\$qlt[0]\\n\";}\$readnumber++;if(\$seq[1] !~ /[^ACGTN]/){print \"\@\",\"\$library\$readnumber\\n\$seq[1]\\n+\\n\$qlt[1]\\n\";}\$readnumber++;}}}' $f[0] > $f[0].renamed.fastq &\nPID$i=\$!\n";
 	}
 	$i++;
     }
@@ -358,10 +353,6 @@ if(scalar(@jump_info_array)>0){
     }
     print FILE "\n";
 
-    foreach $v(@jump_info_array){
-	@f=split(/\s+/,$v);
-	print FILE "MAX_$f[0]=`tail $f[0].renamed.fastq |grep '^\@$f[0]' |tail -n 1|awk '{print substr(\$1,4)}'`\n"
-    }
 }
 ###done renaming reads###
 print FILE "\n";
@@ -397,8 +388,7 @@ print FILE "\n";
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
     print FILE "cat combined_0 > /dev/null\n";
-    print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files\n";
-    print FILE "cat error_corrected.fa  | homo_trim $TRIM_PARAM > pe.cor.fa\n";
+    print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log | homo_trim $TRIM_PARAM > pe.cor.fa\n";
     $rerun_pe=1;
 }
 #compute average PE read length -- we will need this for Astat later
@@ -413,8 +403,7 @@ if(scalar(@jump_info_array)>0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
         print FILE "cat combined_0 > /dev/null\n";
-	print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files\n";
-	print FILE "cat error_corrected.fa  | homo_trim $TRIM_PARAM > sj.cor.fa\n";
+	print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log | homo_trim $TRIM_PARAM > sj.cor.fa\n";
         $rerun_sj=1;
     }
 }
@@ -498,7 +487,7 @@ if(scalar(@jump_info_array)>0){
 	$list_of_frg_files.="$f[0].cor.clean.frg ";
 	print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
 	print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.fa > $f[0].tmp\n";
-	print FILE "error_corrected2frg $f[0] $f[1] $f[2] \$MAX_$f[0] $f[0].tmp |tee $f[0].cor.clean.frg | grep '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
+	print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp |tee $f[0].cor.clean.frg | grep '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
 	print FILE "rm $f[0].tmp\n";
     }
     print FILE "JUMP_BASES_COVERED=`awk 'BEGIN{b=0}{b+=\$1*\$2;}END{print b}' compute_jump_coverage.txt`\n";
@@ -547,7 +536,7 @@ foreach $v(@pe_info_array){
     $list_of_frg_files.="$f[0].linking.frg ";
     if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
 	print FILE "grep -A 1 '^>$f[0]' pe.linking.fa > $f[0].tmp\n";
-	print FILE "error_corrected2frg $f[0] $f[1] $f[2] \$MAX_$f[0] $f[0].tmp > $f[0].linking.frg\n";
+	print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].linking.frg\n";
 	print FILE "rm $f[0].tmp\n";
     }
 }
