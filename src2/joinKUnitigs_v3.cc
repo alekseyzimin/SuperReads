@@ -31,24 +31,17 @@
 #include <src2/joinKUnitigs_v3.hpp>
 #include <rb_tree.hpp>
 
-#define DEFAULT_MAX_OFFSET_CONSIDERED_SAME 5
-#define MAX_OFFSET_TO_TEST 10000
-
-// #define MAX_NODES_ALLOWED 4000
-
 #define FRONT_END 1
 #define BACK_END 2
 
+// The command line arguments
+joinKUnitigs_v3 args;
 
-// Global / Constant / parameter. Merge into switches parsing
-int               minOverlapLength; // Const / Parameter
-static const int  maxDiffInsertSizesForPrinting = 5; // Const / Parameter
-static const int  maxTotAllowableMissingOnEnds  = 2; // Const / Parameter
-FILE             *outfile;      // Debug, remove
-// The following keeps track of the distance the 2 read mates are from the
-// ends of the k-unitigs at the end
-int               kunitigs_translation_file_given; // Parameter
-int               maxNodesAllowed; // Const / Parameter
+// Global / Constant / parameter. Merge into switches parsing?
+static const int maxDiffInsertSizesForPrinting      = 5; // Const / Parameter
+static const int maxTotAllowableMissingOnEnds       = 2; // Const / Parameter
+static const int default_max_offset_considered_same = 5;
+static const int max_offset_to_test                 = 10000;
 
 
 struct overlapDataStruct
@@ -155,7 +148,6 @@ struct kUniBeginOffsetStruct
 // Global variables. Read only after initialization in main
 int                      *startOverlapByUnitig, *unitigLengths; // RO
 struct overlapDataStruct *overlapData; // RO
-int                       maxOffsetToConsiderTheSame; // Constant / Parameter
 int                      *startOverlapIndexByUnitig2, *unitig2OverlapIndex; // RO
 std::map<unsigned         int, struct kUniBeginOffsetStruct>    origUnitigToNewUnitigPlacement; // RO
 
@@ -222,6 +214,8 @@ class KUnitigsJoinerThread {
   int                                              approxNumPaths;
   double                                           insertLengthMeanBetweenKUnisForInsertGlobal;
   double                                           insertLengthStdevGlobal;
+  // The following keeps track of the distance the 2 read mates are from the
+  // ends of the k-unitigs at the end
   int                                              lengthAdjustment1;
   int                                              lengthAdjustment2;
   charb                                            superReadName;
@@ -381,27 +375,15 @@ int KUnitigsJoinerThread::process_input_file(const char* readVsKUnitigFilePrefix
      return ret;
 }
 
-
 int main (int argc, char **argv)
 {
-     joinKUnitigs_v3 args(argc, argv);
+     args.parse(argc, argv);   // Parse arguments
      FILE *infile;
      charb line(2000);
      int unitig1, unitig2, overlapCount = 0;
      int unitigNum, numUnitigs, firstUnitigNum = 0;
      int numFlds;
      ExpBuffer<char*> flds;
-
-     //     maxTotAllowableMissingOnEnds = 2;
-     minOverlapLength = 40;
-     //#if KILLED111115
-     outfile = stderr;
-     //#endif
-
-     //     maxDiffInsertSizesForPrinting = 5;
-     minOverlapLength              = args.min_overlap_length_arg;
-     kunitigs_translation_file_given = args.kunitigs_translation_file_given;
-     maxNodesAllowed = args.max_nodes_allowed_arg;
 
      infile = Fopen (args.mean_and_stdev_by_prefix_file_arg, "r");
      while (fgets (line, 2000, infile)) {
@@ -437,7 +419,7 @@ int main (int argc, char **argv)
      }
      fclose (infile);
 
-     if (kunitigs_translation_file_given)
+     if (args.kunitigs_translation_file_given)
 	  loadKUnitigTranslationTable(args.kunitigs_translation_file_arg);
 
 // Set up space to keep the overlaps file
@@ -499,22 +481,24 @@ int main (int argc, char **argv)
      }
 
 #if 0
-     FILE *outfile = Fopen ("overlapDataArrayFile.txt", "w");
-     for (int j=0; j<overlapCount; j++)
-	  fprintf (outfile, "%d %d %c %d %d\n", overlapData[j].unitig1, overlapData[j].unitig2, overlapData[j].ori, overlapData[j].ahg, overlapData[j].bhg);
-     fclose (outfile);
-     outfile = Fopen ("unitig2OverlapIndex.txt", "w");
-     for (int j=0; j<overlapCount; j++)
-	  fprintf (outfile, "%d %d\n", j, unitig2OverlapIndex[j]);
-     fclose (outfile);
-     outfile = Fopen ("startOverlapByUnitig.txt", "w");
-     for (int j=0; j<numUnitigs+1+firstUnitigNum; j++)
-	  fprintf (outfile, "%d %d\n", j, startOverlapByUnitig[j]);
-     fclose (outfile);
-     outfile = Fopen ("startOverlapIndexByUnitig2.txt", "w");
-     for (int j=0; j<numUnitigs+1+firstUnitigNum; j++)
-	  fprintf (outfile, "%d %d\n", j, startOverlapIndexByUnitig2[j]);
-     fclose (outfile);
+     {
+       FILE *outfile = Fopen ("overlapDataArrayFile.txt", "w");
+       for (int j=0; j<overlapCount; j++)
+         fprintf (outfile, "%d %d %c %d %d\n", overlapData[j].unitig1, overlapData[j].unitig2, overlapData[j].ori, overlapData[j].ahg, overlapData[j].bhg);
+       fclose (outfile);
+       outfile = Fopen ("unitig2OverlapIndex.txt", "w");
+       for (int j=0; j<overlapCount; j++)
+         fprintf (outfile, "%d %d\n", j, unitig2OverlapIndex[j]);
+       fclose (outfile);
+       outfile = Fopen ("startOverlapByUnitig.txt", "w");
+       for (int j=0; j<numUnitigs+1+firstUnitigNum; j++)
+         fprintf (outfile, "%d %d\n", j, startOverlapByUnitig[j]);
+       fclose (outfile);
+       outfile = Fopen ("startOverlapIndexByUnitig2.txt", "w");
+       for (int j=0; j<numUnitigs+1+firstUnitigNum; j++)
+         fprintf (outfile, "%d %d\n", j, startOverlapIndexByUnitig2[j]);
+       fclose (outfile);
+     }
 #endif
      free(startOverlapIndexByUnitig2);
 
@@ -583,7 +567,7 @@ void KUnitigsJoinerThread::updateMatchRecords(int readNum, char *cptr, ExpBuffer
 	  kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchEnd;
 	  kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchBegin; }
 //     fprintf (stderr, "readMatchBegin = %d, readMatchEnd = %d, orientedReadMatchBegin = %d, orientedReadMatchEnd = %d, ahg = %d, bhg = %d, kUnitigNumber = %d\n", kUTRMS.readMatchBegin, kUTRMS.readMatchEnd, kUTRMS.orientedReadMatchBegin, kUTRMS.orientedReadMatchEnd, kUTRMS.ahg, kUTRMS.bhg, kUTRMS.kUnitigNumber);
-     if (! kunitigs_translation_file_given)
+     if (! args.kunitigs_translation_file_given)
 	  return;
      if (unitigLengths[kUTRMS.kUnitigNumber] > 0)
 	  return;
@@ -717,11 +701,11 @@ int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int inser
 
 //     fprintf (stderr, "In joinKUnitigsFromMates\n");
      lastOffsetToTest = insertLengthMean+5*insertLengthStdev;
-     if (lastOffsetToTest > MAX_OFFSET_TO_TEST)
-	  lastOffsetToTest = MAX_OFFSET_TO_TEST;
+     if (lastOffsetToTest > max_offset_to_test)
+	  lastOffsetToTest = max_offset_to_test;
      // The following assumes that all the overlaps are of length
      // minOverlapLength
-     lastOffsetToTestIfNotMate2 = lastOffsetToTest - (unitigLengths[mateUnitig2]-minOverlapLength);
+     lastOffsetToTestIfNotMate2 = lastOffsetToTest - (unitigLengths[mateUnitig2]-args.min_overlap_length_arg);
      // Adjust overlaps for mateUnitig1 if ori not 'F' and for
      //    mateUnitig2 if ori not 'R' to what they would be if they had
      //    the desired orientation. Note that mateUnitig1 is only a
@@ -801,7 +785,7 @@ int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int inser
 	       printf ("; ovl len = %d", overlapLength);
 #endif
 #if 0		
-	       if (overlapLength < minOverlapLength) {
+	       if (overlapLength < args.min_overlap_length_arg) {
 #if DEBUG
 		    printf (" Ovl too short\n");
 #endif
@@ -852,7 +836,7 @@ int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int inser
                auto unitig2_tree = treeArr.find(unitig2);
                if(unitig2_tree != treeArr.end()) {
                  auto element = find_within(unitig2_tree->second, abbrevUnitigLocVal,
-                                            DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+                                            default_max_offset_considered_same);
                  if(element != unitig2_tree->second.end())
                    continue;
                }
@@ -878,7 +862,7 @@ int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int inser
 	  }			// End of going through overlaps for unitig
 //	  if (maxNodes > MAX_NODES_ALLOWED)
 //	  if (forward_path_unitigs.size() > MAX_NODES_ALLOWED) {
-	  if (numUnitigsPushed > maxNodesAllowed) {
+	  if (numUnitigsPushed > args.max_nodes_allowed_arg) {
 //          if (treeArr[unitig2].size() > MAX_NODES_ALLOWED) {
 	       forcedStop = 1;
 	       break; }
@@ -943,7 +927,7 @@ void KUnitigsJoinerThread::printIfGood (struct abbrevUnitigLocStruct *ptr)
 	  if (mateUnitig1ori != 'F') val -= unitigLengths[mateUnitig1];
 	  if (mateUnitig2ori != 'R') val -= unitigLengths[mateUnitig2];
 #ifndef NO_OUTPUT
-	  fprintf (outfile, "%d\n", val);
+	  fprintf (stderr, "%d\n", val);
 #endif
      }
 }
@@ -960,7 +944,7 @@ void KUnitigsJoinerThread::printPathNode (const T& ptr) // take a ptr/iterator t
 	  beginOffset = ptr->frontEdgeOffset;
 	  endOffset = beginOffset - unitigLengths[ptr->unitig1];
      }
-//     fprintf (outfile, "uni = %d, offset = %d, ori = %c, beginOffset = %d, endOffset = %d, numOvlsIn = %d, numOvlsOut = %d\n", ptr->unitig1, ptr->frontEdgeOffset, ptr->ori, beginOffset, endOffset, ptr->numOverlapsIn, ptr->numOverlapsOut);
+//     fprintf (stderr, "uni = %d, offset = %d, ori = %c, beginOffset = %d, endOffset = %d, numOvlsIn = %d, numOvlsOut = %d\n", ptr->unitig1, ptr->frontEdgeOffset, ptr->ori, beginOffset, endOffset, ptr->numOverlapsIn, ptr->numOverlapsOut);
      augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath].unitig1 = ptr->unitig1;
      augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath].frontEdgeOffset = ptr->frontEdgeOffset;
      augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath].ori = ptr->ori;
@@ -1005,7 +989,7 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
      minConnectingOffset = finalOffset + 1000000;
      numStdevsFromMean = (finalOffset - insertLengthMeanBetweenKUnisForInsertGlobal)/insertLengthStdevGlobal;
 #ifdef KILLED111115
-     fprintf (outfile, "%d %f\n", finalOffset, numStdevsFromMean);
+     fprintf (stderr, "%d %f\n", finalOffset, numStdevsFromMean);
 #endif
      for (i=startOverlapByUnitig[endUnitig]; i<startOverlapByUnitig[endUnitig+1]; i++) {
 	  index = unitig2OverlapIndex[i];
@@ -1019,7 +1003,7 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
 	  if (overlapLength > unitigLengths[endUnitig])
 	       overlapLength = unitigLengths[endUnitig];
 #if 0
-	  if (overlapLength < minOverlapLength)
+	  if (overlapLength < args.min_overlap_length_arg)
 	       continue;
 #endif
 	  if (overlapData[index].ori == 'N')
@@ -1036,7 +1020,7 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
           if(unitig_tree == treeArr.end())
             continue;
           auto element = find_within(unitig_tree->second, abbrevUnitigLocVal, 
-                                     DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+                                     default_max_offset_considered_same);
           if(element == unitig_tree->second.end())
             continue;
 #if 0
@@ -1101,7 +1085,7 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
 	  unitigPathPrintVal.frontEdgeOffset = offset;
 	  unitigPathPrintVal.ori = ori;
           auto front_unitig = find_within(treeArr2, unitigPathPrintVal,
-                                          DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+                                          default_max_offset_considered_same);
 #if 0
 	  fprintf (stderr, "unitig2 = %d, offset = %d, ori = %c, front_unitigs's unitig = %d\n", unitig2, offset, ori, front_unitig->unitig1);
 #endif
@@ -1120,7 +1104,7 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
 	       if (overlapLength > unitigLengths[unitig2])
 		    overlapLength = unitigLengths[unitig2];
 #if 0
-	       if (overlapLength < minOverlapLength)
+	       if (overlapLength < args.min_overlap_length_arg)
 		    continue;
 #endif
 	       if (overlapData[index].ori == 'N')
@@ -1139,7 +1123,7 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
                if(unitig1_tree == treeArr.end())
                  continue;
                auto element = find_within(unitig1_tree->second, abbrevUnitigLocVal, 
-                                          DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+                                          default_max_offset_considered_same);
                if(element == unitig1_tree->second.end())
                  continue;
 	       if (element->frontEdgeOffset >= offset) continue;
@@ -1164,10 +1148,10 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
 	       unitigPathPrintVal.frontEdgeOffset = element->frontEdgeOffset;
 	       unitigPathPrintVal.ori = element->ori;
                auto rear_unitig = find_within(treeArr2, unitigPathPrintVal, 
-                                              DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+                                              default_max_offset_considered_same);
 	       int frontEdgeOffset1 = rear_unitig->frontEdgeOffset;
 	       int frontEdgeOffset2 = front_unitig->frontEdgeOffset;
-	       if (frontEdgeOffset2 - frontEdgeOffset1 != unitigLengths[front_unitig->unitig1] - minOverlapLength)
+	       if (frontEdgeOffset2 - frontEdgeOffset1 != unitigLengths[front_unitig->unitig1] - args.min_overlap_length_arg)
 		    continue;
 	       ++(rear_unitig->numOverlapsOut);
 	       if (rear_unitig->numOverlapsOut > 1) {
@@ -1246,7 +1230,7 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
          printPathNode(it);
 #ifdef KILLED111115
      for (i=0; i<numUnitigPathPrintRecsOnPath; i++)
-	  fprintf (outfile, "uni = %d, offset = %d, ori = %c, beginOffset = %d, endOffset = %d, numOvlsIn = %d, numOvlsOut = %d\n", augmentedUnitigPathPrintData[i].unitig1, augmentedUnitigPathPrintData[i].frontEdgeOffset, augmentedUnitigPathPrintData[i].ori, augmentedUnitigPathPrintData[i].beginOffset, augmentedUnitigPathPrintData[i].endOffset, augmentedUnitigPathPrintData[i].numOverlapsIn, augmentedUnitigPathPrintData[i].numOverlapsOut);
+	  fprintf (stderr, "uni = %d, offset = %d, ori = %c, beginOffset = %d, endOffset = %d, numOvlsIn = %d, numOvlsOut = %d\n", augmentedUnitigPathPrintData[i].unitig1, augmentedUnitigPathPrintData[i].frontEdgeOffset, augmentedUnitigPathPrintData[i].ori, augmentedUnitigPathPrintData[i].beginOffset, augmentedUnitigPathPrintData[i].endOffset, augmentedUnitigPathPrintData[i].numOverlapsIn, augmentedUnitigPathPrintData[i].numOverlapsOut);
 #endif
      if (approxNumPaths == 1) {
 	  generateSuperReadPlacementLinesForJoinedMates();
@@ -1342,7 +1326,7 @@ int KUnitigsJoinerThread::getSuperReadLength(void)
      int totLen, i;
      totLen = unitigLengths[augmentedUnitigPathPrintData[0].unitig1];
      for (i=1; i<numUnitigPathPrintRecsOnPath; i++)
-	  totLen += (unitigLengths[augmentedUnitigPathPrintData[i].unitig1] - minOverlapLength);
+	  totLen += (unitigLengths[augmentedUnitigPathPrintData[i].unitig1] - args.min_overlap_length_arg);
      
      return (totLen);
 }
@@ -1492,7 +1476,7 @@ void KUnitigsJoinerThread::findSingleReadSuperReads(char *readName, FILE* output
 	  matchStructIsUsed[i] = 0;
 	  if (kUTRMSptr[i].readMatchEnd <= maxReadOffsetSeen)
 	       continue;
-	  if (kUTRMSptr[i].readMatchBegin < maxReadOffsetSeen-minOverlapLength)
+	  if (kUTRMSptr[i].readMatchBegin < maxReadOffsetSeen-args.min_overlap_length_arg)
 	       continue; // Otherwise the k-unitigs overlap too much
 	  if (kUTRMSptr[i].readMatchBegin > maxReadOffsetSeen)
 	       return; // Part of the middle of the read is uncovered by k-unis
@@ -1539,7 +1523,7 @@ void KUnitigsJoinerThread::findSingleReadSuperReads(char *readName, FILE* output
 	       if (! matchStructIsUsed[i])
 		    continue;
 	       // The next is the overlap amount between k-unitigs, which we now require to be minOverlapLength
-	       if (maxReadOffset-kUTRMSptr[i].readMatchBegin != minOverlapLength)
+	       if (maxReadOffset-kUTRMSptr[i].readMatchBegin != args.min_overlap_length_arg)
 		    return;
 	       sprintf_append(superReadName, "_%d%c", kUTRMSptr[i].kUnitigNumber, kUTRMSptr[i].ori);
 	       maxReadOffset = kUTRMSptr[i].readMatchEnd;
@@ -1562,7 +1546,7 @@ void KUnitigsJoinerThread::findSingleReadSuperReads(char *readName, FILE* output
 	       if (! matchStructIsUsed[i])
 		    continue;
 	       // The next is the overlap amount between k-unitigs, which we now require to be minOverlapLength
-	       if (kUTRMSptr[i].readMatchEnd-minReadOffset != minOverlapLength)
+	       if (kUTRMSptr[i].readMatchEnd-minReadOffset != args.min_overlap_length_arg)
 		    return;
 	       sprintf_append(superReadName, "_%d%c", kUTRMSptr[i].kUnitigNumber, (kUTRMSptr[i].ori == 'F') ? 'R' : 'F');
 	       minReadOffset = kUTRMSptr[i].readMatchBegin;
@@ -1616,7 +1600,7 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
      if (evenReadMatchStructs.empty() || oddReadMatchStructs.empty()) {
        findSingleReadSuperReads(readNameSpace, outputFile);
 	  return; }
-     if (maxNodesAllowed == 0) {
+     if (args.max_nodes_allowed_arg == 0) {
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold-1);
 	  findSingleReadSuperReads (readNameSpace, outputFile);
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
@@ -1686,7 +1670,7 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
 #ifdef KILLED111115
 	  printf ("treeSize = %d\n", treeSize);
 #ifndef NO_OUTPUT
-	  fprintf (outfile, "endUnitig = %d\n", endUnitig); // This prints
+	  fprintf (stderr, "endUnitig = %d\n", endUnitig); // This prints
 #endif
 #endif
 	  // This is where the main print statement is
@@ -1808,7 +1792,7 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
                  continue;
 	       // If we get here we have a unitig on the path
                auto element = find_within(match_tree->second, abbULS1,
-                                          DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+                                          default_max_offset_considered_same);
                pathNum = element->pathNum;
 #ifdef KILL120102
 	       fprintf (stderr, "%s %d %d %d SUCCESS %d %d %d\n", readNameSpace, treeSize, i, abbULS1.frontEdgeOffset, splitJoinWindowMin, splitJoinWindowMax, pathNum);
@@ -1986,7 +1970,7 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
                       continue;
                     }
                     auto element = find_within(match_tree->second, abbULS1,
-                                               DEFAULT_MAX_OFFSET_CONSIDERED_SAME);
+                                               default_max_offset_considered_same);
                     if(element == match_tree->second.end()) {
                       last_element_is_nil = true;
                       continue;
