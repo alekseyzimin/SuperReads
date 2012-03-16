@@ -68,7 +68,8 @@ charb line(2000);
 char **kUnitigSequences;
 unsigned char **kUnitigSequenceCounts;
 unsigned char *endIsDone;
-int *kUnitigLengths, largestKUnitigNumber;
+int *kUnitigLengths;
+uint64_t largestKUnitigNumber;
 int kmerLen;
 char *inputPrefix, *outputPrefix;
 uint64_t *startOverlapByUnitig;
@@ -90,7 +91,8 @@ if (name == NULL) { fprintf (stderr, "Couldn't allocate space for '%s'\nBye!\n",
 
 int main (int argc, char *argv[])
 {
-     int numInputFiles, i;
+     int numInputFiles;
+     uint64_t llval;
 
      processArgs (argc, argv);
      numInputFiles = getNumInputFiles (inputPrefix);
@@ -101,18 +103,20 @@ int main (int argc, char *argv[])
 
      if (largestKUnitigNumber == 0)
 	  largestKUnitigNumber = getLargestKUnitigNumber (inputPrefix, numInputFiles);
-     printf ("largestKUnitigNumber = %d\n", largestKUnitigNumber);
+     printf ("largestKUnitigNumber = %llu\n", (long long unsigned int) largestKUnitigNumber);
 
      mallocOrDie (kUnitigSequences, largestKUnitigNumber+1, char *);
      mallocOrDie (kUnitigLengths, largestKUnitigNumber+1, int);
-     mallocOrDie (overlapData, (largestKUnitigNumber+1) * EST_OVLS_PER_KUNITIG, struct overlapDataStruct);
+     llval = largestKUnitigNumber+1; llval *= EST_OVLS_PER_KUNITIG;
+     mallocOrDie (overlapData, llval, struct overlapDataStruct);
      mallocOrDie (startOverlapByUnitig, largestKUnitigNumber+2, uint64_t);
      loadKUnitigSequences (inputPrefix, numInputFiles);
 
-     mallocOrDie (kMerMinusOneValuesAtEndOfKUnitigs, 4*(largestKUnitigNumber+1), struct endKUnitigKmerStruct);
+     llval = largestKUnitigNumber+1; llval *= 4;
+     mallocOrDie (kMerMinusOneValuesAtEndOfKUnitigs, llval, struct endKUnitigKmerStruct);
      loadKUnitigEndingKMerValues ();
-     mallocOrDie (ptrsToEndKUnitigKmerStructs, 4*(largestKUnitigNumber+1), struct endKUnitigKmerStruct *);
-     for (i=0; i<4*(largestKUnitigNumber+1); i++)
+     mallocOrDie (ptrsToEndKUnitigKmerStructs, llval, struct endKUnitigKmerStruct *);
+     for (uint64_t i=0; i<4*(largestKUnitigNumber+1); i++)
 	  ptrsToEndKUnitigKmerStructs[i] = kMerMinusOneValuesAtEndOfKUnitigs+i;
      qsort (ptrsToEndKUnitigKmerStructs, 4*(largestKUnitigNumber+1), sizeof (struct endKUnitigKmerStruct *), (int (*)(const void*, const void*)) kmerStructCompare);
 
@@ -125,9 +129,10 @@ int main (int argc, char *argv[])
 
 void reportKUnitigEndMatches (void)
 {
-     int beginIndex, endIndex;
+     uint64_t beginIndex, endIndex;
      struct endKUnitigKmerStruct *ptr1, *ptr2;
-     int i, j, totKUniStartSep;
+     uint64_t i, j;
+     int totKUniStartSep;
      int kUni1, kUni2, ahg, bhg, begin1, end1, begin2, end2;
      int isGoodOverlap, skipThis;
      uint64_t numOvlsOutput=0;
@@ -247,7 +252,7 @@ void reportKUnitigEndMatches (void)
 	  startOverlapByUnitig[unitig1]++;
 	  startOverlapByUnitig[unitig2]++;
      }
-     for (int64_t unitigNum = 1; unitigNum < largestKUnitigNumber + 2; unitigNum++)
+     for (uint64_t unitigNum = 1; unitigNum < largestKUnitigNumber + 2; unitigNum++)
 	  startOverlapByUnitig[unitigNum] += startOverlapByUnitig[unitigNum - 1];
      
      for (uint64_t j=0; j<numOvlsOutput; j++)
@@ -313,8 +318,8 @@ int kmerStructCompare (struct endKUnitigKmerStruct **ptr1, struct endKUnitigKmer
 void loadKUnitigEndingKMerValues (void)
 {
      unsigned long long mask = 0ULL;
-     int i, kUnitigNumber;
-     unsigned long index;
+     int i;
+     uint64_t kUnitigNumber, index;
      
      for (i=0; i<32; i++) {
 	  mask <<= 2;
