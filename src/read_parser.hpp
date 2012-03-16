@@ -1,33 +1,27 @@
 #ifndef __READ_PARSER_HPP__
 #define __READ_PARSER_HPP__
 
-#include <pthread.h>
 #include <fstream>
 #include <memory>
-#include <jflib/pool.hpp>
+#include <jflib/multiplexed_parser.hpp>
 #include <charb.hpp>
 //#include <err.hpp>
 
 // Return reads from a fasta or fastq file. The parsing is done in a
 // dedicated thread.
 
-class read_parser {
-  struct read {
-    charb header;
-    charb sequence;
-    charb quals;
-  };
-  struct read_group {
-    std::vector<read> reads;
-    int nb_filled;
-  };
-  typedef jflib::pool<read_group> read_pool;
+struct read_parser_read {
+  charb header;
+  charb sequence;
+  charb quals;
+};
+
+
+class read_parser : public multiplexed_parser<read_parser_read> {
+  typedef multiplexed_parser<read_parser_read> super;
   std::vector<std::filebuf*>      filebufs_;
   std::istream                    input_;
   bool                            close_input_;
-  int                             group_size_;
-  read_pool                       pool_;
-  bool                            reader_started_;
   pthread_t                       reader_id_;
   const char*                     error_;
 
@@ -42,6 +36,7 @@ class read_parser {
     return res;
   }
 public:
+  typedef read_parser_read read;
   /** Read parser reading file path, with given expected number of
       threads (equivalently, number of conc_iterator used
       concurrently). Specifying too low a number of threads can
@@ -51,97 +46,41 @@ public:
 
       The total number of buffer created is 3 * nb_threads * group_size
    */
-  read_parser(const char* path, int nb_threads = 16, int group_size = 100) :
-    input_(open_file(path)), close_input_(true), group_size_(group_size),
-    pool_(3 * nb_threads), reader_started_(false), error_(0)
-  { start_parsing_thread(); }
+  explicit read_parser(const char* path, int nb_threads = 16, int group_size = 100) :
+    super(nb_threads, group_size),
+    input_(open_file(path)), close_input_(true)
+  { start_parsing(); }
 
   /** Same as above reading from an already open istream. In this case
       the stream is not closed by this class destructor.
    */
   read_parser(std::istream& input, int nb_threads = 16, int group_size = 100) :
-    input_(input.rdbuf()), close_input_(false), group_size_(group_size),
-    pool_(3 * nb_threads), reader_started_(false), error_(0)
-  { start_parsing_thread(); }
+    super(nb_threads, group_size),
+    input_(input.rdbuf()), close_input_(false)
+  { start_parsing(); }
 
   /** Open multiple files
    */
   template<typename Iterator>
-  read_parser(Iterator file_start, Iterator file_end, int nb_threads = 16, int group_size = 100) :
-    input_(0), group_size_(group_size), pool_(3 * nb_threads), reader_started_(false), error_(0)
+  read_parser(Iterator file_start, Iterator file_end, 
+              int nb_threads = 16, int group_size = 100) :
+    super(nb_threads, group_size), input_(0)
   {
     for( ; file_start != file_end; ++file_start)
       filebufs_.push_back(open_file(*file_start));
-    start_parsing_thread();
+    start_parsing();
   }
 
   virtual ~read_parser();
 
-  // Check that no error has occurred so far. Theses errors are
-  // reported by the parsing thread.
-
-  // good if no error and not end_of_file
-  bool good() const { return !pool_.is_closed_A_to_B() && error() == 0; }
-  bool eof() const { return pool_.is_closed_A_to_B(); }
-  // fail if an error occurred. end_of_file does not set fail
-  bool fail() const { return error() != 0; }
-  // error message
-  const char* error() const { return jflib::a_load_ptr((const char*&)error_); }
-
-  // Stream of reads
-  class stream { 
-    read_pool&     pool_;
-    read_pool::elt elt_;
-    int            i_;
-  public:
-    stream(read_parser& rp) : pool_(rp.pool_), elt_(pool_.get_B()), i_(0) { 
-      while(!elt_.is_empty() && elt_->nb_filled == 0)
-        elt_ = pool_.get_B();
-    }
-    // Probably useless
-    stream() = default;
-    // Non copyable
-    stream(const stream& rhs) = delete;
-    stream& operator=(const stream& rhs) = delete;
-
-    read& operator*() { return elt_->reads[i_]; }
-    read* operator->() { return &elt_->reads[i_]; }
-
-    stream& operator++() {
-      if(++i_ < elt_->nb_filled)
-        return *this;
-      i_ = 0;
-      do {
-        elt_ = pool_.get_B();
-      } while(!elt_.is_empty() && elt_->nb_filled == 0);
-      return *this;
-    }
-    operator void*() const { return elt_.is_empty() ? (void*)0 : (void*)&elt_; }
-  };
-
 private:
-  struct self_pointer {
-    read_parser* self;
-  };
-  static void* start_reader_loop(void* self_) {
-    std::auto_ptr<self_pointer> self((self_pointer*)self_);
-    self->self->reader_loop();
-    return 0;
-  }
+  // Start the appropriate reader loop based on examining the beginning of the file
+  virtual void parser_loop();
 
-  // Decide which format the file is and throw an error if not
-  // support. Finish initialization and start the parsing thread.
-  void start_parsing_thread();
-
-  // Start the parse_input_stream on each file/stream
-  void reader_loop();
-
-  // Start the appropriate loop based on type of file
-  void parse_input_stream();
-
+  bool parse_input_stream();
   // Main loop parsing fasta & fastq format
-  void fasta_reader_loop();
-  void fastq_reader_loop();
+  bool fasta_reader_loop();
+  bool fastq_reader_loop();
 };
 
 #endif /* __READ_PARSER_HPP__ */

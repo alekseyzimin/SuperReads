@@ -388,8 +388,7 @@ print FILE "\n";
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
     print FILE "cat combined_0 > /dev/null\n";
-    print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files\n";
-    print FILE "cat error_corrected.fa  | homo_trim $TRIM_PARAM > pe.cor.fa\n";
+    print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log | homo_trim $TRIM_PARAM > pe.cor.fa\n";
     $rerun_pe=1;
 }
 #compute average PE read length -- we will need this for Astat later
@@ -404,8 +403,7 @@ if(scalar(@jump_info_array)>0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
         print FILE "cat combined_0 > /dev/null\n";
-	print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files\n";
-	print FILE "cat error_corrected.fa  | homo_trim $TRIM_PARAM > sj.cor.fa\n";
+	print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log | homo_trim $TRIM_PARAM > sj.cor.fa\n";
         $rerun_sj=1;
     }
 }
