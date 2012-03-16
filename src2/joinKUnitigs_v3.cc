@@ -381,7 +381,8 @@ int main (int argc, char **argv)
      FILE *infile;
      charb line(2000);
      int unitig1, unitig2, overlapCount = 0;
-     int unitigNum, numUnitigs, firstUnitigNum = 0;
+     int unitigNum, numUnitigs;
+     static const int firstUnitigNum = 0; // Is it really needed?
      int numFlds;
      ExpBuffer<char*> flds;
 
@@ -422,7 +423,7 @@ int main (int argc, char **argv)
      if (args.kunitigs_translation_file_given)
 	  loadKUnitigTranslationTable(args.kunitigs_translation_file_arg);
 
-// Set up space to keep the overlaps file
+     // Map the overlaps file
      int fd = open(args.overlaps_file_arg, O_RDONLY);
      if(fd == -1) {
 	  perror("open failed");
@@ -1235,24 +1236,22 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
      if (approxNumPaths == 1) {
 	  generateSuperReadPlacementLinesForJoinedMates();
 #if 0
-	  int isReversed, superReadLength;
-	  charb tempOutputString(100);
-	  // the following uses augmentedUnitigPathPrintData
-	  superReadLength = getSuperReadLength ();
-	  isReversed = setSuperReadNameFromAugmentedPath ();
-	  sprintf (outputString,"%s%lld %s ", rdPrefixHold, readNumHold-1, (char*)superReadName);
-	  if (! isReversed)
-	       sprintf (tempOutputString,"%d F\n", lengthAdjustment1);
-	  else
-	       sprintf (tempOutputString,"%d R\n", superReadLength - lengthAdjustment1);
-	  strcat (outputString, tempOutputString);
-	  sprintf (tempOutputString,"%s%lld %s ", rdPrefixHold, readNumHold, (char*)superReadName);
-	  strcat (outputString, tempOutputString);
-	  if (! isReversed)
-	       sprintf (tempOutputString,"%d R\n", superReadLength - lengthAdjustment2);
-	  else
-	       sprintf (tempOutputString,"%d F\n", lengthAdjustment2);
-	  strcat (outputString, tempOutputString);
+          {
+            int isReversed, superReadLength;
+            // the following uses augmentedUnitigPathPrintData
+            superReadLength = getSuperReadLength ();
+            isReversed = setSuperReadNameFromAugmentedPath ();
+            sprintf (outputString,"%s%lld %s ", rdPrefixHold, readNumHold-1, (char*)superReadName);
+            if (! isReversed)
+              sprintf_append (outputString,"%d F\n", lengthAdjustment1);
+            else
+              sprintf_append (outputString,"%d R\n", superReadLength - lengthAdjustment1);
+            sprintf_append (outputString,"%s%lld %s ", rdPrefixHold, readNumHold, (char*)superReadName);
+            if (! isReversed)
+              sprintf_append (outputString,"%d R\n", superReadLength - lengthAdjustment2);
+            else
+              sprintf_append (outputString,"%d F\n", lengthAdjustment2);
+          }
 #endif
      }
 #if 0
@@ -1266,24 +1265,20 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
 
 void KUnitigsJoinerThread::generateSuperReadPlacementLinesForJoinedMates ()
 {
-     int isReversed, superReadLength;
-     charb tempOutputString(100);
-     // the following uses augmentedUnitigPathPrintData
-     superReadLength = getSuperReadLength ();
-     isReversed = setSuperReadNameFromAugmentedPath ();
-     sprintf (outputString,"%s%lld %s ", rdPrefixHold, readNumHold-1, (char*)superReadName);
-     if (! isReversed)
-	  sprintf (tempOutputString,"%d F\n", lengthAdjustment1);
-     else
-	  sprintf (tempOutputString,"%d R\n", superReadLength - lengthAdjustment1);
-     strcat (outputString, tempOutputString);
-     sprintf (tempOutputString,"%s%lld %s ", rdPrefixHold, readNumHold, (char*)superReadName);
-     strcat (outputString, tempOutputString);
-     if (! isReversed)
-	  sprintf (tempOutputString,"%d R\n", superReadLength - lengthAdjustment2);
-     else
-	  sprintf (tempOutputString,"%d F\n", lengthAdjustment2);
-     strcat (outputString, tempOutputString);
+  int isReversed, superReadLength;
+  // the following uses augmentedUnitigPathPrintData
+  superReadLength = getSuperReadLength ();
+  isReversed = setSuperReadNameFromAugmentedPath ();
+  sprintf (outputString,"%s%lld %s ", rdPrefixHold, readNumHold-1, (char*)superReadName);
+  if (! isReversed)
+    sprintf_append (outputString,"%d F\n", lengthAdjustment1);
+  else
+    sprintf_append (outputString,"%d R\n", superReadLength - lengthAdjustment1);
+  sprintf_append (outputString,"%s%lld %s ", rdPrefixHold, readNumHold, (char*)superReadName);
+  if (! isReversed)
+    sprintf_append (outputString,"%d R\n", superReadLength - lengthAdjustment2);
+  else
+    sprintf_append (outputString,"%d F\n", lengthAdjustment2);
 }
 
 int KUnitigsJoinerThread::setSuperReadNameFromAugmentedPath (void)
@@ -1564,8 +1559,7 @@ void KUnitigsJoinerThread::findSingleReadSuperReads(char *readName, FILE* output
 
 void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
 {
-     char readNameSpace[200];
-     charb tempStderrStr(200);
+     charb readNameSpace;
      int insertLengthMean;
      int successCode;
      struct abbrevUnitigLocStruct abbULS1;
@@ -1709,8 +1703,8 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
 #endif
 	  sprintf (stderrOutputString, "%s%lld\n", rdPrefixHold, readNumHold);
 	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
-	       sprintf (tempStderrStr, "Node %d %d %c -> %d %d %c\n", (int) nodeArray[it3141->first].unitig2, (int) nodeArray[it3141->first].frontEdgeOffset, (char) nodeArray[it3141->first].ori, (int) nodeArray[it3141->second].unitig2, (int) nodeArray[it3141->second].frontEdgeOffset, (char) nodeArray[it3141->second].ori);
-	       strcat(stderrOutputString, tempStderrStr); }
+	       sprintf_append(stderrOutputString, "Node %d %d %c -> %d %d %c\n", (int) nodeArray[it3141->first].unitig2, (int) nodeArray[it3141->first].frontEdgeOffset, (char) nodeArray[it3141->first].ori, (int) nodeArray[it3141->second].unitig2, (int) nodeArray[it3141->second].frontEdgeOffset, (char) nodeArray[it3141->second].ori);
+          }
 #endif
 	  struct nodePair tNodePair;
 	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
