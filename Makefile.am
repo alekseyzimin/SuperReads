@@ -14,7 +14,8 @@ noinst_HEADERS += $(JFLIB_I)/circular_buffer.hpp			\
                   $(JFLIB_I)/compare_and_swap.hpp			\
                   $(JFLIB_I)/locks_pthread.hpp				\
                   $(JFLIB_I)/multiplexed_io.hpp $(JFLIB_I)/pool.hpp	\
-                  $(JFLIB_I)/atomic_field.hpp
+                  $(JFLIB_I)/atomic_field.hpp				\
+                  $(JFLIB_I)/multiplexed_parser.hpp
 
 ##############################
 # utils lib
@@ -44,8 +45,8 @@ LDADD = libutils.a
 ##############################
 bin_PROGRAMS += create_k_unitigs error_correct_reads			\
                 error_corrected2frg homo_trim reverse_complement	\
-                reduce_sr sorted_merge combine_jf_dbs			\
-                create_k_unitigs_large_k
+                reduce_sr sorted_merge combine_jf_dbs
+
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl		\
                     src/close_gaps.sh src/compute_sr_cov.pl		\
@@ -77,8 +78,8 @@ error_correct_reads_SOURCES = src/error_correct_reads.cc src/kmer.cc	\
 reduce_sr_SOURCES = src/reduce_sr.cc
 sorted_merge_SOURCES = src/sorted_merge.cc
 combine_jf_dbs_SOURCES = src/combine_jf_dbs.cc
-create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
-                                   src/read_parser.cc src/mer_dna.cc
+#create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
+#                                   src/read_parser.cc src/mer_dna.cc
 
 ##############################
 # src2 pipeline
