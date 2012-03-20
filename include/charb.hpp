@@ -12,19 +12,18 @@
 
 #include <exp_buffer.hpp>
 
-/** Drop in (almost) to the char * type. This implement a 0 terminated
- * growable array of char with overloaded functions for many/most of
- * the str* and IO function of the C standard library. It is intended
- * to replace string manipulation with minimal modification to a C
- * program.
- *
- * The base position of a charb may change due to reallocation. Assume
- * that any call to a standard library function that write into a
- * charb invalidates the pointers into that charb.
- *
- * The following calls are know not to be overloaded: strfmon,
- * strftime, strxfrm.
- */
+/** @file charb.hpp 
+    @brief An almost drop in replacement for `char*`
+    with safe memory management.
+
+    Many str* and IO function of the C standard library are overloaded
+    to work with `charb`. A `charb` is cast automatically to a `char*`
+    or `const char*` when necessary. Hence, the function `strlen(const
+    char*)` can be called on a `charb`.
+
+   The following calls are know not to be overloaded: strfmon,
+   strftime, strxfrm.
+*/
 
 // For the friend business to work
 template<typename R> class basic_charb;
@@ -35,6 +34,18 @@ template<typename R> ssize_t getdelim(basic_charb<R>& b, int delim, FILE* stream
 template<typename R> char *strcat(basic_charb<R>& b, const char* src);
 template<typename R> std::istream& getline(std::istream& is, basic_charb<R>& b, char delim, char *cptr);
 
+/** Basic base charb class. This implement a 0 terminated
+ * growable array of char with overloaded functions for many/most of
+ * the str* and IO function of the C standard library. It is intended
+ * to replace string manipulation with minimal modification to a C
+ * program.
+ *
+ * The base position of a charb may change due to reallocation. Assume
+ * that any call to a standard library function that write into a
+ * charb invalidates any pointers into that charb.
+ *
+ * See charb.hpp for more information on the overloaded functions.
+ */
 template<typename R>
 class basic_charb : public ExpBuffer<char, R> {
   typedef ExpBuffer<char, R> super;
@@ -69,12 +80,20 @@ public:
     this->swap(rhs);
     return *this;
   }
+  /** Length of string. The length of the string is updated by the
+   * many methods (`fgets`, `chomp`, etc.). The length returned can in
+   * some cases be different that what is returned by `strlen(b)`, for
+   * example in the case that the charb was modified using other
+   * methods (e.g. `strtok`) or directly by using pointers.
+   */
   size_t len() const { return super::size(); }
+  /** Set the length to be 0. */
   void clear() {
     super::clear();
     if(super::ptr_)
       *super::ptr_ = '\0';
   }
+  /** Remove space characters (as defined by `isspace()`) from the end. */
   void chomp() {
     while(super::ptr_ > super::base_ && isspace(*(super::ptr_ - 1)))
       --super::ptr_;
@@ -95,12 +114,15 @@ struct c_string {
   typedef basic_charb<remaper<T> > remap;
 };
 //typedef c_string<char>::malloc charb;
+/** Charb specialized for `char` */
 typedef basic_charb<reallocator<char> > charb;
 
-/** gets, fgets - input of characters and strings for char
- * buffer. Expand the size of the buffer if the line does not fit. The
- * length of the input buffer for fgets is ignored. gets(b) behave just
- * like fgets(b, stdin).
+/** Input of line for char buffer. Expand the size
+ * of the buffer if the line does not fit.
+ *
+ * @param b The charb to write to.
+ * @param stream The input stream.
+ * @param cptr The pointer inside the charb (not checked) to write to.
  */
 template<typename R>
 char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
@@ -142,17 +164,35 @@ char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
   return start;
 }
 
+/** Input of line for char buffer. The previous content of the charb is overwritten.
+
+    @param b The charb to write to
+    @param stream The input stream
+*/
 template<typename R>
 char *fgets(basic_charb<R> &b, FILE *stream) { return fgets(b, stream, b.base()); }
 
+/** Input of line from stdin. Equivalent to `fgets(b, stdin)`.
+ 
+    @param b The charb to write to
+*/
 template<typename R>
 char *gets(basic_charb<R> &b) { return fgets(b, stdin); }
 
+/** Similar to `fgets`, but append to the `charb`. I.e. write starts
+    after `length()` characters. 
+
+    @param b The charb to append to
+    @param stream The input stream
+*/
 template<typename R>
 char *fgets_append(basic_charb<R> &b, FILE *stream) { return fgets(b, stream, b.ptr()); }
 
-/** Backward compatible fgets for char buffer. The size argument is ignored and present
- * only for backward compatibility.
+/** Backward compatible `fgets` for char buffer.
+
+    @param b The charb to write to
+    @param size Ignored. Present for backward compatibility
+    @param stream The input stream
  */
 template<typename T, typename R>
 char *fgets(basic_charb<R> &b, T size, FILE *stream) { return fgets(b, stream); }
