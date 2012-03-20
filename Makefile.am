@@ -6,6 +6,8 @@ noinst_HEADERS =
 bin_PROGRAMS =
 dist_bin_SCRIPTS =
 
+EXTRA_DIST =
+
 ##############################
 # jflib
 ##############################
@@ -147,6 +149,17 @@ all_tests_LDADD = libgtest.la
 noinst_HEADERS += unittests/test_main.hpp unittests/misc.hpp
 
 include gtest.mk
+
+##############################
+# Doxygen
+##############################
+#include doxygen.am
+MOSTLYCLEANFILE = doxygen-doc
+EXTRA_DIST += doxygen.cfg
+.PHONY: doxygen-doc
+doxygen-doc: doxygen.cfg
+	rm -rf $@
+	doxygen $<
 
 ##############################
 # Extra configuration for development tree

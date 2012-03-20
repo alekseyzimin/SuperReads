@@ -23,7 +23,7 @@ GTEST_SRC = unittests/gtest/src/gtest-death-test.cc	\
 	    unittests/gtest/src/gtest-typed-test.cc	\
 	    unittests/gtest/src/gtest.cc
 
-EXTRA_DIST = $(GTEST_SRC)
+EXTRA_DIST += $(GTEST_SRC)
 
 # Headers, not installed
 GTEST_I = unittests/gtest/include/gtest
