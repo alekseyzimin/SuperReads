@@ -56,10 +56,11 @@ int            mer_len;
  */
 //typedef jellyfish::invertible_hash::array<uint64_t,atomic::gcc<uint64_t>,allocators::mmap> inv_hash_storage_t;
 typedef inv_hash_storage_t::iterator iterator_t;
+class header_output;
 
 void initializeValues (void);
 void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd, 
-                        const char *readName, inv_hash_storage_t *hashPtr, jflib::omstream& out);
+                        const char *readName, inv_hash_storage_t *hashPtr, header_output& out);
 
 class ReadKunitigs : public thread_exec {
   read_parser         unitig_parser;
@@ -115,6 +116,41 @@ public:
   }
 };
 
+/** Keep track whether or not a header has been written. On the first
+    actual output (operator<<), the header is prepended. set_header()
+    must be called to set/create the header. After we are done with a
+    read, flush() is called, which adds a new line if necessary and
+    endr (end of record) if asked to.
+ */
+class header_output {
+  jflib::omstream& out_;
+  charb            header_;
+  bool             is_written_; // whether header has been written already
+public:
+  header_output(jflib::omstream& out) : out_(out), is_written_(false) { }
+
+  void set_header(const char* name, size_t length) {
+    sprintf(header_, "%s %ld", name, length);
+    is_written_ = false;
+  }
+  void flush(bool end_of_record) {
+    if(is_written_)
+      out_ << "\n";
+    if(end_of_record)
+      out_ << jflib::endr;
+  }
+
+  template<typename T>
+  jflib::omstream& operator<<(T& x) {
+    if(!is_written_) {
+      out_ << header_;
+      is_written_ = true;
+    }
+    out_ << x;
+    return out_;
+  }
+};
+
 class ProcessReads : public thread_exec {
   read_parser           parser;
   inv_hash_storage_t   *hash;
@@ -132,6 +168,7 @@ public:
      virtual void start(int id) {
        read_parser::stream read_stream(parser);
        jflib::omstream     out(multiplexer);
+       header_output       hout(out);
        char                read_prefix[3], prev_read_prefix[3];
        uint64_t            read_id = 0, prev_read_id = 0;
        memset(read_prefix, '\0', sizeof(read_prefix));
@@ -143,13 +180,20 @@ public:
          strtok(read_stream->header, " ");
          sscanf(read_stream->header, ">%2s%ld", read_prefix, &read_id);
          
-         // Keep mated read together in output.
-         if((read_id % 2 == 0) || (read_id != (prev_read_id + 1)) ||
-            strcmp(read_prefix, prev_read_prefix))
-           out << jflib::endr;
+         // Start new line & print read header if new read
+         bool is_new_read = strcmp(read_prefix, prev_read_prefix) || read_id != prev_read_id;
+         if(is_new_read) {
+           // Keep mated read together in output.
+           bool end_of_record =
+             (read_id % 2 == 0) || (read_id != (prev_read_id + 1)) || strcmp(read_prefix, prev_read_prefix);
+           hout.flush(end_of_record);
+           hout.set_header(read_stream->header + 1, read_stream->sequence.size());
+         }
+
          getMatchesForRead(read_stream->sequence, read_stream->sequence.end(),
-                           read_stream->header + 1, hash, out);
+                           read_stream->header + 1, hash, hout);
        }
+       hout.flush(true);
      }
 };
 
@@ -278,7 +322,7 @@ void initializeValues (void)
 
 void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd, 
                         const char *readName, inv_hash_storage_t *hashPtr,
-                        jflib::omstream& out)
+                        header_output& out)
 {
      int readLength;
      uint64_t readKmer, readKmerTmp, readRevCompKmer, readRevCompKmerTmp;
@@ -376,9 +420,9 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 		    fprintf (out, " %lu %d %d %s", kUnitigLengths[kUnitigNumberHold], readLength, kUnitigNumberHold, readName);
 		    fprintf (out, "\n");
 #else
-                    out << ((netOriHold == 0) ? 'F' : 'R') << " "
-                        << ahg << " " << readLength << " " << kUnitigNumberHold << " "
-                        << readName << "\n";
+                    out << " " << kUnitigNumberHold
+                        << " " << ahg
+                        << " " << ((netOriHold == 0) ? 'F' : 'R');
                     //		    fprintf (out, "%c %d %d %d %s\n", (netOriHold == 0) ? 'F' : 'R', ahg, readLength, kUnitigNumberHold, readName);
 #endif
 	       }
@@ -510,9 +554,9 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	  fprintf (out, "\n");
 #else
           //	  fprintf (out, "%c %d %d %d %s\n", (netOriHold == 0) ? 'F' : 'R', ahg, readLength, kUnitigNumberHold, readName);
-          out << ((netOriHold == 0) ? 'F' : 'R') << " "
-              << ahg << " " << readLength << " " << kUnitigNumberHold << " "
-              << readName << "\n";
+          out << " " << kUnitigNumberHold
+              << " " << ahg
+              << " " << ((netOriHold == 0) ? 'F' : 'R');
 #endif
      }
 }
