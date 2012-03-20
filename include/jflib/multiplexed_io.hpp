@@ -8,22 +8,38 @@
 #include <stdexcept>
 #include <jflib/pool.hpp>
 
-/** Multiplexed io stream. Multiple threads write to a pool of buffers
- * which are then written by a single thread to an ostream. Similar to
- * asynchronous IO, potentially easier to use.
- *
- * This works in 2 steps: first create the o_multiplexer based on an
- * std::ostream. This will setup the pool. Then, each thread creates
- * an omstream based on the o_multiplexer. Each of this omstream
- * obtain and send buffers to the ostream using the pool. To ensure
- * that the output is not interleaved with other threads output, there
- * is a end_record() (or << endr) method which marks the end of a
- * record that can be send to the underlying ostream and written as
- * one atomic operation. A sync() operation (or << std::flush) implies
- * an end of record as well.
- */
+@file multiplexed_io.hpp
+ @brief Multiplexed io stream.
+
 
 namespace jflib {
+  /** Output multiplexer class. Multiple threads write to a pool of
+   * buffers which are then written by a single thread to an
+   * ostream. Similar to asynchronous IO, potentially easier to use.
+   *
+   * This works in 2 steps: first create the o_multiplexer based on an
+   * `std::ostream`. This will setup the pool/FIFO. Then, each thread creates
+   * an `omstream` based on the `o_multiplexer`. Each of this `omstream`
+   * obtain and send buffers to the ostream using the pool. To ensure
+   * that the output is not interleaved with other threads output,
+   * there is a `end_record()` (or `<< endr`) method which marks the
+   * end of a record that can be send to the underlying ostream and
+   * written as one atomic operation. A `sync()` operation (or `<<
+   * std::flush`) implies an end of record as well.
+   *
+   * An example:
+   * ~~~{.cc}
+   * std::ofstream file("/path/to/file"); // Open file for output
+   * jflib::o_multiplexer multiplexer(file); // Create multiplexer to file
+   *
+   * // In each thread
+   * jflib::omstream out(multiplexer); // Create my multiplexed ostream
+   * out << "Hello world!\n" << "How are you doing?\n" << endr;
+   * ~~~
+   *
+   * The two lines are guaranteed to not be interleaved with output
+   * from other thread. They are an atomic record.
+   */
   class o_multiplexer {
     class                buffer;
     class                multiplexedbuf;
@@ -34,15 +50,18 @@ namespace jflib {
       writer_info(std::ostream *_os, buffer_pool *_pool) : os(_os), pool(_pool) { }
     };
   public:
-    /** Constructor based on an ostream os and nb_buffers of size
-     * buffer_size. For reliable performance, there should be more
-     * nb_buffers than threads that will create omstream, otherwise
-     * there will always be threads waiting on getting a
+    /** Constructor based on an ostream `os` and `nb_buffers` of size
+     * `buffer_size`.
+     * @param os Underlying stream to write to.
+     *
+     * @param nb_buffers For reliable performance, there should be
+     * more nb_buffers than threads that will create omstream,
+     * otherwise there will always be threads waiting on getting a
      * buffer. Probably, 2 to 3 times the number of threads.
      *
-     * The size of a buffer should be larger than the record
-     * length. If not, the buffer get enlarged (size doubled) when a
-     * record does not fit into a buffer.
+     * @param buffer_size The size of a buffer should be larger than
+     * the record length. If not, the buffer get enlarged (size
+     * doubled) when a record does not fit into a buffer.
      */
     o_multiplexer(std::ostream *os, size_t nb_buffers, size_t buffer_size)
       : _os(os), _pool(nb_buffers), _info(_os, &_pool), _writer_started(false)
@@ -63,13 +82,14 @@ namespace jflib {
      * destructor.
      */
     virtual ~o_multiplexer() { close(); }
+
     /** Tell the writer thread to stop after the pool is empty. To be
      * safe, this should be called after every threads with an
      * omstream() associated have are done writing to the
      * stream. Unspecified behavior if a thread writes after close has
      * been called.
      *
-     * TODO: should we implement a safe version that waits for every
+     * @todo should we implement a safe version that waits for every
      * omstream object to be destroyed?
      */
     void close() {
@@ -260,6 +280,8 @@ namespace jflib {
     bool          _writer_started;
   };
 
+  /** Multiplexed ostream. 
+   */
   class omstream : public std::ostream {
   public:
     omstream(o_multiplexer &om) : std::ostream(om.new_multiplexedbuf()) { }
@@ -267,9 +289,9 @@ namespace jflib {
       rdbuf()->pubsync();
       delete rdbuf();
     }
-    /** Mark the end of a record
-     */
+    /** Mark the end of a record */
     void end_record() { ((o_multiplexer::basebuf*)rdbuf())->end_record(); }
+    /** Close this ostream */
     void close() { 
       rdbuf()->pubsync();
       delete rdbuf(new o_multiplexer::closedbuf());
