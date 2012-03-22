@@ -137,13 +137,6 @@ if ($tableResizeFactor > 1) {
     print "Resizing the table to $tableSize for the k-unitig jellyfish run\n";
     goto redoKUnitigsJellyfish; }
 
-$cmd = "cat $totReadFile | $exeDir/add_missing_mates.pl >  $readsAfterAddingMissingMates";
-&runCommandAndExitIfBad ($cmd, $readsAfterAddingMissingMates, 1, "addMissingMates", $readsAfterAddingMissingMates);
-
-$cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $kUnitigsFile $maxKUnitigNumberFile  $readsAfterAddingMissingMates";
-&runCommandAndExitIfBad ($cmd, $myProgOutput1_1prefix . "*", 1, "findReadKUnitigMatches", "$workingDirectory/newTestOutput.nucmerLinesOnly_*");
-if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile, $readsAfterAddingMissingMates); }
-
 # In addition to obvious output file, this also generates the files
 # mergedKUnitigs.numKUnitigs.txt, mergedKUnitigs.maxKUnitigNumber.txt, and mergedKUnitigs.totBasesInKUnitigs.txt in
 # $workingDirectory
@@ -156,6 +149,13 @@ else { # The following is so we stop here if we are using --stopAfter createLeng
 open (FILE, $mergedMaxKUnitigNumberFile); $maxKUnitigNumber = <FILE>; chomp ($maxKUnitigNumber); close (FILE);
 $cmd = "$exeDir/createKUnitigMaxOverlaps $mergedUnitigInputKUnitigsFile -kmervalue $merLen -largest-kunitig-number ".(int($maxKUnitigNumber)+1)." $prefixForOverlapsBetweenKUnitigs";
 &runCommandAndExitIfBad($cmd, $kUnitigOverlapsFile, 1, "createKUnitigMaxOverlaps", $kUnitigOverlapsFile, "$workingDirectory/overlap.coords");
+
+$cmd = "cat $totReadFile | $exeDir/add_missing_mates.pl >  $readsAfterAddingMissingMates";
+&runCommandAndExitIfBad ($cmd, $readsAfterAddingMissingMates, 1, "addMissingMates", $readsAfterAddingMissingMates);
+
+$cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -p $myProgOutput1_1prefix $kUnitigsFile $maxKUnitigNumberFile  $readsAfterAddingMissingMates";
+&runCommandAndExitIfBad ($cmd, $myProgOutput1_1prefix . "*", 1, "findReadKUnitigMatches", "$workingDirectory/newTestOutput.nucmerLinesOnly_*");
+if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile, $readsAfterAddingMissingMates); }
 
 # Do the shooting method here
 if ($mergedUnitigDataPrefix) {

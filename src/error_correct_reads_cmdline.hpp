@@ -56,7 +56,7 @@ public:
     anchor_count_arg(), anchor_count_given(false),
     window_arg(), window_given(false),
     error_arg(5), error_given(false),
-    output_arg("default"), output_given(false),
+    output_arg(""), output_given(false),
     contaminant_arg(""), contaminant_given(false),
     trim_contaminant_flag(false),
     gzip_flag(false)
@@ -73,7 +73,7 @@ public:
     anchor_count_arg(), anchor_count_given(false),
     window_arg(), window_given(false),
     error_arg(5), error_given(false),
-    output_arg("default"), output_given(false),
+    output_arg(""), output_given(false),
     contaminant_arg(""), contaminant_given(false),
     trim_contaminant_flag(false),
     gzip_flag(false)
@@ -223,7 +223,7 @@ public:
   " -a, --anchor-count=uint32                Minimum count for an anchor k-mer (default=min-count)\n" \
   " -w, --window=uint32                      Size of window (default=mer length)\n" \
   " -e, --error=uint32                       Maximum number of error in a window (5)\n" \
-  " -o, --output=prefix                      Output file prefix -- if not specified, then reads are output to STDOUT and log to STDERR (default)\n" \
+  " -o, --output=prefix                      Output file prefix (default=STDOUT for reads and STDERR for log)\n" \
   "     --contaminant=path                   Jellyfish database of contaminant k-mers\n" \
   "     --trim-contaminant                   Trim reads containing contaminated k-mers instead of discarding (false)\n" \
   "     --gzip                               Gzip output file (false)\n" \

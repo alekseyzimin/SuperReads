@@ -68,11 +68,13 @@ charb line(2000);
 char **kUnitigSequences;
 unsigned char **kUnitigSequenceCounts;
 unsigned char *endIsDone;
-int *kUnitigLengths, largestKUnitigNumber;
+int *kUnitigLengths;
+uint64_t largestKUnitigNumber;
 int kmerLen;
 char *inputPrefix, *outputPrefix;
 uint64_t *startOverlapByUnitig;
 struct overlapDataStruct *overlapDataToSave;
+bool createCoordsFile;
 
 void reportKUnitigEndMatches (void);
 int kmerStructCompare (struct endKUnitigKmerStruct **ptr1, struct endKUnitigKmerStruct **ptr2);
@@ -89,7 +91,8 @@ if (name == NULL) { fprintf (stderr, "Couldn't allocate space for '%s'\nBye!\n",
 
 int main (int argc, char *argv[])
 {
-     int numInputFiles, i;
+     int numInputFiles;
+     uint64_t llval;
 
      processArgs (argc, argv);
      numInputFiles = getNumInputFiles (inputPrefix);
@@ -100,18 +103,20 @@ int main (int argc, char *argv[])
 
      if (largestKUnitigNumber == 0)
 	  largestKUnitigNumber = getLargestKUnitigNumber (inputPrefix, numInputFiles);
-     printf ("largestKUnitigNumber = %d\n", largestKUnitigNumber);
+     printf ("largestKUnitigNumber = %llu\n", (long long unsigned int) largestKUnitigNumber);
 
      mallocOrDie (kUnitigSequences, largestKUnitigNumber+1, char *);
      mallocOrDie (kUnitigLengths, largestKUnitigNumber+1, int);
-     mallocOrDie (overlapData, (largestKUnitigNumber+1) * EST_OVLS_PER_KUNITIG, struct overlapDataStruct);
+     llval = largestKUnitigNumber+1; llval *= EST_OVLS_PER_KUNITIG;
+     mallocOrDie (overlapData, llval, struct overlapDataStruct);
      mallocOrDie (startOverlapByUnitig, largestKUnitigNumber+2, uint64_t);
      loadKUnitigSequences (inputPrefix, numInputFiles);
 
-     mallocOrDie (kMerMinusOneValuesAtEndOfKUnitigs, 4*(largestKUnitigNumber+1), struct endKUnitigKmerStruct);
+     llval = largestKUnitigNumber+1; llval *= 4;
+     mallocOrDie (kMerMinusOneValuesAtEndOfKUnitigs, llval, struct endKUnitigKmerStruct);
      loadKUnitigEndingKMerValues ();
-     mallocOrDie (ptrsToEndKUnitigKmerStructs, 4*(largestKUnitigNumber+1), struct endKUnitigKmerStruct *);
-     for (i=0; i<4*(largestKUnitigNumber+1); i++)
+     mallocOrDie (ptrsToEndKUnitigKmerStructs, llval, struct endKUnitigKmerStruct *);
+     for (uint64_t i=0; i<4*(largestKUnitigNumber+1); i++)
 	  ptrsToEndKUnitigKmerStructs[i] = kMerMinusOneValuesAtEndOfKUnitigs+i;
      qsort (ptrsToEndKUnitigKmerStructs, 4*(largestKUnitigNumber+1), sizeof (struct endKUnitigKmerStruct *), (int (*)(const void*, const void*)) kmerStructCompare);
 
@@ -124,18 +129,20 @@ int main (int argc, char *argv[])
 
 void reportKUnitigEndMatches (void)
 {
-     int beginIndex, endIndex;
+     uint64_t beginIndex, endIndex;
      struct endKUnitigKmerStruct *ptr1, *ptr2;
-     int i, j, totKUniStartSep;
+     uint64_t i, j;
+     int totKUniStartSep;
      int kUni1, kUni2, ahg, bhg, begin1, end1, begin2, end2;
      int isGoodOverlap, skipThis;
      uint64_t numOvlsOutput=0;
      char netOri;
      char filename[500];
-     FILE *coordsFile, *overlapsFile;
+     FILE *coordsFile=NULL, *overlapsFile;
 
-     sprintf (filename, "%s.coords", outputPrefix);
-     coordsFile = Fopen (filename, "w");
+     if (createCoordsFile) {
+	  sprintf (filename, "%s.coords", outputPrefix);
+	  coordsFile = Fopen (filename, "w"); }
      sprintf (filename, "%s.overlaps", outputPrefix);
      overlapsFile = Fopen (filename, "wb");
 
@@ -210,7 +217,8 @@ void reportKUnitigEndMatches (void)
 			 begin2 = totKUniStartSep - (begin1-1);
 			 end2 = (totKUniStartSep - end1) + 1;
 		    }
-		    fprintf (coordsFile, "%d %d %d %d 100.00 %d %d %d %d\n", begin1, end1, begin2, end2, kUnitigLengths[kUni1], kUnitigLengths[kUni2], kUni1, kUni2);
+		    if (createCoordsFile)
+			 fprintf (coordsFile, "%d %d %d %d 100.00 %d %d %d %d\n", begin1, end1, begin2, end2, kUnitigLengths[kUni1], kUnitigLengths[kUni2], kUni1, kUni2);
 		    if (isGoodOverlap) {
 			 if(kUni1 !=kUni2){//temporary dirty fix by Aleksey
 			      overlapData[numOvlsOutput].kUni1 = kUni1;
@@ -244,7 +252,7 @@ void reportKUnitigEndMatches (void)
 	  startOverlapByUnitig[unitig1]++;
 	  startOverlapByUnitig[unitig2]++;
      }
-     for (int64_t unitigNum = 1; unitigNum < largestKUnitigNumber + 2; unitigNum++)
+     for (uint64_t unitigNum = 1; unitigNum < largestKUnitigNumber + 2; unitigNum++)
 	  startOverlapByUnitig[unitigNum] += startOverlapByUnitig[unitigNum - 1];
      
      for (uint64_t j=0; j<numOvlsOutput; j++)
@@ -289,7 +297,8 @@ void reportKUnitigEndMatches (void)
 
      fwrite (overlapDataToSave, sizeof (struct overlapDataStruct), numOvlsOutput, overlapsFile);
      
-     fclose (coordsFile);
+     if (createCoordsFile)
+	  fclose (coordsFile);
      fclose (overlapsFile);
 }
 	  
@@ -309,8 +318,8 @@ int kmerStructCompare (struct endKUnitigKmerStruct **ptr1, struct endKUnitigKmer
 void loadKUnitigEndingKMerValues (void)
 {
      unsigned long long mask = 0ULL;
-     int i, kUnitigNumber;
-     unsigned long index;
+     int i;
+     uint64_t kUnitigNumber, index;
      
      for (i=0; i<32; i++) {
 	  mask <<= 2;
@@ -508,7 +517,7 @@ FILE *Fopen (const char *fn, const char *mode)
 
 void giveUsageAndExit (void)
 {
-     fprintf (stderr, "This program outputs the coords and overlaps files for a given set of\n k-unitigs generated by k-mers of length K that overlap by exactly\n (K-1) bases. We work, by default, with k-unitigs generated using a\n k-mer size of 31, but if another k-mer size was used, use the flag\n-kmervalue kMerSize\n to specify the k-mer size used when generating the k-unitigs.\n\nThe first non-flag arg is the prefix used for the k-unitigs files.\n It assumes that the files are named *_#.fa, where\n * is the prefix specified and the #s start from 0 and continue until\n the last one. This arg may also be used to specify the complete\n filename. Note that all input files are assumed to have k-unitig\n numbers in ascending order.\n\nThe second non-flag arg is the prefix used for the output files.\n The program will generate the files\n prefix.coords   and   prefix.overlaps.\n\n So the final syntax is\n\ncreateKUnitigMaxOverlaps [flags] inputPrefix outputPrefix\n where the possible flags are\n   -h: help and exit\n   -kmervalue kMerSize\n   -largest-kunitig-number largestKUnitigNumber (in this case the\n       k-unitigs don't have to be in numeric order in the files.)\n");
+     fprintf (stderr, "This program outputs the overlaps file as well as (optionally) the coords file for a given set of\n k-unitigs generated by k-mers of length K that overlap by exactly\n (K-1) bases. We work, by default, with k-unitigs generated using a\n k-mer size of 31, but if another k-mer size was used, use the flag\n-kmervalue kMerSize\n to specify the k-mer size used when generating the k-unitigs.\n\nThe first non-flag arg is the prefix used for the k-unitigs files.\n It assumes that the files are named *_#.fa, where\n * is the prefix specified and the #s start from 0 and continue until\n the last one. This arg may also be used to specify the complete\n filename. Note that all input files are assumed to have k-unitig\n numbers in ascending order.\n\nThe second non-flag arg is the prefix used for the output files.\n The program will generate the files\n prefix.coords   and   prefix.overlaps.\n\n So the final syntax is\n\ncreateKUnitigMaxOverlaps [flags] inputPrefix outputPrefix\n where the possible flags are\n   -h: help and exit\n   -kmervalue kMerSize\n   -create-coords-file to output the coords file as well as the overlaps file\n   -largest-kunitig-number largestKUnitigNumber (in this case the\n       k-unitigs don't have to be in numeric order in the files.)\n");
      exit (0);
 }
 
@@ -519,6 +528,7 @@ void processArgs (int argc, char **argv)
      kmerLen = KMER_LENGTH;
      numArgsSeen = 0;
      largestKUnitigNumber = 0;
+     createCoordsFile = false;
      for (i=1; i<argc; i++) {
 	  if (strcmp (argv[i], "-h") == 0)
 	       giveUsageAndExit();
@@ -529,6 +539,9 @@ void processArgs (int argc, char **argv)
 	  if (strcmp (argv[i], "-largest-kunitig-number") == 0) {
 	       ++i;
 	       largestKUnitigNumber = atoi (argv[i]);
+	       continue; }
+	  if (strcmp (argv[i], "-create-coords-file") == 0) {
+	       createCoordsFile = true;
 	       continue; }
 	  if (argv[i][0] == '-') {
 	       fprintf (stderr, "\nUnrecognized flag: %s\n\n", argv[i]);

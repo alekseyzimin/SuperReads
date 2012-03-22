@@ -6,6 +6,8 @@ noinst_HEADERS =
 bin_PROGRAMS =
 dist_bin_SCRIPTS =
 
+EXTRA_DIST =
+
 ##############################
 # jflib
 ##############################
@@ -14,7 +16,8 @@ noinst_HEADERS += $(JFLIB_I)/circular_buffer.hpp			\
                   $(JFLIB_I)/compare_and_swap.hpp			\
                   $(JFLIB_I)/locks_pthread.hpp				\
                   $(JFLIB_I)/multiplexed_io.hpp $(JFLIB_I)/pool.hpp	\
-                  $(JFLIB_I)/atomic_field.hpp
+                  $(JFLIB_I)/atomic_field.hpp				\
+                  $(JFLIB_I)/multiplexed_parser.hpp
 
 ##############################
 # utils lib
@@ -33,7 +36,7 @@ noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/skip_list_common.hpp			\
                   $(UTILS_I)/multi_thread_skip_list_set.hpp		\
                   $(UTILS_I)/multi_thread_skip_list_map.hpp		\
-                  $(UTILS_I)/tmpstream.hpp
+                  $(UTILS_I)/tmpstream.hpp $(UTILS_I)/exp_vector.hpp
 
 noinst_LIBRARIES = libutils.a
 libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp
@@ -44,8 +47,8 @@ LDADD = libutils.a
 ##############################
 bin_PROGRAMS += create_k_unitigs error_correct_reads			\
                 error_corrected2frg homo_trim reverse_complement	\
-                reduce_sr sorted_merge combine_jf_dbs			\
-                create_k_unitigs_large_k
+                reduce_sr sorted_merge combine_jf_dbs
+
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl		\
                     src/close_gaps.sh src/compute_sr_cov.pl		\
@@ -77,8 +80,8 @@ error_correct_reads_SOURCES = src/error_correct_reads.cc src/kmer.cc	\
 reduce_sr_SOURCES = src/reduce_sr.cc
 sorted_merge_SOURCES = src/sorted_merge.cc
 combine_jf_dbs_SOURCES = src/combine_jf_dbs.cc
-create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
-                                   src/read_parser.cc src/mer_dna.cc
+#create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
+#                                   src/read_parser.cc src/mer_dna.cc
 
 ##############################
 # src2 pipeline
@@ -134,7 +137,8 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_multi_thread_skip_list_map.cc	\
                     unittests/test_mer_dna.cc				\
                     unittests/test_read_parser.cc			\
-                    unittests/test_hash.cc
+                    unittests/test_hash.cc				\
+                    unittests/test_exp_vector.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
                      src/gcc_builtins.cc src/mer_dna.cc			\
                      src/read_parser.cc unittests/misc.cc
@@ -145,6 +149,17 @@ all_tests_LDADD = libgtest.la
 noinst_HEADERS += unittests/test_main.hpp unittests/misc.hpp
 
 include gtest.mk
+
+##############################
+# Doxygen
+##############################
+#include doxygen.am
+MOSTLYCLEANFILE = doxygen-doc
+EXTRA_DIST += doxygen.cfg
+.PHONY: doxygen-doc
+doxygen-doc: doxygen.cfg
+	rm -rf $@
+	doxygen $<
 
 ##############################
 # Extra configuration for development tree

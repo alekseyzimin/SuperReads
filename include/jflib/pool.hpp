@@ -23,7 +23,8 @@ namespace jflib {
    * (or destructed) it. 
    *
    * WARNING: The iterator on the elements does not check any of this
-   * and is not thread-safe.
+   * and is not thread-safe. It is designed to further
+   * inspect/initialize the elements in serial mode.
    */
   template<typename T, typename CV = locks::cond>
   class pool {
@@ -31,6 +32,7 @@ namespace jflib {
     class side;
     //    typedef typename std::vector<T> Tvec;
     typedef T* iterator;
+    /** Construct a pool of `size` elements */
     pool(size_t size) :
       size_(size), elts_(new T[size]), B2A(size, elts_), A2B(size, elts_)
     {
@@ -44,33 +46,51 @@ namespace jflib {
       delete [] elts_;
     }
 
+    /** Size of pool */
     size_t size() const { return size_; }
 
     /** Get the side A. Used to get an element from side A. */
     side &get_A() { return B2A; }
     /** Get the side B. Used to get an element from side B. */
     side &get_B() { return A2B; }
+    /** Close FIFO from A to B */
     void close_A_to_B() { A2B.fifo_.close(); A2B.signal(true); }
+    /** Close FIFO from B to A */
     void close_B_to_A() { B2A.fifo_.close(); B2A.signal(true); }
+    /** Check whether FIFO from A to B is closed */
     bool is_closed_A_to_B() const { return A2B.fifo_.is_closed(); }
+    /** Check whether FIFO from B to A is closed */
     bool is_closed_B_to_A() const { return B2A.fifo_.is_closed(); }
 
-    /** Iterators on the elements. Unlike other 
+    
+    /** Iterators on the elements. The iterator visits every element
+        manage in the pool in an order independent from two FIFOs. The
+        operation is NOT thread safe.
      */
     T* begin() { return elts_; }
     T* end() { return elts_ + size_; }
 
     /** A wrapper around an element of type T. The element can be
      * obtained with operator* or operator->. release() is called by
-     * the destructor to requeue the element in to the double
-     * fifo. When the double fifo is empty and closed, the element
-     * obtained is_empty() method returns true.
+     * the destructor or can be called manually to requeue the element
+     * in to the double fifo. When the double fifo is empty and
+     * closed, the element obtained is empty (i.e. the `is_empty()`
+     * method returns true).
+     *
+     * The element can only be initialized/constructed with a side
+     * (obtained by `get_A()` or `get_B()`), which effectively dequeue
+     * an element of type T from that proper FIFO.
      */
     class elt {
     public:
+      /** Default constructor. `is_empty()` is true after construction. */
       elt() : i_(cbT::guard), v_(0), s_(0) { }
+      /** Constructor from a side. Dequeue from that side. */
       elt(side &s) : i_(s.get()), v_(s[i_]), s_(s.other_) { }
+      /** Destruct object and release, if not empty. */
       ~elt() { release(); }
+      /** Initialize from a side. Release if not empty and dequeue
+          from the given side */
       elt &operator=(side &s) {
         release();
         i_ = s.get();
@@ -79,13 +99,17 @@ namespace jflib {
         return *this;
       }
 
+      /** Explicitly release the element */
       void release() { 
         if(v_)
           s_->release(i_);
         v_ = 0;
       }
+      /** True if no element held */
       bool is_empty() const { return v_ == 0; }
+      /** Dereference element */
       T &operator*() { return *v_; }
+      /** Dereference element */
       T *operator->() { return v_; }
 
       friend class pool;

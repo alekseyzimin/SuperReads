@@ -146,9 +146,10 @@ struct kUniBeginOffsetStruct
 };
 
 // Global variables. Read only after initialization in main
-int                      *startOverlapByUnitig, *unitigLengths; // RO
+long int                 *startOverlapByUnitig;
+int                      *unitigLengths; // RO
 struct overlapDataStruct *overlapData; // RO
-int                      *startOverlapIndexByUnitig2, *unitig2OverlapIndex; // RO
+long int                 *startOverlapIndexByUnitig2, *unitig2OverlapIndex; // RO
 std::map<unsigned         int, struct kUniBeginOffsetStruct>    origUnitigToNewUnitigPlacement; // RO
 
 double mean[256][256], stdev[256][256]; // RO. Clarify why 256x256. Convert to ExpBuffer
@@ -315,8 +316,8 @@ FILE *Fopen (const char *fn, const char *mode);
 FILE *Popen (const char *fn, const char *mode);
 // The following returns the overlap length if it is greater than the
 // existing largest overlap on the end. It returns -1 if not.
-int getOvlLenFromOvlIndicesPlus (int maxOvlIndex, int j, int maxOvlLen, int whichEnd);
-int findOtherOverlapIndex (int ovlIndex1);
+int getOvlLenFromOvlIndicesPlus (long int maxOvlIndex, long int j, int maxOvlLen, int whichEnd);
+long int findOtherOverlapIndex (long int ovlIndex1);
 
 int getInt (const char *fname);
 
@@ -380,7 +381,8 @@ int main (int argc, char **argv)
      args.parse(argc, argv);   // Parse arguments
      FILE *infile;
      charb line(2000);
-     int unitig1, unitig2, overlapCount = 0;
+     int unitig1, unitig2;
+     long int overlapCount = 0;
      int unitigNum, numUnitigs;
      static const int firstUnitigNum = 0; // Is it really needed?
      int numFlds;
@@ -396,8 +398,8 @@ int main (int argc, char **argv)
 
      // Get the number of unitigs
      numUnitigs = getInt (args.num_kunitigs_file_arg) + 1;
-     mallocOrDie (startOverlapByUnitig, numUnitigs + 1 + firstUnitigNum, int);
-     mallocOrDie (startOverlapIndexByUnitig2, numUnitigs + 1 + firstUnitigNum, int);
+     mallocOrDie (startOverlapByUnitig, numUnitigs + 1 + firstUnitigNum,long int);
+     mallocOrDie (startOverlapIndexByUnitig2, numUnitigs + 1 + firstUnitigNum,long int);
 
      mallocOrDie (unitigLengths, numUnitigs + 1 + firstUnitigNum, int);
      // Here we read in the unitig lengths, allowing for either type of length
@@ -447,9 +449,9 @@ int main (int argc, char **argv)
      for(char *ptr = (char*)overlapData; ptr < end; ptr += getpagesize())
 	  whatever ^= *ptr;
 
-     overlapCount=int((double)stat_buf.st_size/(double)sizeof(struct overlapDataStruct)+.01);
+     overlapCount=(long int)((double)stat_buf.st_size/(double)sizeof(struct overlapDataStruct)+.01);
    
-     for(int j=0;j<overlapCount;j++)
+     for(long int j=0;j<overlapCount;j++)
      {
 	  int unitig1=overlapData[j].unitig1;
 	  int unitig2=overlapData[j].unitig2;
@@ -464,14 +466,14 @@ int main (int argc, char **argv)
 	  startOverlapByUnitig[unitig1]++;
 	  startOverlapByUnitig[unitig2]++;
      }
-     mallocOrDie (unitig2OverlapIndex, overlapCount, int);
+     mallocOrDie (unitig2OverlapIndex, overlapCount,long int);
      for (unitigNum = 1; unitigNum < numUnitigs + 1 + firstUnitigNum; unitigNum++)
 	  startOverlapByUnitig[unitigNum] += startOverlapByUnitig[unitigNum - 1];
      for (unitigNum = 0; unitigNum < numUnitigs + 1 + firstUnitigNum; unitigNum++)
 	  startOverlapIndexByUnitig2[unitigNum] = startOverlapByUnitig[unitigNum];
 
 // Unitig in the overlaps file
-     for(int j=0;j<overlapCount;j++)
+     for(long int j=0;j<overlapCount;j++)
      {
 	  unitig1=overlapData[j].unitig1;
 	  unitig2=overlapData[j].unitig2;
@@ -689,7 +691,7 @@ int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int inser
 {
      
      int lastOffsetToTest = 6000, lastOffsetToTestIfNotMate2, maxOffsetToAllow;
-     int j;
+     long int j;
      struct unitigLocStruct unitigLocVal;
      struct abbrevUnitigLocStruct abbrevUnitigLocVal;
      size_t maxNodes;
@@ -879,7 +881,7 @@ int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int inser
 
 // The following returns the overlap length if it is greater than the
 // existing largest overlap on the end. It returns -1 if not.
-int getOvlLenFromOvlIndicesPlus (int maxOvlIndex, int j, int maxOvlLen, int whichEnd)
+int getOvlLenFromOvlIndicesPlus (long int maxOvlIndex,long int j, int maxOvlLen, int whichEnd)
 {
      int thisUnitig, otherUnitig, overlapLength;
      otherUnitig = overlapData[maxOvlIndex].unitig2;
@@ -898,9 +900,10 @@ int getOvlLenFromOvlIndicesPlus (int maxOvlIndex, int j, int maxOvlLen, int whic
      return (overlapLength);
 }
 
-int findOtherOverlapIndex (int ovlIndex1)
+long int findOtherOverlapIndex (long int ovlIndex1)
 {
-     int unitig1, unitig2, itemp;
+     int unitig1, unitig2;
+     long int itemp;
      unitig1 = overlapData[ovlIndex1].unitig1;
      unitig2 = overlapData[ovlIndex1].unitig2;
      for (itemp=startOverlapByUnitig[unitig2]; itemp<startOverlapByUnitig[unitig2+1]; itemp++) {
@@ -971,9 +974,11 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
 #ifdef NEW_STUFF
      char tempOri1, tempOri2;
 #endif
-     int isSpecialCase, finalOffset, minConnectingOffset, i, index;
+     int isSpecialCase, finalOffset, minConnectingOffset;
+     long int i, index;
      int unitig1, unitig2, offset, overlapLength;
-     int minConnectingUnitig=0, minConnectingOverlapIndex;
+     int minConnectingUnitig=0;
+     long int minConnectingOverlapIndex;
      char minConnectingOri=' ';
      double numStdevsFromMean;
      // In the following we assume we move from left to right when moving from
@@ -1572,7 +1577,7 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
      int numNodes = 0;
      ExpandingBuffer<int> pathNumArray;
      std::stack<int> nodeIntArray;
-     int localNodeNumber = 0, overlapMatchIndexHold = 0;
+     long int localNodeNumber = 0, overlapMatchIndexHold = 0;
      int localUnitigNumber = 0, localNodeNumberHold = 0;
      int lastGoodNodeNumber;
      int localFrontEdgeOffset = 0, localSuperReadLength = 0;
@@ -1775,7 +1780,7 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
 	  for (it1=endingNodes.begin(); it1!= endingNodes.end(); it1++)
 	       fprintf (stderr, "%d %d %c\n", it1->unitig2, it1->frontEdgeOffset, it1->ori);
 #endif
-	  for (int i=evenReadMatchStructs.size()-1; i>=0; i--) {
+	  for (long int i=evenReadMatchStructs.size()-1; i>=0; i--) {
 	       abbULS1.ori = evenReadMatchStructs[i].ori;
 	       if (evenReadMatchStructs[i].ori == 'F')
 		    abbULS1.frontEdgeOffset = startValue - evenReadMatchStructs[i].bhg;
