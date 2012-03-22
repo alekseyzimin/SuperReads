@@ -10,6 +10,7 @@ public:
   bool                           long_flag;
   const char *                   output_arg;
   bool                           output_given;
+  bool                           gzip_flag;
   uint32_t                       threads_arg;
   bool                           threads_given;
   const char *                   jellyfishdb_arg;
@@ -20,18 +21,21 @@ public:
   typedef std::vector<const char *>::const_iterator readFiles_arg_const_it;
 
   enum {
-    USAGE_OPT = 1000
+    USAGE_OPT = 1000,
+    GZIP_OPT
   };
 
   findMatchesBetweenKUnitigsAndReads() : 
     long_flag(false),
-    output_arg(""), output_given(false),
+    output_arg("kunitigs_reads_matches"), output_given(false),
+    gzip_flag(false),
     threads_arg(1), threads_given(false)
   { }
 
   findMatchesBetweenKUnitigsAndReads(int argc, char* argv[]) :
     long_flag(false),
-    output_arg(""), output_given(false),
+    output_arg("kunitigs_reads_matches"), output_given(false),
+    gzip_flag(false),
     threads_arg(1), threads_given(false)
   { parse(argc, argv); }
 
@@ -39,6 +43,7 @@ public:
     static struct option long_options[] = {
       {"long", 0, 0, 'l'},
       {"output", 1, 0, 'o'},
+      {"gzip", 0, 0, GZIP_OPT},
       {"threads", 1, 0, 't'},
       {"help", 0, 0, 'h'},
       {"usage", 0, 0, USAGE_OPT},
@@ -78,6 +83,9 @@ public:
         output_given = true;
         output_arg = optarg;
         break;
+      case GZIP_OPT:
+        gzip_flag = true;
+        break;
       case 't':
         threads_given = true;
         threads_arg = yaggo::conv_uint<uint32_t>((const char*)optarg, err, false);
@@ -85,10 +93,6 @@ public:
         break;
       }
     }
-
-    // Check that required switches are present
-    if(!output_given)
-      error("[-o, --output=string] required switch");
 
     // Parse arguments
     if(argc - optind < 3)
@@ -116,7 +120,8 @@ public:
 #define findMatchesBetweenKUnitigsAndReads_HELP "Find matches between k-unitigs and rads\n\n\n\n" \
   "Options (default value in (), *required):\n" \
   " -l, --long                               Long output format (false)\n" \
-  " -o, --output=string                     *Output file\n" \
+  " -o, --output=string                      Output file (kunitigs_reads_matches)\n" \
+  "     --gzip                               Gzip output (false)\n" \
   " -t, --threads=uint32                     Number of threads (1)\n" \
   "     --usage                              Usage\n" \
   " -h, --help                               This message\n" \
@@ -135,6 +140,7 @@ public:
   void dump(std::ostream &os = std::cout) {
     os << "long_flag:" << long_flag << "\n";
     os << "output_given:" << output_given << " output_arg:" << output_arg << "\n";
+    os << "gzip_flag:" << gzip_flag << "\n";
     os << "threads_given:" << threads_given << " threads_arg:" << threads_arg << "\n";
     os << "jellyfishdb_arg:" << jellyfishdb_arg << "\n";
     os << "kUnitigFile_arg:" << kUnitigFile_arg << "\n";

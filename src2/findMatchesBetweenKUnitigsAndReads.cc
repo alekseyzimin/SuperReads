@@ -225,8 +225,12 @@ int main(int argc, char *argv[])
      mallocOrDie (kunitigOffset, hash_size, unsigned int);
      mallocOrDie (kmerOriInKunitig, hash_size, unsigned char);
 
-     // Open output file
-     gzipstream out(args.output_arg);
+     // Open output file and make sure it is deleted/closed on exit
+     std::auto_ptr<std::ostream> out;
+     if(args.gzip_flag)
+       out.reset(new gzipstream(args.output_arg));
+     else
+       out.reset(new std::ofstream(args.output_arg));
      
      initializeValues ();
 
@@ -252,7 +256,7 @@ int main(int argc, char *argv[])
      
 
      ProcessReads process_reads(args.readFiles_arg.begin(), args.readFiles_arg.end(),
-                                hash, out, args.threads_arg);
+                                hash, *out.get(), args.threads_arg);
      process_reads.exec_join(args.threads_arg);
      
      // Now working with the reads

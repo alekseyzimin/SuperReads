@@ -6,7 +6,10 @@ option("l", "long") {
   off }
 option("o", "output") {
   description "Output file"
-  c_string; default "kunitigs_reads_matches.gz" }
+  c_string; default "kunitigs_reads_matches" }
+option("gzip") {
+  description "Gzip output"
+  off }
 option("t", "threads") {
   description "Number of threads"
   uint32; default "1" }
