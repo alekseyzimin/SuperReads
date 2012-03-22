@@ -8,10 +8,6 @@
 #include <stdexcept>
 #include <jflib/pool.hpp>
 
-@file multiplexed_io.hpp
- @brief Multiplexed io stream.
-
-
 namespace jflib {
   /** Output multiplexer class. Multiple threads write to a pool of
    * buffers which are then written by a single thread to an
