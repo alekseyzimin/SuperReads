@@ -592,7 +592,6 @@ void KUnitigsJoinerThread::updateMatchRecords(int readNum, ExpBuffer<char*>& fld
 	  structs = &oddReadMatchStructs;
 
      for(size_t i = 2; i < flds.size(); i += 3) {
-//	  printf ("In updateMatchRecords loop, i=%d, flds.size() = %d\n", (int)i, (int)flds.size());
 	  structs->push_back(kuniToReadMatchStruct());
 	  struct kuniToReadMatchStruct &kUTRMS = structs->back();
 	  kUTRMS.ori           = *(flds[i+2]);
@@ -623,10 +622,8 @@ void KUnitigsJoinerThread::updateMatchRecords(int readNum, ExpBuffer<char*>& fld
 	  //     fprintf (stderr, "readMatchBegin = %d, readMatchEnd = %d, orientedReadMatchBegin = %d, orientedReadMatchEnd = %d, ahg = %d, bhg = %d, kUnitigNumber = %d\n", kUTRMS.readMatchBegin, kUTRMS.readMatchEnd, kUTRMS.orientedReadMatchBegin, kUTRMS.orientedReadMatchEnd, kUTRMS.ahg, kUTRMS.bhg, kUTRMS.kUnitigNumber);
 //	  printf ("Loop before k-unitig translations, i = %d, flds.size() = %d\n", (int)i, (int)flds.size());
 	  if (! args.kunitigs_translation_file_given)
-//	       return;
 	       continue;
 	  if (unitigLengths[kUTRMS.kUnitigNumber] > 0)
-//	       return;
 	       continue;
 	  auto map_it = origUnitigToNewUnitigPlacement.find(kUTRMS.kUnitigNumber);
 	  // The following should not be necessary, but just in case...
@@ -683,20 +680,15 @@ int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& o
      evenReadMatchStructs.clear();
      oddReadMatchStructs.clear();
      
-//     printf ("Entering processKUnitigVsReadMatches\n");
      // For each overlap line
      for( ; ovp_stream; ++ovp_stream) {
-//	  printf ("We are in the loop!\n");
        getFldsFromLine(*ovp_stream, flds);
        // Parse read info
        rdPrefix[0] = flds[0][0];
        rdPrefix[1] = flds[0][1];
        readNum = atoll (flds[0] + 2);
 
-       // if(strcmp(flds[0], "pe1000046") == 0 || strcmp(flds[0], "pe1000047") == 0)
-       //   raise(SIGINT);
        // Compute SuperRead if lonely read or got mate pair
-//       printf ("rdPrefix = %s, rdPrefixHold = %s, readNum = %d, readNumHold = %d\n", rdPrefix, rdPrefixHold, (int) readNum, (int) readNumHold);
        if ((strcmp (rdPrefix, rdPrefixHold) != 0) ||
            (readNum != readNumHold+1) ||
            (readNum % 2 == 0)) {
@@ -718,64 +710,6 @@ int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& o
      return (0);
 }
      
-
-//      if (! fgets (line, 2000, infile))
-// 	  return (1); // A critical file doesn't exist
-//      FILE* outputFile=Fopen(outputFileName,"w");
-//      // Load the appropriate stuff
-//      numFlds = getFldsFromLine(line, flds);
-//      cptr = flds[numFlds-1];
-//      rdPrefixHold[0] = cptr[0];
-//      rdPrefixHold[1] = cptr[1];
-//      cptr += 2;
-//      readNum = readNumHold = atoll (cptr);
-//      evenReadMatchStructs.clear();
-//      oddReadMatchStructs.clear();
-//      updateMatchRecords(readNum, cptr, flds);
-
-//      while (fgets (line, 2000, infile)) {
-// 	  numFlds = getFldsFromLine(line, flds);
-// 	  cptr = flds[numFlds-1];
-// 	  rdPrefix[0] = cptr[0];
-// 	  rdPrefix[1] = cptr[1];
-// 	  cptr += 2;
-// 	  readNum = atof (cptr);
-// 	  if ((strcmp (rdPrefix, rdPrefixHold) == 0) &&
-// 	      readNum == readNumHold) {
-// 	       // load more data
-// 	       updateMatchRecords(readNum, cptr, flds);
-// 	       continue;
-// 	  }
-// 	  if ((strcmp (rdPrefix, rdPrefixHold) != 0) ||
-// 	      (readNum != readNumHold+1) ||
-// 	      (readNum % 2 == 0)) {
-// 	       // Get the super-read for the insert we just finished reading
-// 	       approxNumPaths = 0;
-// //	       puts ("Entering getSuperReadsForInsert\n"); fflush (stdout);
-// 	       getSuperReadsForInsert(outputFile);
-// //	       puts ("Leaving getSuperReadsForInsert\n"); fflush (stdout);
-// 	       // Set up and load the new data
-//                evenReadMatchStructs.clear();
-//                oddReadMatchStructs.clear();
-// //	       puts ("Entering updateMatchRecords\n"); fflush (stdout);
-// 	       updateMatchRecords(readNum, cptr, flds);
-// //	       puts ("Leaving updateMatchRecords\n"); fflush (stdout);
-// 	       // Update what the old data is
-// 	       strcpy (rdPrefixHold, rdPrefix);
-// 	       readNumHold = readNum;
-// 	       continue;
-// 	  }
-// 	  // If we get here we've gotten to the second read of a mate pair
-// 	  // load the data
-// 	  updateMatchRecords(readNum, cptr, flds);
-// 	  // hold the updated read info
-// 	  readNumHold = readNum;
-//      }
-//      fclose (infile);
-//      // Output the stuff for the old pair
-//      getSuperReadsForInsert(outputFile);
-// }
-
 // returns 1 if successful, 0 if too many nodes (so failure)
 int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 {
@@ -792,7 +726,6 @@ int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int inser
      int ahg, bhg;
      int forcedStop;
 
-//     fprintf (stderr, "In joinKUnitigsFromMates\n");
      lastOffsetToTest = insertLengthMean+5*insertLengthStdev;
      if (lastOffsetToTest > max_offset_to_test)
 	  lastOffsetToTest = max_offset_to_test;
