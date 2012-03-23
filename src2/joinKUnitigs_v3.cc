@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <charb.hpp>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -28,6 +29,7 @@
 #include <heap.hpp>
 #include <exp_buffer.hpp>
 #include <thread_exec.hpp>
+#include <jflib/multiplexed_parser.hpp>
 #include <src2/joinKUnitigs_v3.hpp>
 #include <rb_tree.hpp>
 
@@ -166,6 +168,50 @@ struct nodePair {
 typedef std::set<abbrevUnitigLocStruct> unitig_ori_offsets;
 typedef std::map<int, unitig_ori_offsets> unitig_to_ori_offsets;
 
+/** Parse the overlap information. Each line contain the information
+    about 1 read and mated reads (consecutive even/odd read number) are
+    kept together.
+ */
+class overlap_parser : public multiplexed_parser<charb> {
+  std::ifstream input_;
+
+public:
+  overlap_parser(const char* input_file, int nb_threads) :
+    multiplexed_parser<charb>(nb_threads, 100),
+    input_(input_file)
+  { start_parsing(); }
+
+  virtual void parser_loop() {
+    charb extra;
+    bool  has_extra = false;
+
+    while(input_) {
+      elt e(elt_init());
+      size_type& i = e->nb_filled;
+      i = 0;
+      if(has_extra) {
+        e->elements[0].swap(extra);
+        ++i;
+      }
+      for( ; i < group_size(); ++i) {
+        if(!getline(input_, e->elements[i]))
+          break;
+      }
+      
+      has_extra = false;
+      if(i > 0) {
+        long read_number = atol(e->elements[i-1] + 2);
+        if(read_number % 2 == 1 && i != group_size()) {
+          // Keep it for next iteration
+          extra.swap(e->elements[i-1]);
+          --i;
+          has_extra = true;
+        }
+      }
+    }
+  }
+};
+
 // Main worker class
 class KUnitigsJoinerThread {
   ExpBuffer<kuniToReadMatchStruct>                 evenReadMatchStructs;
@@ -265,12 +311,12 @@ public:
     rdPrefix[2] = rdPrefixHold[2] = '\0';
   }
 
-  int process_input_file(const char* readVsKUnitigFilePrefix, 
+  int process_input_file(overlap_parser& ovp_parser, 
                          const char* outputPrefix, int index);
   
 private:
   void generateSuperReadPlacementLinesForJoinedMates ();
-  void updateMatchRecords(int readNum, char *cptr, ExpBuffer<char*>& flds);
+  void updateMatchRecords(int readNum, ExpBuffer<char*>& flds);
   int joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev);
   void printIfGood (struct abbrevUnitigLocStruct *ptr);
   template<typename T>
@@ -283,20 +329,20 @@ private:
   void funcToGetTreeSize (const T& ptr); // Adds 1 to treeSize each time
   void findSingleReadSuperReads(char *readName, FILE* outputFile);
   void getSuperReadsForInsert (FILE* outputFile);
-  int processKUnitigVsReadMatches (char *inputFilename, char *outputFilename);
+  int processKUnitigVsReadMatches (overlap_parser::stream& ovp_stream, char *outputFilename);
 };
 
 class KUnitigsJoiner : public thread_exec {
-  const char* const readVsKUnitigFilePrefix;
+  overlap_parser ovp_parser;
   const char* const outputPrefix;
 
 public:
-  KUnitigsJoiner(const char* input_prefix, const char* output_prefix) :
-    readVsKUnitigFilePrefix(input_prefix), outputPrefix(output_prefix)
+  KUnitigsJoiner(const char* input_file, const char* output_prefix, int nb_threads) :
+    ovp_parser(input_file, nb_threads), outputPrefix(output_prefix)
   { }
   virtual void start(int thid) {
     KUnitigsJoinerThread joiner;
-    int ret = joiner.process_input_file(readVsKUnitigFilePrefix, outputPrefix, thid);
+    int ret = joiner.process_input_file(ovp_parser, outputPrefix, thid);
     std::cerr << "joiner thread " << thid << " returned " << ret << std::endl;
   }
 };
@@ -359,21 +405,21 @@ unitig_ori_offsets::iterator find_within(unitig_ori_offsets& tree,
 #endif
 
 // #define DEBUG
-int KUnitigsJoinerThread::process_input_file(const char* readVsKUnitigFilePrefix,
-                                       const char* outputPrefix, int index)
+int KUnitigsJoinerThread::process_input_file(overlap_parser& ovp_parser,
+                                             const char* outputPrefix, int index)
 {
-     charb readVsKUnitigFileName(256), outputFileName(256);
-     sprintf(readVsKUnitigFileName, "%s_%d", readVsKUnitigFilePrefix, index);
-     sprintf(outputFileName,"%s_%d", outputPrefix, index);
-     int ret = processKUnitigVsReadMatches(readVsKUnitigFileName, outputFileName);
-     fprintf (stderr, 
-	      "Num pairs with both reads in same unitig: %d\n"
-	      "Num pairs uniquely joinable: %d\n"
-	      "Num pairs after disambiguation to beginning of insert: %d\n"
-	      "Num pairs after disambiguation to end of insert: %d\n"
-	      "Num still joinable but not uniquely joinable: %d\n", 
-	      numPairsInOneUnitig, numSimplyJoinable, numJoinableAfterRead1Analysis, numJoinableAfterBothReadAnalysis, numJoinableUnresolvedAtEnd);
-     return ret;
+    overlap_parser::stream ovp_stream(ovp_parser);
+    charb outputFileName(256);
+    sprintf(outputFileName,"%s_%d", outputPrefix, index);
+    int ret = processKUnitigVsReadMatches(ovp_stream, outputFileName);
+    fprintf (stderr, 
+             "Num pairs with both reads in same unitig: %d\n"
+             "Num pairs uniquely joinable: %d\n"
+             "Num pairs after disambiguation to beginning of insert: %d\n"
+             "Num pairs after disambiguation to end of insert: %d\n"
+             "Num still joinable but not uniquely joinable: %d\n", 
+             numPairsInOneUnitig, numSimplyJoinable, numJoinableAfterRead1Analysis, numJoinableAfterBothReadAnalysis, numJoinableUnresolvedAtEnd);
+    return ret;
 }
 
 int main (int argc, char **argv)
@@ -388,6 +434,7 @@ int main (int argc, char **argv)
      int numFlds;
      ExpBuffer<char*> flds;
 
+     // Read in library information
      infile = Fopen (args.mean_and_stdev_by_prefix_file_arg, "r");
      while (fgets (line, 2000, infile)) {
 	  getFldsFromLine(line, flds);
@@ -505,7 +552,7 @@ int main (int argc, char **argv)
 #endif
      free(startOverlapIndexByUnitig2);
 
-     KUnitigsJoiner joiners(args.input_prefix_arg, args.prefix_arg);
+     KUnitigsJoiner joiners(args.input_file_arg, args.prefix_arg, args.threads_arg);
      joiners.exec_join(args.num_file_names_arg);
      
      munmap(overlapData, stat_buf.st_size);
@@ -535,156 +582,191 @@ void loadKUnitigTranslationTable(const char *fileName)
      return;
 }
 
-void KUnitigsJoinerThread::updateMatchRecords(int readNum, char *cptr, ExpBuffer<char*>& flds)
+void KUnitigsJoinerThread::updateMatchRecords(int readNum, ExpBuffer<char*>& flds)
 {
-     ExpBuffer<struct kuniToReadMatchStruct> *structs;
-     if (readNum % 2 == 0) 
+    int readLength = atoi(flds[1]);
+    ExpBuffer<struct kuniToReadMatchStruct> *structs;
+    if (readNum % 2 == 0) 
 	  structs = &evenReadMatchStructs;
      else
 	  structs = &oddReadMatchStructs;
-     structs->push_back(kuniToReadMatchStruct());
-     struct kuniToReadMatchStruct &kUTRMS = structs->back();
-     kUTRMS.ori = *(flds[0]);
-     kUTRMS.ahg = atoi (flds[1]);
-     kUTRMS.readLength = atoi (flds[2]);
-     kUTRMS.kUnitigNumber = atoi (flds[3]);
-     kUTRMS.kUnitigLength = abs (unitigLengths[kUTRMS.kUnitigNumber]);
-     kUTRMS.bhg = kUTRMS.ahg + kUTRMS.readLength - kUTRMS.kUnitigLength;
-     if (kUTRMS.ahg <= 0)
-	  kUTRMS.kUnitigMatchBegin = 0;
-     else
-	  kUTRMS.kUnitigMatchBegin = kUTRMS.ahg;
-     if (kUTRMS.bhg > 0)
-	  kUTRMS.kUnitigMatchEnd = kUTRMS.kUnitigLength;
-     else
-	  kUTRMS.kUnitigMatchEnd = kUTRMS.kUnitigLength + kUTRMS.bhg;
-     // orientedReadMatchBegin is 0-based for now
-     kUTRMS.orientedReadMatchBegin = kUTRMS.kUnitigMatchBegin - kUTRMS.ahg;
-     kUTRMS.orientedReadMatchEnd = kUTRMS.kUnitigMatchEnd - kUTRMS.ahg;
-     if (kUTRMS.ori == 'F') {
-	  kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchBegin;
-	  kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchEnd; }
-     else {
-	  kUTRMS.orientedReadMatchBegin = kUTRMS.readLength - kUTRMS.orientedReadMatchBegin;
-	  kUTRMS.orientedReadMatchEnd = kUTRMS.readLength - kUTRMS.orientedReadMatchEnd;
-	  kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchEnd;
-	  kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchBegin; }
-//     fprintf (stderr, "readMatchBegin = %d, readMatchEnd = %d, orientedReadMatchBegin = %d, orientedReadMatchEnd = %d, ahg = %d, bhg = %d, kUnitigNumber = %d\n", kUTRMS.readMatchBegin, kUTRMS.readMatchEnd, kUTRMS.orientedReadMatchBegin, kUTRMS.orientedReadMatchEnd, kUTRMS.ahg, kUTRMS.bhg, kUTRMS.kUnitigNumber);
-     if (! args.kunitigs_translation_file_given)
-	  return;
-     if (unitigLengths[kUTRMS.kUnitigNumber] > 0)
-	  return;
-     auto map_it = origUnitigToNewUnitigPlacement.find(kUTRMS.kUnitigNumber);
-     // The following should not be necessary, but just in case...
-     if (map_it == origUnitigToNewUnitigPlacement.end()) {
-	  fprintf (stderr, "Error at 100, readNum = %d, kUnitig = %d\n", readNum, kUTRMS.kUnitigNumber);
-	  return; }
 
-     int amtKUniBeforeOldKUni, amtKUniAfterOldKUni;
-     int newUnitigLength = unitigLengths[map_it->second.kUnitig];
-     if (map_it->second.begin < map_it->second.end) { // The k-uni lies in the new one in F dir.
-	  amtKUniBeforeOldKUni = map_it->second.begin-1;
-	  amtKUniAfterOldKUni = newUnitigLength - map_it->second.end;
-	  kUTRMS.ahg += amtKUniBeforeOldKUni;
-	  kUTRMS.bhg -= amtKUniAfterOldKUni;
-     }
-     else {
-	  amtKUniBeforeOldKUni = map_it->second.end-1;
-	  amtKUniAfterOldKUni =  newUnitigLength - map_it->second.begin;
-	  int ahgHold = kUTRMS.ahg;
-	  kUTRMS.ahg = amtKUniBeforeOldKUni - kUTRMS.bhg;
-	  kUTRMS.bhg = - amtKUniAfterOldKUni - ahgHold;
-	  // Change the orientation of the read in the k-unitig
-	  kUTRMS.ori = (kUTRMS.ori == 'F') ? 'R' : 'F';
-     }
-     kUTRMS.kUnitigMatchBegin = (kUTRMS.ahg < 0) ? 0 : kUTRMS.ahg;
-     int tempValueAdjustment = (kUTRMS.bhg < 0) ? kUTRMS.bhg : 0;
-     kUTRMS.kUnitigMatchEnd = newUnitigLength + tempValueAdjustment;
-     int amtOfReadBeforeKUni = (kUTRMS.ahg > 0) ? 0 : -kUTRMS.ahg;
-     int amtOfReadAfterKUni  = (kUTRMS.bhg > 0) ? kUTRMS.bhg : 0;
-     if (kUTRMS.ori == 'F') {
-	  kUTRMS.readMatchBegin = amtOfReadBeforeKUni;
-	  kUTRMS.readMatchEnd = kUTRMS.readLength - amtOfReadAfterKUni;
-	  kUTRMS.orientedReadMatchBegin = kUTRMS.readMatchBegin;
-	  kUTRMS.orientedReadMatchEnd   = kUTRMS.readMatchEnd; }
-     else {
-	  kUTRMS.readMatchBegin = amtOfReadAfterKUni;
-	  kUTRMS.readMatchEnd = kUTRMS.readLength - amtOfReadBeforeKUni;
-	  kUTRMS.orientedReadMatchBegin = kUTRMS.readMatchEnd;
-	  kUTRMS.orientedReadMatchEnd   = kUTRMS.readMatchBegin; }
-     kUTRMS.kUnitigNumber = map_it->second.kUnitig;
-     kUTRMS.kUnitigLength = unitigLengths[kUTRMS.kUnitigNumber];
-//     fprintf (stderr, "After change: readMatchBegin = %d, readMatchEnd = %d, orientedReadMatchBegin = %d, orientedReadMatchEnd = %d, ahg = %d, bhg = %d, kUnitigNumber = %d\n", kUTRMS.readMatchBegin, kUTRMS.readMatchEnd, kUTRMS.orientedReadMatchBegin, kUTRMS.orientedReadMatchEnd, kUTRMS.ahg, kUTRMS.bhg, kUTRMS.kUnitigNumber);
+    for(size_t i = 2; i < flds.size(); i += 3) {
+      structs->push_back(kuniToReadMatchStruct());
+      struct kuniToReadMatchStruct &kUTRMS = structs->back();
+      kUTRMS.ori           = *(flds[i+2]);
+      kUTRMS.ahg           = atoi (flds[i+1]);
+      kUTRMS.readLength    = readLength;
+      kUTRMS.kUnitigNumber = atoi (flds[i]);
+      kUTRMS.kUnitigLength = abs (unitigLengths[kUTRMS.kUnitigNumber]);
+      kUTRMS.bhg = kUTRMS.ahg + kUTRMS.readLength - kUTRMS.kUnitigLength;
+      if (kUTRMS.ahg <= 0)
+        kUTRMS.kUnitigMatchBegin = 0;
+      else
+        kUTRMS.kUnitigMatchBegin = kUTRMS.ahg;
+      if (kUTRMS.bhg > 0)
+        kUTRMS.kUnitigMatchEnd = kUTRMS.kUnitigLength;
+      else
+        kUTRMS.kUnitigMatchEnd = kUTRMS.kUnitigLength + kUTRMS.bhg;
+      // orientedReadMatchBegin is 0-based for now
+      kUTRMS.orientedReadMatchBegin = kUTRMS.kUnitigMatchBegin - kUTRMS.ahg;
+      kUTRMS.orientedReadMatchEnd = kUTRMS.kUnitigMatchEnd - kUTRMS.ahg;
+      if (kUTRMS.ori == 'F') {
+        kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchBegin;
+        kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchEnd; }
+      else {
+        kUTRMS.orientedReadMatchBegin = kUTRMS.readLength - kUTRMS.orientedReadMatchBegin;
+        kUTRMS.orientedReadMatchEnd = kUTRMS.readLength - kUTRMS.orientedReadMatchEnd;
+        kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchEnd;
+        kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchBegin; }
+      //     fprintf (stderr, "readMatchBegin = %d, readMatchEnd = %d, orientedReadMatchBegin = %d, orientedReadMatchEnd = %d, ahg = %d, bhg = %d, kUnitigNumber = %d\n", kUTRMS.readMatchBegin, kUTRMS.readMatchEnd, kUTRMS.orientedReadMatchBegin, kUTRMS.orientedReadMatchEnd, kUTRMS.ahg, kUTRMS.bhg, kUTRMS.kUnitigNumber);
+      if (! args.kunitigs_translation_file_given)
+        return;
+      if (unitigLengths[kUTRMS.kUnitigNumber] > 0)
+        return;
+      auto map_it = origUnitigToNewUnitigPlacement.find(kUTRMS.kUnitigNumber);
+      // The following should not be necessary, but just in case...
+      if (map_it == origUnitigToNewUnitigPlacement.end()) {
+        fprintf (stderr, "Error at 100, readNum = %d, kUnitig = %d\n", readNum, kUTRMS.kUnitigNumber);
+        return; }
+
+      int amtKUniBeforeOldKUni, amtKUniAfterOldKUni;
+      int newUnitigLength = unitigLengths[map_it->second.kUnitig];
+      if (map_it->second.begin < map_it->second.end) { // The k-uni lies in the new one in F dir.
+        amtKUniBeforeOldKUni = map_it->second.begin-1;
+        amtKUniAfterOldKUni = newUnitigLength - map_it->second.end;
+        kUTRMS.ahg += amtKUniBeforeOldKUni;
+        kUTRMS.bhg -= amtKUniAfterOldKUni;
+      }
+      else {
+        amtKUniBeforeOldKUni = map_it->second.end-1;
+        amtKUniAfterOldKUni =  newUnitigLength - map_it->second.begin;
+        int ahgHold = kUTRMS.ahg;
+        kUTRMS.ahg = amtKUniBeforeOldKUni - kUTRMS.bhg;
+        kUTRMS.bhg = - amtKUniAfterOldKUni - ahgHold;
+        // Change the orientation of the read in the k-unitig
+        kUTRMS.ori = (kUTRMS.ori == 'F') ? 'R' : 'F';
+      }
+      kUTRMS.kUnitigMatchBegin = (kUTRMS.ahg < 0) ? 0 : kUTRMS.ahg;
+      int tempValueAdjustment = (kUTRMS.bhg < 0) ? kUTRMS.bhg : 0;
+      kUTRMS.kUnitigMatchEnd = newUnitigLength + tempValueAdjustment;
+      int amtOfReadBeforeKUni = (kUTRMS.ahg > 0) ? 0 : -kUTRMS.ahg;
+      int amtOfReadAfterKUni  = (kUTRMS.bhg > 0) ? kUTRMS.bhg : 0;
+      if (kUTRMS.ori == 'F') {
+        kUTRMS.readMatchBegin = amtOfReadBeforeKUni;
+        kUTRMS.readMatchEnd = kUTRMS.readLength - amtOfReadAfterKUni;
+        kUTRMS.orientedReadMatchBegin = kUTRMS.readMatchBegin;
+        kUTRMS.orientedReadMatchEnd   = kUTRMS.readMatchEnd; }
+      else {
+        kUTRMS.readMatchBegin = amtOfReadAfterKUni;
+        kUTRMS.readMatchEnd = kUTRMS.readLength - amtOfReadBeforeKUni;
+        kUTRMS.orientedReadMatchBegin = kUTRMS.readMatchEnd;
+        kUTRMS.orientedReadMatchEnd   = kUTRMS.readMatchBegin; }
+      kUTRMS.kUnitigNumber = map_it->second.kUnitig;
+      kUTRMS.kUnitigLength = unitigLengths[kUTRMS.kUnitigNumber];
+      //     fprintf (stderr, "After change: readMatchBegin = %d, readMatchEnd = %d, orientedReadMatchBegin = %d, orientedReadMatchEnd = %d, ahg = %d, bhg = %d, kUnitigNumber = %d\n", kUTRMS.readMatchBegin, kUTRMS.readMatchEnd, kUTRMS.orientedReadMatchBegin, kUTRMS.orientedReadMatchEnd, kUTRMS.ahg, kUTRMS.bhg, kUTRMS.kUnitigNumber);
+    }
 }
 
-int KUnitigsJoinerThread::processKUnitigVsReadMatches (char *readVsKUnitigFile, char* outputFileName)
+int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& ovp_stream,
+                                                       char* outputFileName)
 {
-     char *cptr;
-     charb cmd(500), line(2000);
-     FILE *infile;
-     int numFlds;
      ExpBuffer<char*> flds;
-   
-     sprintf (cmd, "%s", readVsKUnitigFile);
-     infile = Fopen (cmd, "r");
-     if (! fgets (line, 2000, infile))
-	  return (1); // A critical file doesn't exist
      FILE* outputFile=Fopen(outputFileName,"w");
-     // Load the appropriate stuff
-     numFlds = getFldsFromLine(line, flds);
-     cptr = flds[numFlds-1];
-     rdPrefixHold[0] = cptr[0];
-     rdPrefixHold[1] = cptr[1];
-     cptr += 2;
-     readNum = readNumHold = atoll (cptr);
+
+     rdPrefixHold[0] = rdPrefixHold[1];
      evenReadMatchStructs.clear();
      oddReadMatchStructs.clear();
-     updateMatchRecords(readNum, cptr, flds);
+   
+     // For each overlap line
+     for( ; ovp_stream; ++ovp_stream) {
+       getFldsFromLine(*ovp_stream, flds);
+       // Parse read info
+       rdPrefix[0] = flds[0][0];
+       rdPrefix[1] = flds[0][1];
+       readNum = atoll (flds[0] + 2);
 
-     while (fgets (line, 2000, infile)) {
-	  numFlds = getFldsFromLine(line, flds);
-	  cptr = flds[numFlds-1];
-	  rdPrefix[0] = cptr[0];
-	  rdPrefix[1] = cptr[1];
-	  cptr += 2;
-	  readNum = atof (cptr);
-	  if ((strcmp (rdPrefix, rdPrefixHold) == 0) &&
-	      readNum == readNumHold) {
-	       // load more data
-	       updateMatchRecords(readNum, cptr, flds);
-	       continue;
-	  }
-	  if ((strcmp (rdPrefix, rdPrefixHold) != 0) ||
-	      (readNum != readNumHold+1) ||
-	      (readNum % 2 == 0)) {
-	       // Get the super-read for the insert we just finished reading
+       if(strcmp(flds[0], "pe1000046") == 0 || strcmp(flds[0], "pe1000047") == 0)
+         raise(SIGINT);
+       // Compute SuperRead if lonely read or got mate pair
+       if ((strcmp (rdPrefix, rdPrefixHold) != 0) ||
+           (readNum != readNumHold+1) ||
+           (readNum % 2 == 0)) {
+         if(rdPrefixHold[0] != '\0') {
 	       approxNumPaths = 0;
-//	       puts ("Entering getSuperReadsForInsert\n"); fflush (stdout);
 	       getSuperReadsForInsert(outputFile);
-//	       puts ("Leaving getSuperReadsForInsert\n"); fflush (stdout);
 	       // Set up and load the new data
                evenReadMatchStructs.clear();
                oddReadMatchStructs.clear();
-//	       puts ("Entering updateMatchRecords\n"); fflush (stdout);
-	       updateMatchRecords(readNum, cptr, flds);
-//	       puts ("Leaving updateMatchRecords\n"); fflush (stdout);
-	       // Update what the old data is
-	       strcpy (rdPrefixHold, rdPrefix);
-	       readNumHold = readNum;
-	       continue;
-	  }
-	  // If we get here we've gotten to the second read of a mate pair
-	  // load the data
-	  updateMatchRecords(readNum, cptr, flds);
-	  // hold the updated read info
-	  readNumHold = readNum;
+         }
+         strcpy (rdPrefixHold, rdPrefix);
+       }
+       updateMatchRecords(readNum, flds);
+       readNumHold = readNum;
      }
-     fclose (infile);
-     // Output the stuff for the old pair
-     getSuperReadsForInsert(outputFile);
+     if(!evenReadMatchStructs.empty() || !oddReadMatchStructs.empty())
+       getSuperReadsForInsert(outputFile);
      fclose(outputFile);
      return (0);
 }
+     
+
+//      if (! fgets (line, 2000, infile))
+// 	  return (1); // A critical file doesn't exist
+//      FILE* outputFile=Fopen(outputFileName,"w");
+//      // Load the appropriate stuff
+//      numFlds = getFldsFromLine(line, flds);
+//      cptr = flds[numFlds-1];
+//      rdPrefixHold[0] = cptr[0];
+//      rdPrefixHold[1] = cptr[1];
+//      cptr += 2;
+//      readNum = readNumHold = atoll (cptr);
+//      evenReadMatchStructs.clear();
+//      oddReadMatchStructs.clear();
+//      updateMatchRecords(readNum, cptr, flds);
+
+//      while (fgets (line, 2000, infile)) {
+// 	  numFlds = getFldsFromLine(line, flds);
+// 	  cptr = flds[numFlds-1];
+// 	  rdPrefix[0] = cptr[0];
+// 	  rdPrefix[1] = cptr[1];
+// 	  cptr += 2;
+// 	  readNum = atof (cptr);
+// 	  if ((strcmp (rdPrefix, rdPrefixHold) == 0) &&
+// 	      readNum == readNumHold) {
+// 	       // load more data
+// 	       updateMatchRecords(readNum, cptr, flds);
+// 	       continue;
+// 	  }
+// 	  if ((strcmp (rdPrefix, rdPrefixHold) != 0) ||
+// 	      (readNum != readNumHold+1) ||
+// 	      (readNum % 2 == 0)) {
+// 	       // Get the super-read for the insert we just finished reading
+// 	       approxNumPaths = 0;
+// //	       puts ("Entering getSuperReadsForInsert\n"); fflush (stdout);
+// 	       getSuperReadsForInsert(outputFile);
+// //	       puts ("Leaving getSuperReadsForInsert\n"); fflush (stdout);
+// 	       // Set up and load the new data
+//                evenReadMatchStructs.clear();
+//                oddReadMatchStructs.clear();
+// //	       puts ("Entering updateMatchRecords\n"); fflush (stdout);
+// 	       updateMatchRecords(readNum, cptr, flds);
+// //	       puts ("Leaving updateMatchRecords\n"); fflush (stdout);
+// 	       // Update what the old data is
+// 	       strcpy (rdPrefixHold, rdPrefix);
+// 	       readNumHold = readNum;
+// 	       continue;
+// 	  }
+// 	  // If we get here we've gotten to the second read of a mate pair
+// 	  // load the data
+// 	  updateMatchRecords(readNum, cptr, flds);
+// 	  // hold the updated read info
+// 	  readNumHold = readNum;
+//      }
+//      fclose (infile);
+//      // Output the stuff for the old pair
+//      getSuperReadsForInsert(outputFile);
+// }
 
 // returns 1 if successful, 0 if too many nodes (so failure)
 int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
