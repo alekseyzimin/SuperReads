@@ -584,88 +584,93 @@ void loadKUnitigTranslationTable(const char *fileName)
 
 void KUnitigsJoinerThread::updateMatchRecords(int readNum, ExpBuffer<char*>& flds)
 {
-    int readLength = atoi(flds[1]);
-    ExpBuffer<struct kuniToReadMatchStruct> *structs;
-    if (readNum % 2 == 0) 
+     int readLength = atoi(flds[1]);
+     ExpBuffer<struct kuniToReadMatchStruct> *structs;
+     if (readNum % 2 == 0) 
 	  structs = &evenReadMatchStructs;
      else
 	  structs = &oddReadMatchStructs;
 
-    for(size_t i = 2; i < flds.size(); i += 3) {
-      structs->push_back(kuniToReadMatchStruct());
-      struct kuniToReadMatchStruct &kUTRMS = structs->back();
-      kUTRMS.ori           = *(flds[i+2]);
-      kUTRMS.ahg           = atoi (flds[i+1]);
-      kUTRMS.readLength    = readLength;
-      kUTRMS.kUnitigNumber = atoi (flds[i]);
-      kUTRMS.kUnitigLength = abs (unitigLengths[kUTRMS.kUnitigNumber]);
-      kUTRMS.bhg = kUTRMS.ahg + kUTRMS.readLength - kUTRMS.kUnitigLength;
-      if (kUTRMS.ahg <= 0)
-        kUTRMS.kUnitigMatchBegin = 0;
-      else
-        kUTRMS.kUnitigMatchBegin = kUTRMS.ahg;
-      if (kUTRMS.bhg > 0)
-        kUTRMS.kUnitigMatchEnd = kUTRMS.kUnitigLength;
-      else
-        kUTRMS.kUnitigMatchEnd = kUTRMS.kUnitigLength + kUTRMS.bhg;
-      // orientedReadMatchBegin is 0-based for now
-      kUTRMS.orientedReadMatchBegin = kUTRMS.kUnitigMatchBegin - kUTRMS.ahg;
-      kUTRMS.orientedReadMatchEnd = kUTRMS.kUnitigMatchEnd - kUTRMS.ahg;
-      if (kUTRMS.ori == 'F') {
-        kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchBegin;
-        kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchEnd; }
-      else {
-        kUTRMS.orientedReadMatchBegin = kUTRMS.readLength - kUTRMS.orientedReadMatchBegin;
-        kUTRMS.orientedReadMatchEnd = kUTRMS.readLength - kUTRMS.orientedReadMatchEnd;
-        kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchEnd;
-        kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchBegin; }
-      //     fprintf (stderr, "readMatchBegin = %d, readMatchEnd = %d, orientedReadMatchBegin = %d, orientedReadMatchEnd = %d, ahg = %d, bhg = %d, kUnitigNumber = %d\n", kUTRMS.readMatchBegin, kUTRMS.readMatchEnd, kUTRMS.orientedReadMatchBegin, kUTRMS.orientedReadMatchEnd, kUTRMS.ahg, kUTRMS.bhg, kUTRMS.kUnitigNumber);
-      if (! args.kunitigs_translation_file_given)
-        return;
-      if (unitigLengths[kUTRMS.kUnitigNumber] > 0)
-        return;
-      auto map_it = origUnitigToNewUnitigPlacement.find(kUTRMS.kUnitigNumber);
-      // The following should not be necessary, but just in case...
-      if (map_it == origUnitigToNewUnitigPlacement.end()) {
-        fprintf (stderr, "Error at 100, readNum = %d, kUnitig = %d\n", readNum, kUTRMS.kUnitigNumber);
-        return; }
+     for(size_t i = 2; i < flds.size(); i += 3) {
+//	  printf ("In updateMatchRecords loop, i=%d, flds.size() = %d\n", (int)i, (int)flds.size());
+	  structs->push_back(kuniToReadMatchStruct());
+	  struct kuniToReadMatchStruct &kUTRMS = structs->back();
+	  kUTRMS.ori           = *(flds[i+2]);
+	  kUTRMS.ahg           = atoi (flds[i+1]);
+	  kUTRMS.readLength    = readLength;
+	  kUTRMS.kUnitigNumber = atoi (flds[i]);
+	  kUTRMS.kUnitigLength = abs (unitigLengths[kUTRMS.kUnitigNumber]);
+	  kUTRMS.bhg = kUTRMS.ahg + kUTRMS.readLength - kUTRMS.kUnitigLength;
+	  if (kUTRMS.ahg <= 0)
+	       kUTRMS.kUnitigMatchBegin = 0;
+	  else
+	       kUTRMS.kUnitigMatchBegin = kUTRMS.ahg;
+	  if (kUTRMS.bhg > 0)
+	       kUTRMS.kUnitigMatchEnd = kUTRMS.kUnitigLength;
+	  else
+	       kUTRMS.kUnitigMatchEnd = kUTRMS.kUnitigLength + kUTRMS.bhg;
+	  // orientedReadMatchBegin is 0-based for now
+	  kUTRMS.orientedReadMatchBegin = kUTRMS.kUnitigMatchBegin - kUTRMS.ahg;
+	  kUTRMS.orientedReadMatchEnd = kUTRMS.kUnitigMatchEnd - kUTRMS.ahg;
+	  if (kUTRMS.ori == 'F') {
+	       kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchBegin;
+	       kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchEnd; }
+	  else {
+	       kUTRMS.orientedReadMatchBegin = kUTRMS.readLength - kUTRMS.orientedReadMatchBegin;
+	       kUTRMS.orientedReadMatchEnd = kUTRMS.readLength - kUTRMS.orientedReadMatchEnd;
+	       kUTRMS.readMatchBegin = kUTRMS.orientedReadMatchEnd;
+	       kUTRMS.readMatchEnd = kUTRMS.orientedReadMatchBegin; }
+	  //     fprintf (stderr, "readMatchBegin = %d, readMatchEnd = %d, orientedReadMatchBegin = %d, orientedReadMatchEnd = %d, ahg = %d, bhg = %d, kUnitigNumber = %d\n", kUTRMS.readMatchBegin, kUTRMS.readMatchEnd, kUTRMS.orientedReadMatchBegin, kUTRMS.orientedReadMatchEnd, kUTRMS.ahg, kUTRMS.bhg, kUTRMS.kUnitigNumber);
+//	  printf ("Loop before k-unitig translations, i = %d, flds.size() = %d\n", (int)i, (int)flds.size());
+	  if (! args.kunitigs_translation_file_given)
+//	       return;
+	       continue;
+	  if (unitigLengths[kUTRMS.kUnitigNumber] > 0)
+//	       return;
+	       continue;
+	  auto map_it = origUnitigToNewUnitigPlacement.find(kUTRMS.kUnitigNumber);
+	  // The following should not be necessary, but just in case...
+	  if (map_it == origUnitigToNewUnitigPlacement.end()) {
+	       fprintf (stderr, "Error at 100, readNum = %d, kUnitig = %d\n", readNum, kUTRMS.kUnitigNumber);
+	       return; }
 
-      int amtKUniBeforeOldKUni, amtKUniAfterOldKUni;
-      int newUnitigLength = unitigLengths[map_it->second.kUnitig];
-      if (map_it->second.begin < map_it->second.end) { // The k-uni lies in the new one in F dir.
-        amtKUniBeforeOldKUni = map_it->second.begin-1;
-        amtKUniAfterOldKUni = newUnitigLength - map_it->second.end;
-        kUTRMS.ahg += amtKUniBeforeOldKUni;
-        kUTRMS.bhg -= amtKUniAfterOldKUni;
-      }
-      else {
-        amtKUniBeforeOldKUni = map_it->second.end-1;
-        amtKUniAfterOldKUni =  newUnitigLength - map_it->second.begin;
-        int ahgHold = kUTRMS.ahg;
-        kUTRMS.ahg = amtKUniBeforeOldKUni - kUTRMS.bhg;
-        kUTRMS.bhg = - amtKUniAfterOldKUni - ahgHold;
-        // Change the orientation of the read in the k-unitig
-        kUTRMS.ori = (kUTRMS.ori == 'F') ? 'R' : 'F';
-      }
-      kUTRMS.kUnitigMatchBegin = (kUTRMS.ahg < 0) ? 0 : kUTRMS.ahg;
-      int tempValueAdjustment = (kUTRMS.bhg < 0) ? kUTRMS.bhg : 0;
-      kUTRMS.kUnitigMatchEnd = newUnitigLength + tempValueAdjustment;
-      int amtOfReadBeforeKUni = (kUTRMS.ahg > 0) ? 0 : -kUTRMS.ahg;
-      int amtOfReadAfterKUni  = (kUTRMS.bhg > 0) ? kUTRMS.bhg : 0;
-      if (kUTRMS.ori == 'F') {
-        kUTRMS.readMatchBegin = amtOfReadBeforeKUni;
-        kUTRMS.readMatchEnd = kUTRMS.readLength - amtOfReadAfterKUni;
-        kUTRMS.orientedReadMatchBegin = kUTRMS.readMatchBegin;
-        kUTRMS.orientedReadMatchEnd   = kUTRMS.readMatchEnd; }
-      else {
-        kUTRMS.readMatchBegin = amtOfReadAfterKUni;
-        kUTRMS.readMatchEnd = kUTRMS.readLength - amtOfReadBeforeKUni;
-        kUTRMS.orientedReadMatchBegin = kUTRMS.readMatchEnd;
-        kUTRMS.orientedReadMatchEnd   = kUTRMS.readMatchBegin; }
-      kUTRMS.kUnitigNumber = map_it->second.kUnitig;
-      kUTRMS.kUnitigLength = unitigLengths[kUTRMS.kUnitigNumber];
-      //     fprintf (stderr, "After change: readMatchBegin = %d, readMatchEnd = %d, orientedReadMatchBegin = %d, orientedReadMatchEnd = %d, ahg = %d, bhg = %d, kUnitigNumber = %d\n", kUTRMS.readMatchBegin, kUTRMS.readMatchEnd, kUTRMS.orientedReadMatchBegin, kUTRMS.orientedReadMatchEnd, kUTRMS.ahg, kUTRMS.bhg, kUTRMS.kUnitigNumber);
-    }
+	  int amtKUniBeforeOldKUni, amtKUniAfterOldKUni;
+	  int newUnitigLength = unitigLengths[map_it->second.kUnitig];
+	  if (map_it->second.begin < map_it->second.end) { // The k-uni lies in the new one in F dir.
+	       amtKUniBeforeOldKUni = map_it->second.begin-1;
+	       amtKUniAfterOldKUni = newUnitigLength - map_it->second.end;
+	       kUTRMS.ahg += amtKUniBeforeOldKUni;
+	       kUTRMS.bhg -= amtKUniAfterOldKUni;
+	  }
+	  else {
+	       amtKUniBeforeOldKUni = map_it->second.end-1;
+	       amtKUniAfterOldKUni =  newUnitigLength - map_it->second.begin;
+	       int ahgHold = kUTRMS.ahg;
+	       kUTRMS.ahg = amtKUniBeforeOldKUni - kUTRMS.bhg;
+	       kUTRMS.bhg = - amtKUniAfterOldKUni - ahgHold;
+	       // Change the orientation of the read in the k-unitig
+	       kUTRMS.ori = (kUTRMS.ori == 'F') ? 'R' : 'F';
+	  }
+	  kUTRMS.kUnitigMatchBegin = (kUTRMS.ahg < 0) ? 0 : kUTRMS.ahg;
+	  int tempValueAdjustment = (kUTRMS.bhg < 0) ? kUTRMS.bhg : 0;
+	  kUTRMS.kUnitigMatchEnd = newUnitigLength + tempValueAdjustment;
+	  int amtOfReadBeforeKUni = (kUTRMS.ahg > 0) ? 0 : -kUTRMS.ahg;
+	  int amtOfReadAfterKUni  = (kUTRMS.bhg > 0) ? kUTRMS.bhg : 0;
+	  if (kUTRMS.ori == 'F') {
+	       kUTRMS.readMatchBegin = amtOfReadBeforeKUni;
+	       kUTRMS.readMatchEnd = kUTRMS.readLength - amtOfReadAfterKUni;
+	       kUTRMS.orientedReadMatchBegin = kUTRMS.readMatchBegin;
+	       kUTRMS.orientedReadMatchEnd   = kUTRMS.readMatchEnd; }
+	  else {
+	       kUTRMS.readMatchBegin = amtOfReadAfterKUni;
+	       kUTRMS.readMatchEnd = kUTRMS.readLength - amtOfReadBeforeKUni;
+	       kUTRMS.orientedReadMatchBegin = kUTRMS.readMatchEnd;
+	       kUTRMS.orientedReadMatchEnd   = kUTRMS.readMatchBegin; }
+	  kUTRMS.kUnitigNumber = map_it->second.kUnitig;
+	  kUTRMS.kUnitigLength = unitigLengths[kUTRMS.kUnitigNumber];
+//	  printf ("At end of loop, i = %d, flds.size() = %d\n", (int)i, (int)flds.size());
+	  //     fprintf (stderr, "After change: readMatchBegin = %d, readMatchEnd = %d, orientedReadMatchBegin = %d, orientedReadMatchEnd = %d, ahg = %d, bhg = %d, kUnitigNumber = %d\n", kUTRMS.readMatchBegin, kUTRMS.readMatchEnd, kUTRMS.orientedReadMatchBegin, kUTRMS.orientedReadMatchEnd, kUTRMS.ahg, kUTRMS.bhg, kUTRMS.kUnitigNumber);
+     }
 }
 
 int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& ovp_stream,
@@ -677,9 +682,11 @@ int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& o
      rdPrefixHold[0] = rdPrefixHold[1];
      evenReadMatchStructs.clear();
      oddReadMatchStructs.clear();
-   
+     
+//     printf ("Entering processKUnitigVsReadMatches\n");
      // For each overlap line
      for( ; ovp_stream; ++ovp_stream) {
+//	  printf ("We are in the loop!\n");
        getFldsFromLine(*ovp_stream, flds);
        // Parse read info
        rdPrefix[0] = flds[0][0];
@@ -689,6 +696,7 @@ int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& o
        // if(strcmp(flds[0], "pe1000046") == 0 || strcmp(flds[0], "pe1000047") == 0)
        //   raise(SIGINT);
        // Compute SuperRead if lonely read or got mate pair
+//       printf ("rdPrefix = %s, rdPrefixHold = %s, readNum = %d, readNumHold = %d\n", rdPrefix, rdPrefixHold, (int) readNum, (int) readNumHold);
        if ((strcmp (rdPrefix, rdPrefixHold) != 0) ||
            (readNum != readNumHold+1) ||
            (readNum % 2 == 0)) {
@@ -1550,6 +1558,7 @@ void KUnitigsJoinerThread::findSingleReadSuperReads(char *readName, FILE* output
 	  kUTRMSptr = &(oddReadMatchStructs[0]);
      }
      
+//     printf ("countOfMatchingKUnitigs = %d\n", countOfMatchingKUnitigs);
      i = 0;
      minReadOffsetSeen = kUTRMSptr[i].readMatchBegin;
      maxReadOffsetSeen = kUTRMSptr[i].readMatchEnd;
@@ -1668,6 +1677,8 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
      bool last_element_is_nil = false;
      unitig_to_ori_offsets::iterator end_tree;
 
+//     printf ("Entering getSuperReadsForInsert\n");
+
      // Make sure it is initialized
      abbULS1.frontEdgeOffset = 0;
      abbULS1.ori = 'F';
@@ -1678,6 +1689,7 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
      fprintf (stderr, "%s%lld %ld %ld\n", rdPrefixHold, readNumHold, evenReadMatchStructs.size(), oddReadMatchStructs.size());
 #endif
      sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
+//     printf ("numEvenReadMatchStructs = %d, numOddReadMatchStructs = %d\n", (int) evenReadMatchStructs.size(), (int) oddReadMatchStructs.size());
      if (evenReadMatchStructs.empty() || oddReadMatchStructs.empty()) {
        findSingleReadSuperReads(readNameSpace, outputFile);
 	  return; }
