@@ -5,7 +5,7 @@
 #include<algorithm>
 #include<charb.hpp>
 #include<src/reduce_sr.hpp>
-#define DEBUG 0
+// #define DEBUG 0
 
 typedef ExpandingBuffer<int> int_buf;
 typedef ExpandingBuffer<int_buf, remaper<int_buf> > twoD_int_buf;
@@ -88,7 +88,9 @@ int main(int argc,char *argv[]){
      twoD_int_buf superReadIndicesForKUnitig(args.largestkunitig_arg);
      int overlapLength = args.kmerlen_arg - 1;
      int lengthAdjustment = 0;
+#ifndef DEBUG
      FILE* output = Fopen(args.output_arg, "w");
+#endif
      FILE *infile = Fopen (args.kunitigLengthsFile_arg, "r");
      FILE *sr_sizes = Fopen (args.SuperReads_sizes_arg, "r");
 

@@ -28,5 +28,8 @@ option("max-nodes-allowed") {
 option("prefix", "p") {
   description "Output file prefix."
   c_string; default "super_reads_output" }
-arg("input-prefix") {
+option("threads", "t") {
+  description "Number of threads"
+  int; default "1" }
+arg("input-file") {
   c_string }
