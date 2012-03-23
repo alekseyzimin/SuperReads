@@ -15,5 +15,7 @@ TEST(SR_name, encode_decode) {
   }
 
   sr_name sr(sr_original);
-  EXPECT_STREQ(sr_original, sr.to_str());
+  charb res;
+  sr.to_str(res);
+  EXPECT_STREQ(sr_original, res);
 }

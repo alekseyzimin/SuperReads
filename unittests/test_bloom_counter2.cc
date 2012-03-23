@@ -24,15 +24,11 @@ TEST_P(BloomCounter, FalsePositive) {
   charb               str(str_len);
   str[str_len] = '\0';
 
-  std::cerr << nb_inserts << " " << error_rate << " " << nb_strings << std::endl;
-
   for(size_t i = 0; i < nb_strings; ++i) {
     for(size_t j = 0; j < str_len; ++j)
       str[j] = 'A' + (random() % 26);
     counts.push_back(std::make_pair((char*)str, (unsigned int)0));
   }
-
-  std::cerr << counts.size() << std::endl;
 
   bloom_counter2<const char *> bc1(error_rate, nb_inserts);
   bloom_counter2<const char *> bc2(error_rate, nb_inserts);
@@ -49,8 +45,6 @@ TEST_P(BloomCounter, FalsePositive) {
     bc2[ref.first.c_str()]++;
     ++bc3[ref.first.c_str()];
   }
-
-  std::cerr << "nb_errors " << nb_errors << std::endl;
 
   // Check known strings
   for(size_t i = 0; i < nb_strings; ++i) {
@@ -88,4 +82,4 @@ TEST_P(BloomCounter, FalsePositive) {
 
 INSTANTIATE_TEST_CASE_P(BloomCounterTest, BloomCounter,
                         ::testing::Values(parameter({    1024,    2048, 0.01 }),
-                                          parameter({ 10000000, 30000000, 0.01 })));
+                                          parameter({ 1000000, 3000000, 0.01 })));

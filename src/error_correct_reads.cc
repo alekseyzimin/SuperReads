@@ -241,17 +241,25 @@ public:
     _combined(0), _contaminant(0), _trim_contaminant(false) { }
 
 private:
-  std::ostream *open_file(const char *suffix) {
-    std::ostream *res;
-    std::string file(_prefix);
-    file += suffix;
-    if(_gzip) {
-      file += ".gz";
-      res = new gzipstream(file.c_str());
-    } else {
-      res = new std::ofstream(file.c_str());
+  // Open the data (error corrected reads) and log files. Default to
+  // STDOUT and STDERR if none specified.
+  std::ostream* open_file(const std::string prefix, const char* suffix,
+                          const std::string def) {
+    std::ostream* res;
+    std::string file;
+
+    if(prefix.empty())
+      file = def;
+    else {
+      file = prefix;
+      file += suffix;
     }
-      
+    if(_gzip) {
+      if(!prefix.empty())
+        file += ".gz";
+      res = new gzipstream(file.c_str());
+    } else
+      res = new std::ofstream(file.c_str());
     if(!res->good())
       eraise(std::runtime_error)
         << "Failed to open file '" << file << "'" << err::no;
@@ -261,9 +269,10 @@ private:
 
 public:
   void do_it(int nb_threads) {
-    std::auto_ptr<std::ostream> details(open_file(".log"));
-    std::auto_ptr<std::ostream> output(open_file(".fa"));
-
+    // Make sure they are deleted when done
+    std::auto_ptr<std::ostream> details(open_file(_prefix, ".log", "/dev/fd/2"));
+    std::auto_ptr<std::ostream> output(open_file(_prefix, ".fa", "/dev/fd/1"));
+    // Multiplexers, same thing
     std::auto_ptr<jflib::o_multiplexer> 
       log_m(new jflib::o_multiplexer(details.get(), 3 * nb_threads, 1024));
     std::auto_ptr<jflib::o_multiplexer>
@@ -666,7 +675,8 @@ int main(int argc, char *argv[])
   error_correct_instance::ec_t correct(&parser, &hashes);
   correct.skip(args.skip_arg).good(args.good_arg)
     .anchor(args.anchor_count_given ? args.anchor_count_arg : args.min_count_arg)
-    .prefix(args.output_arg).min_count(args.min_count_arg)
+    .prefix(args.output_given ? args.output_arg : "")
+    .min_count(args.min_count_arg)
     .window(args.window_given ? args.window_arg : kmer_t::k())
     .error(args.error_given ? args.error_arg : kmer_t::k() / 2)
     .gzip(args.gzip_flag)

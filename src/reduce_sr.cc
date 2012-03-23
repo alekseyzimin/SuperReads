@@ -11,6 +11,7 @@ typedef ExpandingBuffer<int> int_buf;
 typedef ExpandingBuffer<int_buf, remaper<int_buf> > twoD_int_buf;
 typedef ExpandingBuffer<charb, remaper<charb> > twoD_charb_buf;
 
+
 FILE *Fopen (const char *fn, const char *mode);
 
 static int int_compare(const void *p1, const void *p2){
@@ -26,7 +27,7 @@ static int int_compare(const void *p1, const void *p2){
 void reverse_sr(const char * original, char * reversed){
      //will write the reversed sr into *reversed. Assume reversed is at
      //least as large as original.
-     charb original_local=original;//because strtok_r changes input
+     charb original_local=original;
      char * token, *savespace;
      int offset=strlen(original);
   
@@ -58,40 +59,72 @@ void reverse_sr(const char * original, char * reversed){
      }
 }
 
-int *kUnitigLengths;
+// cptr is the candidate string ending at end.
+int compute_lengthAdjustment(char ori, char* cptr, char* end, int_buf& kUnitigLengths, int overlapLength) {
+  int   res                = 0;
 
-#define mallocOrDie(name, num, type) name = (type *) calloc (num, sizeof ( type )); \
-if (name == NULL) { fprintf (stderr, "Couldn't allocate space for '%s'\nBye!\n", #name ); exit (-1); }
+  while (cptr < end) {
+    int unitigNumber  = atoi (cptr);
+    res              += (kUnitigLengths[unitigNumber] - overlapLength);
+    while (cptr < end && isdigit(*cptr)) ++cptr;
+    while (cptr < end && ! isdigit(*cptr)) ++cptr;
+    }
+    if(ori == 'R')
+      res += overlapLength;
+
+  return res;
+}
 
 int main(int argc,char *argv[]){
      reduce_sr args(argc, argv);
      int i,j,k,l=0,lastKUnitigIndex,irreducibleSuperReadIndex=0;
-     int_buf kUnitigsInSuperRead(1000);
      time_t time_start=time(NULL);
-     int_buf candidates(100);
+     int_buf candidates(100),kUnitigsInSuperRead(1000),kUnitigLengths(args.largestkunitig_arg + 1);
      twoD_charb_buf irreducibleSuperReadNames(10000000);
-     charb line(1000000);
+     charb superReadName_reverse(1000),superReadName(1000),superReadName_save(1000),line(1000000);
      char *token, *saveptr;
      char *tptr;
      char relativeOri='F';
-     //parse arguments here
      twoD_int_buf superReadIndicesForKUnitig(args.largestkunitig_arg);
      int overlapLength = args.kmerlen_arg - 1;
      int lengthAdjustment = 0;
-
-     mallocOrDie (kUnitigLengths, args.largestkunitig_arg+1, int);
+     FILE* output = Fopen(args.output_arg, "w");
      FILE *infile = Fopen (args.kunitigLengthsFile_arg, "r");
+     FILE *sr_sizes = Fopen (args.SuperReads_sizes_arg, "r");
+
+
      while (fgets (line, infile)) {
 	  int uniNum, uniLen;
 	  sscanf (line, "%d %d", &uniNum, &uniLen);
 	  kUnitigLengths[uniNum] = uniLen; }
      fclose (infile);
 
-     while(fgets(line,stdin)){
+     while(fgets(line,sr_sizes)){
 	  l++;	
 	  if(l%500000==0){
 	       fprintf(stderr,"Processed %d super reads, irreducible %d, processing %d super reads per second\n",l,irreducibleSuperReadIndex,(int)floor(500000/difftime(time(NULL),time_start)));
 	       time_start=time(NULL);
+#if DEBUG
+		fprintf(stderr,"USAGE:\n");
+                int mem=0;
+		for (size_t k=0;k<irreducibleSuperReadNames.size();k++)
+			mem+=irreducibleSuperReadNames[k].size();
+		fprintf(stderr,"irreducibleSuperReadNames takes %d bytes\n",mem);
+		mem=0;
+                for (size_t k=0;k<args.largestkunitig_arg;k++)
+                        mem+=superReadIndicesForKUnitig[k].size()*4;
+                fprintf(stderr,"superReadIndicesForKUnitig takes %d bytes\n",mem);
+
+                fprintf(stderr,"CAPACITY:\n");
+                mem=0;
+                for (size_t k=0;k<irreducibleSuperReadNames.capacity();k++)
+                        mem+=irreducibleSuperReadNames[k].capacity();
+                fprintf(stderr,"irreducibleSuperReadNames takes %d bytes\n",mem);
+                mem=0;
+                for (size_t k=0;k<args.largestkunitig_arg;k++)
+                        mem+=superReadIndicesForKUnitig[k].capacity()*4;
+                fprintf(stderr,"superReadIndicesForKUnitig takes %d bytes\n",mem);
+#endif
 	  }
 	  //first we parse the super read line, space separated, to get the name
 	  token=strtok_r(line," ",&saveptr);
@@ -103,8 +136,8 @@ int main(int argc,char *argv[]){
 	  printf("Found super read %s\n",token);
 #endif
 	  //we need to save the super read name
-	  charb superReadName=token;
-	  charb superReadName_save=token;
+	  superReadName=token;
+	  superReadName_save=token;
 	  //here we need to examine first and last k-unitig in the super read name
 	  j=0;
 	  token=strtok_r(superReadName,"FR_",&saveptr);
@@ -149,7 +182,7 @@ int main(int argc,char *argv[]){
 
 	       qsort(candidates,k,sizeof(int),int_compare);
 
-	       charb superReadName_reverse(superReadName_save.size());
+	       superReadName_reverse=superReadName_save;
 
 	       reverse_sr(superReadName_save,superReadName_reverse);
 	       //now we go through the sorted candidates and figure out which one matches
@@ -161,44 +194,30 @@ int main(int argc,char *argv[]){
 	       //now we go through the sorted candidates and figure out which one matches, we only look at the candidate if it is encountered twice
 	       int last_candidate  = -1;
 	       int candidate_count = 1;
-	       for(i = 0; i < k; ++i) {
-		    if(candidates[i] == last_candidate && candidate_count == 1) {
+	       for(i = 0; i < k; last_candidate = candidates[i], ++i) {
+                 if(candidates[i] != last_candidate || candidate_count != 1) {
+                   candidate_count=1;
+                   continue;
+                 }      
 #if DEBUG
-			 printf("Checking candidate %s\n",(char*)irreducibleSuperReadNames[candidates[i]]);
+                 printf("Checking candidate %s\n",(char*)irreducibleSuperReadNames[candidates[i]]);
 #endif
-			 tptr = strstr(irreducibleSuperReadNames[candidates[i]],superReadName_save);
-			 if(tptr!=NULL) {
-			      relativeOri = 'F';
-			      lengthAdjustment = 0;
-			      int stringOffsetToStop = tptr - irreducibleSuperReadNames[candidates[i]];
-			      char *cptr = irreducibleSuperReadNames[candidates[i]];
-			      int stringOffset = 0;
-			      while (stringOffset < stringOffsetToStop) {
-				   int unitigNumber = atoi (cptr+stringOffset);
-				   lengthAdjustment += (kUnitigLengths[unitigNumber] - overlapLength);
-				   while (isdigit(cptr[stringOffset])) ++stringOffset;
-				   while (! isdigit(cptr[stringOffset])) ++stringOffset; }
-			      break; }
-			 tptr = strstr(irreducibleSuperReadNames[candidates[i]],superReadName_reverse);
-			 if(tptr!=NULL) {
-			      relativeOri = 'R';
-			      lengthAdjustment = 0;
-			      int stringOffsetToStop = (tptr - irreducibleSuperReadNames[candidates[i]]);
-			      stringOffsetToStop += strlen (superReadName_reverse);
-			      char *cptr = irreducibleSuperReadNames[candidates[i]];
-			      int stringOffset = 0;
-			      while (stringOffset < stringOffsetToStop) {
-				   int unitigNumber = atoi (cptr+stringOffset);
-				   lengthAdjustment += (kUnitigLengths[unitigNumber] - overlapLength);
-				   while (isdigit(cptr[stringOffset])) ++stringOffset;
-				   while (! isdigit(cptr[stringOffset])) ++stringOffset; }
-			      lengthAdjustment += overlapLength;
-			      break; }
-			 candidate_count++;
-		    }
-		    else
-			 candidate_count=1;
-		    last_candidate=candidates[i];
+                 tptr = strstr(irreducibleSuperReadNames[candidates[i]],superReadName_save);
+                 if(tptr!=NULL) {
+                   relativeOri = 'F';
+                   lengthAdjustment = compute_lengthAdjustment(relativeOri, irreducibleSuperReadNames[candidates[i]], tptr,
+                                                               kUnitigLengths, overlapLength);
+                   break;
+                 }
+                 tptr = strstr(irreducibleSuperReadNames[candidates[i]],superReadName_reverse);
+                 if(tptr!=NULL) {
+                   relativeOri = 'R';
+                   lengthAdjustment = compute_lengthAdjustment(relativeOri, irreducibleSuperReadNames[candidates[i]],
+                                                               tptr + strlen(superReadName_reverse),
+                                                               kUnitigLengths, overlapLength);
+                   break;
+                 }
+                 candidate_count++;
 	       }
 
 #if DEBUG
@@ -208,7 +227,9 @@ int main(int argc,char *argv[]){
 	       }
 #else
 	       if(i < k) {
-		    printf("%s %s %c %d\n",(char*)superReadName_save,(char*)irreducibleSuperReadNames[candidates[i]], relativeOri, lengthAdjustment);
+                 fprintf(output, "%s %s %c %d\n",
+                         (char*)superReadName_save,(char*)irreducibleSuperReadNames[candidates[i]], relativeOri, lengthAdjustment);
+                  
 		    continue;
 	       }
 #endif
@@ -221,9 +242,10 @@ int main(int argc,char *argv[]){
 	  //here is what we do with an irreducible super read
 	  irreducibleSuperReadNames[irreducibleSuperReadIndex]=superReadName_save;
 	  for(i = 0; i <= lastKUnitigIndex; ++i)
-	       superReadIndicesForKUnitig[kUnitigsInSuperRead[i]].push_back(irreducibleSuperReadIndex);
+            superReadIndicesForKUnitig[kUnitigsInSuperRead[i]].push_back(irreducibleSuperReadIndex);
 	  irreducibleSuperReadIndex++;
      }
+     fclose(sr_sizes);
      return(0);
 }
 

@@ -27,7 +27,7 @@
     } while(0); */
 #define CHECK
 
-template<typename T, typename R=reallocator<T> >
+template<typename T, typename R=reallocator<T>, size_t init_size = 2 >
 class ExpBuffer {
 protected:
   T * base_;
@@ -67,7 +67,8 @@ public:
     CHECK;
   }
   virtual ~ExpBuffer() {
-    realloc(base_, 0, 0);
+    if(base_)
+      realloc(base_, 0, 0);
   }
 
   void check() const { CHECK; }
@@ -114,12 +115,26 @@ public:
   void clear() { ptr_ = base_; }
   bool empty() const { return ptr_ == base_; }
   bool is_null() const { return !base_ || base_ == end_; }
+
+  void resize(size_type s) {
+    reserve(s);
+    ptr_ = base_ + s;
+  }
+
+  void resize(size_type s, T c) {
+    if(s > size()) {
+      reserve(s);
+      for( ; ptr_ < base_ + s; ++ptr_)
+        *ptr_ = c;
+    } else
+      ptr_ = base_ + s;
+  }
   
   void reserve(size_type s = 0) {
     CHECK;
     size_type clen = end_ - base_;
     if(s == 0)
-      s = 1024;
+      s = init_size;
     if(s <= clen)
       return;
     if(s <= 2 * clen)

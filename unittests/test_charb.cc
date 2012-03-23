@@ -229,9 +229,7 @@ TEST_F(IOTest, getline_append) {
   std::string res(l1, strlen(l1) - 1); // Everything but "\n"
   EXPECT_STREQ(res.c_str(), b);
   
-  std::cout << b << "\n";
   getline_append(is, b);
-  std::cout << b << "\n";
   EXPECT_EQ(strlen(l1) + strlen(l2) - 1, b.len());
   EXPECT_EQ(strlen(l1) + strlen(l2) - 1, strlen(b));
 

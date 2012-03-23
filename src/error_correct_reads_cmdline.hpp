@@ -56,7 +56,7 @@ public:
     anchor_count_arg(), anchor_count_given(false),
     window_arg(), window_given(false),
     error_arg(5), error_given(false),
-    output_arg("error_corrected"), output_given(false),
+    output_arg(""), output_given(false),
     contaminant_arg(""), contaminant_given(false),
     trim_contaminant_flag(false),
     gzip_flag(false)
@@ -73,7 +73,7 @@ public:
     anchor_count_arg(), anchor_count_given(false),
     window_arg(), window_given(false),
     error_arg(5), error_given(false),
-    output_arg("error_corrected"), output_given(false),
+    output_arg(""), output_given(false),
     contaminant_arg(""), contaminant_given(false),
     trim_contaminant_flag(false),
     gzip_flag(false)
@@ -132,12 +132,12 @@ public:
         break;
       case 'c':
         combined_given = true;
-        combined_arg = yaggo::conv_uint<uint32_t>((const char *)optarg, err, false);
+        combined_arg = yaggo::conv_uint<uint32_t>((const char*)optarg, err, false);
         CHECK_ERR(uint32_t, optarg, "-c, --combined=Nb-DB")
         break;
       case 't':
         thread_given = true;
-        thread_arg = yaggo::conv_uint<uint32_t>((const char *)optarg, err, false);
+        thread_arg = yaggo::conv_uint<uint32_t>((const char*)optarg, err, false);
         CHECK_ERR(uint32_t, optarg, "-t, --thread=uint32")
         break;
       case 'C':
@@ -145,32 +145,32 @@ public:
         break;
       case 'm':
         min_count_given = true;
-        min_count_arg = yaggo::conv_uint<uint32_t>((const char *)optarg, err, false);
+        min_count_arg = yaggo::conv_uint<uint32_t>((const char*)optarg, err, false);
         CHECK_ERR(uint32_t, optarg, "-m, --min-count=uint32")
         break;
       case 's':
         skip_given = true;
-        skip_arg = yaggo::conv_uint<uint32_t>((const char *)optarg, err, false);
+        skip_arg = yaggo::conv_uint<uint32_t>((const char*)optarg, err, false);
         CHECK_ERR(uint32_t, optarg, "-s, --skip=uint32")
         break;
       case 'g':
         good_given = true;
-        good_arg = yaggo::conv_uint<uint32_t>((const char *)optarg, err, false);
+        good_arg = yaggo::conv_uint<uint32_t>((const char*)optarg, err, false);
         CHECK_ERR(uint32_t, optarg, "-g, --good=uint32")
         break;
       case 'a':
         anchor_count_given = true;
-        anchor_count_arg = yaggo::conv_uint<uint32_t>((const char *)optarg, err, false);
+        anchor_count_arg = yaggo::conv_uint<uint32_t>((const char*)optarg, err, false);
         CHECK_ERR(uint32_t, optarg, "-a, --anchor-count=uint32")
         break;
       case 'w':
         window_given = true;
-        window_arg = yaggo::conv_uint<uint32_t>((const char *)optarg, err, false);
+        window_arg = yaggo::conv_uint<uint32_t>((const char*)optarg, err, false);
         CHECK_ERR(uint32_t, optarg, "-w, --window=uint32")
         break;
       case 'e':
         error_given = true;
-        error_arg = yaggo::conv_uint<uint32_t>((const char *)optarg, err, false);
+        error_arg = yaggo::conv_uint<uint32_t>((const char*)optarg, err, false);
         CHECK_ERR(uint32_t, optarg, "-e, --error=uint32")
         break;
       case 'o':
@@ -189,14 +189,19 @@ public:
         break;
       }
     }
+
+    // Check that required switches are present
     if(!db_given)
       error("[-d, --db=jellyfish.db] required switch");
+
+    // Parse arguments
     if(argc - optind < 1)
       error("Requires at least 1 argument.");
     for( ; optind < argc; ++optind) {
       file_arg.push_back(argv[optind]);
     }
   }
+
 #define args_t_USAGE "Usage: error_correct_reads [options] file:path+"
   const char * usage() const { return args_t_USAGE; }
   void error(const char *msg) { 
@@ -205,6 +210,7 @@ public:
               << std::endl;
     exit(1);
   }
+
 #define args_t_HELP "Error correct reads from a fastq file based on the k-mer frequencies.\n\n" \
   "Options (default value in (), *required):\n" \
   " -d, --db=jellyfish.db                   *Jellyfish database\n" \
@@ -217,7 +223,7 @@ public:
   " -a, --anchor-count=uint32                Minimum count for an anchor k-mer (default=min-count)\n" \
   " -w, --window=uint32                      Size of window (default=mer length)\n" \
   " -e, --error=uint32                       Maximum number of error in a window (5)\n" \
-  " -o, --output=prefix                      Output file prefix (error_corrected)\n" \
+  " -o, --output=prefix                      Output file prefix (default=STDOUT for reads and STDERR for log)\n" \
   "     --contaminant=path                   Jellyfish database of contaminant k-mers\n" \
   "     --trim-contaminant                   Trim reads containing contaminated k-mers instead of discarding (false)\n" \
   "     --gzip                               Gzip output file (false)\n" \
@@ -254,5 +260,4 @@ public:
   }
 private:
 };
-
 #endif // __ARGS_T_HPP__"

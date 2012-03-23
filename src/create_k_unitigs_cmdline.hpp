@@ -25,28 +25,54 @@ public:
   bool                           low_stretch_given;
   bool                           progress_flag;
   bool                           gzip_flag;
+  const char *                   start_arg;
+  bool                           start_given;
+  bool                           no_load_flag;
   const char *                   file_arg;
 
   enum {
     USAGE_OPT = 1000,
+    FULL_HELP_OPT,
     CONT_ON_LOW_OPT,
-    LOW_STRETCH_OPT
+    LOW_STRETCH_OPT,
+    NO_LOAD_OPT
   };
 
-  create_k_unitigs_args(int argc, char *argv[]) :
+  create_k_unitigs_args() : 
     both_strands_flag(false),
     threads_arg(1), threads_given(false),
     verbose_flag(false),
     prefix_arg("k_unitigs"), prefix_given(false),
     counts_flag(false),
-    min_len_arg(0), min_len_given(false),
+    min_len_arg(), min_len_given(false),
     min_cov_arg(2), min_cov_given(false),
     min_cont_arg(3), min_cont_given(false),
     cont_on_low_flag(false),
     low_stretch_arg(3), low_stretch_given(false),
     progress_flag(false),
-    gzip_flag(false)
-  {
+    gzip_flag(false),
+    start_arg(""), start_given(false),
+    no_load_flag(false)
+  { }
+
+  create_k_unitigs_args(int argc, char* argv[]) :
+    both_strands_flag(false),
+    threads_arg(1), threads_given(false),
+    verbose_flag(false),
+    prefix_arg("k_unitigs"), prefix_given(false),
+    counts_flag(false),
+    min_len_arg(), min_len_given(false),
+    min_cov_arg(2), min_cov_given(false),
+    min_cont_arg(3), min_cont_given(false),
+    cont_on_low_flag(false),
+    low_stretch_arg(3), low_stretch_given(false),
+    progress_flag(false),
+    gzip_flag(false),
+    start_arg(""), start_given(false),
+    no_load_flag(false)
+  { parse(argc, argv); }
+
+  void parse(int argc, char* argv[]) {
     static struct option long_options[] = {
       {"both-strands", 0, 0, 'C'},
       {"threads", 1, 0, 't'},
@@ -60,12 +86,15 @@ public:
       {"low-stretch", 1, 0, LOW_STRETCH_OPT},
       {"progress", 0, 0, 'p'},
       {"gzip", 0, 0, 'g'},
+      {"start", 1, 0, 's'},
+      {"no-load", 0, 0, NO_LOAD_OPT},
       {"help", 0, 0, 'h'},
+      {"full-help", 0, 0, FULL_HELP_OPT},
       {"usage", 0, 0, USAGE_OPT},
       {"version", 0, 0, 'V'},
       {0, 0, 0, 0}
     };
-    static const char *short_options = "hVCt:vo:cl:m:M:pg";
+    static const char *short_options = "hVCt:vo:cl:m:M:pgs:";
 
     std::string err;
 #define CHECK_ERR(type,val,which) if(!err.empty()) { std::cerr << "Invalid " #type " '" << val << "' for [" which "]: " << err << "\n"; exit(1); }
@@ -91,6 +120,9 @@ public:
       case '?':
         std::cerr << "Use --usage or --help for some help\n";
         exit(1);
+      case FULL_HELP_OPT:
+        std::cout << usage() << "\n\n" << help() << "\n\n" << hidden() << std::endl;
+        exit(0);
       case 'C':
         both_strands_flag = true;
         break;
@@ -138,13 +170,23 @@ public:
       case 'g':
         gzip_flag = true;
         break;
+      case 's':
+        start_given = true;
+        start_arg = optarg;
+        break;
+      case NO_LOAD_OPT:
+        no_load_flag = true;
+        break;
       }
     }
+
+    // Parse arguments
     if(argc - optind != 1)
       error("Requires exactly 1 argument.");
     file_arg = argv[optind];
     ++optind;
   }
+
 #define create_k_unitigs_args_USAGE "Usage: create_k_unitigs [options] file:path"
   const char * usage() const { return create_k_unitigs_args_USAGE; }
   void error(const char *msg) { 
@@ -153,6 +195,7 @@ public:
               << std::endl;
     exit(1);
   }
+
 #define create_k_unitigs_args_HELP "Create k-unitigs (unipaths) from a Jellyfish k-mer database.\n\n" \
   "Options (default value in (), *required):\n" \
   " -C, --both-strands                       Both strands (false)\n" \
@@ -169,10 +212,13 @@ public:
   " -g, --gzip                               Gzip output files (false)\n" \
   "     --usage                              Usage\n" \
   " -h, --help                               This message\n" \
+  "     --full-help                          Detailed help\n" \
   " -V, --version                            Version"
 
   const char * help() const { return create_k_unitigs_args_HELP; }
-#define create_k_unitigs_args_HIDDEN "Hidden options:"
+#define create_k_unitigs_args_HIDDEN "Hidden options:\n" \
+  " -s, --start=string                       Starting k-mer\n" \
+  "     --no-load                            Do not load hash upfront (false)"
 
   const char * hidden() const { return create_k_unitigs_args_HIDDEN; }
   void print_version(std::ostream &os = std::cout) const {
@@ -194,6 +240,8 @@ public:
     os << "low_stretch_given:" << low_stretch_given << " low_stretch_arg:" << low_stretch_arg << "\n";
     os << "progress_flag:" << progress_flag << "\n";
     os << "gzip_flag:" << gzip_flag << "\n";
+    os << "start_given:" << start_given << " start_arg:" << start_arg << "\n";
+    os << "no_load_flag:" << no_load_flag << "\n";
     os << "file_arg:" << file_arg << "\n";
   }
 private:

@@ -35,8 +35,8 @@ option("error", "e") {
   description "Maximum number of error in a window"
   uint32; default "5" }
 option("output", "o") {
-  description "Output file prefix"
-  string; default "error_corrected"; typestr "prefix" }
+  description "Output file prefix (default=STDOUT for reads and STDERR for log)"
+  string; typestr "prefix" }
 option("contaminant") {
   description "Jellyfish database of contaminant k-mers"
   c_string; typestr "path" }
