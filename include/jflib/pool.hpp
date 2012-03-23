@@ -71,15 +71,15 @@ namespace jflib {
     T* end() { return elts_ + size_; }
 
     /** A wrapper around an element of type T. The element can be
-     * obtained with operator* or operator->. release() is called by
+     * obtained with `operator*` or `operator->`. `release()` is called by
      * the destructor or can be called manually to requeue the element
      * in to the double fifo. When the double fifo is empty and
      * closed, the element obtained is empty (i.e. the `is_empty()`
      * method returns true).
      *
      * The element can only be initialized/constructed with a side
-     * (obtained by `get_A()` or `get_B()`), which effectively dequeue
-     * an element of type T from that proper FIFO.
+     * (obtained by `get_A()` or `get_B()` from the pool class), which
+     * effectively dequeues an element of type `T` from that FIFO.
      */
     class elt {
     public:
