@@ -13,20 +13,17 @@ option("unitig-lengths-file", "u") {
 option("kunitigs-translation-file") {
   description "File containing map from original unitigs to new (longer) unitigs."
   c_string; typestr "path" }
-option("overlaps-file", "o") {
+option("overlaps-file", "v") {
   description "Celera-style overlap file between unitigs in binary format."
   c_string; typestr "path"; required }
 option("num-kunitigs-file") {
   description "File containing the number of k-unitigs."
   c_string; typestr "path"; required }
-option("num-file-names") {
-  description "Number of files containing read_unitig_overlaps."
-  int; default "1" }
 option("max-nodes-allowed") {
   description "Max records allowed when trying to join a mate pair."
   int; default "4000" }			  
-option("prefix", "p") {
-  description "Output file prefix."
+option("output", "o") {
+  description "Output file"
   c_string; default "super_reads_output" }
 option("threads", "t") {
   description "Number of threads"

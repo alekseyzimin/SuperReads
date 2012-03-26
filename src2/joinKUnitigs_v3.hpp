@@ -19,12 +19,10 @@ public:
   bool                           overlaps_file_given;
   const char *                   num_kunitigs_file_arg;
   bool                           num_kunitigs_file_given;
-  int                            num_file_names_arg;
-  bool                           num_file_names_given;
   int                            max_nodes_allowed_arg;
   bool                           max_nodes_allowed_given;
-  const char *                   prefix_arg;
-  bool                           prefix_given;
+  const char *                   output_arg;
+  bool                           output_given;
   int                            threads_arg;
   bool                           threads_given;
   const char *                   input_file_arg;
@@ -34,7 +32,6 @@ public:
     MIN_OVERLAP_LENGTH_OPT,
     KUNITIGS_TRANSLATION_FILE_OPT,
     NUM_KUNITIGS_FILE_OPT,
-    NUM_FILE_NAMES_OPT,
     MAX_NODES_ALLOWED_OPT
   };
 
@@ -45,9 +42,8 @@ public:
     kunitigs_translation_file_arg(""), kunitigs_translation_file_given(false),
     overlaps_file_arg(""), overlaps_file_given(false),
     num_kunitigs_file_arg(""), num_kunitigs_file_given(false),
-    num_file_names_arg(1), num_file_names_given(false),
     max_nodes_allowed_arg(4000), max_nodes_allowed_given(false),
-    prefix_arg("super_reads_output"), prefix_given(false),
+    output_arg("super_reads_output"), output_given(false),
     threads_arg(1), threads_given(false)
   { }
 
@@ -58,9 +54,8 @@ public:
     kunitigs_translation_file_arg(""), kunitigs_translation_file_given(false),
     overlaps_file_arg(""), overlaps_file_given(false),
     num_kunitigs_file_arg(""), num_kunitigs_file_given(false),
-    num_file_names_arg(1), num_file_names_given(false),
     max_nodes_allowed_arg(4000), max_nodes_allowed_given(false),
-    prefix_arg("super_reads_output"), prefix_given(false),
+    output_arg("super_reads_output"), output_given(false),
     threads_arg(1), threads_given(false)
   { parse(argc, argv); }
 
@@ -70,18 +65,17 @@ public:
       {"mean-and-stdev-by-prefix-file", 1, 0, 'm'},
       {"unitig-lengths-file", 1, 0, 'u'},
       {"kunitigs-translation-file", 1, 0, KUNITIGS_TRANSLATION_FILE_OPT},
-      {"overlaps-file", 1, 0, 'o'},
+      {"overlaps-file", 1, 0, 'v'},
       {"num-kunitigs-file", 1, 0, NUM_KUNITIGS_FILE_OPT},
-      {"num-file-names", 1, 0, NUM_FILE_NAMES_OPT},
       {"max-nodes-allowed", 1, 0, MAX_NODES_ALLOWED_OPT},
-      {"prefix", 1, 0, 'p'},
+      {"output", 1, 0, 'o'},
       {"threads", 1, 0, 't'},
       {"help", 0, 0, 'h'},
       {"usage", 0, 0, USAGE_OPT},
       {"version", 0, 0, 'V'},
       {0, 0, 0, 0}
     };
-    static const char *short_options = "hVm:u:o:p:t:";
+    static const char *short_options = "hVm:u:v:o:t:";
 
     std::string err;
 #define CHECK_ERR(type,val,which) if(!err.empty()) { std::cerr << "Invalid " #type " '" << val << "' for [" which "]: " << err << "\n"; exit(1); }
@@ -124,7 +118,7 @@ public:
         kunitigs_translation_file_given = true;
         kunitigs_translation_file_arg = optarg;
         break;
-      case 'o':
+      case 'v':
         overlaps_file_given = true;
         overlaps_file_arg = optarg;
         break;
@@ -132,19 +126,14 @@ public:
         num_kunitigs_file_given = true;
         num_kunitigs_file_arg = optarg;
         break;
-      case NUM_FILE_NAMES_OPT:
-        num_file_names_given = true;
-        num_file_names_arg = yaggo::conv_int<int>((const char*)optarg, err, false);
-        CHECK_ERR(int_t, optarg, "    --num-file-names=int")
-        break;
       case MAX_NODES_ALLOWED_OPT:
         max_nodes_allowed_given = true;
         max_nodes_allowed_arg = yaggo::conv_int<int>((const char*)optarg, err, false);
         CHECK_ERR(int_t, optarg, "    --max-nodes-allowed=int")
         break;
-      case 'p':
-        prefix_given = true;
-        prefix_arg = optarg;
+      case 'o':
+        output_given = true;
+        output_arg = optarg;
         break;
       case 't':
         threads_given = true;
@@ -162,7 +151,7 @@ public:
     if(!unitig_lengths_file_given)
       error("[-u, --unitig-lengths-file=path] required switch");
     if(!overlaps_file_given)
-      error("[-o, --overlaps-file=path] required switch");
+      error("[-v, --overlaps-file=path] required switch");
     if(!num_kunitigs_file_given)
       error("[    --num-kunitigs-file=path] required switch");
 
@@ -188,11 +177,10 @@ public:
   " -m, --mean-and-stdev-by-prefix-file=path\n                                         *File containing the mean and stdev for each prefix library.\n" \
   " -u, --unitig-lengths-file=path          *File containing the length of the unitigs.\n" \
   "     --kunitigs-translation-file=path     File containing map from original unitigs to new (longer) unitigs.\n" \
-  " -o, --overlaps-file=path                *Celera-style overlap file between unitigs in binary format.\n" \
+  " -v, --overlaps-file=path                *Celera-style overlap file between unitigs in binary format.\n" \
   "     --num-kunitigs-file=path            *File containing the number of k-unitigs.\n" \
-  "     --num-file-names=int                 Number of files containing read_unitig_overlaps. (1)\n" \
   "     --max-nodes-allowed=int              Max records allowed when trying to join a mate pair. (4000)\n" \
-  " -p, --prefix=string                      Output file prefix. (super_reads_output)\n" \
+  " -o, --output=string                      Output file (super_reads_output)\n" \
   " -t, --threads=int                        Number of threads (1)\n" \
   "     --usage                              Usage\n" \
   " -h, --help                               This message\n" \
@@ -215,9 +203,8 @@ public:
     os << "kunitigs_translation_file_given:" << kunitigs_translation_file_given << " kunitigs_translation_file_arg:" << kunitigs_translation_file_arg << "\n";
     os << "overlaps_file_given:" << overlaps_file_given << " overlaps_file_arg:" << overlaps_file_arg << "\n";
     os << "num_kunitigs_file_given:" << num_kunitigs_file_given << " num_kunitigs_file_arg:" << num_kunitigs_file_arg << "\n";
-    os << "num_file_names_given:" << num_file_names_given << " num_file_names_arg:" << num_file_names_arg << "\n";
     os << "max_nodes_allowed_given:" << max_nodes_allowed_given << " max_nodes_allowed_arg:" << max_nodes_allowed_arg << "\n";
-    os << "prefix_given:" << prefix_given << " prefix_arg:" << prefix_arg << "\n";
+    os << "output_given:" << output_given << " output_arg:" << output_arg << "\n";
     os << "threads_given:" << threads_given << " threads_arg:" << threads_arg << "\n";
     os << "input_file_arg:" << input_file_arg << "\n";
   }

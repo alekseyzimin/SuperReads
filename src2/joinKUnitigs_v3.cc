@@ -30,6 +30,7 @@
 #include <exp_buffer.hpp>
 #include <thread_exec.hpp>
 #include <jflib/multiplexed_parser.hpp>
+#include <jflib/multiplexed_io.hpp>
 #include <src2/joinKUnitigs_v3.hpp>
 #include <rb_tree.hpp>
 
@@ -201,7 +202,7 @@ public:
       has_extra = false;
       if(i > 0) {
         long read_number = atol(e->elements[i-1] + 2);
-        if(read_number % 2 == 0 && i != group_size()) {
+        if(read_number % 2 == 0 && i == group_size()) {
           // Keep it for next iteration
           extra.swap(e->elements[i-1]);
           --i;
@@ -312,7 +313,7 @@ public:
   }
 
   int process_input_file(overlap_parser& ovp_parser, 
-                         const char* outputPrefix, int index);
+                         jflib::omstream& m_out, int index);
   
 private:
   void generateSuperReadPlacementLinesForJoinedMates ();
@@ -327,22 +328,29 @@ private:
   int getSuperReadLength(void);
   template<typename T>
   void funcToGetTreeSize (const T& ptr); // Adds 1 to treeSize each time
-  void findSingleReadSuperReads(char *readName, FILE* outputFile);
-  void getSuperReadsForInsert (FILE* outputFile);
-  int processKUnitigVsReadMatches (overlap_parser::stream& ovp_stream, char *outputFilename);
+  void findSingleReadSuperReads(char *readName, jflib::omstream& m_out);
+  void getSuperReadsForInsert (jflib::omstream& m_out);
+  int processKUnitigVsReadMatches (overlap_parser::stream& ovp_stream, jflib::omstream& m_out);
 };
 
 class KUnitigsJoiner : public thread_exec {
-  overlap_parser ovp_parser;
-  const char* const outputPrefix;
+  overlap_parser       ovp_parser;
+  std::ofstream        out;
+  jflib::o_multiplexer multiplexer;
 
 public:
-  KUnitigsJoiner(const char* input_file, const char* output_prefix, int nb_threads) :
-    ovp_parser(input_file, nb_threads), outputPrefix(output_prefix)
-  { }
+  KUnitigsJoiner(const char* input_file, const char* output_file, int nb_threads) :
+    ovp_parser(input_file, nb_threads), out(output_file), 
+    multiplexer(&out, 3 * nb_threads, 4096)
+  { 
+    if(!out.good())
+      eraise(std::runtime_error) << "Failed to open '" << output_file << "'" << err::no;
+  }
+
   virtual void start(int thid) {
     KUnitigsJoinerThread joiner;
-    int ret = joiner.process_input_file(ovp_parser, outputPrefix, thid);
+    jflib::omstream      m_out(multiplexer);
+    int ret = joiner.process_input_file(ovp_parser, m_out, thid);
     std::cerr << "joiner thread " << thid << " returned " << ret << std::endl;
   }
 };
@@ -406,12 +414,10 @@ unitig_ori_offsets::iterator find_within(unitig_ori_offsets& tree,
 
 // #define DEBUG
 int KUnitigsJoinerThread::process_input_file(overlap_parser& ovp_parser,
-                                             const char* outputPrefix, int index)
+                                             jflib::omstream& m_out, int index)
 {
     overlap_parser::stream ovp_stream(ovp_parser);
-    charb outputFileName(256);
-    sprintf(outputFileName,"%s_%d", outputPrefix, index);
-    int ret = processKUnitigVsReadMatches(ovp_stream, outputFileName);
+    int ret = processKUnitigVsReadMatches(ovp_stream, m_out);
     fprintf (stderr, 
              "Num pairs with both reads in same unitig: %d\n"
              "Num pairs uniquely joinable: %d\n"
@@ -552,8 +558,8 @@ int main (int argc, char **argv)
 #endif
      free(startOverlapIndexByUnitig2);
 
-     KUnitigsJoiner joiners(args.input_file_arg, args.prefix_arg, args.threads_arg);
-     joiners.exec_join(args.num_file_names_arg);
+     KUnitigsJoiner joiners(args.input_file_arg, args.output_arg, args.threads_arg);
+     joiners.exec_join(args.threads_arg);
      
      munmap(overlapData, stat_buf.st_size);
      
@@ -671,10 +677,9 @@ void KUnitigsJoinerThread::updateMatchRecords(int readNum, ExpBuffer<char*>& fld
 }
 
 int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& ovp_stream,
-                                                       char* outputFileName)
+                                                       jflib::omstream& m_out)
 {
      ExpBuffer<char*> flds;
-     FILE* outputFile=Fopen(outputFileName,"w");
 
      rdPrefixHold[0] = rdPrefixHold[1];
      evenReadMatchStructs.clear();
@@ -694,7 +699,8 @@ int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& o
            (readNum % 2 == 0)) {
          if(rdPrefixHold[0] != '\0') {
 	       approxNumPaths = 0;
-	       getSuperReadsForInsert(outputFile);
+	       getSuperReadsForInsert(m_out);
+               m_out << jflib::endr;
 	       // Set up and load the new data
                evenReadMatchStructs.clear();
                oddReadMatchStructs.clear();
@@ -705,8 +711,7 @@ int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& o
        readNumHold = readNum;
      }
      if(!evenReadMatchStructs.empty() || !oddReadMatchStructs.empty())
-       getSuperReadsForInsert(outputFile);
-     fclose(outputFile);
+       getSuperReadsForInsert(m_out);
      return (0);
 }
      
@@ -1468,7 +1473,7 @@ int getInt (const char *fname)
      return (tval);
 }
 
-void KUnitigsJoinerThread::findSingleReadSuperReads(char *readName, FILE* outputFile)
+void KUnitigsJoinerThread::findSingleReadSuperReads(char *readName, jflib::omstream& m_out)
 {
      long long tempInt;
      char *cptr=readName+2;
@@ -1557,7 +1562,8 @@ void KUnitigsJoinerThread::findSingleReadSuperReads(char *readName, FILE* output
 	       offsetOfReadInSuperRead = kUTRMSptr[recNumToUse].kUnitigMatchBegin - kUTRMSptr[recNumToUse].readMatchBegin;
 	  else
 	       offsetOfReadInSuperRead = unitigLengths[kUTRMSptr[recNumToUse].kUnitigNumber] - kUTRMSptr[recNumToUse].kUnitigMatchEnd - kUTRMSptr[recNumToUse].readMatchBegin;
-	  fprintf (outputFile, "%s %s %d %c\n", readName, (char*)superReadName, offsetOfReadInSuperRead, 'F');	  
+          m_out << readName << " " << superReadName << " " << offsetOfReadInSuperRead << " F\n";
+          //	  fprintf (outputFile, "%s %s %d %c\n", readName, (char*)superReadName, offsetOfReadInSuperRead, 'F');	  
      }
      else { // The k-unitigs are reversed from those reported
 	  for (i=countOfMatchingKUnitigs-1; 1; i--)
@@ -1581,12 +1587,13 @@ void KUnitigsJoinerThread::findSingleReadSuperReads(char *readName, FILE* output
 	  else
 	       offsetOfReadInSuperRead = kUTRMSptr[recNumToUse].kUnitigMatchEnd + kUTRMSptr[recNumToUse].readMatchBegin;
 	  // The k-unitigs are reversed from those reported
-	  fprintf (outputFile, "%s %s %d %c\n", readName, (char*)superReadName, offsetOfReadInSuperRead, 'R');
+          m_out << readName << " " << superReadName << " " << offsetOfReadInSuperRead << " R\n";
+          //	  fprintf (outputFile, "%s %s %d %c\n", readName, (char*)superReadName, offsetOfReadInSuperRead, 'R');
      }
 //     printf ("At 50\n");
 }
 
-void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
+void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 {
      charb readNameSpace;
      int insertLengthMean;
@@ -1624,13 +1631,13 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
      sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
 //     printf ("numEvenReadMatchStructs = %d, numOddReadMatchStructs = %d\n", (int) evenReadMatchStructs.size(), (int) oddReadMatchStructs.size());
      if (evenReadMatchStructs.empty() || oddReadMatchStructs.empty()) {
-       findSingleReadSuperReads(readNameSpace, outputFile);
+       findSingleReadSuperReads(readNameSpace, m_out);
 	  return; }
      if (args.max_nodes_allowed_arg == 0) {
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold-1);
-	  findSingleReadSuperReads (readNameSpace, outputFile);
+	  findSingleReadSuperReads (readNameSpace, m_out);
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
-	  findSingleReadSuperReads (readNameSpace, outputFile);
+	  findSingleReadSuperReads (readNameSpace, m_out);
 	  return; }
 //     puts ("Got to 1\n"); fflush (stdout);
      // If we get here both the even read and the odd read have
@@ -1642,10 +1649,10 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
      if (mateUnitig1 == mateUnitig2) {
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold-1);
 //	  puts ("Entering findSingleReadSuperReads from 1\n"); fflush (stdout);
-	  findSingleReadSuperReads (readNameSpace, outputFile);
+	  findSingleReadSuperReads (readNameSpace, m_out);
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
 //	  puts ("Entering findSingleReadSuperReads from 2\n"); fflush (stdout);
-	  findSingleReadSuperReads (readNameSpace, outputFile);
+	  findSingleReadSuperReads (readNameSpace, m_out);
 	  ++numPairsInOneUnitig;
 	  return;
      }
@@ -2172,7 +2179,8 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
 	  // Doing the output (if possible)
 	  
 	  if (approxNumPaths == 1) {
-	       fputs (outputString, outputFile);
+            m_out << outputString;
+            //	       fputs (outputString, outputFile);
 	       return; }
 #ifdef KILL120103
 	  if (stderrOutputString[0] != 0)
@@ -2185,9 +2193,9 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (FILE* outputFile)
 
      outputTheReadsIndividually:
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold-1);
-	  findSingleReadSuperReads(readNameSpace, outputFile);
+	  findSingleReadSuperReads(readNameSpace, m_out);
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold);
-	  findSingleReadSuperReads(readNameSpace, outputFile);
+	  findSingleReadSuperReads(readNameSpace, m_out);
      }
      return;
 }
