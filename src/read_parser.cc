@@ -1,21 +1,39 @@
 #include <src/read_parser.hpp>
 
 read_parser::~read_parser() {
-  if(close_input_)
-    delete input_.rdbuf();
-}
-
-void read_parser::parser_loop() {
-  switch(input_.peek()) {
-  case '>': fasta_reader_loop(); break;
-  case '@': fastq_reader_loop(); break;
-  default:
-    super::report_error("Invalid file format");
-    break; // Should never be reached
+  if(filebufs_.empty()) {
+    if(close_input_)
+      delete input_.rdbuf();
+  } else {
+    for(auto it = filebufs_.begin(); it != filebufs_.end(); ++it)
+      delete *it;
   }
 }
 
-void read_parser::fasta_reader_loop() {
+void read_parser::parser_loop() {
+  if(filebufs_.empty())
+    parse_input_stream();
+  else {
+    for(auto it = filebufs_.begin(); it != filebufs_.end(); ++it) {
+      input_.rdbuf(*it);
+      if(!parse_input_stream())
+        break;
+    }
+  }
+}
+
+
+bool read_parser::parse_input_stream() {
+  switch(input_.peek()) {
+  case '>': return fasta_reader_loop();
+  case '@': return fastq_reader_loop();
+  default:
+    super::report_error("Invalid file format");
+    return false;
+  }
+}
+
+bool read_parser::fasta_reader_loop() {
   int nextc = input_.peek();
   while(nextc != EOF) {
     elt e(elt_init());
@@ -35,9 +53,10 @@ void read_parser::fasta_reader_loop() {
       }
     }
   }
+  return true;
 }
 
-void read_parser::fastq_reader_loop() {
+bool read_parser::fastq_reader_loop() {
   charb unused_line;
   int nextc = input_.peek();
   while(nextc != EOF) {
@@ -52,7 +71,7 @@ void read_parser::fastq_reader_loop() {
       if(r.header[0] != '@') {
         report_error("Found bad sequence header");
         nextc = EOF;
-        break;
+        return false;
       }
       r.sequence.clear();
       r.quals.clear();
@@ -71,9 +90,11 @@ void read_parser::fastq_reader_loop() {
       if(r.quals.size() != r.sequence.size()) { // Invalid input file
         report_error("Number of qual values != number of bases");
         nextc = EOF;
-        break;
+        return false;
       }
     }
   }
+
+  return true;
 }
 

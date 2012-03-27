@@ -15,137 +15,196 @@
 #define typeof __typeof__
 #endif
 
-#include <jellyfish/err.hpp>
+#include <src/mer_dna.hpp>
+#include <src/read_parser.hpp>
+
+// #include <jellyfish/err.hpp>
 #include <jellyfish/mer_counting.hpp>
-#include <jellyfish/parse_read.hpp>
 #include <jellyfish/mapped_file.hpp>
 #include <jellyfish/invertible_hash_array.hpp>
 #include <jellyfish/allocators_mmap.hpp>
 #include <stdint.h>
+#include <cstdio>
 
 #include <iostream>
+#include <fstream>
 
 #include <src/diskBasedUnitigger.h>
 #define KUNITIG_FILE "/genome8/raid/tri/kUnitigStudy/arg_ant/afterAlekseyAndMikeRedundentKill/guillaumeKUnitigsAtLeast32bases_all.fasta"
 #define READ_DATA_FILE "/genome8/raid/tri/testDirForReadPlacementRoutines/brucellaData/brucella.pass5reads.fasta"
+
+#include <charb.hpp>
+#include <gzip_stream.hpp>
+#include <jflib/multiplexed_io.hpp>
+
+#include <src2/findMatchesBetweenKUnitigsAndReads.hpp>
 
 unsigned int  *kunitigNumber, *kunitigOffset;
 unsigned long *kUnitigLengths;
 uint64_t       hash_size;
 int            lastKUnitigNumber;
 unsigned char *kmerOriInKunitig;
-char           line[1000000], kUnitigBases[1000000], kUnitigBasesRevComp[1000000];
-uint64_t       kUnitigKmers[1000000], kUnitigRevCompKmers[1000000], mask;
-int            readDataFile;
-char           hdrLine[10000];
-int            readNumber;
-int            numFilenames, longOutput;
-char          *filenames[1000];
+charb          line(1000);
+uint64_t       mask;
+int            readNumber; // TODO: Remove: it is not really used
+int            longOutput;
 char           charToBaseValue[256];
 uint64_t       charToRevCompBaseValue[256];
 int            mer_len;
-int            nb_threads = 5;
-const char    *prefix = 0;
 
 /* Our types.
  */
 //typedef jellyfish::invertible_hash::array<uint64_t,atomic::gcc<uint64_t>,allocators::mmap> inv_hash_storage_t;
 typedef inv_hash_storage_t::iterator iterator_t;
+class header_output;
 
 void initializeValues (void);
 void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd, 
-                        const char *readName, inv_hash_storage_t *hashPtr, FILE *out);
+                        const char *readName, inv_hash_storage_t *hashPtr, header_output& out);
 
+class ReadKunitigs : public thread_exec {
+  read_parser         unitig_parser;
+  inv_hash_storage_t* hash;
+  
+public:
+  ReadKunitigs(const char* kUnitigFile, inv_hash_storage_t* hashPtr, int nb_threads) :
+    unitig_parser(kUnitigFile, nb_threads), hash(hashPtr) { }
+
+  virtual void start(int th_id) {
+    read_parser::stream unitig_stream(unitig_parser);
+    mer_dna fwd_mer(mer_len), rev_mer(mer_len);
+    for( ; unitig_stream; ++unitig_stream) {
+      // Parse header
+      int kUnitigNumber, kUnitigLength;
+      int fields_read = sscanf(unitig_stream->header, ">%d length:%d", &kUnitigNumber, &kUnitigLength);
+      kUnitigLengths[kUnitigNumber] = kUnitigLength;
+      if(fields_read != 2)
+        die << "Fasta header of file does not match pattern '>UnitigiNumber length:UnitigLength'\n"
+            << unitig_stream->header << "\n";
+      if(unitig_stream->sequence.size() < (size_t)mer_len)
+        continue;
+      char* cptr = unitig_stream->sequence;
+      // Prime the k-mers
+      for(int i = 0; i < mer_len - 1; ++i, ++cptr) {
+        fwd_mer.shift_left(*cptr);
+        rev_mer.shift_right(0x3 - (fwd_mer[0] & 0x3));
+      }
+
+      for( ; cptr < unitig_stream->sequence.end(); ++cptr) {
+        fwd_mer.shift_left(*cptr);
+        rev_mer.shift_right(0x3 - (fwd_mer[0] & 0x3));
+         
+        uint64_t searchValue;
+        unsigned char ori;
+        if(fwd_mer[0] < rev_mer[0]) {
+          searchValue = fwd_mer[0];
+          ori = 0;
+        } else {
+          searchValue = rev_mer[0];
+          ori = 1;
+        }
+        uint64_t id = 0, val;
+        if(!hash->get_val(searchValue, id, val, false)) {
+          fprintf (stderr, "mer %lx was not found. Bye!\n", searchValue);
+          //		    exit (1); // WAS OUT FOR DEBUGGING
+        }
+        kunitigNumber[id]             = kUnitigNumber;
+        kunitigOffset[id]             = cptr - unitig_stream->sequence.begin() - (mer_len - 1);
+        kmerOriInKunitig[id]          = ori;
+      }
+    }
+  }
+};
+
+/** Keep track whether or not a header has been written. On the first
+    actual output (operator<<), the header is prepended. set_header()
+    must be called to set/create the header. After we are done with a
+    read, flush() is called, which adds a new line if necessary and
+    endr (end of record) if asked to.
+ */
+class header_output {
+  jflib::omstream& out_;
+  charb            header_;
+  bool             is_written_; // whether header has been written already
+public:
+  header_output(jflib::omstream& out) : out_(out), is_written_(false) { }
+
+  void set_header(const char* name, size_t length) {
+    sprintf(header_, "%s %ld", name, length);
+    is_written_ = false;
+  }
+  void flush(bool end_of_record) {
+    if(is_written_)
+      out_ << "\n";
+    if(end_of_record)
+      out_ << jflib::endr;
+  }
+
+  template<typename T>
+  jflib::omstream& operator<<(T& x) {
+    if(!is_written_) {
+      out_ << header_;
+      is_written_ = true;
+    }
+    out_ << x;
+    return out_;
+  }
+};
 
 class ProcessReads : public thread_exec {
-     jellyfish::parse_read  read_parser;
-     inv_hash_storage_t     *hash;
-     const char             *prefix;
+  read_parser           parser;
+  inv_hash_storage_t   *hash;
+  jflib::o_multiplexer  multiplexer;
 
 public:
-     ProcessReads(int argc, char *argv[], inv_hash_storage_t *h, const char *pref) : 
-	  read_parser(argc, argv, 100), hash(h), prefix(pref) {}
+  template<typename Iterator>
+  ProcessReads(Iterator file_start, Iterator file_end, 
+               inv_hash_storage_t *h, std::ostream& out_stream, int nb_threads) : 
+    parser(file_start, file_end, nb_threads), 
+    hash(h),
+    multiplexer(&out_stream, 3 * nb_threads, 4096)
+  {}
 
      virtual void start(int id) {
-	  jellyfish::parse_read::thread  read_stream(read_parser.new_thread());
-	  jellyfish::parse_read::read_t *read;
-	  char                           readBases[100000];
-	  char                           header[3000];
-	  char                           out_file[3000];
-	  FILE                          *out;
-	  if(!prefix) {
-	       out = stdout;
-	  } else {
-	       sprintf(out_file, "%s_%d", prefix, id);
-	       out = fopen(out_file, "w");
-	       if(!out)
-		    die << "Can't open output file '" << out_file << "'" << err::no;
-	  }
+       read_parser::stream read_stream(parser);
+       jflib::omstream     out(multiplexer);
+       header_output       hout(out);
+       char                read_prefix[3], prev_read_prefix[3];
+       uint64_t            read_id = 0, prev_read_id = 0;
+       memset(read_prefix, '\0', sizeof(read_prefix));
+       
+       for( ; read_stream; ++read_stream) {
+         memcpy(prev_read_prefix, read_prefix, sizeof(read_prefix));
+         prev_read_id = read_id;
+         
+         strtok(read_stream->header, " ");
+         sscanf(read_stream->header, ">%2s%ld", read_prefix, &read_id);
+         
+         // Start new line & print read header if new read
+         bool is_new_read = strcmp(read_prefix, prev_read_prefix) || read_id != prev_read_id;
+         if(is_new_read) {
+           // Keep mated read together in output.
+           bool end_of_record =
+             (read_id % 2 == 0) || (read_id != (prev_read_id + 1)) || strcmp(read_prefix, prev_read_prefix);
+           hout.flush(end_of_record);
+           hout.set_header(read_stream->header + 1, read_stream->sequence.size());
+         }
 
-	  while((read = read_stream.next_read())) {
-	       strncpy(header, read->header, read->hlen);
-	       header[read->hlen] = '\0';
-	       strtok(header, " ");
-	       char *optr = readBases;
-	       for(const char *iptr = read->seq_s; iptr < read->seq_e; iptr++) {
-		    if(!isspace(*iptr)) {
-			 *optr = *iptr;
-			 optr++;
-		    }
-	       }
-	       getMatchesForRead(readBases, optr, header, hash, out);
-	  }
-	  fclose(out);
+         getMatchesForRead(read_stream->sequence, read_stream->sequence.end(),
+                           read_stream->header + 1, hash, hout);
+       }
+       hout.flush(true);
      }
 };
 
 int main(int argc, char *argv[])
 {
-     FILE *infile;
-     int i, kUnitigNumber;
-     char *kUnitigFilename;
-     uint64_t searchValue;
-     uint64_t val, id;
-     char *cptr;
-     //  char readName[1000];
-     char *numKUnitigsFile;
-     int kUnitigLength;
-     unsigned char ori;
+     FILE                               *infile;
+     findMatchesBetweenKUnitigsAndReads  args(argc, argv);
 
-     /* Database file name is first argument. The k-unitig filename
-	is the second; The file with the number of k-unitigs is third;
-	after that follow the read file(s)
-     */
-     longOutput = 0;
-     filenames[1] = (char *) KUNITIG_FILE;
-     filenames[3] = (char *) READ_DATA_FILE;
-     numFilenames = 0;
-     for (i=1; i<argc; i++) {
-	  if (strcmp(argv[i], "-l") == 0) {
-	       longOutput = 1;
-	       continue; }
-	  if(strcmp(argv[i], "-p") == 0) {
-	       ++i;
-	       prefix = argv[i];
-	       continue;
-	  }
-	  if(strcmp(argv[i], "-t") == 0) {
-	       ++i;
-	       nb_threads = atoi (argv[i]);
-	       continue;
-	  }
-	  filenames[numFilenames] = argv[i];
-	  ++numFilenames; }
+     longOutput = args.long_flag;
 
-     numKUnitigsFile = filenames[2];
-     kUnitigFilename = filenames[1];
-     // Get input data reads directly from filenames
-     // if (numFilenames > 3)
-     //   readDataFile = filenames[3];
-
-     /* Map the hash in memory. Yeah, it should/could be shorter.
-      */
-     mapped_file dbf(filenames[0]);
+     mapped_file dbf(args.jellyfishdb_arg);
      if(memcmp(dbf.base(), "JFRHSHDN", 8))
 	  die << "Invalid database format, expected 'JFRHSHDN'";
      dbf.random().load();
@@ -165,105 +224,40 @@ int main(int argc, char *argv[])
      mallocOrDie (kunitigNumber, hash_size, unsigned int);
      mallocOrDie (kunitigOffset, hash_size, unsigned int);
      mallocOrDie (kmerOriInKunitig, hash_size, unsigned char);
+
+     // Open output file and make sure it is deleted/closed on exit
+     std::auto_ptr<std::ostream> out;
+     if(args.gzip_flag)
+       out.reset(new gzipstream(args.output_arg));
+     else
+       out.reset(new std::ofstream(args.output_arg));
      
      initializeValues ();
 
      // create our mask
-     mask = 0;
-     for (i=0; i<mer_len; i++)
-	  mask = (mask << 2) + 0x3;
+     mask = ((uint64_t)1 << (mer_len * 2)) - 1;
+
      // Find out the last kUnitig number
-     infile = fopen (numKUnitigsFile, "r");
+     infile = fopen (args.numKUnitigsFile_arg, "r");
      if(!infile)
-	  die << "Failed to open file '" << numKUnitigsFile << "'" << err::no;
+	  die << "Failed to open file '" << args.numKUnitigsFile_arg << "'" << err::no;
      int fields_read = fscanf (infile, "%d\n", &lastKUnitigNumber);
      if(fields_read != 1)
 	  die << "Failed to read the last k-unitig number from file '"
-	      << numKUnitigsFile << "'" << err::no;
+	      << args.numKUnitigsFile_arg << "'" << err::no;
      fclose (infile);
      fprintf (stderr, "The largest kUnitigNumber was %d\n", lastKUnitigNumber);
      mallocOrDie (kUnitigLengths, (lastKUnitigNumber+2), uint64_t);
-     
-     fprintf (stderr, "Opening file %s...\n", kUnitigFilename);
-     infile = fopen (kUnitigFilename, "r");
-     if(!fgets (line, sizeof(line), infile)) // This is a header line
-	  die << "Failed to read header line from file '"
-	      << kUnitigFilename << "'" << err::no;
-     fields_read = sscanf (line, ">%d length:%d", &kUnitigNumber, &kUnitigLength);
-     if(fields_read != 2)
-	  die << "Header of file '" << kUnitigFilename
-	      << "' does not match pattern '>UnitigiNumber length:UnitigLength'";
-     kUnitigLengths[kUnitigNumber] = kUnitigLength;
-     if (kUnitigNumber % 100 == 0)
-	  fprintf (stderr, "\rkUnitigNumber = %d", kUnitigNumber);
-     //printf ("kUnitigNumber = %d; kUnitigLength = %d\n", kUnitigNumber, kUnitigLength);
-     cptr = kUnitigBases;
-     while (1) {
-	  int atEof = 0;
-	  if (! fgets(line, sizeof(line), infile)) {
-	       atEof = 1;
-	       goto processTheKUnitig; }
-	  if (line[0] == '>')
-	       goto processTheKUnitig;
-	  strcpy (cptr, line);
-	  while (! isspace(*cptr)) {
-	       switch (*cptr) {
-	       case 'a': case 'A': *cptr = 0; break;
-	       case 'c': case 'C': *cptr = 1; break;
-	       case 'g': case 'G': *cptr = 2; break;
-	       case 't': case 'T': *cptr = 3; break; }
-	       ++cptr; }
-	  continue;
-     processTheKUnitig:
-	  for (int j=0, k=kUnitigLength-1; j<kUnitigLength; j++, k--)
-	       kUnitigBasesRevComp[k] = 3 - kUnitigBases[j];
-	  // The kUnitigRevCompKmers are where they are placed in the
-	  // reverse complement; we will need to adjust at the end to
-	  // place them in relation to the forward direction of the k-unitig
-	  kUnitigKmers[0] = kUnitigRevCompKmers[0] = 0;
-	  for (int j=0; j<mer_len; j++) {
-	       kUnitigKmers[0] = (kUnitigKmers[0] << 2) + kUnitigBases[j];
-	       //	    printf ("j=%d, kmer=%x; ", j, kUnitigKmers[0]);
-	       kUnitigRevCompKmers[0] = (kUnitigRevCompKmers[0] << 2) + kUnitigBasesRevComp[j]; }
-	  //     printf ("\n");
-	  for (int j=mer_len, k=1; j<kUnitigLength; j++, k++) {
-	       kUnitigKmers[k] = (kUnitigKmers[k-1] << 2) + kUnitigBases[j];
-	       kUnitigKmers[k] &= mask;
-	       kUnitigRevCompKmers[k] = (kUnitigRevCompKmers[k-1] << 2) + kUnitigBasesRevComp[j];
-	       kUnitigRevCompKmers[k] &= mask; }
-	  if (kUnitigNumber % 100 == 0)
-	       fprintf (stderr, "\rkUnitigNumber = %d", kUnitigNumber);
-	  for (int j=0, k=kUnitigLength-mer_len; k>=0; j++, k--) {
-	       if (kUnitigKmers[j] < kUnitigRevCompKmers[k]) {
-		    searchValue = kUnitigKmers[j];
-		    ori = 0; }
-	       else {
-		    searchValue = kUnitigRevCompKmers[k];
-		    ori = 1; }
-	       //	    fprintf (stdout, "offset = %d, forward mer value = %llx, backwards mer value = %llx\n", j, kUnitigKmers[j], kUnitigRevCompKmers[k]);
-	       // Here you have to search for the index, then install the
-	       // information into your arrays at the index
-	       if (! hash->get_val(searchValue, id, val, false)) {
-		    fprintf (stderr, "mer %lx was not found. Bye!\n", searchValue);
-		    exit (1); // WAS OUT FOR DEBUGGING
-	       }
-	       //	    fprintf (stdout, "id = %lld, val = %lld\n", id, val);
-	       kunitigNumber[id] = kUnitigNumber;
-	       kunitigOffset[id] = j;
-	       kmerOriInKunitig[id] = ori;
-	  }
-	  //     break; // For debugging
-	  if (atEof)
-	       break;
-	  sscanf (line, ">%d length:%d", &kUnitigNumber, &kUnitigLength);
-	  kUnitigLengths[kUnitigNumber] = kUnitigLength;
-	  //     printf ("kUnitigNumber = %d; kUnitigLength = %d\n", kUnitigNumber, kUnitigLength);
-	  cptr = kUnitigBases;
-     }
-     //exit (0); // For debugging
 
-     ProcessReads process_reads(numFilenames - 3, filenames + 3, hash, prefix);
-     process_reads.exec_join(nb_threads);
+     { // Read k-unitigs k-mers and positions
+       ReadKunitigs KUnitigReader(args.kUnitigFile_arg, hash, args.threads_arg);
+       KUnitigReader.exec_join(args.threads_arg);
+     }
+     
+
+     ProcessReads process_reads(args.readFiles_arg.begin(), args.readFiles_arg.end(),
+                                hash, *out.get(), args.threads_arg);
+     process_reads.exec_join(args.threads_arg);
      
      // Now working with the reads
      // fprintf (stderr, "Opening the read file: %s...\n", readDataFile);
@@ -332,7 +326,7 @@ void initializeValues (void)
 
 void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd, 
                         const char *readName, inv_hash_storage_t *hashPtr,
-                        FILE *out)
+                        header_output& out)
 {
      int readLength;
      uint64_t readKmer, readKmerTmp, readRevCompKmer, readRevCompKmerTmp;
@@ -352,7 +346,9 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 
      readLength = readBasesEnd - readBasesBegin;
      if (longOutput)
-	  fprintf (out, "readNumber = %d, readLength = %d\n", readNumber, readLength);
+         out << "readNumber = " << readNumber 
+             << " readLength = " << readLength << "\n";
+       //fprintf (out, "readNumber = %d, readLength = %d\n", readNumber, readLength);
      readKmer = readRevCompKmer = 0;
      if (readLength >= mer_len)
 	  for (int j=0; j<mer_len; j++) {
@@ -428,7 +424,10 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 		    fprintf (out, " %lu %d %d %s", kUnitigLengths[kUnitigNumberHold], readLength, kUnitigNumberHold, readName);
 		    fprintf (out, "\n");
 #else
-		    fprintf (out, "%c %d %d %d %s\n", (netOriHold == 0) ? 'F' : 'R', ahg, readLength, kUnitigNumberHold, readName);
+                    out << " " << kUnitigNumberHold
+                        << " " << ahg
+                        << " " << ((netOriHold == 0) ? 'F' : 'R');
+                    //		    fprintf (out, "%c %d %d %d %s\n", (netOriHold == 0) ? 'F' : 'R', ahg, readLength, kUnitigNumberHold, readName);
 #endif
 	       }
 	       kUnitigOffsetOfFirstBaseInReadHold = kUnitigOffsetOfFirstBaseInRead;
@@ -558,7 +557,10 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	  fprintf (out, " %lu %d %d %s", kUnitigLengths[kUnitigNumberHold], readLength, kUnitigNumberHold, readName);
 	  fprintf (out, "\n");
 #else
-	  fprintf (out, "%c %d %d %d %s\n", (netOriHold == 0) ? 'F' : 'R', ahg, readLength, kUnitigNumberHold, readName);
+          //	  fprintf (out, "%c %d %d %d %s\n", (netOriHold == 0) ? 'F' : 'R', ahg, readLength, kUnitigNumberHold, readName);
+          out << " " << kUnitigNumberHold
+              << " " << ahg
+              << " " << ((netOriHold == 0) ? 'F' : 'R');
 #endif
      }
 }

@@ -6,7 +6,7 @@
 #include <memory>
 #include <stdexcept>
 #include <jflib/pool.hpp>
-#include <err.hpp>
+// #include <err.hpp>
 
 /** A multi-thread safe mostly lock-free data parser.
  * 
@@ -213,8 +213,7 @@ void multiplexed_parser<T>::start_parsing() {
   int  res   = pthread_create(&parser_id_, 0, static_start_parser_loop , (void*)self);
   if(res) {
     delete self;
-    eraise(std::runtime_error) << "Failed to create the parser thread: "
-                               << err::str(res);
+    throw std::runtime_error("Failed to create the parser thread");
   }
   parser_started_ = true;
 }
