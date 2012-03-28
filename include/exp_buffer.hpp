@@ -150,6 +150,20 @@ public:
 
   
   void enlarge() { reserve(capacity() * 2); }
+
+  /** Touch (read) every page of memory allocated. This forces the
+      system to effectively load the pages into memory and can be
+      faster when done linearly with 1 thread rather than many threads
+      at random.
+      The returned value is to be ignored.
+   */
+  char touch_all() const {
+    int  pagesize = getpagesize();
+    char ignore   = 0;
+    for(const char* ptr = (const char*)base_; ptr < (const char*)end_; ptr += pagesize)
+      ignore ^= *ptr;
+    return ignore;
+  }
 };
 
 template<typename T, typename R=reallocator<T> >

@@ -39,11 +39,15 @@
 
 #include <src2/findMatchesBetweenKUnitigsAndReads.hpp>
 
-unsigned int  *kunitigNumber, *kunitigOffset;
+struct kMerUnitigInfoStruct {
+  uint32_t kUnitigNumber;
+  uint32_t kUnitigOffset:31;
+  uint32_t kmerOriInKunitig:1;
+};
+ExpBuffer<kMerUnitigInfoStruct, remaper<kMerUnitigInfoStruct>> kMerUnitigInfo;
 unsigned long *kUnitigLengths;
 uint64_t       hash_size;
 int            lastKUnitigNumber;
-unsigned char *kmerOriInKunitig;
 charb          line(1000);
 uint64_t       mask;
 int            readNumber; // TODO: Remove: it is not really used
@@ -108,9 +112,9 @@ public:
           fprintf (stderr, "mer %lx was not found. Bye!\n", searchValue);
           //		    exit (1); // WAS OUT FOR DEBUGGING
         }
-        kunitigNumber[id]             = kUnitigNumber;
-        kunitigOffset[id]             = cptr - unitig_stream->sequence.begin() - (mer_len - 1);
-        kmerOriInKunitig[id]          = ori;
+        kMerUnitigInfo[id].kUnitigNumber    = kUnitigNumber;
+        kMerUnitigInfo[id].kUnitigOffset    = cptr - unitig_stream->sequence.begin() - (mer_len - 1);
+        kMerUnitigInfo[id].kmerOriInKunitig = ori;
       }
     }
   }
@@ -221,9 +225,8 @@ int main(int argc, char *argv[])
      
      hash_size = hash->get_size();
      // Allocate the space for the other data
-     mallocOrDie (kunitigNumber, hash_size, unsigned int);
-     mallocOrDie (kunitigOffset, hash_size, unsigned int);
-     mallocOrDie (kmerOriInKunitig, hash_size, unsigned char);
+     kMerUnitigInfo.reserve(hash_size);
+     kMerUnitigInfo.touch_all();
 
      // Open output file and make sure it is deleted/closed on exit
      std::auto_ptr<std::ostream> out;
@@ -389,9 +392,9 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	  // in the data but the kUnitigNumber and offset are 0
 	  // We must eliminate these records.
 	  // (Checking below)
-	  kUnitigNumber = kunitigNumber[id];
-	  kUnitigOffset = kunitigOffset[id];
-	  kUnitigOri = kmerOriInKunitig[id];
+          kUnitigNumber = kMerUnitigInfo[id].kUnitigNumber;
+          kUnitigOffset = kMerUnitigInfo[id].kUnitigOffset;
+          kUnitigOri    = kMerUnitigInfo[id].kmerOriInKunitig;
 	  if ((kUnitigNumber == 0) && (kUnitigOffset == 0))
 	       continue;
 	  // now work with ori, j, and readNumber
@@ -516,9 +519,9 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	       // in the data but the kUnitigNumber and offset are 0
 	       // We must eliminate these records.
 	       // (Checking below)
-	       kUnitigNumber = kunitigNumber[id];
-	       kUnitigOffset = kunitigOffset[id];
-	       kUnitigOri = kmerOriInKunitig[id];
+               kUnitigNumber = kMerUnitigInfo[id].kUnitigNumber;
+               kUnitigOffset = kMerUnitigInfo[id].kUnitigOffset;
+               kUnitigOri    = kMerUnitigInfo[id].kmerOriInKunitig;
 	       if ((kUnitigNumber == 0) && (kUnitigOffset == 0))
 		    continue;
 	       // now work with ori, j, and readNumber
