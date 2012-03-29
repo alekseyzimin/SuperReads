@@ -50,6 +50,7 @@ $pwd = cwd;
 if ($exeDir !~ /^\//) {
     $exeDir = "$pwd/$exeDir"; }
 
+$lowMemory=0;
 $maxNodes=2000;
 $noReduce=0;
 &processArgs;
@@ -149,18 +150,26 @@ open (FILE, $mergedMaxKUnitigNumberFile); $maxKUnitigNumber = <FILE>; chomp ($ma
 $cmd = "$exeDir/createKUnitigMaxOverlaps $mergedUnitigInputKUnitigsFile -kmervalue $merLen -largest-kunitig-number ".(int($maxKUnitigNumber)+1)." $prefixForOverlapsBetweenKUnitigs";
 &runCommandAndExitIfBad($cmd, $kUnitigOverlapsFile, 1, "createKUnitigMaxOverlaps", $kUnitigOverlapsFile, "$workingDirectory/overlap.coords");
 
-$cmd = "ln -s $totReadFile $readsAfterAddingMissingMates";
+$cmd = "ln -s ../$totReadFile $readsAfterAddingMissingMates";
 &runCommandAndExitIfBad ($cmd, $readsAfterAddingMissingMates, 1, "addMissingMates", $readsAfterAddingMissingMates);
 
+if ($mergedUnitigDataPrefix) {
+    $mergedUnitigDataFileStr = "--kunitigs-translation-file $mergedUnitigInputKUnitigMappingFile"; }
+
+if($lowMemory==0){
+#find the matches of k-unitigs to reads. pipe ti the shooting method
+$cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t ".(int(($numProcessors+1)/2))." -o /dev/fd/1 $kUnitigsFile $maxKUnitigNumberFile  $readsAfterAddingMissingMates | $exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t ".(int(($numProcessors+1)/2))." /dev/fd/0";
+&runCommandAndExitIfBad ($cmd, $joinerOutput, 1, "joinKUnitigs", $joinerOutput);
+}else{
+#find the matches of k-unitigs to reads, save to disk
 $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -o $readKUnitigMatchOutput $kUnitigsFile $maxKUnitigNumberFile  $readsAfterAddingMissingMates";
 &runCommandAndExitIfBad ($cmd, $readKUnitigMatchOutput, 1, "findReadKUnitigMatches", $readKUnitigMatchOutput);
 if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile, $readsAfterAddingMissingMates); }
 
 # Do the shooting method here
-if ($mergedUnitigDataPrefix) {
-    $mergedUnitigDataFileStr = "--kunitigs-translation-file $mergedUnitigInputKUnitigMappingFile"; }
 $cmd = "$exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors $readKUnitigMatchOutput";
 &runCommandAndExitIfBad ($cmd, $joinerOutput, 1, "joinKUnitigs", $joinerOutput);
+}
 
 if ($jumpLibraryReads) {
     goto jumpLibraryCalculations; }
@@ -265,7 +274,10 @@ sub processArgs
 	elsif ($ARGV[$i] eq "-jumplibraryreads") {
 	    $jumpLibraryReads = 1;
 	    next; }
-	elsif ($ARGV[$i] eq "-noreduce") {
+	elsif ($ARGV[$i] eq "-low-memory") {
+            $lowMemory = 1;
+            next; }
+        elsif ($ARGV[$i] eq "-noreduce") {
             $noReduce = 1;
             next; }
 	elsif ($ARGV[$i] eq "-h") {
