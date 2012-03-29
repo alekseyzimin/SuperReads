@@ -149,7 +149,7 @@ open (FILE, $mergedMaxKUnitigNumberFile); $maxKUnitigNumber = <FILE>; chomp ($ma
 $cmd = "$exeDir/createKUnitigMaxOverlaps $mergedUnitigInputKUnitigsFile -kmervalue $merLen -largest-kunitig-number ".(int($maxKUnitigNumber)+1)." $prefixForOverlapsBetweenKUnitigs";
 &runCommandAndExitIfBad($cmd, $kUnitigOverlapsFile, 1, "createKUnitigMaxOverlaps", $kUnitigOverlapsFile, "$workingDirectory/overlap.coords");
 
-$cmd = "cat $totReadFile | $exeDir/add_missing_mates.pl >  $readsAfterAddingMissingMates";
+$cmd = "ln -s $totReadFile $readsAfterAddingMissingMates";
 &runCommandAndExitIfBad ($cmd, $readsAfterAddingMissingMates, 1, "addMissingMates", $readsAfterAddingMissingMates);
 
 $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -o $readKUnitigMatchOutput $kUnitigsFile $maxKUnitigNumberFile  $readsAfterAddingMissingMates";
