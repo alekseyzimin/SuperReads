@@ -69,8 +69,7 @@ noinst_HEADERS += src/aligned_simple_array.hpp				\
                   src/bloom_filter.hpp src/MurmurHash3.h		\
                   src/bloom_hash.hpp src/bloom_counter2.hpp		\
                   src/combine_jf_dbs.hpp src/mer_dna.hpp		\
-                  src/read_parser.hpp src/create_k_unitigs_large_k.hpp	\
-                  src2/findMatchesBetweenKUnitigsAndReads.hpp
+                  src/read_parser.hpp src/create_k_unitigs_large_k.hpp	
 
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 homo_trim_SOURCES = src/homo_trim.cc 
@@ -101,7 +100,8 @@ dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
 noinst_HEADERS += src2/redBlackTreesInsertOnly.h					\
                   src2/joinKUnitigs_v3.hpp						\
                   src2/getSuperReadInsertCountsFromReadPlacementFile.hpp		\
-                  src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.hpp
+                  src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.hpp       \
+                  src2/findMatchesBetweenKUnitigsAndReads.hpp 
 
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
 findMatchesBetweenKUnitigsAndReads_SOURCES =    \
