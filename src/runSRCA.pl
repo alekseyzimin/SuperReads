@@ -627,7 +627,7 @@ print FILE "fi\n";
 print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
 
 #and we continue into the scaffolder...
-print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=1 $other_parameters 1>runCA2.out 2>&1\n";
+print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=0 $other_parameters 1>runCA2.out 2>&1\n";
 
 print FILE "if [[ -e \"CA/9-terminator/genome.qc\" ]];then\n";
 print FILE "echo \"CA success\"\n";
