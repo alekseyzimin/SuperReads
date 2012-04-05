@@ -44,7 +44,7 @@ joinKUnitigs_v3 args;
 static const int maxDiffInsertSizesForPrinting      = 5; // Const / Parameter
 static const int maxTotAllowableMissingOnEnds       = 2; // Const / Parameter
 static const int default_max_offset_considered_same = 5;
-static const int max_offset_to_test                 = 10000;
+// static const int max_offset_to_test                 = 10000;
 
 
 struct overlapDataStruct
@@ -732,8 +732,8 @@ int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int inser
      int forcedStop;
 
      lastOffsetToTest = insertLengthMean+5*insertLengthStdev;
-     if (lastOffsetToTest > max_offset_to_test)
-	  lastOffsetToTest = max_offset_to_test;
+//     if (lastOffsetToTest > max_offset_to_test)
+//	  lastOffsetToTest = max_offset_to_test;
      // The following assumes that all the overlaps are of length
      // minOverlapLength
      lastOffsetToTestIfNotMate2 = lastOffsetToTest - (unitigLengths[mateUnitig2]-args.min_overlap_length_arg);
