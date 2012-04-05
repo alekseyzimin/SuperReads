@@ -559,8 +559,8 @@ foreach $v(@other_info_array){
 print FILE "\n";
 ###figure out the optimal parameters for CA###
 print FILE "TOTAL_READS=`cat $list_of_frg_files |grep '^{FRG'|wc -l`\n";
-print FILE "ovlRefBlockSize=`perl -e 'print int('\$TOTAL_READS'/8)'`\n";
-print FILE "ovlHashBlockSize=`perl -e 'print int('\$TOTAL_READS'/80)'`\n";
+print FILE "ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/8); if(\$s>100000){print \$s}else{print \"100000\"}'`\n";
+print FILE "ovlHashBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/80); if(\$s>10000){print \$s}else{print \"10000\"}'`\n";
 print FILE "ovlCorrBatchSize=\$ovlHashBlockSize\n";
 ###done figuring out CA parameters###
 
