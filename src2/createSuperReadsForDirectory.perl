@@ -158,7 +158,7 @@ if ($mergedUnitigDataPrefix) {
 
 if($lowMemory==0){
 #find the matches of k-unitigs to reads. pipe it the shooting method
-$cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t ".(int($numProcessors*.85))." -o /dev/fd/1 $kUnitigsFile $maxKUnitigNumberFile  $readsAfterAddingMissingMates | $exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t ".(int($numProcessors*.85))." /dev/fd/0";
+$cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t ".(int($numProcessors*.9+1))." -o /dev/fd/1 $kUnitigsFile $maxKUnitigNumberFile  $readsAfterAddingMissingMates | $exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t ".(int($numProcessors*.9+1))." /dev/fd/0";
 &runCommandAndExitIfBad ($cmd, $joinerOutput, 1, "joinKUnitigs", $joinerOutput);
 }else{
 #find the matches of k-unitigs to reads, save to disk
@@ -174,7 +174,7 @@ $cmd = "$exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-b
 if ($jumpLibraryReads) {
     goto jumpLibraryCalculations; }
 
-$cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile | awk '{print \$1*100}'` -o $superReadCountsFile $joinerOutput";
+$cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile | awk '{print \$1*20}'` -o $superReadCountsFile $joinerOutput";
 &runCommandAndExitIfBad ($cmd, $superReadCountsFile, 1, "getSuperReadInsertCounts", $superReadCountsFile);
 
 if ($mergedUnitigDataPrefix) {
