@@ -371,7 +371,8 @@ print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_all -s \$JF_SIZE 
 
 #check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
 print FILE "if [[ -e pe_trim_1 || -e pe_all_1 ]];then\n";
-print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/10\"\n";
+print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2\"\n";
+print FILE "rm -f pe_trim_? pe_all_?\n";
 print FILE "exit\n";
 print FILE "fi\n";
 
