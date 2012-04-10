@@ -371,7 +371,8 @@ print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_all -s \$JF_SIZE 
 
 #check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
 print FILE "if [[ -e pe_trim_1 || -e pe_all_1 ]];then\n";
-print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/10\"\n";
+print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2\"\n";
+print FILE "rm -f pe_trim_? pe_all_?\n";
 print FILE "exit\n";
 print FILE "fi\n";
 
@@ -559,8 +560,8 @@ foreach $v(@other_info_array){
 print FILE "\n";
 ###figure out the optimal parameters for CA###
 print FILE "TOTAL_READS=`cat $list_of_frg_files |grep '^{FRG'|wc -l`\n";
-print FILE "ovlRefBlockSize=`perl -e 'print int('\$TOTAL_READS'/8)'`\n";
-print FILE "ovlHashBlockSize=`perl -e 'print int('\$TOTAL_READS'/80)'`\n";
+print FILE "ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/8); if(\$s>100000){print \$s}else{print \"100000\"}'`\n";
+print FILE "ovlHashBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/80); if(\$s>10000){print \$s}else{print \"10000\"}'`\n";
 print FILE "ovlCorrBatchSize=\$ovlHashBlockSize\n";
 ###done figuring out CA parameters###
 
@@ -627,7 +628,7 @@ print FILE "fi\n";
 print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
 
 #and we continue into the scaffolder...
-print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=1 $other_parameters 1>runCA2.out 2>&1\n";
+print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=0 $other_parameters 1>runCA2.out 2>&1\n";
 
 print FILE "if [[ -e \"CA/9-terminator/genome.qc\" ]];then\n";
 print FILE "echo \"CA success\"\n";
