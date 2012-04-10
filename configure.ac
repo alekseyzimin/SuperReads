@@ -28,6 +28,10 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h stddef.h stdint.h stdlib.
 # Checks for Jellyfish module
 PKG_CHECK_MODULES([JELLYFISH], [jellyfish-1.1])
 
+# Check for yaggo
+AC_ARG_VAR([YAGGO], [Yaggo switch parser generator])
+AS_IF([test "x$YAGGO" = "x"], [AC_PATH_PROG([YAGGO], [yaggo], [false])])
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
 AC_C_INLINE
