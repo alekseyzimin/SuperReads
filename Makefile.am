@@ -97,11 +97,10 @@ bin_PROGRAMS += createFastaSuperReadSequences				\
 dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
                     src2/createSuperReadsForDirectory.perl src2/add_missing_mates.pl
 
-noinst_HEADERS += src2/redBlackTreesInsertOnly.h					\
-                  src2/joinKUnitigs_v3.hpp						\
-                  src2/getSuperReadInsertCountsFromReadPlacementFile.hpp		\
-                  src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.hpp       \
-                  src2/findMatchesBetweenKUnitigsAndReads.hpp 
+noinst_HEADERS += src2/joinKUnitigs_v3.hpp					  \
+                  src2/getSuperReadInsertCountsFromReadPlacementFile.hpp	  \
+                  src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.hpp \
+                  src2/findMatchesBetweenKUnitigsAndReads.hpp
 
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
 findMatchesBetweenKUnitigsAndReads_SOURCES =    \
@@ -114,8 +113,7 @@ src/fibonacci_coding.cc src/MurmurHash3.cpp
 getSuperReadInsertCountsFromReadPlacementFileTwoPasses_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.cc		\
 src/fibonacci_coding.cc src/MurmurHash3.cpp
-joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc		\
-                          src2/redBlackTreesInsertOnly.c
+joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc
 outputRecordsNotOnList_SOURCES = src2/outputRecordsNotOnList.cc
 
 
