@@ -101,11 +101,12 @@ bin_PROGRAMS += createFastaSuperReadSequences				\
                 eliminateBadSuperReadsUsingList				\
                 getSuperReadInsertCountsFromReadPlacementFile		\
                 getSuperReadInsertCountsFromReadPlacementFileTwoPasses	\
-                joinKUnitigs_v3 outputRecordsNotOnList
+                joinKUnitigs_v3 outputRecordsNotOnList killBadKUnitigs
 
 dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
                     src2/createSuperReadsForDirectory.perl src2/add_missing_mates.pl
 
+killBadKUnitigs_SOURCES = src2/killBadKUnitigs.cc
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
 findMatchesBetweenKUnitigsAndReads_SOURCES =    \
 src2/findMatchesBetweenKUnitigsAndReads.cc src/read_parser.cc src/mer_dna.cc
