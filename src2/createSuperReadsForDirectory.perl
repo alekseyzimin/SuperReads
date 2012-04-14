@@ -1,3 +1,4 @@
+#!/usr/bin/env perl
 # SuperRead pipeline
 # Copyright (C) 2012  Genome group at University of Maryland.
 # 
@@ -14,9 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-
-#!/usr/bin/perl
 #
 # This exec takes a (set of) input read files (in fasta format) and a
 # file of input k-unitigs (specified with the switch -kunitigsfile) and outputs

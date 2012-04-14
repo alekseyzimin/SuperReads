@@ -1,3 +1,6 @@
+#!/usr/bin/env perl
+# Pass the name of a fasta file as an arg and this gives the number of
+# bases in each read of the fasta file
 # SuperRead pipeline
 # Copyright (C) 2012  Genome group at University of Maryland.
 # 
@@ -14,11 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-
-#!/usr/bin/perl
-# Pass the name of a fasta file as an arg and this gives the number of
-# bases in each read of the fasta file
 if ($#ARGV != 0) {
     open (FILE, $0);
     while ($line = <FILE>) {

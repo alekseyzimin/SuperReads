@@ -1,3 +1,4 @@
+#!/usr/bin/env perl
 # SuperRead pipeline
 # Copyright (C) 2012  Genome group at University of Maryland.
 # 
@@ -14,9 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-
-#!/usr/bin/env perl
 my $flag=0;
 
 while($line=<STDIN>)
