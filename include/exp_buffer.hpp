@@ -45,7 +45,7 @@
     } while(0); */
 #define CHECK
 
-template<typename T, typename R=reallocator<T>, size_t init_size = 2 >
+template<typename T, typename R=reallocator<T>, size_t init_size = 1 >
 class ExpBuffer {
 protected:
   T * base_;
