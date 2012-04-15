@@ -212,7 +212,7 @@ if($noReduce==0) {
     $cmd = "$exeDir/eliminateBadSuperReadsUsingList --read-placement-file $joinerOutput --good-super-reads-file $goodSuperReadsNamesFile > readPositionsInSuperReads.passingOnly";
     &runCommandAndExitIfBad ($cmd, "readPositionsInSuperReads.passingOnly" , 1, "createFinalReadPlacementFileFilterGood", "readPositionsInSuperReads.passingOnly");
 
-    $cmd = "$exeDir/eliminateBadSuperReadsUsingList  --read-placement-file readPositionsInSuperReads.passingOnly --reduction-file $reduceFile > $finalReadPlacementFile";
+    $cmd = "$exeDir/eliminateBadSuperReadsUsingList  --read-placement-file readPositionsInSuperReads.passingOnly --reduce-file $reduceFile > $finalReadPlacementFile";
     &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1, "createFinalReadPlacementFile", $finalReadPlacementFile);
 
     $cmd = "$exeDir/outputRecordsNotOnList $reduceFile $localGoodSequenceOutputFile 0 --fld-num 0 > $finalSuperReadSequenceFile";
