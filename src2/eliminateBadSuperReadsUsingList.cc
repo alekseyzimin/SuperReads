@@ -15,7 +15,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 /* This program expects 2 args:
    1) The name of the file containing the read placements in the super-reads
    2) The file containing passing super read names produced when creating the super-read sequences
@@ -43,13 +42,13 @@ struct oldSuperReadPlacementStruct
 
 charb line(1000000);
 vector<char *> flds;
-map<string, struct oldSuperReadPlacementStruct> oldSuperReadToNewSuperReadMap;
+map<charb, struct oldSuperReadPlacementStruct> oldSuperReadToNewSuperReadMap;
 
 FILE *Fopen (const char *fn, const char *mode);
 
 int main (int argc, char **argv)
 {
-     set<string> isGoodSuperRead;
+     set<charb> isGoodSuperRead;
      FILE *infile;
      char *goodFilename=NULL;
      char *readPlacementFilename = NULL;
@@ -99,7 +98,7 @@ int main (int argc, char **argv)
 	  cptr = line;
 	  while (! isspace(*cptr)) ++cptr;
 	  *cptr = 0;
-	  isGoodSuperRead.insert (string(line));
+	  isGoodSuperRead.insert (line);
      }
      fclose (infile);
      }
@@ -107,7 +106,7 @@ int main (int argc, char **argv)
      infile = Fopen (readPlacementFilename, "r");
      while (fgets (line, 1000000, infile)) {
 	  getFldsFromLine (line, flds);
-	  string superRead = string(flds[1]);
+	  charb superRead = flds[1];
           if(goodFilename != NULL){
 	  if (isGoodSuperRead.find (superRead) == isGoodSuperRead.end())
 	       continue;

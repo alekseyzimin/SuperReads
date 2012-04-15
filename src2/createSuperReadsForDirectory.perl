@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#
+
 # This exec takes a (set of) input read files (in fasta format) and a
 # file of input k-unitigs (specified with the switch -kunitigsfile) and outputs
 # the set of super-reads for these reads (in fasta format).
@@ -119,6 +119,8 @@ $kUnitigOverlapsFile = "${prefixForOverlapsBetweenKUnitigs}.overlaps";
 $superReadCountsFile = "$workingDirectory/superReadCounts.all";
 
 $joinerOutput = "$workingDirectory/readPositionsInSuperReads";
+$readsInGoodSuperReads = "$workingDirectory/readPositionsInGoodSuperReads";
+
 $readKUnitigMatchOutput = "$workingDirectory/newTestOutput.nucmerLinesOnly";
 $sequenceCreationErrorFile = "$workingDirectory/createFastaSuperReadSequences.errors.txt";
 # $myProgOutput2 = "$workingDirectory/readPlacementsInSuperReads.postMateMerge.read.superRead.offset.ori.txt";
@@ -209,10 +211,10 @@ if($noReduce==0) {
     $cmd = "$exeDir/reduce_sr $maxKUnitigNumber $mergedKUnitigLengthsFile $merLen $superReadNameAndLengthsFile -o $reduceFile";
     &runCommandAndExitIfBad ($cmd, $reduceFile, 1, "reduceSuperReads", $reduceFile, $fastaSuperReadErrorsFile);
 
-    $cmd = "$exeDir/eliminateBadSuperReadsUsingList --read-placement-file $joinerOutput --good-super-reads-file $goodSuperReadsNamesFile > readPositionsInSuperReads.passingOnly";
-    &runCommandAndExitIfBad ($cmd, "readPositionsInSuperReads.passingOnly" , 1, "createFinalReadPlacementFileFilterGood", "readPositionsInSuperReads.passingOnly");
+    $cmd = "$exeDir/eliminateBadSuperReadsUsingList --read-placement-file $joinerOutput --good-super-reads-file $goodSuperReadsNamesFile > $readsInGoodSuperReads";
+    &runCommandAndExitIfBad ($cmd, $readsInGoodSuperReads, 1, "createFinalReadPlacementFileFilterGood", $readsInGoodSuperReads);
 
-    $cmd = "$exeDir/eliminateBadSuperReadsUsingList  --read-placement-file readPositionsInSuperReads.passingOnly --reduce-file $reduceFile > $finalReadPlacementFile";
+    $cmd = "$exeDir/eliminateBadSuperReadsUsingList  --read-placement-file $readsInGoodSuperReads --reduce-file $reduceFile > $finalReadPlacementFile";
     &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1, "createFinalReadPlacementFile", $finalReadPlacementFile);
 
     $cmd = "$exeDir/outputRecordsNotOnList $reduceFile $localGoodSequenceOutputFile 0 --fld-num 0 > $finalSuperReadSequenceFile";
