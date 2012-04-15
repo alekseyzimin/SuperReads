@@ -42,13 +42,13 @@ struct oldSuperReadPlacementStruct
 
 charb line(1000000);
 vector<char *> flds;
-map<charb, struct oldSuperReadPlacementStruct> oldSuperReadToNewSuperReadMap;
+map<string, struct oldSuperReadPlacementStruct> oldSuperReadToNewSuperReadMap;
 
 FILE *Fopen (const char *fn, const char *mode);
 
 int main (int argc, char **argv)
 {
-     set<charb> isGoodSuperRead;
+     set<string> isGoodSuperRead;
      FILE *infile;
      char *goodFilename=NULL;
      char *readPlacementFilename = NULL;
@@ -98,7 +98,7 @@ int main (int argc, char **argv)
 	  cptr = line;
 	  while (! isspace(*cptr)) ++cptr;
 	  *cptr = 0;
-	  isGoodSuperRead.insert (line);
+	  isGoodSuperRead.insert (string(line));
      }
      fclose (infile);
      }
@@ -106,7 +106,7 @@ int main (int argc, char **argv)
      infile = Fopen (readPlacementFilename, "r");
      while (fgets (line, 1000000, infile)) {
 	  getFldsFromLine (line, flds);
-	  charb superRead = flds[1];
+	  string superRead = string(flds[1]);
           if(goodFilename != NULL){
 	  if (isGoodSuperRead.find (superRead) == isGoodSuperRead.end())
 	       continue;
