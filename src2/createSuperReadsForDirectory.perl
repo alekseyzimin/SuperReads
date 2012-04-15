@@ -173,8 +173,8 @@ if ($mergedUnitigDataPrefix) {
     $mergedUnitigDataFileStr = "--kunitigs-translation-file $mergedUnitigInputKUnitigMappingFile"; }
 
 if($lowMemory==0){
-#find the matches of k-unitigs to reads. pipe it the shooting method
-$cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t ".(int($numProcessors*.9+1))." -o /dev/fd/1 $kUnitigsFile $maxKUnitigNumberFile  $readsAfterAddingMissingMates | $exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t ".(int($numProcessors*.9+1))." /dev/fd/0";
+#find the matches of k-unitigs to reads. pipe ti the shooting method
+$cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -o /dev/fd/1 $kUnitigsFile $maxKUnitigNumberFile  $readsAfterAddingMissingMates | $exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors /dev/fd/0";
 &runCommandAndExitIfBad ($cmd, $joinerOutput, 1, "joinKUnitigs", $joinerOutput);
 }else{
 #find the matches of k-unitigs to reads, save to disk
@@ -209,7 +209,10 @@ if($noReduce==0) {
     $cmd = "$exeDir/reduce_sr $maxKUnitigNumber $mergedKUnitigLengthsFile $merLen $superReadNameAndLengthsFile -o $reduceFile";
     &runCommandAndExitIfBad ($cmd, $reduceFile, 1, "reduceSuperReads", $reduceFile, $fastaSuperReadErrorsFile);
 
-    $cmd = "$exeDir/eliminateBadSuperReadsUsingList $joinerOutput $goodSuperReadsNamesFile -super-read-reduction-file $reduceFile > $finalReadPlacementFile";
+    $cmd = "$exeDir/eliminateBadSuperReadsUsingList --read-placement-file $joinerOutput --good-super-reads-file $goodSuperReadsNamesFile > readPositionsInSuperReads.passingOnly";
+    &runCommandAndExitIfBad ($cmd, "readPositionsInSuperReads.passingOnly" , 1, "createFinalReadPlacementFileFilterGood", "readPositionsInSuperReads.passingOnly");
+
+    $cmd = "$exeDir/eliminateBadSuperReadsUsingList  --read-placement-file readPositionsInSuperReads.passingOnly --reduction-file $reduceFile > $finalReadPlacementFile";
     &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1, "createFinalReadPlacementFile", $finalReadPlacementFile);
 
     $cmd = "$exeDir/outputRecordsNotOnList $reduceFile $localGoodSequenceOutputFile 0 --fld-num 0 > $finalSuperReadSequenceFile";

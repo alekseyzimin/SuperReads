@@ -55,25 +55,29 @@ int main (int argc, char **argv)
      char *readPlacementFilename = NULL;
      char *superReadReductionFile = NULL;
      char *cptr;
-     int numUnassignedArgs = 0;
      for (int i=1; i<argc; i++) {
-	  if (strcmp(argv[i], "-super-read-reduction-file") == 0) {
+	  if (strcmp(argv[i], "--reduce-file") == 0) {
 	       ++i;
 	       superReadReductionFile = argv[i];
 	       continue; }
-	  if (argv[i][0] == '-') {
-	       fprintf (stderr, "Unrecognized flag '%s'. Bye!\n", argv[i]);
-	       exit (1); }
-	  if (numUnassignedArgs == 0)
-	       readPlacementFilename = argv[i];
-	  else if (numUnassignedArgs == 1)
-	       goodFilename = argv[i];
-	  else {
-	       fprintf (stderr, "Too many files specified; so far we have seen\n'%s', '%s', and '%s'. Bye!\n", readPlacementFilename, goodFilename, argv[i]);
-	       exit (1); }
-	  ++numUnassignedArgs;
+          if (strcmp(argv[i], "--good-super-reads-file") == 0) {
+               ++i;
+               goodFilename = argv[i];
+               continue; }
+          if (strcmp(argv[i], "--read-placement-file") == 0) {
+               ++i;
+               readPlacementFilename = argv[i];
+               continue; }
+          //if we get here, then there is a problem with the arguments
+               fprintf (stderr, "Unrecognized flag '%s'. Bye!\n", argv[i]);
+               exit (1); 
      }
 
+     if(readPlacementFilename == NULL){
+	fprintf (stderr, "No input read placement file specified. Bye!\n");
+        exit (1); 
+     }
+       
      if (superReadReductionFile != NULL) {
 	  infile = Fopen (superReadReductionFile, "r");
 	  while (fgets (line, 1000000, infile)) {
@@ -87,7 +91,7 @@ int main (int argc, char **argv)
 	  fclose (infile);
      }
      
-
+     if (goodFilename != NULL) {
      infile = Fopen (goodFilename, "r");
      while (fgets (line, 1000000, infile)) {
 	  if (! isdigit(line[0]))
@@ -98,13 +102,16 @@ int main (int argc, char **argv)
 	  isGoodSuperRead.insert (string(line));
      }
      fclose (infile);
+     }
 
      infile = Fopen (readPlacementFilename, "r");
      while (fgets (line, 1000000, infile)) {
 	  getFldsFromLine (line, flds);
 	  string superRead = string(flds[1]);
+          if(goodFilename != NULL){
 	  if (isGoodSuperRead.find (superRead) == isGoodSuperRead.end())
 	       continue;
+          }
 	  if (superReadReductionFile == NULL) {
 	       for (int i=0; i<4; i++) {
 		    fputs (flds[i], stdout);
