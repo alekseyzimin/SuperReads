@@ -575,7 +575,7 @@ foreach $v(@other_info_array){
 ###done processing other FRG###
 print FILE "\n";
 ###figure out the optimal parameters for CA###
-print FILE "TOTAL_READS=`cat $list_of_frg_files |grep '^{FRG'|wc -l`\n";
+print FILE "TOTAL_READS=`cat  superReadSequences_shr.frg $list_of_frg_files |grep '^{FRG'|wc -l`\n";
 print FILE "ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/8); if(\$s>100000){print \$s}else{print \"100000\"}'`\n";
 print FILE "ovlHashBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/80); if(\$s>10000){print \$s}else{print \"10000\"}'`\n";
 print FILE "ovlCorrBatchSize=\$ovlHashBlockSize\n";
@@ -588,6 +588,7 @@ if($rerun_sj==1||$rerun_pe==1){
 print FILE "rm -rf CA\n";
 }
 
+#this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
 if(scalar(@other_info_array)>0){
 $other_parameters="doOverlapBasedTrimming=1 doExtendClearRanges=2 ovlMerSize=22";
 }else{
@@ -596,7 +597,7 @@ $other_parameters="doOverlapBasedTrimming=0 doExtendClearRanges=0";
 
 #data filtering
 if(scalar(@jump_info_array)>0){
-    print FILE "runCA jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=200 bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
+    print FILE "runCA  gkpFixInsertSizes=0 jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=200 bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
 
 #here we filter libraries for chimerism and redundancy
 #we also reduce the insert coverage by jump libraries if necessary: no more than 100x insert coverage by all libraries
@@ -624,9 +625,9 @@ if(scalar(@jump_info_array)>0){
     print FILE "cd ../\nrm -rf *.tigStore\nrm -rf *.ovlStore\nmv 4-unitigger-filter/genome.ovlStore .\ncd ../\n\n";
     print FILE "\n";
 }
-#this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
 
-print FILE "runCA $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+
+print FILE "runCA  gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
 
 #now we check if the unitig consensus which is sometimes problematic, failed, and fix the unitigs
 print FILE "if [[ -e \"CA/5-consensus/consensus.success\" ]];then\n";
