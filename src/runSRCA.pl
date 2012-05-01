@@ -503,7 +503,7 @@ if(scalar(@jump_info_array)>0){
 	@f=split(/\s+/,$jump_info_array[$i]);
 	$list_of_frg_files.="$f[0].cor.clean.frg ";
 	print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
-	print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.fa > $f[0].tmp\n";
+	print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.fa | grep -v '^\\-\\-' > $f[0].tmp\n";
 	print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp |tee $f[0].cor.clean.frg | grep '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
 	print FILE "rm $f[0].tmp\n";
     }
@@ -552,7 +552,7 @@ foreach $v(@pe_info_array){
     @f=split(/\s+/,$v);
     $list_of_frg_files.="$f[0].linking.frg ";
     if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
-	print FILE "grep -A 1 '^>$f[0]' pe.linking.fa > $f[0].tmp\n";
+	print FILE "grep -A 1 '^>$f[0]' pe.linking.fa | grep -v '^\\-\\-' > $f[0].tmp\n";
 	print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].linking.frg\n";
 	print FILE "rm $f[0].tmp\n";
     }
