@@ -19,7 +19,6 @@ while ($line = <FILE>) {
 	$countOut = $count; }
     for ($i=0; $i<$countOut; $i++) {
 	print $kmer,"N"; }
-    print "\n"; # For testing
 }
 close (FILE);
 print "\n";
