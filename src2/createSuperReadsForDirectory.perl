@@ -192,8 +192,13 @@ $cmd = "$exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-b
 if ($jumpLibraryReads) {
     goto jumpLibraryCalculations; }
 
-$cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile | awk '{print \$1*20}'` -o $superReadCountsFile $joinerOutput";
-&runCommandAndExitIfBad ($cmd, $superReadCountsFile, 1, "getSuperReadInsertCounts", $superReadCountsFile);
+if ($minReadsInSuperRead > 1) {
+    $minFileSizeToPass = 0;
+    $cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile | awk '{print \$1*20}'` -o $superReadCountsFile $joinerOutput"; }
+else {
+    $minFileSizeToPass = 1;
+    $cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFile -n `cat $numKUnitigsFile | awk '{print \$1*20}'` -o $superReadCountsFile -i $joinerOutput"; }
+&runCommandAndExitIfBad ($cmd, $superReadCountsFile, $minFileSizeToPass, "getSuperReadInsertCounts", $superReadCountsFile);
 
 if ($mergedUnitigDataPrefix) {
     $mergedUnitigDataFileStr = "-maxunitignumberfile $mergedMaxKUnitigNumberFile"; }
