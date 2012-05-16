@@ -126,6 +126,13 @@ joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc
 BUILT_SOURCES          += src2/joinKUnitigs_v3.hpp
 outputRecordsNotOnList_SOURCES = src2/outputRecordsNotOnList.cc
 
+##############################
+# gap closing
+##############################
+dist_bin_SCRIPTS += src2/closeGaps.perl src2/part01.perl \
+                    src2/create_end_pairs.perl src2/outputJoinedPairs.perl \
+                    src2/getSequenceForClosedGaps.perl
+
 
 ##############################
 # unittests
