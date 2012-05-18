@@ -178,8 +178,8 @@ public:
   char touch_all() const {
     int  pagesize = getpagesize();
     char ignore   = 0;
-    for(const char* ptr = (const char*)base_; ptr < (const char*)end_; ptr += pagesize)
-      ignore ^= *ptr;
+    for(const char* ccptr = (const char*)base_; ccptr < (const char*)end_; ccptr += pagesize)
+      ignore ^= *ccptr;
     return ignore;
   }
 };
