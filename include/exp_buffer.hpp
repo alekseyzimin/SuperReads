@@ -71,10 +71,10 @@ public:
     reserve(s);
     CHECK;
   }
-  ExpBuffer(const T *ptr, size_type nb_elements) : base_(0), end_(0), ptr_(0) {
+  ExpBuffer(const T *in_ptr, size_type nb_elements) : base_(0), end_(0), ptr_(0) {
     reserve(nb_elements);
-    if(ptr)
-      memcpy(base_, ptr, sizeof(T) * nb_elements);
+    if(in_ptr)
+      memcpy(base_, in_ptr, sizeof(T) * nb_elements);
     ptr_ = base_ + nb_elements;
     CHECK;
   }
@@ -196,8 +196,8 @@ public:
   ExpandingBuffer() : super() { }
   ExpandingBuffer(size_type s) : super(s) { }
   ExpandingBuffer(const ExpandingBuffer &rhs) : super(rhs) { }
-  ExpandingBuffer(const_pointer ptr, size_type nb_elements) : 
-    super(ptr, nb_elements) { }
+  ExpandingBuffer(const_pointer in_ptr, size_type nb_elements) : 
+    super(in_ptr, nb_elements) { }
   virtual ~ExpandingBuffer() { }
 
   // Subscript operator which grows the array as needed (similar to

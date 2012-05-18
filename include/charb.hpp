@@ -76,7 +76,7 @@ public:
   basic_charb(const char *str) : super(str, strlen(str) + 1) {
     *--super::ptr_ = '\0';
   }
-  basic_charb(const char *str, size_t len) : super(str, len + 1) {
+  basic_charb(const char *str, size_t str_len) : super(str, str_len + 1) {
     *--super::ptr_ = '\0';
   }
   basic_charb(const std::string &s) : super(s.c_str(), s.size() + 1) {
