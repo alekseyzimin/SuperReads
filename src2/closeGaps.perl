@@ -1,12 +1,27 @@
 #!/usr/bin/env perl
 # Example invocation:
-# closeGaps.perl 15 31 origReads.renamed.fasta .../CA/9-terminator outputDir
-# where 15 is the min k-mer size to use (default is 15)
-#       31 is the max k-mer size to use (default is 31)
-#       origReads.renamed.fasta is the name of the (input) read file
-#       .../CA/9-terminator is the directory with the Celera output
-#       outputDir is the directory where the output will be sent
-# The args may be in any order.
+# closeGaps.perl --min-kmer-len 15 --max-ker-len 31 --Celera-terminator-directory .../CA/9-terminator --jellyfish-hash-size 2000000000 --num-threads 16 --output-directory outputDir --reads-file pe.cor.fa --reads-file sj.cor.fa
+# This program is used to close gaps in our assembly.
+# There are no args any more, only flags with arguments. They are as follows:
+# Required flags:
+# --Celera-terminator-directory dir : specify the Celera terminator directory
+#                           where the assembly whose gaps must be closed exists
+# --reads-file filename : specify a read file to use (multiple files allowed,
+#                            so long as the flag is repeated)
+# --output-directory dir : specify the output directory
+# --jellyfish-hash-size # : specify the jellyfish hash size
+# Flags for required values which have defaults (i.e. flag not necessary)
+# --min-kmer-len # : specify the min kmer len used (default: 15)
+# --max-kmer-len # : specify the max kmer len used (default: 31)
+# --num-threads # : specify the number of threads (default: 1)
+# -t # : same as --num-threads #
+# --kunitig-continuation-number # : specify the number to continue when running
+#                     create_k_unitigs (the -m and -M options to that program)
+#                     (currently "invalidated") (default: 2)
+# Flags for optional aspects
+# --dir-for-kunitigs dir : specifies the directory to get k-unitigs from
+#                           if we have them
+# The flags may be in any order.
 use Cwd;
 use File::Basename;
 $exeDir = dirname ($0);
@@ -21,18 +36,20 @@ $cwd = cwd;
 &processArgs;
 print "";
 $CeleraTerminatorDirectory = returnAbsolutePath ($CeleraTerminatorDirectory);
-$readsFile = returnAbsolutePath ($readsFile);
+for ($i=0; $i<=$#readsFiles; $i++) {
+    $readsFile = $readsFiles[$i];
+    $readsFile = returnAbsolutePath ($readsFile);
+    $readsFiles[$i] = $readsFile; }
+
 if ($dirForKUnitigs) {
     $dirForKUnitigs = returnAbsolutePath ($dirForKUnitigs); }
-$localReadsFile = basename ($readsFile);
+$localReadsFile = "localReadsFile";
 if (! -e $outputDirectory) {
     $cmd = "mkdir $outputDirectory"; print "$cmd\n"; system ($cmd); }
 chdir ($outputDirectory);
 $cmd = "$exeDir/part01.perl $CeleraTerminatorDirectory";
 print "$cmd\n"; system ($cmd);
 $cmd = "$exeDir/create_end_pairs.perl $CeleraTerminatorDirectory > contig_end_pairs.fa";
-print "$cmd\n"; system ($cmd);
-$cmd = "ln -s $readsFile .";
 print "$cmd\n"; system ($cmd);
 $cmd = "echo \"cc $meanForGap $stdevForGap\" > meanAndStdevByPrefix.cc.txt";
 print "$cmd\n"; system ($cmd);
@@ -77,7 +94,7 @@ sub createMergedJoinFile
 
 sub runMainLoop
 {
-    my ($k, $kMinus1, $kPlus1, $suffix, $cmd);
+    my ($k, $kMinus1, $kPlus1, $suffix, $cmd, $tfile);
     for ($k=$maxKMerLen; $k>=$minKMerLen; $k--) {
 	$kMinus1 = $k-1;
 	$kPlus1 = $k+1;
@@ -88,14 +105,19 @@ sub runMainLoop
 	    $cmd = "ln -s $dirForKUnitigs/k_unitigs_${suffix}.fa .";
 	    print "$cmd\n"; system ($cmd); }
 	else {
-	    $cmd = "jellyfish count -m $k -t 16 -C -r -s 200000000 -o k_u_hash_${suffix} $readsFile";
+	    $cmd = "jellyfish count -m $k -t $numThreads -C -r -s $jellyfishHashSize -o k_u_hash_${suffix} @readsFiles";
 	    print "$cmd\n"; system ("time $cmd");
-	    $cmd = "$tempExeDir/create_k_unitigs --cont-on-low  --low-stretch=$kMinus1 -C -t 16 -l $kPlus1 -o k_unitigs_${suffix} -m $kUnitigContinuationNumber -M $kUnitigContinuationNumber k_u_hash_${suffix}_0";
-	    print "$cmd\n"; system ("time $cmd"); }
+	    $tfile = "k_u_hash_${suffix}_1";
+	    if (-e $tfile) {
+		print STDERR "The jellyfish hash size must be made larger. Bye!\n";
+		exit (1); }
+	    $cmd = "$tempExeDir/create_k_unitigs --cont-on-low  --low-stretch=$kMinus1 -C -t $numThreads -l $kPlus1 -o k_unitigs_${suffix} -m $kUnitigContinuationNumber -M $kUnitigContinuationNumber k_u_hash_${suffix}_0";
+	    print "$cmd\n"; system ("time $cmd");
+	}
 	$cmd = "\\rm -rf out.$suffix"; system ($cmd);
 	$cmd = "\\rm -rf work_$suffix"; system ($cmd);
 	
-	$cmd = "$tempExeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile k_unitigs_${suffix}.fa -low-memory -l $k -s 200000000 -t 1 -mkudisr 0 work_${suffix} contig_end_pairs.fa 1>>out.$suffix 2>>out.$suffix";
+	$cmd = "$tempExeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile k_unitigs_${suffix}.fa -low-memory -l $k -t 1 -mkudisr 0 work_${suffix} contig_end_pairs.fa 1>>out.$suffix 2>>out.$suffix";
 	print "$cmd\n"; system ("time $cmd");
 
 	$cmd = "grep '^Num ' out.$suffix"; system ($cmd);
@@ -120,14 +142,47 @@ sub processArgs
     $kUnitigContinuationNumber = 2;
     $maxKMerLen = 31;
     $minKMerLen = 15;
+    $numThreads = 1;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
-	if ($arg eq "-dir-for-kunitigs") {
+	if ($arg eq "--dir-for-kunitigs") {
 	    ++$i;
 	    $dirForKUnitigs = $ARGV[$i];
 	    next; }
+	if ($arg eq "--min-kmer-len") {
+	    ++$i;
+	    $minKMerLen = $ARGV[$i];
+	    next; }
+	if ($arg eq "--max-kmer-len") {
+	    ++$i;
+	    $maxKMerLen = $ARGV[$i];
+	    next; }
+	if ($arg eq "--Celera-terminator-directory") {
+	    ++$i;
+	    $CeleraTerminatorDirectory = $ARGV[$i];
+	    next; }
+	if ($arg eq "--reads-file") {
+	    ++$i;
+	    push (@readsFiles, $ARGV[$i]);
+	    next; }
+	if ($arg eq "--kunitig-continuation-number") {
+	    ++$i;
+	    $kUnitigContinuationNumber = $ARGV[$i];
+	    next; }
+	if ($arg eq "--output-directory") {
+	    ++$i;
+	    $outputDirectory = $ARGV[$i];
+	    next; }
+	if ($arg eq "--jellyfish-hash-size") {
+	    ++$i;
+	    $jellyfishHashSize = $ARGV[$i];
+	    next; }
+	if (($arg eq "--num-threads") || ($arg eq "-t")) {
+	    ++$i;
+	    $numThreads = $ARGV[$i];
+	    next; }
 	if (-f $arg) {
-	    $readsFile = $arg;
+	    push (@readsFiles, $arg);
 	    next; }
 	if ($arg =~ /^\d+/) {
 	    push (@kmerLens, $arg);
@@ -153,8 +208,8 @@ sub processArgs
     if (! $CeleraTerminatorDirectory) {
 	print STDERR "You must enter a 9-terminator directory from a Celera run. Bye!\n";
 	&reportUsage; }
-    if (! $readsFile) {
-	print STDERR "You must enter the name of an (existing) input reads file. Bye!\n";
+    if (! $jellyfishHashSize) {
+	print STDERR "You must enter a jellyfish hash size. Bye!\n";
 	&reportUsage; }
 }
 
