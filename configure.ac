@@ -23,7 +23,7 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([rt], [clock_gettime])
 
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h stddef.h stdint.h stdlib.h string.h strings.h sys/time.h sys/timeb.h sys/mman.h unistd.h wchar.h wctype.h])
+dnl AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h stddef.h stdint.h stdlib.h string.h strings.h sys/time.h sys/timeb.h sys/mman.h unistd.h wchar.h wctype.h])
 
 # Checks for Jellyfish module
 PKG_CHECK_MODULES([JELLYFISH], [jellyfish-1.1])
@@ -64,11 +64,5 @@ AC_ARG_ENABLE([debug], AS_HELP_STRING([--enable-debug], [Enable debugging]))
 AS_IF([test "x$enable_debug" = "x"], AC_DEFINE([NDEBUG], [1], [Defined if no debugging]))
 
 AC_CONFIG_FILES([Makefile doxygen.cfg])
-#                 src/Makefile
-#                 src2/Makefile
-#                 unittests/Makefile])
-dnl if test -d "examples"; then
-dnl  AC_CONFIG_FILES([examples/Makefile])
-dnl fi
 
 AC_OUTPUT
