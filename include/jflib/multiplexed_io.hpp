@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
+#include <cstddef>
 #include <ostream>
 #include <stdexcept>
 #include <jflib/pool.hpp>

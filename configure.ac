@@ -33,30 +33,31 @@ AC_ARG_VAR([YAGGO], [Yaggo switch parser generator])
 AS_IF([test "x$YAGGO" = "x"], [AC_PATH_PROG([YAGGO], [yaggo], [false])])
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_HEADER_STDBOOL
-AC_C_INLINE
-AC_TYPE_INT32_T
-AC_TYPE_INT64_T
-AC_TYPE_OFF_T
-AC_TYPE_PID_T
-AC_C_RESTRICT
-AC_TYPE_SIZE_T
-AC_TYPE_SSIZE_T
-AC_TYPE_UINT16_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
-AC_TYPE_UINT8_T
-AC_CHECK_TYPES([ptrdiff_t])
+dnl AC_HEADER_STDBOOL
+dnl AC_C_INLINE
+dnl AC_TYPE_INT32_T
+dnl AC_TYPE_INT64_T
+dnl AC_TYPE_OFF_T
+dnl AC_TYPE_PID_T
+dnl AC_C_RESTRICT
+dnl AC_TYPE_SIZE_T
+dnl AC_TYPE_SSIZE_T
+dnl AC_TYPE_UINT16_T
+dnl AC_TYPE_UINT32_T
+dnl AC_TYPE_UINT64_T
+dnl AC_TYPE_UINT8_T
+dnl AC_CHECK_TYPES([ptrdiff_t])
 
 # Checks for library functions.
-AC_FUNC_ERROR_AT_LINE
-AC_FUNC_FORK
-AC_FUNC_MALLOC
+dnl AC_FUNC_ERROR_AT_LINE
+dnl AC_FUNC_FORK
+dnl AC_FUNC_MALLOC
 AC_FUNC_MMAP
-AC_FUNC_REALLOC
-AC_FUNC_STRERROR_R
-AC_FUNC_STRTOD
-AC_CHECK_FUNCS([alarm clock_gettime dup2 getcwd getdelim getpagesize gettimeofday isascii memset mkdir munmap regcomp rmdir socket strcasecmp strchr strdup strerror strrchr strstr strtol strtoull mmap munmap mremap])
+dnl AC_FUNC_REALLOC
+dnl AC_FUNC_STRERROR_R
+dnl AC_FUNC_STRTOD
+dnl AC_CHECK_FUNCS([alarm clock_gettime dup2 getcwd getdelim getpagesize gettimeofday isascii memset mkdir munmap regcomp rmdir socket strcasecmp strchr strdup strerror strrchr strstr strtol strtoull mmap munmap mremap])
+AC_CHECK_FUNCS([mremap])
 
 # Debugging flag
 AC_ARG_ENABLE([debug], AS_HELP_STRING([--enable-debug], [Enable debugging]))

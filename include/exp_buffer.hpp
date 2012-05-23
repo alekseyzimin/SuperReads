@@ -21,6 +21,7 @@
 
 #include <assert.h>
 #include <cstdlib>
+#include <cstddef>
 #include <stdexcept>
 #include <reallocators.hpp>
 
