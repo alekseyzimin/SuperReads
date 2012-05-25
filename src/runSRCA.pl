@@ -452,7 +452,7 @@ else{
 print FILE "\n";
 ###estimate genome size###
 
-print FILE "ESTIMATED_GENOME_SIZE=`jellyfish histo -t $NUM_THREADS -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`";
+print FILE "ESTIMATED_GENOME_SIZE=`jellyfish histo -t $NUM_THREADS -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
 print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
 
 ###done estimate genome size###
@@ -657,18 +657,19 @@ print FILE "fi\n";
 #here we close gaps in scaffolds:  we use create_k_unitigs allowing to continue on count 1 sequence and then generate fake reads from the 
 #end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps for k=17...31
 
-my $temp=""
-
-foreach $f(@list_pe_files){
-$temp.=" --reads-file $f";
+my $reads_arg="";
+my @f=split(" ",$list_pe_files);
+foreach $v(@f){
+$reads_arg.=" --reads-file $v";
 }
 
-foreach $f(@list_jump_files){
-$temp.=" --reads-file $f";
+my @f=split(" ",$list_jump_files);
+foreach $v(@f){
+$reads_arg.=" --reads-file $v";
 } 
 
 print FILE "echo -n 'Gap closing ';date;\n";
-print FILE "closeGaps.perl $temp --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS\n";
+print FILE "closeGaps.perl $reads_arg --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS\n";
 
 ###Done !!!! Hoorayyyy!!! :)###
 print FILE "echo -n 'All done ';date;\n";
