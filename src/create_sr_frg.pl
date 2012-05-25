@@ -43,8 +43,8 @@ while($line=<STDIN>){
 	chomp($line); 
 	@l=split(/\s+/,$line);
 	if(length($l[0])>100){
-            print STDERR "SHOOTING_LONG_NAME_$shooting_index ",substr($l[0],1),"\n";
-            $rn=">SHOOTING_LONG_NAME_".($shooting_index).":super-read";
+            print STDERR "SR$shooting_index ",substr($l[0],1),"\n";
+            $rn=">SR".($shooting_index).":super-read";
             $shooting_index++;
         }else{
         $rn=$l[0].":super-read";
@@ -77,18 +77,9 @@ if($l<2048){
 }
 
 sub reverse_complement{
-    my $string=$_[0];
-    my $rev_comp_sequence="";
-    for(my $i=length($string);$i>=0;$i--){
-        if($if_qual==1)        {
-	    $rev_comp_sequence=$rev_comp_sequence.substr($string,$i,1);
-        }else        {
-	    my $t=substr($string,$i,1);
-	    $t=~tr/ACGTNacgtn/TGCANtgcan/;
-	    $rev_comp_sequence=$rev_comp_sequence.$t;
-        }
-    }
-    return($rev_comp_sequence);
+    my $str=$_[0];
+    $str =~ tr/acgtACGTNn/tgcaTGCANn/;
+    $str = reverse ($str);
+    return ($str);
 }
-
 
