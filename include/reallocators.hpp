@@ -20,6 +20,7 @@
 #define __REALLOCATORS_HPP__
 
 #include <sys/mman.h>
+#include <string.h>
 #include <config.h>
 
 /** Allocators. The interface does not match that of
@@ -92,6 +93,21 @@ struct remaper_init {
     return res;
   }
 };
-#endif
+#else
+template<typename T>
+struct remaper : public reallocator<T> { 
+  typedef T element_type;
+  T* operator()(T* ptr, size_t osize, size_t nsize) {
+    T* res = reallocator<T>::operator()(ptr, osize, nsize);
+    if(res && nsize > osize)
+      memset(res + osize, '\0', sizeof(T) * (nsize - osize));
+    return res;
+  }
+};
+template<typename T, T v>
+struct remaper_init : public reallocator_init<T, v> {
+  typedef T element_type;
+};
+#endif // HAVE_MREMAP
 
 #endif // __REALLOCATORS_HPP__
