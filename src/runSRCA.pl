@@ -452,7 +452,7 @@ else{
 print FILE "\n";
 ###estimate genome size###
 
-print FILE "ESTIMATED_GENOME_SIZE=`perl -ane '{if(\$F[0]=~/^>/){print \"\\n\"}else{print \$F[0]}}'  guillaumeKUnitigsAtLeast32bases_all.fasta | wc|awk '{print int(\$3)-(30*(int(\$1)-1));}'`\n";
+print FILE "ESTIMATED_GENOME_SIZE=`jellyfish histo -t $NUM_THREADS -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
 print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
 
 ###done estimate genome size###
@@ -627,7 +627,7 @@ if(scalar(@jump_info_array)>0){
 }
 
 
-print FILE "runCA  gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+print FILE "runCA bogBadMateDepth=20 gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
 
 #now we check if the unitig consensus which is sometimes problematic, failed, and fix the unitigs
 print FILE "if [[ -e \"CA/5-consensus/consensus.success\" ]];then\n";
@@ -655,7 +655,21 @@ print FILE "exit\n";
 print FILE "fi\n";
 
 #here we close gaps in scaffolds:  we use create_k_unitigs allowing to continue on count 1 sequence and then generate fake reads from the 
-#end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps
+#end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps for k=17...31
+
+my $reads_arg="";
+my @f=split(" ",$list_pe_files);
+foreach $v(@f){
+$reads_arg.=" --reads-file $v";
+}
+
+my @f=split(" ",$list_jump_files);
+foreach $v(@f){
+$reads_arg.=" --reads-file $v";
+} 
+
+print FILE "echo -n 'Gap closing ';date;\n";
+print FILE "closeGaps.perl $reads_arg --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS\n";
 
 ###Done !!!! Hoorayyyy!!! :)###
 print FILE "echo -n 'All done ';date;\n";
