@@ -20,7 +20,9 @@
 #define _JFLIB_LOCKS_PTHREAD_H_
 
 #include <time.h>
+#include <sys/time.h>
 #include <pthread.h>
+#include <config.h>
 
 namespace jflib {
   namespace locks{
@@ -51,7 +53,14 @@ namespace jflib {
         }
         inline int timedwait(time_t seconds) {
           struct timespec curtime;
+#ifdef HAVE_CLOCK_GETTIME          
           clock_gettime(CLOCK_REALTIME, &curtime);
+#else
+          struct timeval timeofday;
+          gettimeofday(&timeofday, 0);
+          curtime.tv_sec  = timeofday.tv_sec;
+          curtime.tv_nsec = timeofday.tv_usec * 1000;
+#endif
           curtime.tv_sec += seconds;
           return timedwait(&curtime);
         }

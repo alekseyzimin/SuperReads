@@ -20,7 +20,8 @@ AC_PROG_MAKE_SET
 
 # Checks for libraries.
 AC_CHECK_LIB([pthread], [pthread_create])
-AC_CHECK_LIB([rt], [clock_gettime])
+#AC_CHECK_LIB([rt], [clock_gettime])
+AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [Define to 1 if you have the `clock_gettime' function])])
 
 # Checks for header files.
 dnl AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h stddef.h stdint.h stdlib.h string.h strings.h sys/time.h sys/timeb.h sys/mman.h unistd.h wchar.h wctype.h])
