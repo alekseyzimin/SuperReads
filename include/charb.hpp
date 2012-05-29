@@ -1,3 +1,21 @@
+/* SuperRead pipeline
+ * Copyright (C) 2012  Genome group at University of Maryland.
+ * 
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #ifndef __CHARB_HPP__
 #define __CHARB_HPP__
 
@@ -29,8 +47,6 @@
 template<typename R> class basic_charb;
 template<typename R> char *fgets(basic_charb<R>& b, FILE* stream, char* cptr);
 template<typename R> int vsprintf(basic_charb<R>& b, char*, const char* format, va_list ap);
-template<typename R> ssize_t getline(basic_charb<R>& b, FILE* stream);
-template<typename R> ssize_t getdelim(basic_charb<R>& b, int delim, FILE* stream);
 template<typename R> char *strcat(basic_charb<R>& b, const char* src);
 template<typename R> std::istream& getline(std::istream& is, basic_charb<R>& b, char delim, char *cptr);
 
@@ -60,7 +76,7 @@ public:
   basic_charb(const char *str) : super(str, strlen(str) + 1) {
     *--super::ptr_ = '\0';
   }
-  basic_charb(const char *str, size_t len) : super(str, len + 1) {
+  basic_charb(const char *str, size_t str_len) : super(str, str_len + 1) {
     *--super::ptr_ = '\0';
   }
   basic_charb(const std::string &s) : super(s.c_str(), s.size() + 1) {
@@ -102,8 +118,6 @@ public:
 
   friend char *fgets <> (basic_charb<R> &b, FILE *stream, char *cptr);
   friend int vsprintf <> (basic_charb<R> &b, char* start, const char *format, va_list ap);
-  friend ssize_t getline <> (basic_charb<R> &b, FILE *stream);
-  friend ssize_t getdelim <> (basic_charb<R> &b, int delim, FILE *stream);
   friend char *strcat <> (basic_charb<R> &b, const char *src);
   friend std::istream& getline <> (std::istream& is, basic_charb<R> &b, char delim, char *cptr);
 };
@@ -118,11 +132,12 @@ struct c_string {
 typedef basic_charb<reallocator<char> > charb;
 
 /** Input of line for char buffer. Expand the size
- * of the buffer if the line does not fit.
- *
- * @param b The charb to write to.
- * @param stream The input stream.
- * @param cptr The pointer inside the charb (not checked) to write to.
+    of the buffer if the line does not fit.
+ 
+    @param b The charb to write to.
+    @param stream The input stream.
+    @param cptr The pointer inside the charb (not checked) to write to.
+    @return On success, a pointer to the beginning of the charb. NULL on error or end of file while no characters have been read.
  */
 template<typename R>
 char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
@@ -168,6 +183,7 @@ char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
 
     @param b The charb to write to
     @param stream The input stream
+    @return On success, a pointer to the beginning of the charb. NULL on error or end of file while no characters have been read.
 */
 template<typename R>
 char *fgets(basic_charb<R> &b, FILE *stream) { return fgets(b, stream, b.base()); }
@@ -193,57 +209,71 @@ char *fgets_append(basic_charb<R> &b, FILE *stream) { return fgets(b, stream, b.
     @param b The charb to write to
     @param size Ignored. Present for backward compatibility
     @param stream The input stream
+    @return 
  */
 template<typename T, typename R>
 char *fgets(basic_charb<R> &b, T size, FILE *stream) { return fgets(b, stream); }
 
-/** getline, getdelim - delimited string input.
+/** Input one line into a char buffer from a standard stream. This is
+    equivalent to fgets, except for the return value that conforms to
+    getline(3).
+
+    @param b The charb to write to
+    @param stream The input stream
+    @param start Pointer into b to write to (Caution: no check)
+    @return On success, the number of characters read, including the newline character, but not includeing the terminating null byte. On failure, return -1 (including end-of-file condition).
+ */
+template<typename R>
+ssize_t getline(basic_charb<R> &b, FILE *stream, char* start) {
+  const char* ret = fgets(b, stream, b.base());
+  if(!ret)
+    return -1;
+  return b.size();
+}
+
+/** Input one line into a char buffer from a standard stream. This is
+    equivalent to fgets, except for the return value that conforms to
+    getline(3).
+
+    @param b The charb to write to
+    @param stream The input stream
+    @return On success, the number of characters read, including the newline character, but not includeing the terminating null byte. On failure, return -1 (including end-of-file condition).
  */
 template<typename R>
 ssize_t getline(basic_charb<R> &b, FILE *stream) {
-  size_t  n       = b.capacity();
-  size_t  on      = n;
-  char*   lineptr = b.base_;
-  ssize_t res     = getline(&lineptr, &n, stream);
-
-  if(res == -1)
-    return res;
-  if(on != n) {
-    b.end_  = lineptr + n;
-    b.base_ = lineptr;
-  }
-  b.ptr_ = b.base_ + res;
-
-  return res;
+  const char* ret = fgets(b, stream, b.base());
+  if(!ret)
+    return -1;
+  return b.size();
 }
 
-template<typename T>
-ssize_t getline(basic_charb<T> &b, T *n, int delim, FILE *stream) {
-  return getline(b, stream);
-}
+/** Append one line to a char buffer from a standard stream. This is
+    equivalent to fgets_append, except for the return value that conforms to
+    getline(3).
 
+    @param b The charb to append to
+    @param stream The input stream
+    @return On success, the number of characters read, including the newline character, but not includeing the terminating null byte. On failure, return -1 (including end-of-file condition).
+ */
 template<typename R>
-ssize_t getdelim(basic_charb<R> &b, int delim, FILE *stream) {
-  size_t n = b.capacity();
-  ssize_t res = getdelim(&b.base_, &n, delim, stream);
-  if(res == -1)
-    return res;
-  b.ptr_ = b.base_ + res;
-  if(n != b.capacity())
-    b.end_ = b.base_ + n;
+ssize_t getline_append(basic_charb<R> &b, FILE* stream) { 
+  size_t  osize = b.size();
+  ssize_t ret   = getline(b, stream, b.ptr());
+  if(ret < 0)
+    return ret;
+  return ret - osize;
+ }
 
-  return res;
-}
+/** Input one line into a char buffer from a C++ stream. Similar to
+    the global function getline(istream& is, string& str). Unlike the
+    C version of fgets and getline, the delimiter character is not
+    included in the output string.
 
-template<typename T, typename R>
-ssize_t getdelim(basic_charb<R> &b, T *n, int delim, FILE *stream) {
-  return getdelim(b, delim, stream);
-}
-
-/** getline - C++ stream version. Similar to the global function
- * getline(istream& is, string& str). Unlike the C version of fgets
- * and getline, the delimiter character is not included in the output
- * string.
+    @param is The input stream
+    @param b The charb to write to
+    @param delim The end of line delimiter
+    @param cptr Pointer into the charb to write to (Caution: no check made)
+    @return The input stream
  */
 template<typename R>
 std::istream& getline(std::istream &is, basic_charb<R> &b, char delim, char *cptr) {
@@ -271,23 +301,65 @@ std::istream& getline(std::istream &is, basic_charb<R> &b, char delim, char *cpt
   return is;
 }
 
+/** Input one line into a char buffer from a C++ stream. Similar to
+    the global function getline(istream& is, string& str). Unlike the
+    C version of fgets and getline, the delimiter character is not
+    included in the output string.
+
+    @param is The input stream
+    @param b The charb to write to
+    @return The input stream
+ */
+
 template<typename R>
 std::istream& getline(std::istream& is, basic_charb<R>& b) { return getline(is, b, '\n', b.base()); }
 
+/** Input one line into a char buffer from a C++ stream. Similar to
+    the global function getline(istream& is, string& str). Unlike the
+    C version of fgets and getline, the delimiter character is not
+    included in the output string.
+
+    @param is The input stream
+    @param b The charb to write to
+    @param delim The end of line delimiter
+    @return The input stream
+ */
 template<typename R>
 std::istream& getline(std::istream& is, basic_charb<R>& b, char delim) { return getline(is, b, delim, b.base_); }
 
+/** Append one line into a char buffer from a C++ stream. Similar to
+    the global function getline(istream& is, string& str) except the
+    line is appended instead of overwriting. Unlike the C version of
+    fgets and getline, the delimiter character is not included in the
+    output string.
+
+    @param is The input stream
+    @param b The charb to write to
+    @return The input stream
+ */
 template<typename R>
 std::istream& getline_append(std::istream& is, basic_charb<R>& b) { return getline(is, b, '\n', b.ptr()); }
 
+/** Append one line into a char buffer from a C++ stream. Similar to
+    the global function getline(istream& is, string& str) except the
+    line is appended instead of overwriting. Unlike the C version of
+    fgets and getline, the delimiter character is not included in the
+    output string.
+
+    @param is The input stream
+    @param b The charb to write to
+    @param delim The end of line delimiter
+    @return The input stream
+ */
 template<typename R>
 std::istream& getline_append(std::istream& is, basic_charb<R>& b, char delim) { return getline(is, b, delim, b.ptr()); }
 
 
-/** sprintf, snprintf, vsprintf, vsnprintf - formatted output
- * conversion. The charb grows as needed and the length parameter of
- * the *n* version are ignored.. The return value is < 0 in case of
- * error, or the number of characters written to the charb.
+/** Formatted output conversion. The charb grows as needed.
+
+    @param b The charb to write to
+    @param format The format string
+    @return The number of characters written or a negative number on error
  */
 template<typename R>
 int sprintf(basic_charb<R> &b, const char *format, ...) {
@@ -300,7 +372,13 @@ int sprintf(basic_charb<R> &b, const char *format, ...) {
   return res;
 }
 
-/** Snprintf for backward compatibility.
+/** Formatted output conversion. For backward compatibility (the
+    length is ignored). The charb grows as needed.
+
+    @param b The charb to write to
+    @param size Ignored
+    @param format The format string
+    @return The number of characters written or a negative number on error
  */
 template<typename T, typename R>
 int snprintf(basic_charb<R> &b, T size, const char *format, ...) {
@@ -312,19 +390,39 @@ int snprintf(basic_charb<R> &b, T size, const char *format, ...) {
   return res;
 }
 
-/** Vsnprintf for backward compatibility.
+/** Formatted output conversion. For backward compatibility (the
+    length is ignored). The charb grows as needed.
+
+    @param b The charb to write to
+    @param size Ignored
+    @param format The format string
+    @param ap The variable argument list
+    @return The number of characters written or a negative number on error
  */
 template<typename T, typename R>
 inline int vsnprintf(basic_charb<R> &b, T size, const char *format, va_list ap) {
   return vsprintf(b, (char*)b, format, ap);
 }
 
+/** Formatted output conversion. The charb grows as needed.
+
+    @param b The charb to write to
+    @param format The format string
+    @param ap The variable argument list    
+    @return The number of characters written or a negative number on error
+ */
 template<typename R>
 inline int vsprintf(basic_charb<R>& b, const char* format, va_list _ap) {
   return vsprintf(b, (char*)b, format, _ap);
 }
 
-// Extension that append
+/** Formatted output conversion. The text is appended to the charb
+    instead of overwriting. The charb grows as needed.
+
+    @param b The charb to write to
+    @param format The format string
+    @return The number of characters written or a negative number on error
+ */
 template<typename R>
 int sprintf_append(basic_charb<R>& b, const char* format, ...) {
   va_list ap;
@@ -336,28 +434,28 @@ int sprintf_append(basic_charb<R>& b, const char* format, ...) {
   return res;
 }
 
-template<typename T, typename R>
-int snprintf_append(basic_charb<R> &b, T size, const char *format, ...) {
-  va_list ap;
-  va_start(ap, format);
-  int res = vsprintf(b, b.ptr(), format, ap);
-  va_end(ap);
+/** Formatted output conversion. The text is appended to the charb
+    instead of overwriting. The charb grows as needed.
 
-  return res;
-}
-
-template<typename T, typename R>
-inline int vsnprintf_append(basic_charb<R> &b, T size, const char *format, va_list ap) {
-  return vsprintf(b, b.ptr(), format, ap);
-}
-
+    @param b The charb to write to
+    @param format The format string
+    @param ap The variable argument list
+    @return The number of characters written or a negative number on error
+ */
 template<typename R>
 inline int vsprintf_append(basic_charb<R>& b, const char* format, va_list _ap) {
   return vsprintf(b, b.ptr(), format, _ap);
 }
 
+/** Formatted output conversion. The charb grows as needed.
 
-// Internal function. start must be a pointer within the dynamic buffer. The text will be written starting with start.
+    @param b The charb to write to
+    @param start Where to write into the charb (Caution: no check made)
+    @param format The format string
+    @param ap The variable argument list    
+    @return The number of characters written or a negative number on error
+ */
+
 template<typename R>
 int vsprintf(basic_charb<R> &b, char* start, const char* format, va_list _ap) {
   int res = 0;
@@ -379,9 +477,11 @@ int vsprintf(basic_charb<R> &b, char* start, const char* format, va_list _ap) {
   return res;
 }
 
-/** strcat, strncat - concatenate two strings. The length argument in
- * strncat is ignored: the charb is grown to accomodate the length of
- * b + src.
+/** Concatenate two strings. The charb grows as needed.
+    
+    @param b The charb to append to
+    @param src The string to append
+    @return A pointer to the beginning of b
  */
 template<typename R>
 char *strcat(basic_charb<R> &b, const char *src) {
@@ -392,32 +492,56 @@ char *strcat(basic_charb<R> &b, const char *src) {
   b.ptr_ = b.base_ + b_len + src_len;
   return b;
 }
+
+/** Concatenate two strings. For backward compatibility (the size is
+    ignored). The charb grows as needed.
+    
+    @param b The charb to append to
+    @param size Ignored
+    @param src The string to append
+    @return A pointer to the beginning of b
+ */
 template<typename T, typename R>
 char *strncat(basic_charb<R> &b, T size, const char *src) {
   return strcat(b, src);
 }
 
-/** strcpy, strncpy - copy a string. The length argument in strncpy is
- * ignored: the charb is grown to accomodate the length of src.
+/** Copy a string. Copy a string into a charb, which grows as needed.
+
+    @param b The charb to write to
+    @param src The input string
+    @return A pointer to the beginning of b
  */
 template<typename R>
 char *strcpy(basic_charb<R> &b, const char *src) {
   b = src;
   return b;
 }
+
+/** Copy a string. Copy a string into a charb, which grows as
+    needed. For backward compatibility (the length is ignored).
+
+    @param b The charb to write to
+    @param src The input string
+    @param n Ignored
+    @return A pointer to the beginning of b
+ */
 template<typename T, typename R>
 char *strncpy(basic_charb<R> &b, const char *src, T n) {
   b = src;
   return b;
 }
 
-/** strerror_r - return string describing error number. The behavior
- * is slightly different. In the XSI-compliant mode, 0 is always
- * returned and the charb is grown to accomodate the error message. In
- * the GNU-specific version, the message is always copied into the
- * charb and (char*)b is returned (i.e. it never returns a pointer to
- * an immutable static string). See man strerror_r(3).
- *
+/** Return string describing error number. The behavior is slightly
+  different than the original C version. In the XSI-compliant mode, 0
+  is always returned and the charb is grown to accomodate the error
+  message. In the GNU-specific version, the message is always copied
+  into the charb and (char*)b is returned (i.e. it never returns a
+  pointer to an immutable static string). See man strerror_r(3).
+ 
+  @param errnum Error number
+  @param b Charb to write to
+  @return Always return 0
  */
 #if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
 template<typename R>
@@ -432,11 +556,30 @@ int strerror_r(int errnum, basic_charb<R> &b) {
   }
   return res
 }
+/** Return string describing error number. Identical to the two
+ argument version (the buflen is ignored).
+ 
+  @param errnum Error number
+  @param b Charb to write to
+  @param buflen Ignored
+  @return Always return 0
+ */
 template<typename T, typename R>
 int strerror_r(int errnum, basic_charb<R> &b, T buflen) {
   return strerror_r(errnum, b);
 }
 #else
+/** Return string describing error number. The behavior is slightly
+  different than the original C version. In the XSI-compliant mode, 0
+  is always returned and the charb is grown to accomodate the error
+  message. In the GNU-specific version, the message is always copied
+  into the charb and (char*)b is returned (i.e. it never returns a
+  pointer to an immutable static string). See man strerror_r(3).
+ 
+  @param errnum Error number
+  @param b Charb to write to
+  @return A pointer to the beginning of b
+ */
 template<typename R>
 char *strerror_r(int errnum, basic_charb<R> &b) {
   char *res = strerror_r(errnum, (char*)b, b.capacity());
@@ -445,6 +588,14 @@ char *strerror_r(int errnum, basic_charb<R> &b) {
   return b;
 }
 
+/** Return string describing error number. Identical to the two
+ argument version (the buflen is ignored).
+ 
+  @param errnum Error number
+  @param b Charb to write to
+  @param buflen Ignored
+  @return A pointer to the beginning of b
+ */
 template<typename T, typename R>
 char *strerror_r(int errnum, basic_charb<R> &b, T buflen) {
   return strerror_r(errnum, b);

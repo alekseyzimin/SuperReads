@@ -1,4 +1,20 @@
 #!/usr/bin/env perl
+# SuperRead pipeline
+# Copyright (C) 2012  Genome group at University of Maryland.
+# 
+# This program is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 $rn="";
 $shooting_index=0;
 while($line=<STDIN>){
@@ -27,8 +43,8 @@ while($line=<STDIN>){
 	chomp($line); 
 	@l=split(/\s+/,$line);
 	if(length($l[0])>100){
-            print STDERR "SHOOTING_LONG_NAME_$shooting_index ",substr($l[0],1),"\n";
-            $rn=">SHOOTING_LONG_NAME_".($shooting_index).":super-read";
+            print STDERR "SR$shooting_index ",substr($l[0],1),"\n";
+            $rn=">SR".($shooting_index).":super-read";
             $shooting_index++;
         }else{
         $rn=$l[0].":super-read";
@@ -61,18 +77,9 @@ if($l<2048){
 }
 
 sub reverse_complement{
-    my $string=$_[0];
-    my $rev_comp_sequence="";
-    for(my $i=length($string);$i>=0;$i--){
-        if($if_qual==1)        {
-	    $rev_comp_sequence=$rev_comp_sequence.substr($string,$i,1);
-        }else        {
-	    my $t=substr($string,$i,1);
-	    $t=~tr/ACGTNacgtn/TGCANtgcan/;
-	    $rev_comp_sequence=$rev_comp_sequence.$t;
-        }
-    }
-    return($rev_comp_sequence);
+    my $str=$_[0];
+    $str =~ tr/acgtACGTNn/tgcaTGCANn/;
+    $str = reverse ($str);
+    return ($str);
 }
-
 

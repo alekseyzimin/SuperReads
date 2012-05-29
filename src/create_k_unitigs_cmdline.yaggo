@@ -1,0 +1,50 @@
+purpose "Create k-unitigs (unipaths) from a Jellyfish k-mer database."
+package "create_k_unitigs"
+
+name "create_k_unitigs_args"
+
+option("both-strands", "C") {
+  description "Both strands"
+  flag; off }
+option("threads", "t") {
+  description "Number of threads"
+  uint32; default "1" }
+option("verbose", "v") {
+  description "Be verbose"
+  flag; off }
+option("prefix", "o") {
+  description "Output prefix"
+  string; default "k_unitigs" }
+option("counts", "c") {
+  description "Output counts file as well"
+  flag; off }
+option("min-len", "l") {
+  description "Minimum length of k-unitig to output"
+  uint64; typestr "k+1" }
+option("min-cov", "m") {
+  description "Minimum k-mer coverage to be considered"
+  uint32; default "2" }
+option("min-cont", "M") {
+  description "Minimum k-mer coverage to continue"
+  uint32; default "3" }
+option("cont-on-low") {
+  description "Continue on unique low k-mer (count < m)"
+  flag; off }
+option("low-stretch") {
+  description "Max number of low k-mer"
+  uint64; default "3" }
+option("progress", "p") {
+  description "Display progress"
+  flag; off }
+option("gzip", "g") {
+  description "Gzip output files"
+  flag; off }
+option("start", "s") {
+  description "Starting k-mer"
+  hidden; c_string }
+option("no-load") {
+  description "Do not load hash upfront"
+  hidden; flag; off }
+arg("file") {
+  description "Jellyfish raw database"
+  c_string; typestr "path" }

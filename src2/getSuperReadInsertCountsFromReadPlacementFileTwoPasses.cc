@@ -1,3 +1,21 @@
+/* SuperRead pipeline
+ * Copyright (C) 2012  Genome group at University of Maryland.
+ * 
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #include <string.h>
 #include <stdlib.h>
 #include <iostream>
@@ -9,7 +27,7 @@
 #include <err.hpp>
 #include <misc.hpp> // for getFldsFromLine
 #include <src/sr_names.hpp>
-#include <src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.hpp>
+#include <src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses_cmdline.hpp>
 #include <src/bloom_counter2.hpp>
 
 using namespace std;
@@ -105,8 +123,7 @@ struct map_store {
 
 int main (int argc, char **argv)
 {
-  typedef getSuperReadInsertCountsFromReadPlacementFileTwoPasses arg_parse;
-  arg_parse args(argc, argv);
+  cmdline_parse args(argc, argv);
 
   std::ofstream output(args.output_arg);
   if(!output.good())
@@ -116,7 +133,7 @@ int main (int argc, char **argv)
     std::cerr << "First pass" << std::endl;
   // Parse input into bloom counter
   bloom_store bs(args.number_reads_arg);
-  for(arg_parse::input_arg_const_it file = args.input_arg.begin(); file != args.input_arg.end(); ++file) {
+  for(auto file = args.input_arg.begin(); file != args.input_arg.end(); ++file) {
     if(args.debug_flag)
       std::cerr << "Parsing " << *file << std::endl;
     std::ifstream input(*file);
@@ -130,7 +147,7 @@ int main (int argc, char **argv)
   // Parse input into map, if count > 1
   coding_fn encode = args.fib_flag ? (coding_fn)sr_name::from_str : str_dup;
   map_store ms(bs.bc, encode);
-  for(arg_parse::input_arg_const_it file = args.input_arg.begin(); file != args.input_arg.end(); ++file) {
+  for(auto file = args.input_arg.begin(); file != args.input_arg.end(); ++file) {
     if(args.debug_flag)
       std::cerr << "Parsing " << *file << std::endl;
     std::ifstream input(*file);

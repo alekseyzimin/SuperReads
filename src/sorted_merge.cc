@@ -1,3 +1,21 @@
+/* SuperRead pipeline
+ * Copyright (C) 2012  Genome group at University of Maryland.
+ * 
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #include <stdlib.h>
 
 #include <algorithm>
@@ -9,7 +27,7 @@
 
 #include <charb.hpp>
 #include <err.hpp>
-#include <src/sorted_merge.hpp>
+#include <src/sorted_merge_cmdline.hpp>
 
 /** Like 'sort -m', but more limited and much faster. Supports sorting
  * only according to 1 key. Support for numerical and string sorting.
@@ -111,17 +129,17 @@ void merge_files(std::ofstream &os, uint32_t col, It begin, It end) {
 }
 
 int main(int argc, char *argv[]) {
-  sorted_merge args(argc, argv);
+  cmdline_parse args(argc, argv);
   
   std::ofstream out(args.output_arg);
 
   if(!out.good())
     die << "Failed to open output file '" << args.output_arg << "'" << err::no;
   if(args.numerical_flag)
-    merge_files<long, sorted_merge::input_arg_it>
+    merge_files<long, cmdline_parse::input_arg_it>
       (out, args.key_arg, args.input_arg.begin(), args.input_arg.end());
   else
-    merge_files<const char *, sorted_merge::input_arg_const_it>
+    merge_files<const char *, cmdline_parse::input_arg_const_it>
       (out, args.key_arg, args.input_arg.begin(), args.input_arg.end());
 
   return 0;

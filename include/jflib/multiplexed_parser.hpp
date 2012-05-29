@@ -1,3 +1,21 @@
+/* SuperRead pipeline
+ * Copyright (C) 2012  Genome group at University of Maryland.
+ * 
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #ifndef __MULTIPLEXED_PARSER_HPP__
 #define __MULTIPLEXED_PARSER_HPP__
 
@@ -6,7 +24,7 @@
 #include <memory>
 #include <stdexcept>
 #include <jflib/pool.hpp>
-#include <err.hpp>
+// #include <err.hpp>
 
 /** A multi-thread safe mostly lock-free data parser.
  * 
@@ -213,8 +231,7 @@ void multiplexed_parser<T>::start_parsing() {
   int  res   = pthread_create(&parser_id_, 0, static_start_parser_loop , (void*)self);
   if(res) {
     delete self;
-    eraise(std::runtime_error) << "Failed to create the parser thread: "
-                               << err::str(res);
+    throw std::runtime_error("Failed to create the parser thread");
   }
   parser_started_ = true;
 }

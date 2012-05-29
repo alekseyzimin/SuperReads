@@ -2,9 +2,11 @@ ACLOCAL_AMFLAGS = -I m4
 AM_CXXFLAGS = -I$(top_srcdir)/include -I$(top_srcdir) -Wall $(JELLYFISH_CFLAGS) -std=c++0x
 AM_LDFLAGS = -lpthread $(JELLYFISH_LIBS)
 
-noinst_HEADERS =
+noinst_HEADERS = $(BUILT_SOURCES)
 bin_PROGRAMS =
 dist_bin_SCRIPTS =
+BUILT_SOURCES =
+CLEANFILES = $(BUILT_SOURCES)
 
 EXTRA_DIST =
 
@@ -42,6 +44,13 @@ noinst_LIBRARIES = libutils.a
 libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp
 LDADD = libutils.a
 
+# Yaggo automatic rules with silencing
+V_YAGGO = $(V_YAGGO_$(V))
+V_YAGGO_ = $(V_YAGGO_$(AM_DEFAULT_VERBOSITY))
+V_YAGGO_0 = @echo "  YAGGO " $@;
+.yaggo.hpp:
+	$(V_YAGGO)$(YAGGO) --license $(srcdir)/header-license -o $@ $<
+
 ##############################
 # src pipeline
 ##############################
@@ -58,29 +67,29 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/filter_library.sh src/fix_unitigs.sh		\
                     src/recompute_astat_superreads.sh src/runSRCA.pl	\
                     src/extractreads_not.pl
-noinst_HEADERS += src/aligned_simple_array.hpp				\
-                  src/diskBasedUnitigger.h				\
-                  src/create_k_unitigs_cmdline.hpp			\
-                  src/error_correct_reads_cmdline.hpp			\
-                  src/error_correct_reads.hpp src/err_log.hpp		\
-                  src/kmer.hpp src/create_k_unitigs_cmdline.hpp		\
-                  src/error_corrected2frg_cmdline.hpp			\
-                  src/reduce_sr.hpp src/sorted_merge.hpp		\
-                  src/fibonacci_coding.hpp src/sr_names.hpp		\
-                  src/bloom_filter.hpp src/MurmurHash3.h		\
-                  src/bloom_hash.hpp src/bloom_counter2.hpp		\
-                  src/combine_jf_dbs.hpp src/mer_dna.hpp		\
-                  src/read_parser.hpp src/create_k_unitigs_large_k.hpp
-
+noinst_HEADERS += src/aligned_simple_array.hpp			\
+                  src/diskBasedUnitigger.h			\
+                  src/error_correct_reads.hpp src/err_log.hpp	\
+                  src/kmer.hpp src/fibonacci_coding.hpp		\
+                  src/sr_names.hpp src/bloom_filter.hpp		\
+                  src/MurmurHash3.h src/bloom_hash.hpp		\
+                  src/bloom_counter2.hpp src/mer_dna.hpp	\
+                  src/read_parser.hpp 
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
+BUILT_SOURCES              += src/error_corrected2frg_cmdline.hpp
 homo_trim_SOURCES = src/homo_trim.cc 
 reverse_complement_SOURCES = src/reverse_complement.cc
 create_k_unitigs_SOURCES = src/create_k_unitigs.cpp
+BUILT_SOURCES           += src/create_k_unitigs_cmdline.hpp
 error_correct_reads_SOURCES = src/error_correct_reads.cc src/kmer.cc	\
                               src/err_log.cc
+BUILT_SOURCES              += src/error_correct_reads_cmdline.hpp
 reduce_sr_SOURCES = src/reduce_sr.cc
+BUILT_SOURCES    += src/reduce_sr_cmdline.hpp
 sorted_merge_SOURCES = src/sorted_merge.cc
+BUILT_SOURCES       += src/sorted_merge_cmdline.hpp
 combine_jf_dbs_SOURCES = src/combine_jf_dbs.cc
+BUILT_SOURCES         += src/combine_jf_dbs_cmdline.hpp
 create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
                                    src/read_parser.cc src/mer_dna.cc
 
@@ -93,30 +102,37 @@ bin_PROGRAMS += createFastaSuperReadSequences				\
                 eliminateBadSuperReadsUsingList				\
                 getSuperReadInsertCountsFromReadPlacementFile		\
                 getSuperReadInsertCountsFromReadPlacementFileTwoPasses	\
-                joinKUnitigs_v3 outputRecordsNotOnList
+                joinKUnitigs_v3 outputRecordsNotOnList killBadKUnitigs
 
 dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
-                    src2/createSuperReadsForDirectory.perl src2/add_missing_mates.pl
+                    src2/createSuperReadsForDirectory.perl src2/add_missing_mates.pl \
+                    src2/outputAlekseysJellyfishReductionFile.perl
 
-noinst_HEADERS += src2/redBlackTreesInsertOnly.h					\
-                  src2/joinKUnitigs_v3.hpp						\
-                  src2/getSuperReadInsertCountsFromReadPlacementFile.hpp		\
-                  src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.hpp
-
+killBadKUnitigs_SOURCES = src2/killBadKUnitigs.cc
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
 findMatchesBetweenKUnitigsAndReads_SOURCES =    \
-src2/findMatchesBetweenKUnitigsAndReads.cc
+src2/findMatchesBetweenKUnitigsAndReads.cc src/read_parser.cc src/mer_dna.cc
+BUILT_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFile.cc	\
 src/fibonacci_coding.cc src/MurmurHash3.cpp
+BUILT_SOURCES += src2/getSuperReadInsertCountsFromReadPlacementFile_cmdline.hpp
 getSuperReadInsertCountsFromReadPlacementFileTwoPasses_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.cc		\
 src/fibonacci_coding.cc src/MurmurHash3.cpp
-joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc		\
-                          src2/redBlackTreesInsertOnly.c
+BUILT_SOURCES += src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses_cmdline.hpp
+joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc
+BUILT_SOURCES          += src2/joinKUnitigs_v3_cmdline.hpp
 outputRecordsNotOnList_SOURCES = src2/outputRecordsNotOnList.cc
+
+##############################
+# gap closing
+##############################
+dist_bin_SCRIPTS += src2/closeGaps.perl src2/part01.perl \
+                    src2/create_end_pairs.perl src2/outputJoinedPairs.perl \
+                    src2/getSequenceForClosedGaps.perl
 
 
 ##############################

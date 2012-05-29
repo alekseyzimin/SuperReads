@@ -1,7 +1,26 @@
+/* SuperRead pipeline
+ * Copyright (C) 2012  Genome group at University of Maryland.
+ * 
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #ifndef __REALLOCATORS_HPP__
 #define __REALLOCATORS_HPP__
 
 #include <sys/mman.h>
+#include <string.h>
 #include <config.h>
 
 /** Allocators. The interface does not match that of
@@ -74,6 +93,21 @@ struct remaper_init {
     return res;
   }
 };
-#endif
+#else
+template<typename T>
+struct remaper : public reallocator<T> { 
+  typedef T element_type;
+  T* operator()(T* ptr, size_t osize, size_t nsize) {
+    T* res = reallocator<T>::operator()(ptr, osize, nsize);
+    if(res && nsize > osize)
+      memset(res + osize, '\0', sizeof(T) * (nsize - osize));
+    return res;
+  }
+};
+template<typename T, T v>
+struct remaper_init : public reallocator_init<T, v> {
+  typedef T element_type;
+};
+#endif // HAVE_MREMAP
 
 #endif // __REALLOCATORS_HPP__

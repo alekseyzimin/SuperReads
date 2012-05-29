@@ -1,24 +1,28 @@
-/*  This file is part of Jflib.
+/* SuperRead pipeline
+ * Copyright (C) 2012  Genome group at University of Maryland.
+ * 
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
-    Jflib is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    Jflib is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with Jflib.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
 #ifndef _JFLIB_LOCKS_PTHREAD_H_
 #define _JFLIB_LOCKS_PTHREAD_H_
 
 #include <time.h>
+#include <sys/time.h>
 #include <pthread.h>
+#include <config.h>
 
 namespace jflib {
   namespace locks{
@@ -49,7 +53,14 @@ namespace jflib {
         }
         inline int timedwait(time_t seconds) {
           struct timespec curtime;
+#ifdef HAVE_CLOCK_GETTIME          
           clock_gettime(CLOCK_REALTIME, &curtime);
+#else
+          struct timeval timeofday;
+          gettimeofday(&timeofday, 0);
+          curtime.tv_sec  = timeofday.tv_sec;
+          curtime.tv_nsec = timeofday.tv_usec * 1000;
+#endif
           curtime.tv_sec += seconds;
           return timedwait(&curtime);
         }

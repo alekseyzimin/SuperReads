@@ -1,0 +1,29 @@
+purpose "Reduce contained SuperReads to their largest container."
+description "Long description"
+
+name "cmdline_parse"
+
+option("maximum-search-depth", "d") {
+  description "Check at most this many possible containing SuperReads"
+  int; default "100"
+}
+option("output", "o") {
+  description "Output file name"
+  c_string; typestr "path"; default "reduce.tmp"
+}
+arg("largestkunitig") {
+  description "Largest kunitigs number"
+  uint64
+}
+arg("kunitigLengthsFile") {
+  description "K-unitig lengths file"
+  c_string; typestr "path"
+}
+arg("kmerlen") {
+  description "K-mer length"
+  int
+}
+arg("SuperReads_sizes") {
+  description "file with super read sizes: name size"
+  c_string; typestr "path"
+}

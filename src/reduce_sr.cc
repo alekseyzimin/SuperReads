@@ -1,11 +1,29 @@
+/* SuperRead pipeline
+ * Copyright (C) 2012  Genome group at University of Maryland.
+ * 
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #include<stdlib.h>
 #include<string.h>
 #include<math.h>
 #include<assert.h>
 #include<algorithm>
 #include<charb.hpp>
-#include<src/reduce_sr.hpp>
-#define DEBUG 0
+#include<src/reduce_sr_cmdline.hpp>
+// #define DEBUG 0
 
 typedef ExpandingBuffer<int> int_buf;
 typedef ExpandingBuffer<int_buf, remaper<int_buf> > twoD_int_buf;
@@ -76,7 +94,7 @@ int compute_lengthAdjustment(char ori, char* cptr, char* end, int_buf& kUnitigLe
 }
 
 int main(int argc,char *argv[]){
-     reduce_sr args(argc, argv);
+     cmdline_parse args(argc, argv);
      int i,j,k,l=0,lastKUnitigIndex,irreducibleSuperReadIndex=0;
      time_t time_start=time(NULL);
      int_buf candidates(100),kUnitigsInSuperRead(1000),kUnitigLengths(args.largestkunitig_arg + 1);
@@ -88,7 +106,9 @@ int main(int argc,char *argv[]){
      twoD_int_buf superReadIndicesForKUnitig(args.largestkunitig_arg);
      int overlapLength = args.kmerlen_arg - 1;
      int lengthAdjustment = 0;
+#ifndef DEBUG
      FILE* output = Fopen(args.output_arg, "w");
+#endif
      FILE *infile = Fopen (args.kunitigLengthsFile_arg, "r");
      FILE *sr_sizes = Fopen (args.SuperReads_sizes_arg, "r");
 

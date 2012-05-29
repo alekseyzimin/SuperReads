@@ -2,7 +2,7 @@
 rm -f f_*
 rm -f *.out
 rm -f *.broken
-grep FAILED ../5-consensus/${1}_???.err > unitig_failures
+grep FAILED `ls ../5-consensus/${1}_*.err ../5-consensus/${1}_*.success |awk -F '.' '{print $3}' |sort |uniq -u | awk '{print ".."$1".err"}'` > unitig_failures
 awk '{split($1,a,"_"); print int(a[2])" "$3}' unitig_failures|uniq| awk '{print "tigStore -g ../'$1'.gkpStore -t ../'$1'.tigStore 1 -up "$1" -d layout -u "$2" > f_unitig"$2}' > extract_layouts.sh
 chmod 0755 extract_layouts.sh
 ./extract_layouts.sh

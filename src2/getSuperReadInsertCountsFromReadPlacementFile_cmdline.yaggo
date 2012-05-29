@@ -1,0 +1,20 @@
+purpose "Count number of occurences of each super-read"
+description "No long description!"
+
+name "cmdline_parse"
+
+option("input", "i") {
+  description "Input file"
+  c_string; typestr "path"; default "/dev/fd/0" }
+option("output", "o") {
+  description "Output file"
+  c_string; typestr "path"; default "/dev/fd/1" }
+option("fib") {
+  description "Use fibonacci encoding of the names"
+  flag; off }
+option("bloom") {
+  description "Use a bloom filter to remove unique super-reads"
+  flag; off }
+option("n", "number-reads") {
+  description "Estimated number of super-reads"
+  uint64; default "1000000" }

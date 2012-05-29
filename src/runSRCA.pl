@@ -1,4 +1,20 @@
 #!/usr/bin/env perl
+# SuperRead pipeline
+# Copyright (C) 2012  Genome group at University of Maryland.
+# 
+# This program is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #This script reads the the config file and runs the full super reads pipeline
 #config file format:
 #
@@ -371,7 +387,8 @@ print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_all -s \$JF_SIZE 
 
 #check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
 print FILE "if [[ -e pe_trim_1 || -e pe_all_1 ]];then\n";
-print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/10\"\n";
+print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2\"\n";
+print FILE "rm -f pe_trim_? pe_all_?\n";
 print FILE "exit\n";
 print FILE "fi\n";
 
@@ -388,7 +405,7 @@ print FILE "\n";
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
     print FILE "cat combined_0 > /dev/null\n";
-    print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log | homo_trim $TRIM_PARAM > pe.cor.fa\n";
+    print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log | homo_trim $TRIM_PARAM | add_missing_mates.pl > pe.cor.fa\n";
     $rerun_pe=1;
 }
 #compute average PE read length -- we will need this for Astat later
@@ -403,7 +420,7 @@ if(scalar(@jump_info_array)>0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
         print FILE "cat combined_0 > /dev/null\n";
-	print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log | homo_trim $TRIM_PARAM > sj.cor.fa\n";
+	print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log | homo_trim $TRIM_PARAM | add_missing_mates.pl > sj.cor.fa\n";
         $rerun_sj=1;
     }
 }
@@ -435,7 +452,7 @@ else{
 print FILE "\n";
 ###estimate genome size###
 
-print FILE "ESTIMATED_GENOME_SIZE=`perl -ane '{if(\$F[0]=~/^>/){print \"\\n\"}else{print \$F[0]}}'  guillaumeKUnitigsAtLeast32bases_all.fasta | wc|awk '{print int(\$3)-(30*(int(\$1)-1));}'`\n";
+print FILE "ESTIMATED_GENOME_SIZE=`jellyfish histo -t $NUM_THREADS -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
 print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
 
 ###done estimate genome size###
@@ -486,7 +503,7 @@ if(scalar(@jump_info_array)>0){
 	@f=split(/\s+/,$jump_info_array[$i]);
 	$list_of_frg_files.="$f[0].cor.clean.frg ";
 	print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
-	print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.fa > $f[0].tmp\n";
+	print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.fa | grep -v '^\\-\\-' > $f[0].tmp\n";
 	print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp |tee $f[0].cor.clean.frg | grep '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
 	print FILE "rm $f[0].tmp\n";
     }
@@ -526,7 +543,7 @@ print FILE "fi\n";
 
 #now we extract those PE mates that did not end up in the same super read -- we call them linking mates, they will be useful for scaffolding
 if(not(-e "pe.linking.fa")||$rerun_pe==1){
-    print FILE "extractreads.pl <( awk '{if(int(substr(\$1,3))%2==0){print \$1\" \"\$2\" \"\$1;}else{print \$1\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 2 | uniq -u -f 1 | awk '{print \$1}' )  pe.cor.fa 1 > pe.linking.fa\n";
+    print FILE "extractreads.pl <( awk 'BEGIN{last_readnumber=-1;last_super_read=\"\"}{readnumber=int(substr(\$1,3));if(readnumber%2>0){readnumber--}super_read=\$2;if(readnumber==last_readnumber){if(super_read!=last_super_read){print read;print \$1;}}else{read=\$1;last_super_read=\$2}last_readnumber=readnumber}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt )  pe.cor.fa 1 > pe.linking.fa\n";
     $rerun_pe=1;
     }
 
@@ -535,7 +552,7 @@ foreach $v(@pe_info_array){
     @f=split(/\s+/,$v);
     $list_of_frg_files.="$f[0].linking.frg ";
     if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
-	print FILE "grep -A 1 '^>$f[0]' pe.linking.fa > $f[0].tmp\n";
+	print FILE "grep -A 1 '^>$f[0]' pe.linking.fa | grep -v '^\\-\\-' > $f[0].tmp\n";
 	print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].linking.frg\n";
 	print FILE "rm $f[0].tmp\n";
     }
@@ -558,9 +575,9 @@ foreach $v(@other_info_array){
 ###done processing other FRG###
 print FILE "\n";
 ###figure out the optimal parameters for CA###
-print FILE "TOTAL_READS=`cat $list_of_frg_files |grep '^{FRG'|wc -l`\n";
-print FILE "ovlRefBlockSize=`perl -e 'print int('\$TOTAL_READS'/8)'`\n";
-print FILE "ovlHashBlockSize=`perl -e 'print int('\$TOTAL_READS'/80)'`\n";
+print FILE "TOTAL_READS=`cat  superReadSequences_shr.frg $list_of_frg_files |grep '^{FRG'|wc -l`\n";
+print FILE "ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/8); if(\$s>100000){print \$s}else{print \"100000\"}'`\n";
+print FILE "ovlHashBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/80); if(\$s>10000){print \$s}else{print \"10000\"}'`\n";
 print FILE "ovlCorrBatchSize=\$ovlHashBlockSize\n";
 ###done figuring out CA parameters###
 
@@ -571,9 +588,16 @@ if($rerun_sj==1||$rerun_pe==1){
 print FILE "rm -rf CA\n";
 }
 
+#this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
+if(scalar(@other_info_array)>0){
+$other_parameters="doOverlapBasedTrimming=1 doExtendClearRanges=2 ovlMerSize=22";
+}else{
+$other_parameters="doOverlapBasedTrimming=0 doExtendClearRanges=0";
+}
+
 #data filtering
 if(scalar(@jump_info_array)>0){
-    print FILE "runCA jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=200 bogBreakAtIntersections=0 doOverlapBasedTrimming=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
+    print FILE "runCA  gkpFixInsertSizes=0 jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=200 bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
 
 #here we filter libraries for chimerism and redundancy
 #we also reduce the insert coverage by jump libraries if necessary: no more than 100x insert coverage by all libraries
@@ -601,14 +625,9 @@ if(scalar(@jump_info_array)>0){
     print FILE "cd ../\nrm -rf *.tigStore\nrm -rf *.ovlStore\nmv 4-unitigger-filter/genome.ovlStore .\ncd ../\n\n";
     print FILE "\n";
 }
-#this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
-if(scalar(@other_info_array)>0){
-$other_parameters="doOverlapBasedTrimming=1 doExtendClearRanges=2"; 
-}else{
-$other_parameters="doOverlapBasedTrimming=0 doExtendClearRanges=0";
-}
 
-print FILE "runCA $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+
+print FILE "runCA bogBadMateDepth=20 gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
 
 #now we check if the unitig consensus which is sometimes problematic, failed, and fix the unitigs
 print FILE "if [[ -e \"CA/5-consensus/consensus.success\" ]];then\n";
@@ -626,7 +645,7 @@ print FILE "fi\n";
 print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
 
 #and we continue into the scaffolder...
-print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=1 $other_parameters 1>runCA2.out 2>&1\n";
+print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=0 $other_parameters 1>runCA2.out 2>&1\n";
 
 print FILE "if [[ -e \"CA/9-terminator/genome.qc\" ]];then\n";
 print FILE "echo \"CA success\"\n";
@@ -636,7 +655,21 @@ print FILE "exit\n";
 print FILE "fi\n";
 
 #here we close gaps in scaffolds:  we use create_k_unitigs allowing to continue on count 1 sequence and then generate fake reads from the 
-#end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps
+#end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps for k=17...31
+
+my $reads_arg="";
+my @f=split(" ",$list_pe_files);
+foreach $v(@f){
+$reads_arg.=" --reads-file $v";
+}
+
+my @f=split(" ",$list_jump_files);
+foreach $v(@f){
+$reads_arg.=" --reads-file $v";
+} 
+
+print FILE "echo -n 'Gap closing ';date;\n";
+print FILE "closeGaps.perl $reads_arg --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS\n";
 
 ###Done !!!! Hoorayyyy!!! :)###
 print FILE "echo -n 'All done ';date;\n";

@@ -1,3 +1,21 @@
+/* SuperRead pipeline
+ * Copyright (C) 2012  Genome group at University of Maryland.
+ * 
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #ifndef __READ_PARSER_HPP__
 #define __READ_PARSER_HPP__
 
@@ -5,7 +23,7 @@
 #include <memory>
 #include <jflib/multiplexed_parser.hpp>
 #include <charb.hpp>
-#include <err.hpp>
+//#include <err.hpp>
 
 // Return reads from a fasta or fastq file. The parsing is done in a
 // dedicated thread.
@@ -19,6 +37,7 @@ struct read_parser_read {
 
 class read_parser : public multiplexed_parser<read_parser_read> {
   typedef multiplexed_parser<read_parser_read> super;
+  std::vector<std::filebuf*>      filebufs_;
   std::istream                    input_;
   bool                            close_input_;
   pthread_t                       reader_id_;
@@ -27,8 +46,11 @@ class read_parser : public multiplexed_parser<read_parser_read> {
   std::filebuf* open_file(const char* path) {
     auto res = new std::filebuf();
     res->open(path, std::ios::in);
+    std::string err("Failed to open file ");
+    err += path;
     if(!res->is_open())
-      eraise(std::runtime_error) << "Failed to open file '" << path << "'" << err::no;
+      throw std::runtime_error(err);
+      //      eraise(std::runtime_error) << "Failed to open file '" << path << "'" << err::no;
     return res;
   }
 public:
@@ -55,15 +77,28 @@ public:
     input_(input.rdbuf()), close_input_(false)
   { start_parsing(); }
 
+  /** Open multiple files
+   */
+  template<typename Iterator>
+  read_parser(Iterator file_start, Iterator file_end, 
+              int nb_threads = 16, int group_size = 100) :
+    super(nb_threads, group_size), input_(0)
+  {
+    for( ; file_start != file_end; ++file_start)
+      filebufs_.push_back(open_file(*file_start));
+    start_parsing();
+  }
+
   virtual ~read_parser();
 
 private:
-  // Start the approriate reader loop based on examining the beginning of the file
+  // Start the appropriate reader loop based on examining the beginning of the file
   virtual void parser_loop();
 
+  bool parse_input_stream();
   // Main loop parsing fasta & fastq format
-  void fasta_reader_loop();
-  void fastq_reader_loop();
+  bool fasta_reader_loop();
+  bool fastq_reader_loop();
 };
 
 #endif /* __READ_PARSER_HPP__ */

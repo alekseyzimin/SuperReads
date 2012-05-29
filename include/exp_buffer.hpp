@@ -1,8 +1,27 @@
+/* SuperRead pipeline
+ * Copyright (C) 2012  Genome group at University of Maryland.
+ * 
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #ifndef _EXP_BUFFER_H_
 #define _EXP_BUFFER_H_
 
 #include <assert.h>
 #include <cstdlib>
+#include <cstddef>
 #include <stdexcept>
 #include <reallocators.hpp>
 
@@ -27,7 +46,7 @@
     } while(0); */
 #define CHECK
 
-template<typename T, typename R=reallocator<T>, size_t init_size = 2 >
+template<typename T, typename R=reallocator<T>, size_t init_size = 1 >
 class ExpBuffer {
 protected:
   T * base_;
@@ -53,10 +72,10 @@ public:
     reserve(s);
     CHECK;
   }
-  ExpBuffer(const T *ptr, size_type nb_elements) : base_(0), end_(0), ptr_(0) {
+  ExpBuffer(const T *in_ptr, size_type nb_elements) : base_(0), end_(0), ptr_(0) {
     reserve(nb_elements);
-    if(ptr)
-      memcpy(base_, ptr, sizeof(T) * nb_elements);
+    if(in_ptr)
+      memcpy(base_, in_ptr, sizeof(T) * nb_elements);
     ptr_ = base_ + nb_elements;
     CHECK;
   }
@@ -150,6 +169,20 @@ public:
 
   
   void enlarge() { reserve(capacity() * 2); }
+
+  /** Touch (read) every page of memory allocated. This forces the
+      system to effectively load the pages into memory and can be
+      faster when done linearly with 1 thread rather than many threads
+      at random.
+      The returned value is to be ignored.
+   */
+  char touch_all() const {
+    int  pagesize = getpagesize();
+    char ignore   = 0;
+    for(const char* ccptr = (const char*)base_; ccptr < (const char*)end_; ccptr += pagesize)
+      ignore ^= *ccptr;
+    return ignore;
+  }
 };
 
 template<typename T, typename R=reallocator<T> >
@@ -164,8 +197,8 @@ public:
   ExpandingBuffer() : super() { }
   ExpandingBuffer(size_type s) : super(s) { }
   ExpandingBuffer(const ExpandingBuffer &rhs) : super(rhs) { }
-  ExpandingBuffer(const_pointer ptr, size_type nb_elements) : 
-    super(ptr, nb_elements) { }
+  ExpandingBuffer(const_pointer in_ptr, size_type nb_elements) : 
+    super(in_ptr, nb_elements) { }
   virtual ~ExpandingBuffer() { }
 
   // Subscript operator which grows the array as needed (similar to
