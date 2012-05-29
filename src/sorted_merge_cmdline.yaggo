@@ -1,6 +1,8 @@
 description "Merge sorted files, similar to sort -m."
 package "sorted_merge"
 
+name "cmdline_parse"
+
 option("key", "k") {
   description "Key (1 base column number) for sorting"
   uint32; default "1" }

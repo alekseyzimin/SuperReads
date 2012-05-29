@@ -1,7 +1,6 @@
 purpose "Error correct reads from a fastq file based on the k-mer frequencies."
 package "error_correct_reads"
 
-output "error_correct_reads_cmdline.hpp"
 name "args_t"
 
 option("db", "d") {

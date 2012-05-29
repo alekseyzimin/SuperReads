@@ -20,7 +20,7 @@
 #include <iostream>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <unittests/test_main.hpp>
+#include <unittests/test_main_cmdline.hpp>
 
 int main(int argc, char *argv[]) {
   ::testing::InitGoogleTest(&argc, argv);

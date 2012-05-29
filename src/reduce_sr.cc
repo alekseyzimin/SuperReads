@@ -22,7 +22,7 @@
 #include<assert.h>
 #include<algorithm>
 #include<charb.hpp>
-#include<src/reduce_sr.hpp>
+#include<src/reduce_sr_cmdline.hpp>
 // #define DEBUG 0
 
 typedef ExpandingBuffer<int> int_buf;
@@ -94,7 +94,7 @@ int compute_lengthAdjustment(char ori, char* cptr, char* end, int_buf& kUnitigLe
 }
 
 int main(int argc,char *argv[]){
-     reduce_sr args(argc, argv);
+     cmdline_parse args(argc, argv);
      int i,j,k,l=0,lastKUnitigIndex,irreducibleSuperReadIndex=0;
      time_t time_start=time(NULL);
      int_buf candidates(100),kUnitigsInSuperRead(1000),kUnitigLengths(args.largestkunitig_arg + 1);

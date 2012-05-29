@@ -1,6 +1,8 @@
 purpose "Reduce contained SuperReads to their largest container."
 description "Long description"
 
+name "cmdline_parse"
+
 option("maximum-search-depth", "d") {
   description "Check at most this many possible containing SuperReads"
   int; default "100"

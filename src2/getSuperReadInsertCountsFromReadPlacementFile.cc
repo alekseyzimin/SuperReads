@@ -27,7 +27,7 @@
 #include <err.hpp>
 #include <misc.hpp> // for getFldsFromLine
 #include <src/sr_names.hpp>
-#include <src2/getSuperReadInsertCountsFromReadPlacementFile.hpp>
+#include <src2/getSuperReadInsertCountsFromReadPlacementFile_cmdline.hpp>
 #include <src/bloom_filter.hpp>
 
 using namespace std;
@@ -70,7 +70,7 @@ public:
 
 int main (int argc, char **argv)
 {
-  getSuperReadInsertCountsFromReadPlacementFile args(argc, argv);
+  cmdline_parse args(argc, argv);
 
   typedef map<const char *, int, str_comp> read_count_map;
   read_count_map    superReadToCounts;

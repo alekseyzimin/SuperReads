@@ -49,14 +49,14 @@
 #include <thread_exec.hpp>
 #include <jflib/multiplexed_parser.hpp>
 #include <jflib/multiplexed_io.hpp>
-#include <src2/joinKUnitigs_v3.hpp>
+#include <src2/joinKUnitigs_v3_cmdline.hpp>
 #include <rb_tree.hpp>
 
 #define FRONT_END 1
 #define BACK_END 2
 
 // The command line arguments
-joinKUnitigs_v3 args;
+cmdline_parse args;
 
 // Global / Constant / parameter. Merge into switches parsing?
 static const int maxDiffInsertSizesForPrinting      = 5; // Const / Parameter

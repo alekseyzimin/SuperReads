@@ -27,7 +27,7 @@
 
 #include <charb.hpp>
 #include <err.hpp>
-#include <src/sorted_merge.hpp>
+#include <src/sorted_merge_cmdline.hpp>
 
 /** Like 'sort -m', but more limited and much faster. Supports sorting
  * only according to 1 key. Support for numerical and string sorting.
@@ -129,17 +129,17 @@ void merge_files(std::ofstream &os, uint32_t col, It begin, It end) {
 }
 
 int main(int argc, char *argv[]) {
-  sorted_merge args(argc, argv);
+  cmdline_parse args(argc, argv);
   
   std::ofstream out(args.output_arg);
 
   if(!out.good())
     die << "Failed to open output file '" << args.output_arg << "'" << err::no;
   if(args.numerical_flag)
-    merge_files<long, sorted_merge::input_arg_it>
+    merge_files<long, cmdline_parse::input_arg_it>
       (out, args.key_arg, args.input_arg.begin(), args.input_arg.end());
   else
-    merge_files<const char *, sorted_merge::input_arg_const_it>
+    merge_files<const char *, cmdline_parse::input_arg_const_it>
       (out, args.key_arg, args.input_arg.begin(), args.input_arg.end());
 
   return 0;

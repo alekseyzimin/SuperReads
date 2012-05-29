@@ -1,6 +1,8 @@
 purpose "Combine Jellyfish databases for use with error correcter"
 package "combine_jf_dbs"
 
+name "cmdline_parse"
+
 description "N databases are merged. The highest quality k-mers are in the first database
 and the lowest quality k-mers are in the last.
 

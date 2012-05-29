@@ -27,7 +27,7 @@
 #include <err.hpp>
 #include <misc.hpp> // for getFldsFromLine
 #include <src/sr_names.hpp>
-#include <src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.hpp>
+#include <src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses_cmdline.hpp>
 #include <src/bloom_counter2.hpp>
 
 using namespace std;
@@ -123,8 +123,7 @@ struct map_store {
 
 int main (int argc, char **argv)
 {
-  typedef getSuperReadInsertCountsFromReadPlacementFileTwoPasses arg_parse;
-  arg_parse args(argc, argv);
+  cmdline_parse args(argc, argv);
 
   std::ofstream output(args.output_arg);
   if(!output.good())
@@ -134,7 +133,7 @@ int main (int argc, char **argv)
     std::cerr << "First pass" << std::endl;
   // Parse input into bloom counter
   bloom_store bs(args.number_reads_arg);
-  for(arg_parse::input_arg_const_it file = args.input_arg.begin(); file != args.input_arg.end(); ++file) {
+  for(auto file = args.input_arg.begin(); file != args.input_arg.end(); ++file) {
     if(args.debug_flag)
       std::cerr << "Parsing " << *file << std::endl;
     std::ifstream input(*file);
@@ -148,7 +147,7 @@ int main (int argc, char **argv)
   // Parse input into map, if count > 1
   coding_fn encode = args.fib_flag ? (coding_fn)sr_name::from_str : str_dup;
   map_store ms(bs.bc, encode);
-  for(arg_parse::input_arg_const_it file = args.input_arg.begin(); file != args.input_arg.end(); ++file) {
+  for(auto file = args.input_arg.begin(); file != args.input_arg.end(); ++file) {
     if(args.debug_flag)
       std::cerr << "Parsing " << *file << std::endl;
     std::ifstream input(*file);

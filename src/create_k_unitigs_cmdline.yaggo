@@ -1,7 +1,6 @@
 purpose "Create k-unitigs (unipaths) from a Jellyfish k-mer database."
 package "create_k_unitigs"
 
-output "create_k_unitigs_cmdline.hpp"
 name "create_k_unitigs_args"
 
 option("both-strands", "C") {

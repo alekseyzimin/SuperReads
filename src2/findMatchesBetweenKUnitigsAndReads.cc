@@ -55,7 +55,7 @@
 #include <gzip_stream.hpp>
 #include <jflib/multiplexed_io.hpp>
 
-#include <src2/findMatchesBetweenKUnitigsAndReads.hpp>
+#include <src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp>
 
 struct kMerUnitigInfoStruct {
   uint32_t kUnitigNumber;
@@ -221,8 +221,8 @@ public:
 
 int main(int argc, char *argv[])
 {
-     FILE                               *infile;
-     findMatchesBetweenKUnitigsAndReads  args(argc, argv);
+     cmdline_parse  args(argc, argv);
+     FILE          *infile;
 
      longOutput = args.long_flag;
 

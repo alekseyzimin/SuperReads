@@ -21,7 +21,7 @@
 #include <src/MurmurHash3.h>
 #include <src/read_parser.hpp>
 #include <src/mer_dna.hpp>
-#include <src/create_k_unitigs_large_k.hpp>
+#include <src/create_k_unitigs_large_k_cmdline.hpp>
 
 struct mer_dna_hash {
   void operator()(const mer_dna& m, uint64_t *hashes) const {

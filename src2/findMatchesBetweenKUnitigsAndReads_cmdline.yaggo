@@ -1,6 +1,8 @@
 purpose "Find matches between k-unitigs and rads"
 description ""
 
+name "cmdline_parse"
+
 option("l", "long") {
   description "Long output format"
   off }

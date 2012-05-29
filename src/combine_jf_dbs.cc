@@ -22,11 +22,11 @@
 #include <jellyfish/compacted_hash.hpp>
 #include <jellyfish/thread_exec.hpp>
 #include <jellyfish/misc.hpp>
-#include <src/combine_jf_dbs.hpp>
+#include <src/combine_jf_dbs_cmdline.hpp>
 
 int main(int argc, char *argv[])
 {
-  combine_jf_dbs     args(argc, argv);
+  cmdline_parse      args(argc, argv);
   unsigned int       klen;
   unsigned int       N = args.db_jf_arg.size();
   inv_hash_storage_t *ary;

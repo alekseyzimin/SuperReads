@@ -1,6 +1,8 @@
 purpose "Join k-unitigs overlapping mate pairs of an insert."
 description "For this exec we are using the unitig numbers starting from 0."
 
+name "cmdline_parse"
+
 option("min-overlap-length") {
   description "Minimum length of an overlap between unitigs"
   int; required }

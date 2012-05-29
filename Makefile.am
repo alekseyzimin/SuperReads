@@ -84,11 +84,11 @@ error_correct_reads_SOURCES = src/error_correct_reads.cc src/kmer.cc	\
                               src/err_log.cc
 BUILT_SOURCES              += src/error_correct_reads_cmdline.hpp
 reduce_sr_SOURCES = src/reduce_sr.cc
-BUILT_SOURCES    += src/reduce_sr.hpp
+BUILT_SOURCES    += src/reduce_sr_cmdline.hpp
 sorted_merge_SOURCES = src/sorted_merge.cc
-BUILT_SOURCES       += src/sorted_merge.hpp
+BUILT_SOURCES       += src/sorted_merge_cmdline.hpp
 combine_jf_dbs_SOURCES = src/combine_jf_dbs.cc
-BUILT_SOURCES         += src/combine_jf_dbs.hpp
+BUILT_SOURCES         += src/combine_jf_dbs_cmdline.hpp
 #create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
 #                                   src/read_parser.cc src/mer_dna.cc
 
@@ -111,19 +111,19 @@ killBadKUnitigs_SOURCES = src2/killBadKUnitigs.cc
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
 findMatchesBetweenKUnitigsAndReads_SOURCES =    \
 src2/findMatchesBetweenKUnitigsAndReads.cc src/read_parser.cc src/mer_dna.cc
-BUILT_SOURCES += src2/findMatchesBetweenKUnitigsAndReads.hpp
+BUILT_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFile.cc	\
 src/fibonacci_coding.cc src/MurmurHash3.cpp
-BUILT_SOURCES += src2/getSuperReadInsertCountsFromReadPlacementFile.hpp
+BUILT_SOURCES += src2/getSuperReadInsertCountsFromReadPlacementFile_cmdline.hpp
 getSuperReadInsertCountsFromReadPlacementFileTwoPasses_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.cc		\
 src/fibonacci_coding.cc src/MurmurHash3.cpp
-BUILT_SOURCES += src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.hpp
+BUILT_SOURCES += src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses_cmdline.hpp
 joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc
-BUILT_SOURCES          += src2/joinKUnitigs_v3.hpp
+BUILT_SOURCES          += src2/joinKUnitigs_v3_cmdline.hpp
 outputRecordsNotOnList_SOURCES = src2/outputRecordsNotOnList.cc
 
 ##############################

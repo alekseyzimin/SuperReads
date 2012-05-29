@@ -1,6 +1,8 @@
 purpose "Count number of occurences of each super-read"
 description "No long description!"
 
+name "cmdline_parse"
+
 option("output", "o") {
   description "Output file"
   c_string; typestr "path" }
