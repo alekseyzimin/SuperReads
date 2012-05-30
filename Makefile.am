@@ -54,9 +54,8 @@ V_YAGGO_0 = @echo "  YAGGO " $@;
 ##############################
 # src pipeline
 ##############################
-bin_PROGRAMS += create_k_unitigs error_correct_reads			\
-                error_corrected2frg homo_trim reverse_complement	\
-                reduce_sr sorted_merge combine_jf_dbs			\
+bin_PROGRAMS += create_k_unitigs error_corrected2frg		\
+                reverse_complement reduce_sr sorted_merge	\
                 create_k_unitigs_large_k
 
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
@@ -69,29 +68,22 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/extractreads_not.pl
 noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/diskBasedUnitigger.h			\
-                  src/error_correct_reads.hpp src/err_log.hpp	\
-                  src/kmer.hpp src/fibonacci_coding.hpp		\
-                  src/sr_names.hpp src/bloom_filter.hpp		\
-                  src/MurmurHash3.h src/bloom_hash.hpp		\
-                  src/bloom_counter2.hpp src/mer_dna.hpp	\
-                  src/read_parser.hpp 
+                  src/fibonacci_coding.hpp src/sr_names.hpp	\
+                  src/bloom_filter.hpp src/MurmurHash3.h	\
+                  src/bloom_hash.hpp src/bloom_counter2.hpp	\
+                  src/mer_dna.hpp src/read_parser.hpp
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 BUILT_SOURCES              += src/error_corrected2frg_cmdline.hpp
-homo_trim_SOURCES = src/homo_trim.cc 
 reverse_complement_SOURCES = src/reverse_complement.cc
 create_k_unitigs_SOURCES = src/create_k_unitigs.cpp
 BUILT_SOURCES           += src/create_k_unitigs_cmdline.hpp
-error_correct_reads_SOURCES = src/error_correct_reads.cc src/kmer.cc	\
-                              src/err_log.cc
-BUILT_SOURCES              += src/error_correct_reads_cmdline.hpp
 reduce_sr_SOURCES = src/reduce_sr.cc
 BUILT_SOURCES    += src/reduce_sr_cmdline.hpp
 sorted_merge_SOURCES = src/sorted_merge.cc
 BUILT_SOURCES       += src/sorted_merge_cmdline.hpp
-combine_jf_dbs_SOURCES = src/combine_jf_dbs.cc
-BUILT_SOURCES         += src/combine_jf_dbs_cmdline.hpp
 create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
                                    src/read_parser.cc src/mer_dna.cc
+BUILT_SOURCES += src/create_k_unitigs_large_k.hpp
 
 ##############################
 # src2 pipeline
@@ -163,7 +155,8 @@ all_tests_CXXFLAGS = $(AM_CXXFLAGS)					\
 -I$(top_srcdir)/unittests/gtest/include -I$(top_srcdir)unittests/gtest	\
 -I$(top_srcdir)/include -I$(top_srcdir)
 all_tests_LDADD = libgtest.la
-noinst_HEADERS += unittests/test_main.hpp unittests/misc.hpp
+BUILT_SOURCES += unittests/test_main_cmdline.hpp
+noinst_HEADERS += unittests/test_main_cmdline.hpp unittests/misc.hpp
 
 include gtest.mk
 

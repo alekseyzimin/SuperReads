@@ -24,7 +24,7 @@
 
 int main(int argc, char *argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
-  test_main args(argc, argv);
+  cmdline_parse args(argc, argv);
   
   unsigned int seed;
   if(args.seed_given) {
