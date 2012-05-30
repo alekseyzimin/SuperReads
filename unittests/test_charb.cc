@@ -143,6 +143,7 @@ TEST_F(CharbStd, Strcat) {
 
   res = strcat(b, s1);
   EXPECT_STREQ(s1, b);
+  EXPECT_STREQ(s1, res);
   EXPECT_EQ(strlen(s1), b.len());
   
   std::string sres(s1);
@@ -158,6 +159,7 @@ TEST_F(CharbStd, Strcpy) {
 
   res = strcpy(b, s1);
   EXPECT_STREQ(s1, b);
+  EXPECT_STREQ(s1, res);
   EXPECT_EQ(strlen(s1), b.len());
 }
 

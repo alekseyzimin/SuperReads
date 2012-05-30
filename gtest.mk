@@ -2,14 +2,24 @@
 # Gtest build.
 ##############################
 # Build rules for libraries.
-check_LTLIBRARIES = libgtest.la libgtest_main.la
+# check_LTLIBRARIES = libgtest.la libgtest_main.la
 
-libgtest_la_SOURCES = unittests/gtest/src/gtest-all.cc
-libgtest_main_la_SOURCES = unittests/gtest/src/gtest_main.cc
-libgtest_main_la_LIBADD = libgtest.la
-libgtest_la_CXXFLAGS = -I$(top_srcdir)/unittests/gtest	\
+# libgtest_la_SOURCES = unittests/gtest/src/gtest-all.cc
+# libgtest_main_la_SOURCES = unittests/gtest/src/gtest_main.cc
+# libgtest_main_la_LIBADD = libgtest.la
+# libgtest_la_CXXFLAGS = -I$(top_srcdir)/unittests/gtest	\
+# -I$(top_srcdir)/unittests/gtest/include
+# libgtest_main_la_CXXFLAGS = -I$(top_srcdir)/unittests/gtest	\
+# -I$(top_srcdir)/unittests/gtest/include
+
+check_LIBRARIES = libgtest.a libgtest_main.a
+
+libgtest_a_SOURCES = unittests/gtest/src/gtest-all.cc
+libgtest_main_a_SOURCES = unittests/gtest/src/gtest_main.cc
+libgtest_main_a_LIBADD = libgtest.a
+libgtest_a_CXXFLAGS = -I$(top_srcdir)/unittests/gtest	\
 -I$(top_srcdir)/unittests/gtest/include
-libgtest_main_la_CXXFLAGS = -I$(top_srcdir)/unittests/gtest	\
+libgtest_main_a_CXXFLAGS = -I$(top_srcdir)/unittests/gtest	\
 -I$(top_srcdir)/unittests/gtest/include
 
 # gtest source files that we don't compile directly.  They are
