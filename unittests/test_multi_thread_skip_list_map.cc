@@ -18,6 +18,7 @@
 
 #include <gtest/gtest.h>
 #include <unittests/misc.hpp>
+#include <jflib/atomic_field.hpp>
 #include <multi_thread_skip_list_map.hpp>
 
 #include <string>
@@ -47,8 +48,10 @@ namespace {
     map_type::thread th(data->map);
 
     int tid = (data->ids += 1);
-    for(int i = tid * data->per_th; i < (tid+1) * data->per_th; ++i)
-      th[data->v[i]] += data->v[i];
+    for(int i = tid * data->per_th; i < (tid+1) * data->per_th; ++i) {
+      jflib::atomic_ref<int> ref(th[data->v[i]]);
+      ref += data->v[i];
+    }
 
     return 0;
   }
