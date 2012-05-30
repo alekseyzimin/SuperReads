@@ -87,7 +87,7 @@ while($line=<STDIN>){
     chomp($line);
     @s=split(//,substr($line,4));
     $cg=0;
-    $base_count=0;
+    $base_count=1;
     foreach $v(@s){
       $cg++ if($v eq "G" || $v eq "C");
       $base_count++;
