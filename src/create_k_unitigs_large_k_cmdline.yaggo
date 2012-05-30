@@ -1,6 +1,8 @@
 purpose "Create k-unitigs with support for large k (k>31)."
 description ""
 
+name "cmdline_parse"
+
 option("m", "mer") {
   description "k-mer size"
   int; required }
