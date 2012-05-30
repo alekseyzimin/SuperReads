@@ -150,7 +150,8 @@ all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
 all_tests_CXXFLAGS = $(AM_CXXFLAGS)					\
 -I$(top_srcdir)/unittests/gtest/include -I$(top_srcdir)unittests/gtest	\
 -I$(top_srcdir)/include -I$(top_srcdir)
-all_tests_LDADD = libgtest.la
+all_tests_LDFLAGS = $(AM_LDFLAGS)
+all_tests_LDADD = libgtest.a
 BUILT_SOURCES += unittests/test_main_cmdline.hpp
 noinst_HEADERS += unittests/test_main_cmdline.hpp unittests/misc.hpp
 
