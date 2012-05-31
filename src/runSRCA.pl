@@ -392,7 +392,7 @@ print FILE "rm -f pe_trim_? pe_all_?\n";
 print FILE "exit\n";
 print FILE "fi\n";
 
-print FILE "combine_jf_dbs -m 1 pe_trim_0 pe_all_0 -o combined\n";
+print FILE "quorum_combine_jf_dbs -m 1 pe_trim_0 pe_all_0 -o combined\n";
 print FILE "rm -f pe_trim_? pe_all_?\n";
 $rerun_pe=1;
 $rerun_sj=1;
@@ -405,7 +405,7 @@ print FILE "\n";
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
     print FILE "cat combined_0 > /dev/null\n";
-    print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log | homo_trim $TRIM_PARAM | add_missing_mates.pl > pe.cor.fa\n";
+    print FILE "\nquorum_error_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log | homo_trim $TRIM_PARAM | add_missing_mates.pl > pe.cor.fa\n";
     $rerun_pe=1;
 }
 #compute average PE read length -- we will need this for Astat later
@@ -420,7 +420,7 @@ if(scalar(@jump_info_array)>0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
         print FILE "cat combined_0 > /dev/null\n";
-	print FILE "\nerror_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log | homo_trim $TRIM_PARAM | add_missing_mates.pl > sj.cor.fa\n";
+	print FILE "\nquorum_error_correct_reads -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log | homo_trim $TRIM_PARAM | add_missing_mates.pl > sj.cor.fa\n";
         $rerun_sj=1;
     }
 }
@@ -501,23 +501,21 @@ if(scalar(@jump_info_array)>0){
     print FILE "ln -sf sj.cor.clean.fa sj.cor.ext.fa\n";
     for($i=0;$i<scalar(@jump_info_array);$i++){
 	@f=split(/\s+/,$jump_info_array[$i]);
-	$list_of_frg_files.="$f[0].cor.clean.frg ";
 	print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
 	print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.fa | grep -v '^\\-\\-' > $f[0].tmp\n";
-	print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp |tee $f[0].cor.clean.frg | grep '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
-	print FILE "rm $f[0].tmp\n";
-    }
+	print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp | grep '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
+        }
     print FILE "JUMP_BASES_COVERED=`awk 'BEGIN{b=0}{b+=\$1*\$2;}END{print b}' compute_jump_coverage.txt`\n";
 
 #here we reduce jump library coverage: we know the genome size (from k-unitigs) and JUMP_BASES_COVERED contains total jump library coverage :)
     print FILE "perl -e '{\$cov=int('\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'); print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=$LIMIT_JUMP_COVERAGE;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.cor.clean.fa\");while(\$line=<FILE>){next if(not(\$line =~ /^>/));chomp(\$line);if(int(substr(\$line,3))%2==0) {print STDERR substr(\$line,1),\"\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>mates_to_break.txt\n";
-
+    print FILE "extractreads_not.pl mates_to_break.txt sj.cor.ext.fa 1 >  sj.cor.ext.reduced.fa\n";
     for($i=0;$i<scalar(@jump_info_array);$i++){
 	@f=split(/\s+/,$jump_info_array[$i]);
-###if one of the reads 
-	print FILE "mv $f[0].cor.clean.frg $f[0].cor.clean.frg.tmp\n";
-	print FILE "perl -e '{open(FILE,\"mates_to_break.txt\");while(\$line=<FILE>){chomp(\$line);\$h{\$line}=1;}while(\$line=<STDIN>){if(\$line=~/^\\{LKG/){\$flag=0;\@lines=();while(\$line=<STDIN>){last if(\$line=~/^\\}/);push(\@lines,\$line);chomp(\$line);if(defined(\$h{substr(\$line,4)})){\$flag++}}if(\$flag==0){print \"{LKG\\n\",\@lines,\"}\\n\";}}else{print \$line;}}}' < $f[0].cor.clean.frg.tmp > $f[0].cor.clean.frg\n"; 
-	print FILE "rm $f[0].cor.clean.frg.tmp\n";
+        $list_of_frg_files.="$f[0].cor.clean.frg ";
+        print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep -v '^\\-\\-' > $f[0].tmp\n";
+        print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].cor.clean.frg\n";
+        print FILE "rm -f $f[0].tmp\n";
     }
 }
 
@@ -610,22 +608,18 @@ if(scalar(@jump_info_array)>0){
     print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.clean.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid 700\n";
 
 #we should not check for redundancy on the extended jump reads -- it will wipe them all out
+    print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" mateiid 0\"}'  > gkp.edits.msg\n";
     if($EXTEND_JUMP_READS==0){
 	print FILE "cat genome.redundant.uid |awk '{print \"frg uid \"\$1\" isdeleted 1\"}' > gkp.edits.msg\n";
-	print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" mateiid 0\"}' >> gkp.edits.msg\n";
-        print FILE "overlapStore -d ../genome.ovlStore | perl -e '{open(FILE,\"genome.chimeric.uid\");while(\$line=<FILE>){chomp(\$line);\$h{\$line}=1}open(FILE,\"genome.redundant.uid\");while(\$line=<FILE>){chomp(\$line);\$h{\$line}=1}open(FILE,\"genome.uidMuid\");\$iid=0;while(\$line=<FILE>){\@f=split(/\\s+/,\$line);\$bad_iids{\$iid}=1 if(defined \$h{\$f[0]});\$iid++;} \%h=(); while(\$line=<STDIN>){\$line=~s/^\\s+//;\@f=split(/\\s+/,\$line);print \"\$f[0] \$f[1] \$f[2] \$f[3] \$f[4] \$f[5] \$f[6]\\n\" if(not(defined(\$bad_iids{\$f[0]}))&& not(defined(\$bad_iids{\$f[1]})));}}' | convertOverlap -b -ovl > overlaps.ovb\n";
-    }
-    else{
-	print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" mateiid 0\"}'  > gkp.edits.msg\n";
-        print FILE "overlapStore -d ../genome.ovlStore | perl -e '{open(FILE,\"genome.chimeric.uid\");while(\$line=<FILE>){chomp(\$line);\$h{\$line}=1}open(FILE,\"genome.uidMuid\");\$iid=0;while(\$line=<FILE>){\@f=split(/\\s+/,\$line);\$bad_iids{\$iid}=1 if(defined \$h{\$f[0]});\$iid++;} \%h=(); while(\$line=<STDIN>){\$line=~s/^\\s+//;\@f=split(/\\s+/,\$line);print \"\$f[0] \$f[1] \$f[2] \$f[3] \$f[4] \$f[5] \$f[6]\\n\" if(not(defined(\$bad_iids{\$f[0]}))&& not(defined(\$bad_iids{\$f[1]})));}}' | convertOverlap -b -ovl > overlaps.ovb\n";
-    }
+        print FILE "overlapStore -d ../genome.ovlStore | perl -e '{open(FILE,\"genome.redundant.uid\");while(\$line=<FILE>){chomp(\$line);\$h{\$line}=1}open(FILE,\"genome.uidMuid\");\$iid=0;while(\$line=<FILE>){\@f=split(/\\s+/,\$line);\$bad_iids{\$iid}=1 if(defined \$h{\$f[0]});\$iid++;} \%h=(); while(\$line=<STDIN>){\$line=~s/^\\s+//;\@f=split(/\\s+/,\$line);print \"\$f[0] \$f[1] \$f[2] \$f[3] \$f[4] \$f[5] \$f[6]\\n\" if(not(defined(\$bad_iids{\$f[0]}))&& not(defined(\$bad_iids{\$f[1]})));}}' | convertOverlap -b -ovl > overlaps.ovb\n";
     print FILE "overlapStore -c genome.ovlStore -g ../genome.gkpStore -M 8192 -t $NUM_THREADS overlaps.ovb 1>overlapStore.err 2>&1\n";
+    print FILE "rm -rf ../*.ovlStore\nmv genome.ovlStore ../\n";
+    }
     print FILE "echo -n \"Deleted reads due to redundancy/chimerism: \"\nwc -l gkp.edits.msg\n";
     print FILE "gatekeeper --edit gkp.edits.msg ../genome.gkpStore 1>gatekeeper.err 2>&1\n";
-    print FILE "cd ../\nrm -rf *.tigStore\nrm -rf *.ovlStore\nmv 4-unitigger-filter/genome.ovlStore .\ncd ../\n\n";
+    print FILE "cd ../\nrm -rf *.tigStore\ncd ../\n\n";
     print FILE "\n";
 }
-
 
 print FILE "runCA bogBadMateDepth=20 gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
 

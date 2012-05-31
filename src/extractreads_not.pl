@@ -30,13 +30,13 @@ while ($line = <FILE1>)
 close(FILE1);
 
 my $sequence="";
-my $readname="";
+my $readname="-1";
 open (OUTFILE, ">$outfile");
 while ($line = <FILE2>)
 {
     if ($line =~ /^>/)
     {
-	if(not(defined $readnames{$readname}))
+	if(not(defined $readnames{$readname}) && not($readname eq "-1"))
 	{
 	print ">$readname\n$sequence\n";
 	}
