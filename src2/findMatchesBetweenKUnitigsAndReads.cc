@@ -200,7 +200,10 @@ public:
          prev_read_id = read_id;
          
          strtok(read_stream->header, " ");
-         sscanf(read_stream->header, ">%2s%ld", read_prefix, &read_id);
+	 if ((read_stream->header)[0] == '>')
+	      sscanf(read_stream->header, ">%2s%ld", read_prefix, &read_id);
+	 else
+	      sscanf(read_stream->header, "@%2s%ld", read_prefix, &read_id);
          
          // Start new line & print read header if new read
          bool is_new_read = strcmp(read_prefix, prev_read_prefix) || read_id != prev_read_id;
