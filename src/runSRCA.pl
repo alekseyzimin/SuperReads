@@ -477,7 +477,7 @@ if(scalar(@jump_info_array)>0){
 
 #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
     if(not(-e "chimeric_sj.txt")||$rerun_pe==1||$rerun_sj==1){
-	print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$3\" \"\$2\" \"\$1;}else{print \$3\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 1| awk 'BEGIN{insert=\"\";}{if(\$3!=insert){start=\$1;insert=\$3}else{if(start>\$1){print insert\" \"start-\$1}else{print insert\" \"\$1-start}}}' | perl -ane '{if(\$F[1]<700&&\$F[1]>128){print STDOUT \"\$F[0]\\n\",substr(\$F[0],0,2),int(substr(\$F[0],2))+1,\"\\n\";}}' 1> chimeric_sj.txt \n";
+	print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$3\" \"\$2\" \"\$1;}else{print \$3\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 1| awk 'BEGIN{insert=\"\";}{if(\$3!=insert){start=\$1;insert=\$3}else{if(start>\$1){print insert\" \"start-\$1}else{print insert\" \"\$1-start}}}' | perl -ane '{if(\$F[1]<700){print STDOUT \"\$F[0]\\n\",substr(\$F[0],0,2),int(substr(\$F[0],2))+1,\"\\n\";}}' 1> chimeric_sj.txt \n";
     $rerun_sj=1;
     }
 
@@ -605,12 +605,12 @@ if(scalar(@jump_info_array)>0){
     print FILE "exit\n";
     print FILE "fi\n";
 
-    print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.clean.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid 700\n";
+    print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.ext.reduced.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid 700\n";
 
 #we should not check for redundancy on the extended jump reads -- it will wipe them all out
     print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" mateiid 0\"}'  > gkp.edits.msg\n";
     if($EXTEND_JUMP_READS==0){
-	print FILE "cat genome.redundant.uid |awk '{print \"frg uid \"\$1\" isdeleted 1\"}' > gkp.edits.msg\n";
+	print FILE "cat genome.redundant.uid |awk '{print \"frg uid \"\$1\" isdeleted 1\"}' >> gkp.edits.msg\n";
         print FILE "overlapStore -d ../genome.ovlStore | perl -e '{open(FILE,\"genome.redundant.uid\");while(\$line=<FILE>){chomp(\$line);\$h{\$line}=1}open(FILE,\"genome.uidMuid\");\$iid=0;while(\$line=<FILE>){\@f=split(/\\s+/,\$line);\$bad_iids{\$iid}=1 if(defined \$h{\$f[0]});\$iid++;} \%h=(); while(\$line=<STDIN>){\$line=~s/^\\s+//;\@f=split(/\\s+/,\$line);print \"\$f[0] \$f[1] \$f[2] \$f[3] \$f[4] \$f[5] \$f[6]\\n\" if(not(defined(\$bad_iids{\$f[0]}))&& not(defined(\$bad_iids{\$f[1]})));}}' | convertOverlap -b -ovl > overlaps.ovb\n";
     print FILE "overlapStore -c genome.ovlStore -g ../genome.gkpStore -M 8192 -t $NUM_THREADS overlaps.ovb 1>overlapStore.err 2>&1\n";
     print FILE "rm -rf ../*.ovlStore\nmv genome.ovlStore ../\n";
