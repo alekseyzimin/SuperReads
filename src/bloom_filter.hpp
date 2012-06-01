@@ -51,7 +51,7 @@ struct serial_access {
  */
 template<typename T>
 struct mt_access {
-  static T fetch_and_or(T* ptr, T x) { return __sync_ftetch_and_or(ptr, x); }
+  static T fetch_and_or(T* ptr, T x) { return __sync_fetch_and_or(ptr, x); }
   static T fetch(T* ptr) { return *(volatile T*)ptr; }
 };
 
@@ -94,22 +94,32 @@ public:
   // Size of bit vector
   size_t m() const { return m_; }
 
-  // Insert key k
-  bool insert(const Key &k) {
+  // Std::set compatible insert method. There is no iterator for a
+  // bloom filter, so return true for the first element of the
+  // pair. The second element is true if the element was inserted and
+  // was not in the set before.
+  std::pair<bool, bool> insert(const Key &k) {
+    return std::make_pair(true, !add(k));
+  }
+
+  // Insert a key. Return true if the element was already present.
+  bool add(const Key& k) {
     uint64_t hashes[2];
     hash_fns_(k, hashes);
-    return insert(hashes);
+    return add(hashes);
   }
     
   // Insert key with given hashes
-  bool insert(const uint64_t *hashes) {
+  bool add(const uint64_t *hashes) {
     bool     present = true;
     
     for(unsigned long i = 0; i < k_; ++i) {
       size_t pos    = (hashes[0] + i * hashes[1]) % m_;
       size_t elt_i  = pos / elt_size;
       size_t bit_i  = pos % elt_size;
-      present      &= mem_access_.fetch_and_or(data_ + elt_i, ((element_type)1) << bit_i);
+      element_type mask = ((element_type)1) << bit_i;
+      element_type prev = mem_access_.fetch_and_or(data_ + elt_i, mask);
+      present = present && (prev & mask);
     }
 
     return present;
