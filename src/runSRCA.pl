@@ -651,19 +651,9 @@ print FILE "fi\n";
 #here we close gaps in scaffolds:  we use create_k_unitigs allowing to continue on count 1 sequence and then generate fake reads from the 
 #end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps for k=17...31
 
-my $reads_arg="";
-my @f=split(" ",$list_pe_files);
-foreach $v(@f){
-$reads_arg.=" --reads-file $v";
-}
-
-my @f=split(" ",$list_jump_files);
-foreach $v(@f){
-$reads_arg.=" --reads-file $v";
-} 
-
 print FILE "echo -n 'Gap closing ';date;\n";
-print FILE "closeGaps.perl $reads_arg --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS --reduce-read-set --use-all-kunitigs 1>gapClose.err 2>&1\n";
+print FILE "cat *.renamed.fastq | perl -e '{while(\$line=<STDIN>){print \">\",substr(\$line,1);\$line=<STDIN>;print \$line;\$line=<STDIN>;\$line=<STDIN>;}}' > allreads.fa\n";
+print FILE "closeGaps.perl --reads-file allreads.fa --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS --reduce-read-set 22 --use-all-kunitigs 1>gapClose.err 2>&1\n";
 
 ###Done !!!! Hoorayyyy!!! :)###
 print FILE "echo -n 'All done ';date;\n";
