@@ -15,13 +15,14 @@ $maxKMerLen = 31;
 $minKMerLen = 19;
 $kUnitigContinuationNumber = 2;
 $readsFile = "origReads.renamed.fasta";
+$contigEndPairsFile = "contig_end_pairs.fa";
 &processArgs;
 if (! $CeleraTerminatorDirectory) {
     print STDERR "No Celera terminator directory was specified. Bye!\n";
     exit (1);
 }
 
-open (FILE, "contig_end_pairs.fa");
+open (FILE, $contigEndPairsFile);
 while ($line = <FILE>) {
     chomp ($line);
     if ($line !~ /^>/) {
@@ -327,13 +328,20 @@ sub outputFasta
 sub processArgs
 {
     my ($arg, @kmerLens);
-    for (@ARGV) {
-	$arg = $_;
+    for ($i=0; $i<=$#ARGV; $i++) {
+	$arg = $ARGV[$i];
 	if (-d $arg) {
 	    $CeleraTerminatorDirectory = $arg;
 	    next; }
+	if ($arg =~ /^contig_end_pairs/) {
+	    $contigEndPairsFile = $arg;
+	    next; }
 	if (-f $arg) {
 	    $readsFile = $arg;
+	    next; }
+	if ($arg eq "-reads-file") {
+	    ++$i;
+	    $readsFile = $ARGV[$i];
 	    next; }
 	if ($arg =~ /^\d+$/) {
 	    push (@kmerLens, $arg); } }

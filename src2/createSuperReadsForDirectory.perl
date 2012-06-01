@@ -1,21 +1,4 @@
 #!/usr/bin/env perl
-# SuperRead pipeline
-# Copyright (C) 2012  Genome group at University of Maryland.
-# 
-# This program is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 # This exec takes a (set of) input read files (in fasta format) and a
 # file of input k-unitigs (specified with the switch -kunitigsfile) and outputs
 # the set of super-reads for these reads (in fasta format).
@@ -58,13 +41,30 @@
 # -mikedebug : don't kill off intermediate results
 # -jumplibraryreads : we are generating for jump-library reads; a k-unitigs
 #                                 file must be specified
+# -time : time the commands
 # -h : help 
+
+# SuperRead pipeline
+# Copyright (C) 2012  Genome group at University of Maryland.
+# 
+# This program is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 use File::Basename;
 use Cwd;
 $exeDir = dirname ($0);
-$pwd = cwd;
-if ($exeDir !~ /^\//) {
-    $exeDir = "$pwd/$exeDir"; }
+$cwd = cwd;
+$exeDir = returnAbsolutePath ($exeDir);
 
 $lowMemory=0;
 $maxNodes=2000;
@@ -83,8 +83,7 @@ if (! -d $workingDirectory) {
     $cmd = "mkdir $workingDirectory";
     print "$cmd\n"; system ($cmd); }
 # We now require that a k-unitigs file was passed on the command line
-if ($kUnitigsFile !~ /^\//) {
-    $kUnitigsFile = "$pwd/$kUnitigsFile"; }
+$kUnitigsFile = returnAbsolutePath ($kUnitigsFile);
 $jellyfishKUnitigDataPrefix = "$workingDirectory/organismMerCountsForKUnitigs";
 $jellyfishKUnitigHashFile = $jellyfishKUnitigDataPrefix . "_0";
 $kUnitigLengthsFile = "$workingDirectory/kUnitigLengths.txt";
@@ -112,6 +111,7 @@ else {
 $totReadFile = "$workingDirectory/inputReads.fasta";
 if ($#fastaFiles == 0) {
     $totReadFile = $fastaFiles[0]; }
+$totReadFile = returnAbsolutePath ($totReadFile);
 $readsAfterAddingMissingMates = "$workingDirectory/inputreads.fa";
 $numReadsFile = "$workingDirectory/numReads.txt";
 $prefixForOverlapsBetweenKUnitigs = "$workingDirectory/overlap";
@@ -168,7 +168,12 @@ open (FILE, $mergedMaxKUnitigNumberFile); $maxKUnitigNumber = <FILE>; chomp ($ma
 $cmd = "$exeDir/createKUnitigMaxOverlaps $mergedUnitigInputKUnitigsFile -kmervalue $merLen -largest-kunitig-number ".(int($maxKUnitigNumber)+1)." $prefixForOverlapsBetweenKUnitigs";
 &runCommandAndExitIfBad($cmd, $kUnitigOverlapsFile, 1, "createKUnitigMaxOverlaps", $kUnitigOverlapsFile, "$workingDirectory/overlap.coords");
 
-$cmd = "ln -s ../$totReadFile $readsAfterAddingMissingMates";
+if (! -e $totReadFile) {
+    $cmd = "cat @fastaFiles > $totReadFile";
+    print "$cmd\n"; system ($cmd); }
+
+# $cmd = "ln -s ../$totReadFile $readsAfterAddingMissingMates";
+$cmd = "ln -s $totReadFile $readsAfterAddingMissingMates";
 &runCommandAndExitIfBad ($cmd, $readsAfterAddingMissingMates, 1, "addMissingMates", $readsAfterAddingMissingMates);
 
 if ($mergedUnitigDataPrefix) {
@@ -254,6 +259,7 @@ sub processArgs
     $minReadsInSuperRead = 2;
     $seqDiffMax = 0;
     $help = 0;
+    $timeIt = 0;
     if ($#ARGV < 0) {
 	$help = 1; }
     for ($i=0; $i<=$#ARGV; $i++) {
@@ -311,6 +317,9 @@ sub processArgs
 	    next; }
 	elsif ($ARGV[$i] eq "-mikedebug") {
 	    $mikedebug = 1;
+	    next; }
+	elsif ($ARGV[$i] eq "-time") {
+	    $timeIt = 1;
 	    next; }
 	elsif (-f $ARGV[$i]) {
 	    push (@fastaFiles, $ARGV[$i]);
@@ -426,7 +435,10 @@ sub runCommandAndExitIfBad
     
     if ($localCmd =~ /\S/) {
         print "$localCmd\n";
-        system ("time $localCmd");
+	if ($timeIt) {
+	    system ("time $localCmd"); }
+	else {
+	    system ($localCmd); }
         $retCode = $?;
         if ($retCode == -1) {
             print STDERR "failed to execute: $!\n";
@@ -504,5 +516,11 @@ sub cleanUpFailureDirectories
     closedir (DIR);
 }
 
+sub returnAbsolutePath
+{
+    my ($file) = @_;
+    if ($file !~ /^\//) {
+	$file = "$cwd/$file"; }
+    return ($file);
+}
 
-    

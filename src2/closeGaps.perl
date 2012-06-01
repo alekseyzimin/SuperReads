@@ -1,8 +1,12 @@
 #!/usr/bin/env perl
+#
+# This program is used to close gaps in our assembly.
+#
 # Example invocation:
 # closeGaps.perl --min-kmer-len 15 --max-ker-len 31 --Celera-terminator-directory .../CA/9-terminator --jellyfish-hash-size 2000000000 --num-threads 16 --output-directory outputDir --reads-file pe.cor.fa --reads-file sj.cor.fa
-# This program is used to close gaps in our assembly.
-# There are no args any more, only flags with arguments. They are as follows:
+#
+# There are no args, only flags (mostly) with arguments. They are as follows:
+#
 # Required flags:
 # --Celera-terminator-directory dir : specify the Celera terminator directory
 #                           where the assembly whose gaps must be closed exists
@@ -10,17 +14,33 @@
 #                            so long as the flag is repeated)
 # --output-directory dir : specify the output directory
 # --jellyfish-hash-size # : specify the jellyfish hash size
+#
 # Flags for required values which have defaults (i.e. flag not necessary)
 # --min-kmer-len # : specify the min kmer len used (default: 15)
 # --max-kmer-len # : specify the max kmer len used (default: 31)
 # --num-threads # : specify the number of threads (default: 1)
 # -t # : same as --num-threads #
+# --contig-length-for-joining # : The length of sequence at the ends of the contigs
+#                     which create the faux mate pairs which are joined (default: 100)
+# --use-all-kunitigs : Use k-unitigs which are the k-mer length as well as all those longer than
+#                     the k-mer length. (The default is not to use k-unis of the k-mer length)
+# --maxnodes # : The maximum number of nodes allowed when trying to join the
+#                     faux reads (default: 2000)
 # --kunitig-continuation-number # : specify the number to continue when running
 #                     create_k_unitigs (the -m and -M options to that program)
 #                     (currently "invalidated") (default: 2)
+#
 # Flags for optional aspects
 # --dir-for-kunitigs dir : specifies the directory to get k-unitigs from
 #                           if we have them
+# --reduce-read-set # : Start by reducing the read set to only those that
+#                     match a k-unitig from the genomic sequences surrounding
+#                     a gap. The number specifies the k-mer size used to
+#                     find these matches. (Don't make it too small.)
+# --contig-length-for-fishing # : The length of sequence at the ends of the contigs
+#                     to be used to find reads which might fit in the gaps (default: 100)
+# --noclean : Don't clean up after the run
+#
 # The flags may be in any order.
 use Cwd;
 use File::Basename;
@@ -34,6 +54,8 @@ $tempExeDir = $exeDir;
 # Must allow specification of the min k-unitig continuation values (default 2)
 $cwd = cwd;
 &processArgs;
+if (! $reduceReadSetKMerSize) {
+    $contigLengthForFishing = $contigLengthForJoining; }
 print "";
 $CeleraTerminatorDirectory = returnAbsolutePath ($CeleraTerminatorDirectory);
 for ($i=0; $i<=$#readsFiles; $i++) {
@@ -47,21 +69,94 @@ $localReadsFile = "localReadsFile";
 if (! -e $outputDirectory) {
     $cmd = "mkdir $outputDirectory"; print "$cmd\n"; system ($cmd); }
 chdir ($outputDirectory);
-$cmd = "$exeDir/part01.perl $CeleraTerminatorDirectory";
+$fishingEndPairs = "contig_end_pairs.${contigLengthForFishing}.fa";
+$joiningEndPairs = "contig_end_pairs.${contigLengthForJoining}.fa";
+$cmd = "$exeDir/getEndSequencesOfContigs.perl $CeleraTerminatorDirectory $contigLengthForJoining $contigLengthForFishing";
 print "$cmd\n"; system ($cmd);
-$cmd = "$exeDir/create_end_pairs.perl $CeleraTerminatorDirectory > contig_end_pairs.fa";
+$cmd = "$exeDir/create_end_pairs.perl $CeleraTerminatorDirectory $contigLengthForJoining > $joiningEndPairs";
 print "$cmd\n"; system ($cmd);
+if ($contigLengthForJoining != $contigLengthForFishing) {
+    $cmd = "$exeDir/create_end_pairs.perl $CeleraTerminatorDirectory $contigLengthForFishing > $fishingEndPairs";
+    print "$cmd\n"; system ($cmd);
+}
 $cmd = "echo \"cc $meanForGap $stdevForGap\" > meanAndStdevByPrefix.cc.txt";
 print "$cmd\n"; system ($cmd);
+if ($reduceReadSetKMerSize) {
+    $suffix = $localReadsFile . "_" . $reduceReadSetKMerSize . "_" . $kUnitigContinuationNumber;
+    $localJellyfishHashSize = -s $fishingEndPairs;
+    $localJellyfishHashSize = int ($localJellyfishHashSize / .79) + 1;
+    $cmd = "jellyfish count -m $reduceReadSetKMerSize -t $numThreads -C -r -s $localJellyfishHashSize -o k_u_hash_${suffix}_faux_reads $fishingEndPairs";
+    print "$cmd\n"; system ("time $cmd");
+    $tfile = "k_u_hash_${suffix}_faux_reads_1";
+    if (-e $tfile) {
+	print STDERR "The jellyfish hash size must be made larger. Bye!\n";
+	exit (1); }
+    $cmd = "$tempExeDir/create_k_unitigs -C -t $numThreads -l $reduceReadSetKMerSize -o k_unitigs_${suffix}_faux_reads -m 1 -M 1 k_u_hash_${suffix}_faux_reads_0";
+    print "$cmd\n"; system ("time $cmd");
+    $cmd = "$tempExeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile k_unitigs_${suffix}_faux_reads.fa -low-memory -l $reduceReadSetKMerSize --stopAfter joinKUnitigs -t $numThreads -mkudisr 0 work_${suffix}_faux_reads @readsFiles 1>>out.${suffix}_faux_reads 2>>out.${suffix}_faux_reads";
+	print "$cmd\n"; system ("time $cmd");
+    $tfile = "work_${suffix}_faux_reads/newTestOutput.nucmerLinesOnly";
+    open (FILE, $tfile);
+    while ($line = <FILE>) {
+	chomp ($line);
+	@flds = split (" ", $line);
+	$readName = $flds[0];
+	$isNeeded{$readName} = 1;
+	$readName = getReadMateName($readName);
+	$isNeeded{$readName} = 1;
+    }
+    close (FILE);
+    $cmd = "cat @readsFiles |";
+    open (FILE, $cmd);
+    $outputReadsFile = "reducedReadsFile.fa";
+    $outputReadsFile = returnAbsolutePath ($outputReadsFile);
+    @readsFiles = ($outputReadsFile);
+    open (OUTFILE, ">$outputReadsFile");
+    $line = <FILE>; chomp ($line);
+    ($readName) = ($line =~ /^.(\S+)/);
+    if ($isNeeded{$readName}) {
+	if ($readName =~ /[13579]$/) {
+	    $mateReadName = getReadMateName ($readName);
+	    print OUTFILE ">$mateReadName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
+    }
+    if ($isNeeded{$readName}) {
+	print OUTFILE "$line\n"; }
+    $lastReadName = $readName;
+    $lastReadMateName = getReadMateName ($lastReadName);
+    while ($line = <FILE>) {
+	if ($line !~ /^>/) {
+	    print OUTFILE $line if ($isNeeded{$readName});
+	    next; }
+	chomp ($line);
+	($readName) = ($line =~ /^.(\S+)/);
+	$readMateName = getReadMateName ($readName);
+	if (($lastReadName =~ /[02468]$/) &&
+	    ($isNeeded{$lastReadName}) &&
+	    ($lastReadMateName ne $readName)) {
+	    print OUTFILE ">$lastReadMateName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
+	if (($readName =~ /[13579]$/) &&
+	    ($isNeeded{$readName}) &&
+	    ($readMateName ne $lastReadName)) {
+	    print OUTFILE ">$readMateName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
+	$lastReadName = $readName;
+	$lastReadMateName = $readMateName;
+	print OUTFILE "$line\n" if ($isNeeded{$readName});
+    }
+    close (FILE);
+    if (($lastReadName =~ /[02468]$/) &&
+	($isNeeded{$lastReadName}) &&
+	($lastReadMateName ne $readName)) {
+	print OUTFILE ">$lastReadMateName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
+}
 
 &runMainLoop;
 
-$cmd = "$exeDir/getSequenceForClosedGaps.perl $CeleraTerminatorDirectory $localReadsFile $minKMerLen $maxKMerLen";
+$cmd = "$exeDir/getSequenceForClosedGaps.perl $CeleraTerminatorDirectory $joiningEndPairs -reads-file $localReadsFile $minKMerLen $maxKMerLen";
 print "$cmd\n"; system ($cmd);
 
 &createMergedJoinFile;
 
-&cleanUp;
+if (! $noClean) { &cleanUp; }
 
 sub cleanUp
 {
@@ -78,6 +173,7 @@ sub cleanUp
 sub createMergedJoinFile
 {
     my ($outfile, $k, $suffix, $fn, $line, %wasOutput);
+
     $outfile = "joined.${localReadsFile}_all.txt";
     open (OUTFILE, ">$outfile");
     for ($k=$maxKMerLen; $k>=$minKMerLen; $k--) {
@@ -94,10 +190,10 @@ sub createMergedJoinFile
 
 sub runMainLoop
 {
-    my ($k, $kMinus1, $kPlus1, $suffix, $cmd, $tfile);
+    my ($k, $kMinus1, $suffix, $cmd, $tfile, $minKUniLengthForPass);
+
     for ($k=$maxKMerLen; $k>=$minKMerLen; $k--) {
 	$kMinus1 = $k-1;
-	$kPlus1 = $k+1;
 	$suffix = $localReadsFile . "_" . $k . "_" . $kUnitigContinuationNumber;
 	if ($dirForKUnitigs) {
 	    $cmd = "ln -s $dirForKUnitigs/k_u_hash_${suffix}_0 .";
@@ -105,19 +201,31 @@ sub runMainLoop
 	    $cmd = "ln -s $dirForKUnitigs/k_unitigs_${suffix}.fa .";
 	    print "$cmd\n"; system ($cmd); }
 	else {
+	    if ($k == $maxKMerLen) {
+		$totInputSize = getReadFileSize (@readsFiles);
+		$maxJellyfishHashSize = int ($totInputSize / .8)+1;
+		if ($maxJellyfishHashSize < $jellyfishHashSize) {
+		    $jellyfishHashSize = $maxJellyfishHashSize; }
+	    }
 	    $cmd = "jellyfish count -m $k -t $numThreads -C -r -s $jellyfishHashSize -o k_u_hash_${suffix} @readsFiles";
 	    print "$cmd\n"; system ("time $cmd");
 	    $tfile = "k_u_hash_${suffix}_1";
 	    if (-e $tfile) {
 		print STDERR "The jellyfish hash size must be made larger. Bye!\n";
 		exit (1); }
-	    $cmd = "$tempExeDir/create_k_unitigs --cont-on-low  --low-stretch=$kMinus1 -C -t $numThreads -l $kPlus1 -o k_unitigs_${suffix} -m $kUnitigContinuationNumber -M $kUnitigContinuationNumber k_u_hash_${suffix}_0";
+	    if ($k == $maxKMerLen) {
+		$jellyfishHashSize = getJellyfishHashSizeNeeded ("k_u_hash_${suffix}_0"); }
+	    if ($useAllKUnitigs == 1) {
+		$minKUniLengthForPass = $k; }
+	    else {
+		$minKUniLengthForPass = $k+1; }
+	    $cmd = "$tempExeDir/create_k_unitigs --cont-on-low  --low-stretch=$kMinus1 -C -t $numThreads -l $minKUniLengthForPass -o k_unitigs_${suffix} -m $kUnitigContinuationNumber -M $kUnitigContinuationNumber k_u_hash_${suffix}_0";
 	    print "$cmd\n"; system ("time $cmd");
 	}
 	$cmd = "\\rm -rf out.$suffix"; system ($cmd);
 	$cmd = "\\rm -rf work_$suffix"; system ($cmd);
 	
-	$cmd = "$tempExeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile k_unitigs_${suffix}.fa -low-memory -l $k -t 1 -mkudisr 0 work_${suffix} contig_end_pairs.fa 1>>out.$suffix 2>>out.$suffix";
+	$cmd = "$tempExeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile k_unitigs_${suffix}.fa -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
 	print "$cmd\n"; system ("time $cmd");
 
 	$cmd = "grep '^Num ' out.$suffix"; system ($cmd);
@@ -127,6 +235,31 @@ sub runMainLoop
     }
 }
 
+sub getJellyfishHashSizeNeeded
+{
+    my ($jellyfishHash) = @_;
+    my ($cmd, $numRecs, $line, @flds, $jellyfishSizeNeeded);
+
+    $cmd = "jellyfish histo -t $numThreads -h 1 $jellyfishHash |";
+    open (FILE, $cmd);
+    $numRecs = 0;
+    while ($line = <FILE>) {
+	@flds = split (" ", $line);
+	$numRecs += $flds[1]; }
+    $jellyfishSizeNeeded = int ($numRecs/.7)+1;
+    return ($jellyfishSizeNeeded);
+}
+
+sub getReadFileSize
+{
+    my (@files) = @_;
+    my ($totSize, $file);
+    $totSize = 0;
+    for (@files) {
+	$file = $_;
+	$totSize += (-s $file); }
+    return ($totSize);
+}
 
 sub returnAbsolutePath
 {
@@ -143,6 +276,10 @@ sub processArgs
     $maxKMerLen = 31;
     $minKMerLen = 15;
     $numThreads = 1;
+    $useAllKUnitigs = 0;
+    $noClean = 0;
+    $contigLengthForJoining = $contigLengthForFishing = 100;
+    $maxNodes = 2000;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
 	if ($arg eq "--dir-for-kunitigs") {
@@ -180,6 +317,28 @@ sub processArgs
 	if (($arg eq "--num-threads") || ($arg eq "-t")) {
 	    ++$i;
 	    $numThreads = $ARGV[$i];
+	    next; }
+	if ($arg eq "--reduce-read-set") {
+	    ++$i;
+	    $reduceReadSetKMerSize = $ARGV[$i];
+	    next; }
+	if ($arg eq "--contig-length-for-fishing") {
+	    ++$i;
+	    $contigLengthForFishing = $ARGV[$i];
+	    next; }
+	if ($arg eq "--contig-length-for-joining") {
+	    ++$i;
+	    $contigLengthForJoining = $ARGV[$i];
+	    next; }
+	if ($arg eq "--maxnodes") {
+	    ++$i;
+	    $maxNodes = $ARGV[$i];
+	    next; }
+	if ($arg eq "--use-all-kunitigs") {
+	    $useAllKUnitigs = 1;
+	    next; }
+	if ($arg eq "--noclean") {
+	    $noClean = 1;
 	    next; }
 	if (-f $arg) {
 	    push (@readsFiles, $arg);
@@ -230,5 +389,18 @@ sub reportUsage
     }
     close (FILE);
     exit (1);
+}
+
+sub getReadMateName
+{
+    my ($rdName) = @_;
+    my ($prefix, $num);
+    ($prefix, $num) = ($rdName =~ /^(.+)(.)$/);
+    if ($num % 2 == 0) {
+        ++$num; }
+    else {
+        --$num; }
+    $rdName = $prefix . $num;
+    return ($rdName);
 }
 
