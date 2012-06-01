@@ -663,7 +663,7 @@ $reads_arg.=" --reads-file $v";
 } 
 
 print FILE "echo -n 'Gap closing ';date;\n";
-print FILE "closeGaps.perl $reads_arg --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS 1>gapClose.err 2>&1\n";
+print FILE "closeGaps.perl $reads_arg --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS --reduce-read-set --use-all-kunitigs 1>gapClose.err 2>&1\n";
 
 ###Done !!!! Hoorayyyy!!! :)###
 print FILE "echo -n 'All done ';date;\n";
