@@ -57,6 +57,35 @@ TEST(KMerSimple, InitSize) {
   }
 }
 
+TEST(KMerSimple, Codes) {
+  EXPECT_EQ(mer_dna::CODE_A, mer_dna::codes['A']);
+  EXPECT_EQ(mer_dna::CODE_A, mer_dna::codes['a']);
+  EXPECT_EQ(mer_dna::CODE_C, mer_dna::codes['C']);
+  EXPECT_EQ(mer_dna::CODE_C, mer_dna::codes['c']);
+  EXPECT_EQ(mer_dna::CODE_G, mer_dna::codes['G']);
+  EXPECT_EQ(mer_dna::CODE_G, mer_dna::codes['g']);
+  EXPECT_EQ(mer_dna::CODE_T, mer_dna::codes['T']);
+  EXPECT_EQ(mer_dna::CODE_T, mer_dna::codes['t']);
+  EXPECT_FALSE(mer_dna::not_dna(mer_dna::CODE_A));
+  EXPECT_FALSE(mer_dna::not_dna(mer_dna::CODE_C));
+  EXPECT_FALSE(mer_dna::not_dna(mer_dna::CODE_G));
+  EXPECT_FALSE(mer_dna::not_dna(mer_dna::CODE_T));
+
+  for(int c = 0; c < 256; ++c) {
+    switch((char)c) {
+    case 'A': case 'a':
+    case 'C': case 'c':
+    case 'G': case 'g':
+    case 'T': case 't':
+      EXPECT_FALSE(mer_dna::not_dna(mer_dna::codes[(int)c]));
+      break;
+    default:
+      EXPECT_TRUE(mer_dna::not_dna(mer_dna::codes[(int)c]));
+      break;
+    }
+  }
+}
+
 class KMer : public ::testing::TestWithParam<std::string> {};
 TEST_P(KMer, InitFromStr) {
   mer_dna m(GetParam());
@@ -148,7 +177,7 @@ TEST_P(KMer, GetBits) {
     mer_dna cm(m);
     for(unsigned int j = 1; j < start; j += 2)
       cm.shift_right((uint64_t)0); // Shift by 2 bits
-    uint64_t y = cm[0];
+    uint64_t y = cm.word(0);
     if(start & 0x1)
       y >>= 1;
     y &= ((uint64_t)1 << len) - 1;

@@ -22,6 +22,7 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
+#include <limits>
 #include <stdint.h>
 #include <string.h>
 
@@ -29,7 +30,15 @@ class mer_dna {
 public:
   static const uint64_t codes[256];
   static const char     rev_codes[4];
-  static const uint64_t bad_code = -1;
+  static const uint64_t CODE_A       = 0;
+  static const uint64_t CODE_C       = 1;
+  static const uint64_t CODE_G       = 2;
+  static const uint64_t CODE_T       = 3;
+  // Non DNA codes have the MSB on
+  static const uint64_t CODE_RESET   = -1;
+  static const uint64_t CODE_IGNORE  = -2;
+  static const uint64_t CODE_COMMENT = -3;
+  static bool not_dna(uint64_t c) { return c & ((uint64_t)1 << (std::numeric_limits<uint64_t>::digits - 1)); }
     
 
   // Uninitialized k-mer.
@@ -69,6 +78,7 @@ public:
     
   // Direct access to data. No bound or consistency check. Use with caution!
   //  uint64_t operator[](unsigned int i) { return _data[i]; }
+  uint64_t word(unsigned int i) const { return _data[i]; }
   uint64_t operator[](unsigned int i) const { return _data[i]; }
 
   bool operator==(const mer_dna& rhs) const;

@@ -114,7 +114,7 @@ public:
 
       for( ; cptr < unitig_stream->sequence.end(); ++cptr) {
         fwd_mer.shift_left(*cptr);
-        rev_mer.shift_right(0x3 - (fwd_mer[0] & 0x3));
+        rev_mer.shift_right(mer_dna::complement(fwd_mer[0] & (uint64_t)3));
          
         uint64_t searchValue;
         unsigned char ori;

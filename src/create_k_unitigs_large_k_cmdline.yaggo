@@ -8,7 +8,7 @@ option("m", "mer") {
   int; required }
 option("n", "nb-mers") {
   description "Estimated number of distinct k-mers"
-  uint64; required } 
+  uint64; suffix; required } 
 option("t", "threads") {
   description "Number of threads"
   int; default "1" }

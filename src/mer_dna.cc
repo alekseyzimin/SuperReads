@@ -19,13 +19,13 @@
 #include <src/mer_dna.hpp>
 #include <iostream>
 
-#define R (uint64_t)-1
-#define I (uint64_t)-2
-#define O (uint64_t)-3
-#define A (uint64_t)0
-#define C (uint64_t)1
-#define G (uint64_t)2
-#define T (uint64_t)3
+#define R mer_dna::CODE_RESET
+#define I mer_dna::CODE_IGNORE
+#define O mer_dna::CODE_COMMENT
+#define A mer_dna::CODE_A
+#define C mer_dna::CODE_C
+#define G mer_dna::CODE_G
+#define T mer_dna::CODE_T
 const uint64_t mer_dna::codes[256] = {
   O, O, O, O, O, O, O, O, O, O, I, O, O, O, O, O, 
   O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, 
@@ -44,25 +44,14 @@ const uint64_t mer_dna::codes[256] = {
   O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, 
   O, O, O, O, O, O, O, O, O, O, O, O, O, O, O, O
 };
-// const uint64_t mer_dna::codes[256] = {
-//   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1,  0, -1,  1, -1, -1, -1,  2, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1,  3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1,  0, -1,  1, -1, -1, -1,  2, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1,  3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-//   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
-// };
 const char mer_dna::rev_codes[4] = { 'A', 'C', 'G', 'T' };
+const uint64_t mer_dna::CODE_A;
+const uint64_t mer_dna::CODE_C;
+const uint64_t mer_dna::CODE_G;
+const uint64_t mer_dna::CODE_T;
+const uint64_t mer_dna::CODE_RESET;
+const uint64_t mer_dna::CODE_IGNORE;
+const uint64_t mer_dna::CODE_COMMENT;
 
 uint64_t mer_dna::shift_left(uint64_t c) {
   const uint64_t     r       = (_data[nb_words()-1] >> lshift()) & c3;

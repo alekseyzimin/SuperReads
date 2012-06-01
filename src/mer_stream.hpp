@@ -1,53 +1,68 @@
 #ifndef __MER_STREAM_HPP__
 #define __MER_STREAM_HPP__
 
-template<typename mer_type>
+template<typename mer_type, typename parser_type>
 class mer_stream {
-  mer_type            mer_;
-  read_parser::stream read_stream_;
-  unsigned int        bases_;
-  const char*         s_;
-  const char*         e_;
+  mer_type                     fmer_;
+  mer_type                     rmer_;
+  typename parser_type::stream input_stream_;
+  unsigned int                 bases_;
+  const char*                  s_;
+  const char*                  e_;
 
 public:
-  mer_stream(int mer_len, read_parser& parser) :
-    mer_(mer_len), read_stream_(parser),
+  mer_stream(int mer_len, parser_type& parser) :
+    fmer_(mer_len), rmer_(mer_len), input_stream_(parser),
     bases_(0), s_(0), e_(0)
   {
-    if(read_stream_) {
-      s_ = read_stream_->sequence;
-      e_ = read_stream_->sequence.end();
+    if(input_stream_) {
+      s_ = input_stream_->sequence;
+      e_ = input_stream_->sequence.end();
+      this->operator++();
     }
   }
-  // Unfinished
+
   mer_stream& operator++() {
     while(true) {
-      for( ; s_ != e_; ++s_) {
-        uint64_t code = mer_type::code(*s_);
-        if(code != mer_type::bad_code) {
-          mer_.shift_left(code);
+      while(s_ < e_) {
+        uint64_t code = mer_type::code(*s_++);
+        switch(code) {
+        case mer_type::CODE_COMMENT:
+          s_ = e_; // Skip read
+          break;
+        case mer_type::CODE_RESET:
+          bases_ = 0;
+          break;
+        case mer_type::CODE_IGNORE:
+          break;
+        default:
+          fmer_.shift_left(code);
+          rmer_.shift_right(mer_type::complement(code));
           if(++bases_ >= fmer_.k())
             return *this;
-        } else
-          bases_ = 0;
+          break;
+        }
       }
 
-      ++read_stream_;
-      if(!read_stream_) {
+      ++input_stream_;
+      if(!input_stream_) {
         s_ = e_ = 0;
+        bases_ = 0;
         return *this;
       }
-      s_ = read_stream_->sequence;
-      e_ = read_stream_->sequence.end();
+      s_     = input_stream_->sequence;
+      e_     = input_stream_->sequence.end();
+      bases_ = 0;
     }
   }
 
   operator void*() const { return (void*)s_; }
 
-  const mer_dna& operator*() const { return fmer_; }
-  const mer_dna* operator->() const { return &fmer_; }
-  const mer_dna& fmer() const { return fmer_; }
-  const mer_dna& rmer() const { return rmer_; }
+  const mer_type& operator*() const { return fmer_; }
+  const mer_type* operator->() const { return &fmer_; }
+  const mer_type& fmer() const { return fmer_; }
+  const mer_type& rmer() const { return rmer_; }
+  const mer_type& canonical() const { return fmer_ < rmer_ ? fmer_ : rmer_; }
 };
 
 
