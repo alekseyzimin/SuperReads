@@ -23,6 +23,7 @@
 #include <memory>
 #include <algorithm>
 #include <thread_exec.hpp>
+#include <gzip_stream.hpp>
 #include <src/bloom_counter2.hpp>
 #include <src/MurmurHash3.h>
 #include <multi_thread_skip_list_set.hpp>
@@ -263,7 +264,9 @@ typedef create_k_unitig<mer_bloom_counter2, bloom_filter_type, bloom_filter_type
 
 std::ostream* open_output() {
   if(!args.output_given)
-    return &std::cout;
+    return new std::ostream(std::cout.rdbuf());
+  if(args.gzip_flag)
+    return new gzipstream(args.output_arg);
   return new std::ofstream(args.output_arg);
 }
 
@@ -282,11 +285,11 @@ int main(int argc, char *argv[])
   }
 
   {
-    //    std::auto_ptr<std::ostream> output_ostream(open_output());
+    std::auto_ptr<std::ostream> output_ostream(open_output());
     bloom_filter_type used(args.false_positive_arg, args.nb_mers_arg);
     read_parser parser(args.input_arg, args.threads_arg);
     unitiger_type unitiger(args.mer_arg, kmers, used, args.threads_arg, parser, 
-                           std::cout);
+                           *output_ostream);
     unitiger.exec_join(args.threads_arg);
   }
 

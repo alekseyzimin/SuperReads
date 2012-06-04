@@ -24,6 +24,9 @@ option("c", "cont-on-low") {
 option("l", "min-len") {
   description "Minimum length of k-unitig to output (k+1)"
   uint64; }
+option("g", "gzip") {
+  description "Gzip output file. Ignored if -o not given."
+  off }
 option("f", "false-positive") {
   description "False positive rate in bloom filter"
   double; default "0.01" }
