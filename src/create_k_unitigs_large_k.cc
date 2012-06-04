@@ -245,6 +245,8 @@ private:
         return;
     
     // Output results
+    if(start.k() + seq.length() < args.min_len_arg)
+      return;
     uint64_t id = (unitig_id_ += 1) - 1;
     output << ">" << id << "\n";
     if(dir == backward) {
@@ -268,6 +270,8 @@ std::ostream* open_output() {
 int main(int argc, char *argv[])
 {
   args.parse(argc, argv);
+  if(!args.min_len_given)
+    args.min_len_arg = args.mer_arg + 1;
   
   // Populate Bloom filter with k-mers
   mer_bloom_counter2 kmers(args.false_positive_arg, args.nb_mers_arg);

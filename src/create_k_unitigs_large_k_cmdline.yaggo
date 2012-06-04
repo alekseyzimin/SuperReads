@@ -21,6 +21,9 @@ option("q", "quality-threshold") {
 option("c", "cont-on-low") {
   description "Max length of low quality mer run"
   uint32; default "0" }
+option("l", "min-len") {
+  description "Minimum length of k-unitig to output (k+1)"
+  uint64; }
 option("f", "false-positive") {
   description "False positive rate in bloom filter"
   double; default "0.01" }
