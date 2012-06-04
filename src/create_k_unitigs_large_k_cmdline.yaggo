@@ -15,6 +15,12 @@ option("t", "threads") {
 option("o", "output") {
   description "Ouput file (stdout)"
   c_string; typestr "path" }
+option("q", "quality-threshold") {
+  description "Count threshold for high-quality mers"
+  uint32; default "2" }
+option("c", "cont-on-low") {
+  description "Max length of low quality mer run"
+  uint32; default "0" }
 option("f", "false-positive") {
   description "False positive rate in bloom filter"
   double; default "0.01" }

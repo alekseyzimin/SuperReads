@@ -15,6 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <sys/types.h>
+#include <signal.h>
+#include <assert.h>
+
 #include <iostream>
 #include <memory>
 #include <algorithm>
@@ -72,7 +76,6 @@ bool insert_canonical(set_type& set, const mer_dna& mer) {
   mer_dna rc(mer);
   rc.reverse_complement();
   bool res = set.insert(rc < mer ? rc : mer).second;
-  std::cout << mer.to_str() << " " << rc.to_str() << " " << set.is_member(rc < mer ? rc : mer) << std::endl;
   return res;
 }
 
@@ -119,7 +122,9 @@ public:
       auto is_new = used_mers_.insert(stream.canonical());
       if(!is_new.second)
         continue;
-
+      // Never start a unitig on low count
+      if(counts_[stream.canonical()] < args.quality_threshold_arg)
+        continue;
       current = *stream;
       
       // Check fwd continuation. Grow k-unitig if not unique
@@ -149,8 +154,11 @@ public:
 private:
   // Check all k-mers extending in one direction. If unique
   // continuation, store it in cont and return true. Otherwise return
-  // false and the value of cont is undetermined.
-  bool next_mer(const direction dir, const mer_dna& start, mer_dna& cont) {
+  // false and the value of cont is undetermined. If true is returned
+  // and count is not NULL, the count of the unique continuation mer
+  // is stored in the pointer.
+  bool next_mer(const direction dir, const mer_dna& start, mer_dna& cont,
+                unsigned int* count = 0) {
     int     index;
     mer_dna cont_comp(start);
     cont_comp.reverse_complement();
@@ -173,10 +181,14 @@ private:
     for(uint64_t i = 0; i < 4; ++i) {
       base      = i;
       base_comp = mer_dna::complement(i);
-      if((unsigned int)counts_[cont < cont_comp ? cont : cont_comp] > 0) {
+      
+      unsigned int cont_count = counts_[cont < cont_comp ? cont : cont_comp];
+      if(cont_count > 0) {
         if(++nb_continuation > 1)
           return false;
         code = i;
+        if(count)
+          *count = cont_count;
       }
     }
 
@@ -192,35 +204,55 @@ private:
     if(!start_new)
       return;
 
-    mer_dna mer1(start);
-    mer_dna mer2(start.k());
-    mer_dna mer3(start.k());
-    mer_dna *current = &mer1;
-    mer_dna *cont = &mer2;
-    std::string seq;
+    mer_dna       mer1(start);
+    mer_dna       mer2(start.k());
+    mer_dna       mer3(start.k());
+    mer_dna      *current = &mer1;
+    mer_dna      *cont    = &mer2;
+    unsigned int  count   = 0;
+    unsigned int  low_run = 0;
+    unsigned int  index   = dir == forward ? 0 : start.k() - 1;
+    std::string   seq;
     
     while(true) {
       insert_canonical(used_mers_, *current);
-      if(!next_mer(dir, *current, *cont))
+      if(!next_mer(dir, *current, *cont, &count))
         break;
       if(!next_mer(rev_direction(dir), *cont, mer3))
         break;
-      seq += (char)cont->base(0);
+      seq += (char)cont->base(index);
+
+      if(count < args.quality_threshold_arg) {
+        if(++low_run > args.cont_on_low_arg)
+          break;
+      } else
+        low_run = 0;
+
       std::swap(current, cont);
     }
 
+    // Erase trailing low quality bases if any
+    if(low_run > 0)
+      seq.erase(seq.size() - std::min((unsigned int)seq.size(), low_run));
+
     // If the last k-mer has been used in a k-unitigs already, this
     // means two threads are working on the same unitigs, starting
-    // from the other end. Output only if the current thread has the
+    // from opposite ends. Output only if the current thread has the
     // "largest" end k-mer.
     bool end_new = insert_canonical(end_points_, *current);
     if(!end_new)
       if(start < *current)
         return;
     
+    // Output results
     uint64_t id = (unitig_id_ += 1) - 1;
-    output << ">" << id << "\n"
-           << start << seq << "\n";
+    output << ">" << id << "\n";
+    if(dir == backward) {
+      std::string reversed(seq.rbegin(), seq.rend());
+      output << reversed << start << "\n";
+    } else {
+      output << start << seq << "\n";
+    }
     output << jflib::endr;
   }
 };
@@ -236,7 +268,6 @@ std::ostream* open_output() {
 int main(int argc, char *argv[])
 {
   args.parse(argc, argv);
-  args.dump(std::cout);
   
   // Populate Bloom filter with k-mers
   mer_bloom_counter2 kmers(args.false_positive_arg, args.nb_mers_arg);
