@@ -32,47 +32,94 @@
    hash_0 + i * hash_1
  */
 
+/* Memory operator for serial access.
+ */
+template<typename T>
+struct serial_access {
+  static T fetch_and_or(T* ptr, T x) {
+    T res = *ptr;
+    *ptr |= x;
+    return res;
+  }
+
+  static T fetch(T* ptr) {
+    return *ptr;
+  }
+};
+
+/* Memory operator for muti-threaded access.
+ */
+template<typename T>
+struct mt_access {
+  static T fetch_and_or(T* ptr, T x) { return __sync_fetch_and_or(ptr, x); }
+  static T fetch(T* ptr) { return *(volatile T*)ptr; }
+};
+
 #define LOG2    0.6931471805599453
 #define LOG2_SQ 0.4804530139182014
-template<typename Key, typename HashPair = hash_pair<Key> >
+template<typename Key, typename HashPair = hash_pair<Key>, typename M=serial_access<unsigned int>, typename R=remaper<unsigned int>>
 class bloom_filter {
-  std::vector<bool>   data_;
+  typedef typename R::element_type  element_type;
+  typedef typename R::element_type* element_pointer;
+  const size_t        m_;
   const unsigned long k_;       // Number of hashes
+  R                   realloc_;
+  element_pointer     data_;
   const HashPair      hash_fns_;
+  M                   mem_access_;
   
   typedef std::vector<bool>::reference bit;
+
+  static const size_t elt_size = sizeof(element_type) * 8;
+  static size_t nb_elements(size_t m) { return m / elt_size + (m % elt_size != 0); }
+
 public:
   // BF with false positive rate of fp and estimated number of entries
   // of n.
   bloom_filter(double fp, size_t n) : 
-    data_(n * (size_t)lrint(-log(fp) / LOG2_SQ)),
+    m_(n * (size_t)lrint(-log(fp) / LOG2_SQ)),
     k_(lrint(-log(fp) / LOG2)),
-    hash_fns_() { }
+    realloc_(),
+    data_(realloc_(0, 0, nb_elements(m_))),
+    hash_fns_(), mem_access_()
+  { }
 
   bloom_filter(size_t m, unsigned long k) :
-    data_(m), k_(k), hash_fns_() { }
+    m_(m), k_(k), realloc_(),
+    data_(realloc_(0, 0, nb_elements(m_))),
+    hash_fns_(), mem_access_() { }
 
   // Number of hash functions
   unsigned long k() const { return k_; }
   // Size of bit vector
-  size_t m() const { return data_.size(); }
+  size_t m() const { return m_; }
 
-  // Insert key k
-  bool insert(const Key &k) {
+  // Std::set compatible insert method. There is no iterator for a
+  // bloom filter, so return true for the first element of the
+  // pair. The second element is true if the element was inserted and
+  // was not in the set before.
+  std::pair<bool, bool> insert(const Key &k) {
+    return std::make_pair(true, !add(k));
+  }
+
+  // Insert a key. Return true if the element was already present.
+  bool add(const Key& k) {
     uint64_t hashes[2];
     hash_fns_(k, hashes);
-    return insert(hashes);
+    return add(hashes);
   }
     
   // Insert key with given hashes
-  bool insert(const uint64_t *hashes) {
+  bool add(const uint64_t *hashes) {
     bool     present = true;
     
     for(unsigned long i = 0; i < k_; ++i) {
-      size_t pos = (hashes[0] + i * hashes[1]) % data_.size();
-      bit    b   = data_[pos];
-      present &= (bool)b;
-      b        = true;
+      size_t pos    = (hashes[0] + i * hashes[1]) % m_;
+      size_t elt_i  = pos / elt_size;
+      size_t bit_i  = pos % elt_size;
+      element_type mask = ((element_type)1) << bit_i;
+      element_type prev = mem_access_.fetch_and_or(data_ + elt_i, mask);
+      present = present && (prev & mask);
     }
 
     return present;
@@ -90,8 +137,10 @@ public:
 
   bool is_member(const uint64_t *hashes) const {
     for(unsigned long i = 0; i < k_; ++i) {
-      size_t pos = (hashes[0] + i * hashes[1]) % data_.size();
-      if(!data_[pos])
+      size_t pos   = (hashes[0] + i * hashes[1]) % m_;
+      size_t elt_i = pos / elt_size;
+      size_t bit_i = pos % elt_size;
+      if(!(mem_access_.fetch(data_ + elt_i) & ((element_type)1 << bit_i)))
         return false;
     }
     return true;

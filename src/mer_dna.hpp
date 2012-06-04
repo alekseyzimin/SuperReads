@@ -22,6 +22,7 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
+#include <limits>
 #include <stdint.h>
 #include <string.h>
 
@@ -29,7 +30,15 @@ class mer_dna {
 public:
   static const uint64_t codes[256];
   static const char     rev_codes[4];
-  static const uint64_t bad_code = -1;
+  static const uint64_t CODE_A       = 0;
+  static const uint64_t CODE_C       = 1;
+  static const uint64_t CODE_G       = 2;
+  static const uint64_t CODE_T       = 3;
+  // Non DNA codes have the MSB on
+  static const uint64_t CODE_RESET   = -1;
+  static const uint64_t CODE_IGNORE  = -2;
+  static const uint64_t CODE_COMMENT = -3;
+  static bool not_dna(uint64_t c) { return c & ((uint64_t)1 << (std::numeric_limits<uint64_t>::digits - 1)); }
     
 
   // Uninitialized k-mer.
@@ -69,11 +78,32 @@ public:
     
   // Direct access to data. No bound or consistency check. Use with caution!
   //  uint64_t operator[](unsigned int i) { return _data[i]; }
+  uint64_t word(unsigned int i) const { return _data[i]; }
   uint64_t operator[](unsigned int i) const { return _data[i]; }
 
   bool operator==(const mer_dna& rhs) const;
   bool operator!=(const mer_dna& rhs) { return !this->operator==(rhs); }
   bool operator<(const mer_dna& rhs) const;
+  
+  class base_proxy {
+    uint64_t* const word_;
+    unsigned int    i_;
+    base_proxy(uint64_t* data, unsigned int i) :
+      word_(data + i / (sizeof(uint64_t) * 4)), i_(2 * (i % (sizeof(uint64_t) * 4))) { }
+    friend class mer_dna;
+  public:
+    base_proxy& operator=(char base) { return this->operator=(mer_dna::code(base)); }
+    base_proxy& operator=(uint64_t code) {
+      uint64_t mask = (uint64_t)0x3 << i_;
+      *word_ = (*word_ & ~mask) | (code << i_);
+      return *this;
+    }
+    uint64_t code() const { return (*word_ >> i_) & (uint64_t)0x3; }
+    operator char() const { return mer_dna::rev_codes[code()]; }
+  };
+
+public:
+  base_proxy base(unsigned int i) { return base_proxy(_data, i); }
 
   // Make current k-mer all As.
   void polyA() {
@@ -81,9 +111,11 @@ public:
   }
 
   mer_dna &operator=(const mer_dna &o) {
-    if(_k != o._k)
-      throw std::length_error("k-mer of different length");
-    memcpy(_data, o._data, sizeof(uint64_t) * nb_words());
+    if(this != &o) {
+      if(_k != o._k)
+        throw std::length_error("k-mer of different length");
+      memcpy(_data, o._data, sizeof(uint64_t) * nb_words());
+    }
     return *this;
   }
 
@@ -97,6 +129,15 @@ public:
 
   static uint64_t code(char c) { return codes[(int)c]; }
   static uint64_t complement(uint64_t x) { return (uint64_t)3 - x; }
+  static char complement(char c) { 
+    switch(c) {
+    case 'A': case 'a': return 'T'; 
+    case 'C': case 'c': return 'G';
+    case 'G': case 'g': return 'C';
+    case 'T': case 't': return 'A';
+    }
+    return 'N';
+  }
 
   char shift_left(char c) { 
     uint64_t x = codes[(int)c];

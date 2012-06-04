@@ -103,7 +103,7 @@ public:
     return res;
   }
 
-  unsigned int check(const Key &k) {
+  unsigned int check(const Key &k) const {
     uint64_t hashes[2];
     hash_fns_(k, hashes);
     return check(hashes);
@@ -140,15 +140,28 @@ public:
     element_proxy(bloom_counter2& bc, const Key& k) : bc_(bc), k_(k) { }
 
     unsigned int operator++() { 
-      unsigned res = bc_.insert(k_);
+      unsigned int res = bc_.insert(k_);
       return res == 0 ? 1 : 2;
     }
 
     unsigned int operator++(int) { return bc_.insert(k_); }
-    unsigned int operator*() { return bc_.check(k_); }
-    operator unsigned int() { return bc_.check(k_); }
+    unsigned int operator*() const { return bc_.check(k_); }
+    operator unsigned int() const { return bc_.check(k_); }
   };
+
+  class const_element_proxy {
+    const bloom_counter2& bc_;
+    const Key&            k_;
+
+  public:
+    const_element_proxy(const bloom_counter2& bc, const Key& k) : bc_(bc), k_(k) { }
+
+    unsigned int operator*() const { return bc_.check(k_); }
+    operator unsigned int() const { return bc_.check(k_); }
+  };
+
   element_proxy operator[](const Key& k) { return element_proxy(*this, k); }
+  const_element_proxy operator[](const Key& k) const { return const_element_proxy(*this, k); }
 };
 
 #endif // __BLOOM_COUNTER2_HPP__

@@ -55,7 +55,8 @@ V_YAGGO_0 = @echo "  YAGGO " $@;
 # src pipeline
 ##############################
 bin_PROGRAMS += create_k_unitigs error_corrected2frg		\
-                reverse_complement reduce_sr sorted_merge
+                reverse_complement reduce_sr sorted_merge	\
+                create_k_unitigs_large_k
 
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl		\
@@ -80,6 +81,10 @@ reduce_sr_SOURCES = src/reduce_sr.cc
 BUILT_SOURCES    += src/reduce_sr_cmdline.hpp
 sorted_merge_SOURCES = src/sorted_merge.cc
 BUILT_SOURCES       += src/sorted_merge_cmdline.hpp
+create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
+                                   src/read_parser.cc src/mer_dna.cc	\
+                                   src/MurmurHash3.cpp
+BUILT_SOURCES += src/create_k_unitigs_large_k_cmdline.hpp
 
 ##############################
 # src2 pipeline
@@ -126,7 +131,8 @@ dist_bin_SCRIPTS += src2/closeGaps.perl src2/getEndSequencesOfContigs.perl \
 ##############################
 # unittests
 ##############################
-TESTS = all_tests
+TESTS = all_tests # tests/test_create_k_unitigs_large_k.sh
+EXTRA_DIST += $(TESTS)
 check_PROGRAMS = all_tests
 
 all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
@@ -143,7 +149,8 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_mer_dna.cc				\
                     unittests/test_read_parser.cc			\
                     unittests/test_hash.cc				\
-                    unittests/test_exp_vector.cc
+                    unittests/test_exp_vector.cc			\
+                    unittests/test_mer_stream.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
                      src/gcc_builtins.cc src/mer_dna.cc			\
                      src/read_parser.cc unittests/misc.cc

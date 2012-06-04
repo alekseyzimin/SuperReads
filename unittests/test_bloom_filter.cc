@@ -19,13 +19,27 @@
 #include <stdlib.h>
 #include <gtest/gtest.h>
 #include <src/bloom_filter.hpp>
+#include <src/bloom_hash.hpp>
 
-TEST(BloomFilter, FalsePositive) {
+// XXX: this does not really check the muti-thread safe behavior
+
+static const unsigned long nb_entry   = 100000;
+static const double        error_rate = 0.001;
+
+template<typename T>
+class BloomFilter : public ::testing::Test {
+public:
+  BloomFilter() : f(error_rate, nb_entry) { }
+  T f;
+};
+typedef ::testing::Types<bloom_filter<const char*>,
+                         bloom_filter<const char*, hash_pair<const char*>, mt_access<unsigned int>>> bloom_filter_types;
+TYPED_TEST_CASE(BloomFilter, bloom_filter_types);
+
+TYPED_TEST(BloomFilter, FalsePositive) {
   // Enter strings with digits only. Check presence of strings with
   // letters only.
-  const unsigned long nb_entry = 1024;
-  double error_rate = 0.01;
-  bloom_filter<const char*> f(error_rate, nb_entry);
+  TypeParam f(error_rate, nb_entry);
 
   // The tests comparing to the error rate can fail (it is randomized
   // after all). Hopefully it is rare enough to not happen at all.
@@ -38,12 +52,13 @@ TEST(BloomFilter, FalsePositive) {
     // Create random imput string
     for(int j = 0; j < INPUTLEN; ++j)
       input[j] = '0' + (random() % 10);
-    bool in = f.insert(input);
+    bool in = f.add(input);
     if(in)
       ++false_positive;
     ASSERT_TRUE(f.is_member(input));
+    ASSERT_TRUE(f.add(input));
   }
-  ASSERT_TRUE(((double)false_positive / (double)nb_entry) < error_rate);
+  ASSERT_GE(2 * error_rate, ((double)false_positive / (double)nb_entry));
   
   false_positive = 0;
   for(unsigned long i = 0; i < nb_entry; ++i) {
@@ -53,5 +68,5 @@ TEST(BloomFilter, FalsePositive) {
     if(f.is_member(input))
       ++false_positive;
   }
-  ASSERT_TRUE(((double)false_positive / (double)nb_entry) < 2.0 * error_rate);
+  ASSERT_GE(2.0 * error_rate, ((double)false_positive / (double)nb_entry));
 }

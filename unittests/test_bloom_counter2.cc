@@ -26,10 +26,17 @@
 #include <src/bloom_counter2.hpp>
 
 typedef std::pair<std::string,unsigned int> elt;
-TEST(BloomCounter, FalsePositive) {
-  static const size_t nb_inserts = 2048;
-  static const double error_rate = 0.01;
-  static const size_t nb_strings = 1024;
+struct parameter {
+  size_t nb_strings;
+  size_t nb_inserts;
+  double error_rate;
+};
+class BloomCounter : public ::testing::TestWithParam<parameter> { };
+
+TEST_P(BloomCounter, FalsePositive) {
+  const size_t nb_inserts = GetParam().nb_inserts;
+  const double error_rate = GetParam().error_rate;
+  const size_t nb_strings = GetParam().nb_strings;
   static const size_t str_len    = 100;
   std::vector<elt>    counts;
   charb               str(str_len);
@@ -44,17 +51,19 @@ TEST(BloomCounter, FalsePositive) {
   bloom_counter2<const char *> bc1(error_rate, nb_inserts);
   bloom_counter2<const char *> bc2(error_rate, nb_inserts);
   bloom_counter2<const char *> bc3(error_rate, nb_inserts);
-  for(size_t i = 0; i < nb_inserts; ++i) {
-    std::vector<elt>::reference ref = counts[random() % nb_strings];
-    ++ref.second;
-    bc1.insert(ref.first.c_str());
-    bc2[ref.first.c_str()]++;
-    ++bc3[ref.first.c_str()];
-  }
 
   size_t nb_errors   = 0;
   size_t collisions2 = 0;
   size_t collisions3 = 0;
+
+  for(size_t i = 0; i < nb_inserts; ++i) {
+    std::vector<elt>::reference ref = counts[random() % nb_strings];
+    ++ref.second;
+    nb_errors += bc1.insert(ref.first.c_str()) >= ref.second;
+    bc2[ref.first.c_str()]++;
+    ++bc3[ref.first.c_str()];
+  }
+
   // Check known strings
   for(size_t i = 0; i < nb_strings; ++i) {
     std::vector<elt>::reference ref = counts[i];
@@ -88,3 +97,7 @@ TEST(BloomCounter, FalsePositive) {
   EXPECT_GT(2 * error_rate * nb_inserts, collisions2);
   EXPECT_GT(2 * error_rate * nb_inserts, collisions3);
 }
+
+INSTANTIATE_TEST_CASE_P(BloomCounterTest, BloomCounter,
+                        ::testing::Values(parameter({    1024,    2048, 0.01 }),
+                                          parameter({ 1000000, 3000000, 0.01 })));

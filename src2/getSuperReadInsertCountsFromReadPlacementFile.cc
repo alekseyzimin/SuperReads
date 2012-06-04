@@ -61,7 +61,7 @@ class name_bloom_filter : public name_filter {
   bloom_filter<const char*> filter;
 public:
   name_bloom_filter(double fn, size_t n) : filter(fn, n) { }
-  virtual bool insert(const char* const name) { return filter.insert(name); }
+  virtual bool insert(const char* const name) { return filter.add(name); }
 };
 class name_true : public name_filter {
 public:
