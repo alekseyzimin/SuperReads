@@ -32,4 +32,4 @@ option("f", "false-positive") {
   double; default "0.01" }
 arg("input") {
   description "Read sequence"
-  c_string; typestr "path" }
+  c_string; typestr "path"; multiple }

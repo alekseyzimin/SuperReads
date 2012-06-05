@@ -279,7 +279,8 @@ int main(int argc, char *argv[])
   // Populate Bloom filter with k-mers
   mer_bloom_counter2 kmers(args.false_positive_arg, args.nb_mers_arg);
   {
-    read_parser parser(args.input_arg, args.threads_arg);
+    read_parser parser(args.input_arg.begin(), args.input_arg.end(),
+                       args.threads_arg);
     mer_populate populate(args.mer_arg, kmers, parser);
     populate.exec_join(args.threads_arg);
   }
@@ -287,7 +288,8 @@ int main(int argc, char *argv[])
   {
     std::auto_ptr<std::ostream> output_ostream(open_output());
     bloom_filter_type used(args.false_positive_arg, args.nb_mers_arg);
-    read_parser parser(args.input_arg, args.threads_arg);
+    read_parser parser(args.input_arg.begin(), args.input_arg.end(),
+                       args.threads_arg);
     unitiger_type unitiger(args.mer_arg, kmers, used, args.threads_arg, parser, 
                            *output_ostream);
     unitiger.exec_join(args.threads_arg);
