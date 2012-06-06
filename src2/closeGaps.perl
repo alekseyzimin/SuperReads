@@ -67,34 +67,39 @@ if ($dirForKUnitigs) {
     $dirForKUnitigs = returnAbsolutePath ($dirForKUnitigs); }
 $localReadsFile = "localReadsFile";
 if (! -e $outputDirectory) {
-    $cmd = "mkdir $outputDirectory"; print "$cmd\n"; system ($cmd); }
+    $cmd = "mkdir $outputDirectory"; runCommandAndExitIfBad($cmd); }
 chdir ($outputDirectory);
 $fishingEndPairs = "contig_end_pairs.${contigLengthForFishing}.fa";
 $joiningEndPairs = "contig_end_pairs.${contigLengthForJoining}.fa";
 $cmd = "$exeDir/getEndSequencesOfContigs.perl $CeleraTerminatorDirectory $contigLengthForJoining $contigLengthForFishing";
-print "$cmd\n"; system ($cmd);
+runCommandAndExitIfBad ($cmd);
+
 $cmd = "$exeDir/create_end_pairs.perl $CeleraTerminatorDirectory $contigLengthForJoining > $joiningEndPairs";
-print "$cmd\n"; system ($cmd);
+runCommandAndExitIfBad ($cmd);
+
 if ($contigLengthForJoining != $contigLengthForFishing) {
     $cmd = "$exeDir/create_end_pairs.perl $CeleraTerminatorDirectory $contigLengthForFishing > $fishingEndPairs";
-    print "$cmd\n"; system ($cmd);
+    runCommandAndExitIfBad ($cmd);
 }
 $cmd = "echo \"cc $meanForGap $stdevForGap\" > meanAndStdevByPrefix.cc.txt";
-print "$cmd\n"; system ($cmd);
+runCommandAndExitIfBad ($cmd);
+
 if ($reduceReadSetKMerSize) {
     $suffix = $localReadsFile . "_" . $reduceReadSetKMerSize . "_" . $kUnitigContinuationNumber;
     $localJellyfishHashSize = -s $fishingEndPairs;
     $localJellyfishHashSize = int ($localJellyfishHashSize / .79) + 1;
     $cmd = "jellyfish count -m $reduceReadSetKMerSize -t $numThreads -C -r -s $localJellyfishHashSize -o k_u_hash_${suffix}_faux_reads $fishingEndPairs";
-    print "$cmd\n"; system ("time $cmd");
+    runCommandAndExitIfBad ($cmd);
     $tfile = "k_u_hash_${suffix}_faux_reads_1";
     if (-e $tfile) {
 	print STDERR "The jellyfish hash size must be made larger. Bye!\n";
 	exit (1); }
     $cmd = "$tempExeDir/create_k_unitigs -C -t $numThreads -l $reduceReadSetKMerSize -o k_unitigs_${suffix}_faux_reads -m 1 -M 1 k_u_hash_${suffix}_faux_reads_0";
-    print "$cmd\n"; system ("time $cmd");
+    runCommandAndExitIfBad ($cmd);
+
     $cmd = "$tempExeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile k_unitigs_${suffix}_faux_reads.fa -low-memory -l $reduceReadSetKMerSize --stopAfter joinKUnitigs -t $numThreads -mkudisr 0 work_${suffix}_faux_reads @readsFiles 1>>out.${suffix}_faux_reads 2>>out.${suffix}_faux_reads";
-	print "$cmd\n"; system ("time $cmd");
+    runCommandAndExitIfBad ($cmd);
+
     $tfile = "work_${suffix}_faux_reads/newTestOutput.nucmerLinesOnly";
     open (FILE, $tfile);
     while ($line = <FILE>) {
@@ -152,7 +157,7 @@ if ($reduceReadSetKMerSize) {
 &runMainLoop;
 
 $cmd = "$exeDir/getSequenceForClosedGaps.perl $CeleraTerminatorDirectory $joiningEndPairs -reads-file $localReadsFile $minKMerLen $maxKMerLen";
-print "$cmd\n"; system ($cmd);
+runCommandAndExitIfBad ($cmd);
 
 &createMergedJoinFile;
 
@@ -191,15 +196,16 @@ sub createMergedJoinFile
 sub runMainLoop
 {
     my ($k, $kMinus1, $suffix, $cmd, $tfile, $minKUniLengthForPass);
-
+    
     for ($k=$maxKMerLen; $k>=$minKMerLen; $k--) {
 	$kMinus1 = $k-1;
 	$suffix = $localReadsFile . "_" . $k . "_" . $kUnitigContinuationNumber;
 	if ($dirForKUnitigs) {
 	    $cmd = "ln -s $dirForKUnitigs/k_u_hash_${suffix}_0 .";
-	    print "$cmd\n"; system ($cmd);
+	    runCommandAndExitIfBad ($cmd);
+	    
 	    $cmd = "ln -s $dirForKUnitigs/k_unitigs_${suffix}.fa .";
-	    print "$cmd\n"; system ($cmd); }
+	    runCommandAndExitIfBad ($cmd); }
 	else {
 	    if ($k == $maxKMerLen) {
 		$totInputSize = getReadFileSize (@readsFiles);
@@ -208,7 +214,7 @@ sub runMainLoop
 		    $jellyfishHashSize = $maxJellyfishHashSize; }
 	    }
 	    $cmd = "jellyfish count -m $k -t $numThreads -C -r -s $jellyfishHashSize -o k_u_hash_${suffix} @readsFiles";
-	    print "$cmd\n"; system ("time $cmd");
+	    runCommandAndExitIfBad ($cmd);
 	    $tfile = "k_u_hash_${suffix}_1";
 	    if (-e $tfile) {
 		print STDERR "The jellyfish hash size must be made larger. Bye!\n";
@@ -220,18 +226,18 @@ sub runMainLoop
 	    else {
 		$minKUniLengthForPass = $k+1; }
 	    $cmd = "$tempExeDir/create_k_unitigs --cont-on-low  --low-stretch=$kMinus1 -C -t $numThreads -l $minKUniLengthForPass -o k_unitigs_${suffix} -m $kUnitigContinuationNumber -M $kUnitigContinuationNumber k_u_hash_${suffix}_0";
-	    print "$cmd\n"; system ("time $cmd");
+	    runCommandAndExitIfBad ($cmd);
 	}
 	$cmd = "\\rm -rf out.$suffix"; system ($cmd);
 	$cmd = "\\rm -rf work_$suffix"; system ($cmd);
 	
 	$cmd = "$tempExeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile k_unitigs_${suffix}.fa -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
-	print "$cmd\n"; system ("time $cmd");
+	runCommandAndExitIfBad ($cmd);
 
 	$cmd = "grep '^Num ' out.$suffix"; system ($cmd);
 
 	$cmd = "cat work_$suffix/readPositionsInSuperReads | $exeDir/outputJoinedPairs.perl > joined.$suffix";
-	print "$cmd\n"; system ("time $cmd");
+	runCommandAndExitIfBad ($cmd);
     }
 }
 
@@ -402,5 +408,40 @@ sub getReadMateName
         --$num; }
     $rdName = $prefix . $num;
     return ($rdName);
+}
+
+# This runs localCmd and captures the return code and makes
+# sure it ran properly. Otherwise it exits.
+sub runCommandAndExitIfBad
+{
+    my ($localCmd) = @_;
+    my ($retCode, $exitValue);
+    
+    if ($localCmd =~ /\S/) {
+        print "$localCmd\n";
+	system ($localCmd);
+        $retCode = $?;
+        if ($retCode == -1) {
+            print STDERR "failed to execute: $!\n";
+	    goto failingRun; }
+        elsif ($retCode & 127) {
+            printf STDERR "child died with signal %d, %s coredump\n",
+            ($retCode & 127), ($retCode & 128) ? 'with' : 'without';
+	    goto failingRun; }
+        else {
+            $exitValue = $retCode >> 8;
+            if ($exitValue == 255) { $exitValue = -1; }
+            if ($exitValue != 0) {
+                printf STDERR "child exited with value %d\n", $exitValue;
+                print STDERR "Command \"$localCmd\" failed. Bye!\n";
+		$retCode = $exitValue;
+		goto failingRun; }
+        }
+    }
+  successfulRun:
+    return;
+    
+  failingRun:
+    exit ($retCode);
 }
 
