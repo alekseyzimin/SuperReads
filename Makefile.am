@@ -83,7 +83,7 @@ sorted_merge_SOURCES = src/sorted_merge.cc
 BUILT_SOURCES       += src/sorted_merge_cmdline.hpp
 create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
                                    src/read_parser.cc src/mer_dna.cc	\
-                                   src/MurmurHash3.cpp
+                                   src/MurmurHash3.cpp src/mer_stream.hpp
 BUILT_SOURCES += src/create_k_unitigs_large_k_cmdline.hpp
 
 ##############################
