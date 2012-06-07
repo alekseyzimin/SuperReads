@@ -481,9 +481,10 @@ int main (int argc, char **argv)
      numFlds = getFldsFromLine (line, flds);
      rewind (infile);
      if (numFlds == 1) {
-	  int retCode; // For the stupid new compiler
-	  for (int i = 0, *iptr = unitigLengths + firstUnitigNum; i < numUnitigs; i++, iptr++)
-	       retCode = fscanf (infile, "%d\n", iptr);
+         for (int i = 0, *iptr = unitigLengths + firstUnitigNum; i < numUnitigs; i++, iptr++) {
+             if(fscanf (infile, "%d\n", iptr) != 1)
+                 die << "Failed to parse " << i << "th integer in: " << (unitigLengths + firstUnitigNum);
+         }
      }
      else {
 	  while (fgets (line, 2000, infile)) {
@@ -1024,9 +1025,11 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
      long int i, index;
      int unitig1, unitig2, offset, overlapLength;
      int minConnectingUnitig=0;
-     long int minConnectingOverlapIndex;
+     //     long int minConnectingOverlapIndex; // Unused!
      char minConnectingOri=' ';
+#ifdef KILLED111115
      double numStdevsFromMean;
+#endif
      // In the following we assume we move from left to right when moving from
      // beginUnitig to endUnitig.
      ++curPathNum;
@@ -1039,8 +1042,8 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
      isSpecialCase = 1;
      finalOffset = ptr->frontEdgeOffset;
      minConnectingOffset = finalOffset + 1000000;
-     numStdevsFromMean = (finalOffset - insertLengthMeanBetweenKUnisForInsertGlobal)/insertLengthStdevGlobal;
 #ifdef KILLED111115
+     numStdevsFromMean = (finalOffset - insertLengthMeanBetweenKUnisForInsertGlobal)/insertLengthStdevGlobal;
      fprintf (stderr, "%d %f\n", finalOffset, numStdevsFromMean);
 #endif
      for (i=startOverlapByUnitig[endUnitig]; i<startOverlapByUnitig[endUnitig+1]; i++) {
@@ -1086,7 +1089,7 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
 	       minConnectingOffset = element->frontEdgeOffset;
 	       minConnectingUnitig = unitig1;
 	       minConnectingOri = abbrevUnitigLocVal.ori;
-	       minConnectingOverlapIndex = index;
+               //	       minConnectingOverlapIndex = index;
 	  }
      }
      if (isSpecialCase) {
@@ -1244,7 +1247,7 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
 	  int firstIndex, secondIndex;
 	  unitigLocMap_iterator it;
 	  std::list<int>::iterator l_it;
-	  struct nodePair nodeValue;
+          //	  struct nodePair nodeValue; // Unused!
 //	  fprintf (stderr, "(uni1,front1,ori1) = (%d,%d,%c); (uni2,front2,ori2) = (%d,%d,%c)\n", unitigConnectionsForPathData[i].unitig1, unitigConnectionsForPathData[i].frontEdgeOffset1, unitigConnectionsForPathData[i].ori1, unitigConnectionsForPathData[i].unitig2, unitigConnectionsForPathData[i].frontEdgeOffset2, unitigConnectionsForPathData[i].ori2);
 	  uLS.unitig2 = unitigConnectionsForPathData[i].unitig1;
 	  uLS.frontEdgeOffset = unitigConnectionsForPathData[i].frontEdgeOffset1;
@@ -1266,8 +1269,8 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
 	       nodeToIndexMap.insert(std::pair<unitigLocStruct, int> (uLS, secondIndex ) ); }
 	  else {
 	       secondIndex = it->second; }
-	  nodeValue.node1 = firstIndex;
-	  nodeValue.node2 = secondIndex;
+	  // nodeValue.node1 = firstIndex;
+	  // nodeValue.node2 = secondIndex;
 	  edgeList.insert(std::pair<int, int> (firstIndex, secondIndex));
 	  
 #ifdef KILL120102	  
@@ -1623,7 +1626,6 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
      int pathNum=0;
      std::set<unitigLocStruct>::iterator it1;
      unitigLocMap_iterator it2;
-     int numNodes = 0;
      ExpandingBuffer<int> pathNumArray;
      std::stack<int> nodeIntArray;
      long int localNodeNumber = 0, overlapMatchIndexHold = 0;
@@ -1772,7 +1774,6 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	  }
 	  sort (fwdConnections.begin(), fwdConnections.end(), firstNodeSort);
 	  sort (revConnections.begin(), revConnections.end(), secondNodeSort);
-	  numNodes = nodeArray.size();
 	  fwdStartIndices.clear();
 	  revStartIndices.clear();
 	  fwdNumIndices.clear();

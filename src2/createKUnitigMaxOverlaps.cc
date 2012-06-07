@@ -278,7 +278,10 @@ void reportKUnitigEndMatches (void)
 	  int unitig1 = overlapData[j].kUni1, unitig2 = overlapData[j].kUni2;
 	  int ahg = overlapData[j].ahg, bhg = overlapData[j].bhg;
 	  char ori = overlapData[j].netOri;
-	  uint64_t itemp, itempHold;
+	  uint64_t itemp;
+#if 0
+          uint64_t itempHold;
+#endif
 	  
 #if 0
 	  if (unitig1 > unitig2) 
@@ -296,7 +299,9 @@ void reportKUnitigEndMatches (void)
 	  overlapDataToSave[itemp].ahg = ahg;
 	  overlapDataToSave[itemp].bhg = bhg;
 	  startOverlapByUnitig[unitig2]--;
+#if 0
 	  itempHold = itemp;
+#endif
 	  itemp = startOverlapByUnitig[unitig2];
 	  overlapDataToSave[itemp].kUni1 = unitig2;
 	  overlapDataToSave[itemp].kUni2 = unitig1;
