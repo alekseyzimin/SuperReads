@@ -88,7 +88,9 @@ if ($reduceReadSetKMerSize) {
     $suffix = $localReadsFile . "_" . $reduceReadSetKMerSize . "_" . $kUnitigContinuationNumber;
     $localJellyfishHashSize = -s $fishingEndPairs;
     $localJellyfishHashSize = int ($localJellyfishHashSize / .79) + 1;
-    $cmd = "jellyfish count -m $reduceReadSetKMerSize -t $numThreads -C -r -s $localJellyfishHashSize -o k_u_hash_${suffix}_faux_reads $fishingEndPairs";
+    $cmd = "jellyfish count -m $reduceReadSetKMerSize -t $numThreads -C -r -s $localJellyfishHashSize -o k_u_hash_${suffix}_all_faux_reads $fishingEndPairs";
+    runCommandAndExitIfBad ($cmd);
+    $cmd = "jellyfish dump -U $maxFishingKMerCount -c k_u_hash_${suffix}_all_faux_reads_0 |perl -ane 'BEGIN{print \">0\\n\"}{for(\$i=0;\$i<\$F[1];\$i++){print \$F[0],\"N\"}}' | jellyfish count -t $numThreads -p 126 -C -r -o k_u_hash_${suffix}_faux_reads -s $localJellyfishHashSize -m $reduceReadSetKMerSize /dev/fd/0";
     runCommandAndExitIfBad ($cmd);
     $tfile = "k_u_hash_${suffix}_faux_reads_1";
     if (-e $tfile) {
@@ -282,6 +284,7 @@ sub processArgs
     $maxKMerLen = 31;
     $minKMerLen = 15;
     $numThreads = 1;
+    $maxFishingKMerCount = 5;
     $useAllKUnitigs = 0;
     $noClean = 0;
     $contigLengthForJoining = $contigLengthForFishing = 100;
@@ -292,6 +295,10 @@ sub processArgs
 	    ++$i;
 	    $dirForKUnitigs = $ARGV[$i];
 	    next; }
+        if ($arg eq "--max-fishing-mer-count") {
+            ++$i;
+            $maxFishingKMerCount = $ARGV[$i];
+            next; }
 	if ($arg eq "--min-kmer-len") {
 	    ++$i;
 	    $minKMerLen = $ARGV[$i];
