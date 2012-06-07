@@ -155,7 +155,7 @@ int main (int argc, char **argv)
      killCount = 0;
      for (uint64_t i=0; i<numKUnitigs; i++) {
 	  int dontKill;
-	  int path;
+          //	  int path;
 	  if ((howManyBasesInSpur[2*i] == 0) && (howManyBasesInSpur[2*i+1] == 0))
 	       continue;
 	  if (kUnitigIsDead[i])
@@ -164,7 +164,7 @@ int main (int argc, char **argv)
 	  // Modify this so the spur to be cut can be shorter than what we need to
 	  // consider the k-unitig extendable. Also change in following loop.
 	  if (howManyBasesInSpur[2*i] > 0) { // Set for high-numbered bases
-	       path = 1;
+            //	       path = 1;
 	       for (uint64_t j=indexStarts[2*i+1]; j<indexStarts[2*i+2]; j++) {
 		    if (! kUniEndHasNonSpurFollow[kUnitigOvlVals[j]])
 			 dontKill = 1;
@@ -180,7 +180,7 @@ int main (int argc, char **argv)
 		    continue; } }
 	  dontKill = 0;
 	  if (howManyBasesInSpur[2*i+1] > 0) { // Set for high-numbered bases
-	       path = 2;
+            //	       path = 2;
 	       for (uint64_t j=indexStarts[2*i]; j<indexStarts[2*i+1]; j++) {
 		    int tempValue = kUnitigOvlVals[j];
 		    tempValue = (tempValue/2)*2; // Make it even

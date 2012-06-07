@@ -362,11 +362,16 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
      int isFirstRecord;
      int kUnitigOffsetOfFirstBaseInRead, kUnitigOffsetOfLastBaseInRead;
      int kUnitigOffsetOfFirstBaseInReadHold=0, kUnitigNumberHold=0;
-     int intervalBegin=0, intervalEnd=0;
+     int intervalEnd=0;
      int ahg=0, bhg=0;
-     int firstKUnitigOffsetForNucmer=0, lastKUnitigOffsetForNucmer=0;
-     int firstReadOffsetForNucmer=0, lastReadOffsetForNucmer=0;
+     int lastReadOffsetForNucmer=0;
      uint64_t val, id;
+
+#if 0 // only for debugging
+     int intervalBegin=0;
+     int firstKUnitigOffsetForNucmer=0, lastKUnitigOffsetForNucmer=0;
+     int firstReadOffsetForNucmer=0;
+#endif
 
      readLength = readBasesEnd - readBasesBegin;
      if (longOutput)
@@ -457,7 +462,9 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	       kUnitigOffsetOfFirstBaseInReadHold = kUnitigOffsetOfFirstBaseInRead;
 	       kUnitigNumberHold = kUnitigNumber;
 	       netOriHold = netOri;
+#if 0
 	       intervalBegin = j; 
+#endif
 	       isFirstRecord = 1; }
 	  intervalEnd = j + mer_len;
 	  if (netOri == 0)
@@ -474,32 +481,48 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	       bhg = kUnitigOffsetOfFirstBaseInRead - kUnitigLengths[kUnitigNumber]; }
 	  ////////// BEGIN NUCMER END CALCULATIONS
 	  if (ahg >= 0) {
+#if 0
 	       firstKUnitigOffsetForNucmer = ahg + 1;
-	       if (netOri == 0)
+#endif
+	       if (netOri == 0) {
+#if 0
 		    firstReadOffsetForNucmer = 1;
-	       else
+#endif
+               } else
 		    lastReadOffsetForNucmer = readLength;
 	  }
 	  else {
+#if 0
 	       firstKUnitigOffsetForNucmer = 1;
-	       if (netOri == 0)
+#endif
+	       if (netOri == 0) {
+#if 0
 		    firstReadOffsetForNucmer = 1 - ahg;
-	       else
+#endif
+               } else
 		    lastReadOffsetForNucmer = readLength + ahg;
 	  }
 	  if (bhg  >= 0) {
-	       lastKUnitigOffsetForNucmer = kUnitigLengths[kUnitigNumber];
+#if 0
+            lastKUnitigOffsetForNucmer = kUnitigLengths[kUnitigNumber];
+#endif
 	       if (netOri == 0)
 		    lastReadOffsetForNucmer = readLength - bhg;
+#if 0
 	       else
 		    firstReadOffsetForNucmer = 1 + bhg;
+#endif
 	  }
 	  else {
+#if 0
 	       lastKUnitigOffsetForNucmer = kUnitigLengths[kUnitigNumber] + bhg;
+#endif
 	       if (netOri == 0)
 		    lastReadOffsetForNucmer = readLength;
+#if 0
 	       else
 		    firstReadOffsetForNucmer = 1;
+#endif
 	  }
 	  ////////// END NUCMER END CALCULATIONS
 	  // Do we match at the end of the possible interval? (can jump)
