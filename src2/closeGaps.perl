@@ -119,41 +119,59 @@ if ($reduceReadSetKMerSize) {
     $outputReadsFile = returnAbsolutePath ($outputReadsFile);
     @readsFiles = ($outputReadsFile);
     open (OUTFILE, ">$outputReadsFile");
-    $line = <FILE>; chomp ($line);
-    ($readName) = ($line =~ /^.(\S+)/);
-    if ($isNeeded{$readName}) {
-	if ($readName =~ /[13579]$/) {
-	    $mateReadName = getReadMateName ($readName);
-	    print OUTFILE ">$mateReadName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
-    }
-    if ($isNeeded{$readName}) {
-	print OUTFILE "$line\n"; }
-    $lastReadName = $readName;
-    $lastReadMateName = getReadMateName ($lastReadName);
-    while ($line = <FILE>) {
-	if ($line !~ /^>/) {
-	    print OUTFILE $line if ($isNeeded{$readName});
-	    next; }
-	chomp ($line);
-	($readName) = ($line =~ /^.(\S+)/);
-	$readMateName = getReadMateName ($readName);
-	if (($lastReadName =~ /[02468]$/) &&
-	    ($isNeeded{$lastReadName}) &&
-	    ($lastReadMateName ne $readName)) {
-	    print OUTFILE ">$lastReadMateName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
-	if (($readName =~ /[13579]$/) &&
-	    ($isNeeded{$readName}) &&
-	    ($readMateName ne $lastReadName)) {
-	    print OUTFILE ">$readMateName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
-	$lastReadName = $readName;
-	$lastReadMateName = $readMateName;
-	print OUTFILE "$line\n" if ($isNeeded{$readName});
-    }
-    close (FILE);
-    if (($lastReadName =~ /[02468]$/) &&
-	($isNeeded{$lastReadName}) &&
-	($lastReadMateName ne $readName)) {
-	print OUTFILE ">$lastReadMateName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
+#Mike -- this does not work if input file is fastq or mix of fasta/fastq
+#in general, in this file mates do not have to be together
+#
+#    $line = <FILE>; chomp ($line);
+#    ($readName) = ($line =~ /^.(\S+)/);
+#    if ($isNeeded{$readName}) {
+#	if ($readName =~ /[13579]$/) {
+#	    $mateReadName = getReadMateName ($readName);
+#	    print OUTFILE ">$mateReadName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
+#    }
+#    if ($isNeeded{$readName}) {
+#	print OUTFILE "$line\n"; }
+#    $lastReadName = $readName;
+#    $lastReadMateName = getReadMateName ($lastReadName);
+#    while ($line = <FILE>) {
+#	if ($line !~ /^>/) {
+#	    print OUTFILE $line if ($isNeeded{$readName});
+#	    next; }
+#	chomp ($line);
+#	($readName) = ($line =~ /^.(\S+)/);
+#	$readMateName = getReadMateName ($readName);
+#	if (($lastReadName =~ /[02468]$/) &&
+#	    ($isNeeded{$lastReadName}) &&
+#	    ($lastReadMateName ne $readName)) {
+#	    print OUTFILE ">$lastReadMateName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
+#	if (($readName =~ /[13579]$/) &&
+#	    ($isNeeded{$readName}) &&
+#	    ($readMateName ne $lastReadName)) {
+#	    print OUTFILE ">$readMateName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
+#	$lastReadName = $readName;
+#	$lastReadMateName = $readMateName;
+#	print OUTFILE "$line\n" if ($isNeeded{$readName});
+#    }
+#    close (FILE);
+#    if (($lastReadName =~ /[02468]$/) &&
+#	($isNeeded{$lastReadName}) &&
+#	($lastReadMateName ne $readName)) {
+#	print OUTFILE ">$lastReadMateName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
+####Aleksey rewrite -- it is very simple!!! (of course assume one all sequence in one line, but above assumes the same)
+	while($line=<FILE>){
+	if($line =~ /^>/){ #then fasta
+		($readName) = ($line =~ /^.(\S+)/);
+		$line=<FILE>;
+		print OUTFILE ">$readName\n$line" if($isNeeded{$readName});
+		}
+	elsif($line =~ /^@/){ #then fastq
+                ($readName) = ($line =~ /^.(\S+)/);
+                $line=<FILE>;
+                print OUTFILE ">$readName\n$line" if($isNeeded{$readName});
+		$line=<FILE>;
+		$line=<FILE>;
+                }
+	}
 }
 
 &runMainLoop;

@@ -657,7 +657,10 @@ my $reads_argument="";
 foreach $v(@f){
 	$reads_argument.="--reads-file $v ";
 }
-$reads_argument.="--reads-file sj.cor.clean.fa " if(scalar(@jump_info_array)>0);
+@f=split(" ",$list_jump_files);
+foreach $v(@f){
+        $reads_argument.="--reads-file $v ";
+}
 
 print FILE "closeGaps.perl $reads_argument --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS --reduce-read-set 21 --use-all-kunitigs 1>gapClose.err 2>&1\n";
 
