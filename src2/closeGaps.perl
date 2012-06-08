@@ -113,65 +113,8 @@ if ($reduceReadSetKMerSize) {
 	$isNeeded{$readName} = 1;
     }
     close (FILE);
-    $cmd = "cat @readsFiles |";
-    open (FILE, $cmd);
-    $outputReadsFile = "reducedReadsFile.fa";
-    $outputReadsFile = returnAbsolutePath ($outputReadsFile);
-    @readsFiles = ($outputReadsFile);
-    open (OUTFILE, ">$outputReadsFile");
-#Mike -- this does not work if input file is fastq or mix of fasta/fastq
-#in general, in this file mates do not have to be together
-#
-#    $line = <FILE>; chomp ($line);
-#    ($readName) = ($line =~ /^.(\S+)/);
-#    if ($isNeeded{$readName}) {
-#	if ($readName =~ /[13579]$/) {
-#	    $mateReadName = getReadMateName ($readName);
-#	    print OUTFILE ">$mateReadName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
-#    }
-#    if ($isNeeded{$readName}) {
-#	print OUTFILE "$line\n"; }
-#    $lastReadName = $readName;
-#    $lastReadMateName = getReadMateName ($lastReadName);
-#    while ($line = <FILE>) {
-#	if ($line !~ /^>/) {
-#	    print OUTFILE $line if ($isNeeded{$readName});
-#	    next; }
-#	chomp ($line);
-#	($readName) = ($line =~ /^.(\S+)/);
-#	$readMateName = getReadMateName ($readName);
-#	if (($lastReadName =~ /[02468]$/) &&
-#	    ($isNeeded{$lastReadName}) &&
-#	    ($lastReadMateName ne $readName)) {
-#	    print OUTFILE ">$lastReadMateName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
-#	if (($readName =~ /[13579]$/) &&
-#	    ($isNeeded{$readName}) &&
-#	    ($readMateName ne $lastReadName)) {
-#	    print OUTFILE ">$readMateName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
-#	$lastReadName = $readName;
-#	$lastReadMateName = $readMateName;
-#	print OUTFILE "$line\n" if ($isNeeded{$readName});
-#    }
-#    close (FILE);
-#    if (($lastReadName =~ /[02468]$/) &&
-#	($isNeeded{$lastReadName}) &&
-#	($lastReadMateName ne $readName)) {
-#	print OUTFILE ">$lastReadMateName\nNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n"; }
-####Aleksey rewrite -- it is very simple!!! (of course assume one all sequence in one line, but above assumes the same)
-	while($line=<FILE>){
-	if($line =~ /^>/){ #then fasta
-		($readName) = ($line =~ /^.(\S+)/);
-		$line=<FILE>;
-		print OUTFILE ">$readName\n$line" if($isNeeded{$readName});
-		}
-	elsif($line =~ /^@/){ #then fastq
-                ($readName) = ($line =~ /^.(\S+)/);
-                $line=<FILE>;
-                print OUTFILE ">$readName\n$line" if($isNeeded{$readName});
-		$line=<FILE>;
-		$line=<FILE>;
-                }
-	}
+
+    &createReducedReadSet;
 }
 
 &runMainLoop;
@@ -190,8 +133,58 @@ sub cleanUp
 	$suffix = $localReadsFile . "_" . $k . "_" . $kUnitigContinuationNumber;
 	$cmd = "\\rm -rf work_$suffix"; system ($cmd);
 	$cmd = "\\rm k_u_hash_${suffix}_0"; system ($cmd);
+	$cmd = "\\rm k_u_hash_${suffix}_all_faux_reads"; system ($cmd);
 	$cmd = "\\rm  out.$suffix"; system ($cmd);
 	$cmd = "\\rm joined.$suffix"; system ($cmd);
+    }
+}
+
+sub createReducedReadSet
+{
+    my ($outputReadsFile, $line, $type, $readName, $isNeeded, $seq, $state, $qual, $cmd);
+
+    $cmd = "cat @readsFiles |";
+    open (FILE, $cmd);
+    $outputReadsFile = "reducedReadsFile.fa";
+    $outputReadsFile = returnAbsolutePath ($outputReadsFile);
+    @readsFiles = ($outputReadsFile);
+    open (OUTFILE, ">$outputReadsFile");
+    while ($line=<FILE>) {
+	if ($line =~ /^>/) { # then fasta
+	    $type = "fasta";
+	    ($readName) = ($line =~ /^.(\S+)/);
+	    $isNeeded = $isNeeded{$readName};
+	    print OUTFILE ">$readName\n" if($isNeeded);
+	    next;
+	}
+	if (($line !~ /^\@/) && ($type eq "fasta")) {
+	    print OUTFILE $line if ($isNeeded);
+	    next; }
+	if ($line =~ /^\@/){ # then fastq
+	    $type = "fastq";
+	    ($readName) = ($line =~ /^.(\S+)/);
+	    $isNeeded = $isNeeded{$readName};
+	    print OUTFILE ">$readName\n" if($isNeeded);
+	    $seq = $qual = "";
+	    $state = "seq";
+	    next;
+	}
+	if (($state eq "seq") && ($line =~ /^\+/)) {
+	    $state = "qual";
+	    next; }
+	if ($state eq "seq") {
+	    chomp ($line);
+	    $seq .= $line;
+	    next; }
+	if ($state eq "qual") {
+	    chomp ($line);
+	    $qual .= $line;
+	    if (length($seq) == length ($qual)) {
+		print OUTFILE "$seq\n" if ($isNeeded); }
+	    next;
+	}
+	print STDERR "We should never get here. Error on input read '${readName}'!\n";
+	exit (1);
     }
 }
 
