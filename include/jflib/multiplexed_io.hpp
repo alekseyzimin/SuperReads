@@ -149,17 +149,20 @@ namespace jflib {
       void set_write_len(std::streamsize s) { _write_len = s; }
       bool do_sync() const { return _sync; }
       void set_do_sync(bool sync) { _sync = sync; }
-      char *resize(size_t size = 0) {
-        size_t csize = _end - _data;
-        if(!size)
-          size = 2 * csize;
-        if(size <= csize)
+      size_t size() const { return _end - _data; }
+      char *resize(size_t min_size = 0) {
+        const size_t csize = size();
+        if(!min_size)
+          min_size = 2 * csize;
+        if(min_size <= csize)
           return _data;
-        char *ndata = (char*)realloc(_data, size);
+        if(min_size == 0)
+          min_size = 4096;
+        char *ndata = (char*)realloc(_data, min_size);
         if(!ndata)
           return 0;
         _data = ndata;
-        _end  = _data + size;
+        _end  = _data + min_size;
         return _data;
       }
     private:
@@ -226,8 +229,9 @@ namespace jflib {
       virtual int overflow(int c) {
         if(_closed)
           return EOF;
+
         if(_nbr == 0) { // No record in its entirety
-          size_t old_size = _elt->end() - _elt->base();
+          ptrdiff_t old_size = _elt->end() - _elt->base();
           if(!_elt->resize())
             return EOF;
           setp(_elt->base(), _elt->end());
@@ -236,7 +240,8 @@ namespace jflib {
           ptrdiff_t in_buf = pptr() - pbase();
           if(_elt->write_len() < in_buf) {
             size_t extra = in_buf - _elt->write_len();
-            _overflow_buffer.resize(extra);
+            if(!_overflow_buffer.resize(extra))
+              return EOF;
             memcpy(_overflow_buffer.base(), pptr() - extra, extra);
             _overflow_buffer.set_write_len(extra);
           } else
@@ -246,8 +251,12 @@ namespace jflib {
           if(!update_buffer())
             return EOF;
           if(_overflow_buffer.write_len() > 0) {
-            memcpy(_elt->base(), _overflow_buffer.base(),
-                   _overflow_buffer.write_len());
+            const char* nbase = _elt->resize(2 * _overflow_buffer.write_len());
+            if(!nbase)
+              return EOF;
+            if(nbase != pbase())
+              setp(_elt->base(), _elt->end());
+            memcpy(pbase(), _overflow_buffer.base(), _overflow_buffer.write_len());
             pbump(_overflow_buffer.write_len());
           }
         }

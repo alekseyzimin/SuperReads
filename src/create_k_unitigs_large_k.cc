@@ -275,7 +275,7 @@ int main(int argc, char *argv[])
   args.parse(argc, argv);
   if(!args.min_len_given)
     args.min_len_arg = args.mer_arg + 1;
-  
+
   // Populate Bloom filter with k-mers
   mer_bloom_counter2 kmers(args.false_positive_arg, args.nb_mers_arg);
   {
@@ -295,5 +295,5 @@ int main(int argc, char *argv[])
     unitiger.exec_join(args.threads_arg);
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 }
