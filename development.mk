@@ -1,1 +1,0 @@
-AM_CXXFLAGS += -Werror
