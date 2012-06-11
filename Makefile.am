@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-AM_CXXFLAGS = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -Wunused-but-set-variable $(JELLYFISH_CFLAGS) -std=c++0x
+AM_CXXFLAGS = -I$(top_srcdir)/include -I$(top_srcdir) -Wall $(JELLYFISH_CFLAGS) -std=c++0x
 AM_LDFLAGS = -lpthread $(JELLYFISH_LIBS)
 
 noinst_HEADERS = $(BUILT_SOURCES)
