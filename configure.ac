@@ -35,7 +35,8 @@ AS_IF([test "x$YAGGO" = "x"], [AC_PATH_PROG([YAGGO], [yaggo], [false])])
 
 # Extra compiler debugging
 AC_ARG_VAR([DEV_CXXFLAGS], [Extra compiler flags for development])
-AS_IF([test "x$DEV_CXXFLAGS" = "x"], [DEV_CXXFLAGS=-Werror])
+if test "x$DEV_CXXFLAGS" = "x"; then
+DEV_CXXFLAGS=-Werror
 # Check for -Wunused-but-set-variable
 my_save_cflags="$CFLAGS"
 CFLAGS=-Wunused-but-set-variable
@@ -45,6 +46,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
     [DEV_CXXFLAGS="$DEV_CXXFLAGS -Wunused-but-set-variable"],
     [AC_MSG_RESULT([no])])
 CFLAGS="$my_save_cflags"
+fi
 AC_SUBST([DEV_CXXFLAGS])
 
 # Checks for library functions.
@@ -55,6 +57,6 @@ AC_CHECK_FUNCS([mremap])
 AC_ARG_ENABLE([debug], AS_HELP_STRING([--enable-debug], [Enable debugging]))
 AS_IF([test "x$enable_debug" = "x"], AC_DEFINE([NDEBUG], [1], [Defined if no debugging]))
 
-AC_CONFIG_FILES([Makefile development.mk doxygen.cfg])
+AC_CONFIG_FILES([Makefile doxygen.cfg])
 
 AC_OUTPUT
