@@ -435,6 +435,8 @@ if(scalar(@jump_info_array)>0){
 	print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s \$JF_SIZE -o k_u_hash pe.cor.fa sj.cor.fa\n";
 	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
 	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+        print FILE "create_k_unitigs -C -t $NUM_THREADS  -m 5 -M 5 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";   
+        print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all_5_5.fasta\n";
         $rerun_pe=1;
 	$rerun_sj=1;
     }
@@ -468,7 +470,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "rm -rf work2\n";
     $rerun_sj=1;
     }
-    print FILE "createSuperReadsForDirectory.perl -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
+    print FILE "createSuperReadsForDirectory.perl -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all_5_5.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
     print FILE "if [[ ! -e work2/superReads.success ]];then\n";
