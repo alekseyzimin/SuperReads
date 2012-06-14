@@ -42,7 +42,7 @@
 my $JELLYFISH_PATH="";
 my $SR_PATH="";
 my $CA_PATH="";
-my $CA_PARAMETERS=" cgwErrorRate=0.15 utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB ";
+my $CA_PARAMETERS="";
 my $WINDOW=10;
 my $MAX_ERR_PER_WINDOW=3;
 my $KMER_COUNT_THRESHOLD=1;
@@ -63,6 +63,7 @@ my $LIMIT_JUMP_COVERAGE=60;
 open(FILE,$ARGV[0]);
 while($line=<FILE>){
     chomp($line);
+    next if($line =~ /^\#/);
     if($line =~ /^PATHS/){
 	if($in_parameters==1){
 	    die("error in config file: mixed PARAMETERS and PATHS");
@@ -581,6 +582,8 @@ print FILE "ovlCorrBatchSize=\$ovlHashBlockSize\n";
 
 
 ###Celera Assembler###
+if(not(-e "CA/9-terminator/genome.qc")){
+
 print FILE "\necho -n 'Celera Assembler ';date;\n";
 if($rerun_sj==1||$rerun_pe==1){
 print FILE "rm -rf CA\n";
@@ -591,9 +594,9 @@ print FILE "ovlMerThreshold=`jellyfish histo -t $NUM_THREADS k_u_hash_0 | awk '{
 print FILE "echo ovlMerThreshold=\$ovlMerThreshold\n\n";
 
 if(scalar(@other_info_array)>0){
-$other_parameters="doOverlapBasedTrimming=1 doExtendClearRanges=2 ovlMerSize=22";
+$other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClearRanges=2 ovlMerSize=22";
 }else{
-$other_parameters="doOverlapBasedTrimming=0 doExtendClearRanges=0 ovlMerSize=30";
+$other_parameters="doFragmentCorrection=0 doOverlapBasedTrimming=0 doExtendClearRanges=0 ovlMerSize=30";
 }
 
 #data filtering
@@ -650,7 +653,7 @@ print FILE "else\n";
 print FILE "echo \"CA failed, check output under CA/ and runCA2.out\"\n";
 print FILE "exit\n";
 print FILE "fi\n";
-
+}
 #here we close gaps in scaffolds:  we use create_k_unitigs allowing to continue on count 1 sequence and then generate fake reads from the 
 #end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps for k=17...31
 
