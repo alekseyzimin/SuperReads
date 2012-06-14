@@ -128,21 +128,22 @@ public:
         continue;
       current = *stream;
       
+      unsigned int count = 0;
       // Check fwd continuation. Grow k-unitig if not unique
-      bool unique_fwd_cont = next_mer(forward, current, continuation);
+      bool unique_fwd_cont = next_mer(forward, current, continuation, &count);
       bool unique_bwd_return = true;
       if(unique_fwd_cont)
-        unique_bwd_return = next_mer(backward, continuation, tmp);
+        unique_bwd_return = next_mer(backward, continuation, tmp, &count);
       if(!unique_fwd_cont || !unique_bwd_return) {
         grow_unitig(backward, current, output);
         continue;
       }
 
       // Check bwd continuation. Grow k-unitig if not unique
-      bool unique_bwd_cont = next_mer(backward, current, continuation);
+      bool unique_bwd_cont = next_mer(backward, current, continuation, &count);
       bool unique_fwd_return = true;
       if(unique_bwd_cont)
-        unique_fwd_return = next_mer(forward, continuation, tmp);
+        unique_fwd_return = next_mer(forward, continuation, tmp, &count);
       if(!unique_bwd_cont || !unique_fwd_return) {
         grow_unitig(forward, current, output);
         continue;
@@ -154,10 +155,24 @@ public:
 
 private:
   // Check all k-mers extending in one direction. If unique
-  // continuation, store it in cont and return true. Otherwise return
-  // false and the value of cont is undetermined. If true is returned
-  // and count is not NULL, the count of the unique continuation mer
-  // is stored in the pointer.
+  // continuation, store it in cont and return true. A unique
+  // continuation may have a count less than the min quality
+  // threshold, as will be reported in the count output argument.
+  //
+  // On the other hand, continuation with count less than the min
+  // quality threshold do not create a branch compared to a high
+  // quality continuation. I.e., if the threshold is 2, and the counts
+  // are as follow:
+  //
+  // 0, 1, 0, 0 -> unique continuation, count of 1
+  // 0, 1, 0, 1 -> no unique continuation
+  // 2, 0, 0, 0 -> unique continuation, count of 2
+  // 2, 1, 0, 0 -> unique continuation, count of 2
+  // 2, 0, 3, 0 -> no unique continuation
+  //
+  // Otherwise return false and the value of cont is undetermined. If
+  // true is returned and count is not NULL, the count of the unique
+  // continuation mer is stored in the pointer.
   bool next_mer(const direction dir, const mer_dna& start, mer_dna& cont,
                 unsigned int* count = 0) {
     int     index;
@@ -177,25 +192,36 @@ private:
     auto base = cont.base(index); // Point to first or last base. Correct base to change
     auto base_comp = cont_comp.base(cont.k() - 1 - index);
 
-    int      nb_continuation = 0;
-    uint64_t code = 0;
+    int          nb_cont    = 0, nb_low_cont = 0;
+    uint64_t     code       = 0, low_code = 0;
+    unsigned int cont_count = 0, low_cont_count = 0;
     for(uint64_t i = 0; i < 4; ++i) {
       base      = i;
       base_comp = mer_dna::complement(i);
       
-      unsigned int cont_count = counts_[cont < cont_comp ? cont : cont_comp];
-      if(cont_count > 0) {
-        if(++nb_continuation > 1)
+      unsigned int cont_count_ = counts_[cont < cont_comp ? cont : cont_comp];
+      if(cont_count_ >= args.quality_threshold_arg) {
+        if(++nb_cont > 1)
           return false;
-        code = i;
-        if(count)
-          *count = cont_count;
+        code       = i;
+        cont_count = cont_count_;
+      } else if(cont_count > 0) {
+        ++nb_low_cont;
+        low_code       = i;
+        low_cont_count = cont_count_;
       }
     }
 
-    if(nb_continuation == 1) {
+    if(nb_cont == 1) {
       base = code;
+      if(count)
+        *count = cont_count;
       return true;
+    } else if(nb_cont == 0 && nb_low_cont == 1) {
+        base = low_code;
+        if(count)
+          *count = low_cont_count;
+        return true;
     }
     return false;
   }
