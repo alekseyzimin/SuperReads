@@ -1,6 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 AM_CXXFLAGS = -I$(top_srcdir)/include -I$(top_srcdir) -Wall $(JELLYFISH_CFLAGS) -std=c++0x
 AM_LDFLAGS = -lpthread $(JELLYFISH_LIBS)
+AM_DEV_CXXFLAGS = $(DEV_CXXFLAGS)
 
 noinst_HEADERS = $(BUILT_SOURCES)
 bin_PROGRAMS =
@@ -65,7 +66,7 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/extract_unjoined_pairs.pl src/fasta2frg.pl	\
                     src/filter_library.sh src/fix_unitigs.sh		\
                     src/recompute_astat_superreads.sh src/runSRCA.pl	\
-                    src/extractreads_not.pl src/run_ECR.sh
+                    src/extractreads_not.pl src/run_ECR.sh src/adapter_0
 noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/diskBasedUnitigger.h			\
                   src/fibonacci_coding.hpp src/sr_names.hpp	\
