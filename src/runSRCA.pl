@@ -415,7 +415,7 @@ print FILE "\n";
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
     print FILE "cat combined_0 > /dev/null\n";
-    print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/adapter_0 --trim-contaminant -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log | add_missing_mates.pl > pe.cor.fa\n";
+    print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/../share/adapter_0 --trim-contaminant -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log | add_missing_mates.pl > pe.cor.fa\n";
     $rerun_pe=1;
 }
 #compute average PE read length -- we will need this for Astat later
@@ -430,7 +430,7 @@ if(scalar(@jump_info_array)>0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
         print FILE "cat combined_0 > /dev/null\n";
-	print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/adapter_0 --trim-contaminant -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log | add_missing_mates.pl > sj.cor.fa\n";
+	print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/../share/adapter_0 --trim-contaminant -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log | add_missing_mates.pl > sj.cor.fa\n";
         $rerun_sj=1;
     }
 }
