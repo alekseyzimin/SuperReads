@@ -2153,8 +2153,11 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
                          pathNumArray[localNodeNumber] = pathNum; }
                }
                if (nodeIntArray.size() > 1) {
+		    //AZ
+		    if(args.join_aggressive_arg==0){
                     lastGoodNodeNumber = localLoopNodeNumber;
 		    ++numJoinableUnresolvedAtEnd;
+		    }
                     while (! nodeIntArray.empty())
                          nodeIntArray.pop();
                     break; }

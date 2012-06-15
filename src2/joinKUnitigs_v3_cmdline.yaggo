@@ -23,7 +23,10 @@ option("num-kunitigs-file") {
   c_string; typestr "path"; required }
 option("max-nodes-allowed") {
   description "Max records allowed when trying to join a mate pair."
-  int; default "4000" }			  
+  int; default "4000" }
+option("join-aggressive") {
+  description "Report a join even if it is not unique."
+  int; default "0" }	  
 option("output", "o") {
   description "Output file"
   c_string; default "super_reads_output" }

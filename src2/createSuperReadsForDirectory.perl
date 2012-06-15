@@ -66,6 +66,7 @@ $exeDir = dirname ($0);
 $cwd = cwd;
 $exeDir = returnAbsolutePath ($exeDir);
 
+$joinAggressive = 0;
 $lowMemory = 0;
 $maxNodes = 2000;
 $noReduce = 0;
@@ -168,7 +169,7 @@ if ($mergedUnitigDataPrefix) {
 
 if ($lowMemory==0) {
     # Find the matches of k-unitigs to reads and pipe to the shooting method
-    $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -o /dev/fd/1 $kUnitigsFile $maxKUnitigNumberFile  @fastaFiles | $exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors /dev/fd/0";
+    $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads $jellyfishKUnitigHashFile -t $numProcessors -o /dev/fd/1 $kUnitigsFile $maxKUnitigNumberFile  @fastaFiles | $exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors --join-aggressive $joinAggressive /dev/fd/0";
     &runCommandAndExitIfBad ($cmd, $joinerOutput, 1, "joinKUnitigs", $joinerOutput); }
 else {
     # Find the matches of k-unitigs to reads, save to disk
@@ -177,7 +178,7 @@ else {
     if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile); }
 
     # Do the shooting method here
-    $cmd = "$exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors $readKUnitigMatchOutput";
+    $cmd = "$exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors --join-aggressive $joinAggressive $readKUnitigMatchOutput";
     &runCommandAndExitIfBad ($cmd, $joinerOutput, 1, "joinKUnitigs", $joinerOutput); }
 
 if ($jumpLibraryReads) {
@@ -265,6 +266,10 @@ sub processArgs
 	    ++$i;
 	    $kUnitigsFile = $ARGV[$i];
 	    next; }
+        elsif ($ARGV[$i] eq "-join-aggressive") {
+            ++$i;
+            $joinAggressive = $ARGV[$i];
+            next; }
 	elsif ($ARGV[$i] eq "-mkudisr") {
 	    ++$i;
 	    $seqDiffMax = $ARGV[$i];

@@ -357,7 +357,7 @@ if(scalar(@jump_info_array)>0){
     $i=0;
     foreach $v(@jump_info_array){
 	@f=split(/\s+/,$v);
-	print FILE "echo '$f[0] 300 50' >> meanAndStdevByPrefix.sj.txt\n";
+	print FILE "echo '$f[0] 500 100' >> meanAndStdevByPrefix.sj.txt\n";
 	$list_jump_files.="$f[0].renamed.fastq ";
 	if(-e "$f[0].renamed.fastq"){
             next;
@@ -472,7 +472,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "rm -rf work2\n";
     $rerun_sj=1;
     }
-    print FILE "createSuperReadsForDirectory.perl -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
+    print FILE "createSuperReadsForDirectory.perl -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
     print FILE "if [[ ! -e work2/superReads.success ]];then\n";
