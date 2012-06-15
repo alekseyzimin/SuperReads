@@ -59,6 +59,7 @@ my @jump_info_array=();
 my @other_info_array=();
 my %used_library_ids;
 my $LIMIT_JUMP_COVERAGE=60;
+my $USE_LINKING_MATES=1;
 
 open(FILE,$ARGV[0]);
 while($line=<FILE>){
@@ -114,7 +115,7 @@ while($line=<FILE>){
 	    $f[1]=~s/^\s+//;
 	    $f[1]=~s/\s+$//;
 	    $EXTEND_JUMP_READS=int($f[1]);
-	    die("bad value for EXTEND_JUMP_READS") if($EXTEND_JUMP_READS!=1&&$EXTEND_JUMP_READS!=0);
+	    die("bad value for EXTEND_JUMP_READS") if($EXTEND_JUMP_READS!=1 && $EXTEND_JUMP_READS!=0);
 	    next;
 	}
 	elsif($line =~ /^CA_PARAMETERS/){
@@ -132,6 +133,14 @@ while($line=<FILE>){
             $f[1]=~s/\s+$//;
             $LIMIT_JUMP_COVERAGE=int($f[1]);
             die("bad value for LIMIT_JUMP_COVERAGE") if($LIMIT_JUMP_COVERAGE<1);
+            next;
+        }
+        elsif($line =~ /^USE_LINKING_MATES/){
+            @f=split(/=/,$line);
+            $f[1]=~s/^\s+//;
+            $f[1]=~s/\s+$//;
+            $USE_LINKING_MATES=int($f[1]);
+            die("bad value for USE_LINKING_MATES") if($USE_LINKING_MATES!=1 && $USE_LINKING_MATES!=0);
             next;
         }
 	elsif($line =~ /^KMER_COUNT_THRESHOLD/){
@@ -540,6 +549,7 @@ print FILE "echo \"Super reads failed, check super1.err and files in ./work1/\"\
 print FILE "exit\n";
 print FILE "fi\n";
 
+if($USE_LINKING_MATES==1){
 #now we extract those PE mates that did not end up in the same super read -- we call them linking mates, they will be useful for scaffolding
 if(not(-e "pe.linking.fa")||$rerun_pe==1){
     print FILE "extractreads.pl <( awk 'BEGIN{last_readnumber=-1;last_super_read=\"\"}{readnumber=int(substr(\$1,3));if(readnumber%2>0){readnumber--}super_read=\$2;if(readnumber==last_readnumber){if(super_read!=last_super_read){print read;print \$1;}}else{read=\$1;last_super_read=\$2}last_readnumber=readnumber}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt )  pe.cor.fa 1 > pe.linking.fa\n";
@@ -557,6 +567,7 @@ foreach $v(@pe_info_array){
     }
 }
 print FILE "echo -n 'Linking PE reads ';\ncat ??.linking.frg |grep '^{FRG' |wc -l;\n";
+}
 
 #create frg file for super reads
 if(not(-e "superReadSequences_shr.frg")||$rerun_pe==1){
@@ -583,16 +594,16 @@ print FILE "ovlCorrBatchSize=\$ovlHashBlockSize\n";
 
 ###Celera Assembler###
 if(not(-e "CA/9-terminator/genome.qc")){
-
 print FILE "\necho -n 'Celera Assembler ';date;\n";
 if($rerun_sj==1||$rerun_pe==1){
 print FILE "rm -rf CA\n";
 }
 
-#this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
+#estimating mer threshold for overlapper to cover 90% of all distinct k-mers
 print FILE "ovlMerThreshold=`jellyfish histo -t $NUM_THREADS k_u_hash_0 | awk '{if(\$1>1) {dist+=\$2;if(dist>int(\"'\$ESTIMATED_GENOME_SIZE'\")*0.9&&flag==0){print \$1;flag=1}}}'`\n";
 print FILE "echo ovlMerThreshold=\$ovlMerThreshold\n\n";
 
+#this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
 if(scalar(@other_info_array)>0){
 $other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClearRanges=2 ovlMerSize=22";
 }else{
