@@ -80,7 +80,7 @@ c1_2=$2;
 flag=1-flag;
 }'|perl -ane '{
 chomp;
-$range=1;
+$range=2;
 $code=0;
 for($i=-$range;$i<=$range;$i++){
 	for($j=-$range;$j<=$range;$j++){
@@ -113,7 +113,7 @@ c1_2=$2;
 flag=1-flag;
 }'|perl -ane '{
 chomp;
-$range=1;
+$range=2;
 $code=0;
 for($i=-$range;$i<=$range;$i++){
         for($j=-$range;$j<=$range;$j++){

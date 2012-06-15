@@ -440,22 +440,17 @@ print FILE "\n";
 ###build k-unitigs###
 
 if(scalar(@jump_info_array)>0){
-    if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
-	print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s \$JF_SIZE -o k_u_hash pe.cor.fa sj.cor.fa\n";
+	$k_u_arg="pe.cor.fa sj.cor.fa";
+}else{
+	$k_u_arg="pe.cor.fa";
+}
+
+if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
+	print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s \$JF_SIZE -o k_u_hash $k_u_arg\n";
 	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
 	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
         $rerun_pe=1;
 	$rerun_sj=1;
-    }
-}
-else{
-    if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
-	print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s \$JF_SIZE -o k_u_hash pe.cor.fa\n";
-	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
-	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
-        $rerun_pe=1;
-        $rerun_sj=1;
-    }
 }
 
 ###done build k-unitigs###
@@ -493,7 +488,7 @@ if(scalar(@jump_info_array)>0){
 
 #we also do initial redundancy filtering here, based on positions of reads in suoer reads
     if(not(-e "redundant_sj.txt")||$rerun_pe==1||$rerun_sj==1){
-        print FILE "cat work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt | awk '{rn=int(substr(\$1,3));if(rn%2==1 && int(substr(pr,3))+1==rn){print ps\" \"po\" \"pr\"\\n\"\$2\" \"\$3\" \"pr}else{pr=\$1;ps=\$2;po=\$3}}' |awk 'BEGIN{flag=0}{if(flag==1){index1=int(substr(c1_1,1,length(c1_1)-1))*20000+c1_2;index2=int(substr(\$1,1,length(\$1)-1))*20000+\$2;if(index1>index2){print c1_1\" \"\$1\" \"c1_2\" \"\$2\" \"c}else{print \$1\" \"c1_1\" \"\$2\" \"c1_2\" \"c}}c=\$3;c1_1=\$1;c1_2=\$2;flag=1-flag;}'|perl -ane '{chomp;\$range=1;\$code=0;for(\$i=-\$range;\$i<=\$range;\$i++){for(\$j=-\$range;\$j<=\$range;\$j++){\$code++ if(defined(\$h{\"\$F[0] \$F[1] \".(\$F[2]+\$i).\" \".(\$F[3]+\$j)}))}}if(\$code==0){\$h{\"\$F[0] \$F[1] \$F[2] \$F[3]\"}=1}else{print \"\$F[4]\\n\",substr(\$F[4],0,2),int(substr(\$F[4],2))+1,\"\\n\"}}' > redundant_sj.txt\n";
+        print FILE "cat work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt | awk '{rn=int(substr(\$1,3));if(rn%2==1 && int(substr(pr,3))+1==rn){print ps\" \"po\" \"pr\"\\n\"\$2\" \"\$3\" \"pr}else{pr=\$1;ps=\$2;po=\$3}}' |awk 'BEGIN{flag=0}{if(flag==1){index1=int(substr(c1_1,1,length(c1_1)-1))*20000+c1_2;index2=int(substr(\$1,1,length(\$1)-1))*20000+\$2;if(index1>index2){print c1_1\" \"\$1\" \"c1_2\" \"\$2\" \"c}else{print \$1\" \"c1_1\" \"\$2\" \"c1_2\" \"c}}c=\$3;c1_1=\$1;c1_2=\$2;flag=1-flag;}'|perl -ane '{chomp;\$range=2;\$code=0;for(\$i=-\$range;\$i<=\$range;\$i++){for(\$j=-\$range;\$j<=\$range;\$j++){\$code++ if(defined(\$h{\"\$F[0] \$F[1] \".(\$F[2]+\$i).\" \".(\$F[3]+\$j)}))}}if(\$code==0){\$h{\"\$F[0] \$F[1] \$F[2] \$F[3]\"}=1}else{print \"\$F[4]\\n\",substr(\$F[4],0,2),int(substr(\$F[4],2))+1,\"\\n\"}}' > redundant_sj.txt\n";
     $rerun_sj=1;
     } 
 
