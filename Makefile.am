@@ -6,6 +6,7 @@ AM_DEV_CXXFLAGS = $(DEV_CXXFLAGS)
 noinst_HEADERS = $(BUILT_SOURCES)
 bin_PROGRAMS =
 dist_bin_SCRIPTS =
+data_DATA =
 BUILT_SOURCES =
 CLEANFILES = $(BUILT_SOURCES)
 
@@ -66,13 +67,15 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/extract_unjoined_pairs.pl src/fasta2frg.pl	\
                     src/filter_library.sh src/fix_unitigs.sh		\
                     src/recompute_astat_superreads.sh src/runSRCA.pl	\
-                    src/extractreads_not.pl src/run_ECR.sh src/adapter_0
+                    src/extractreads_not.pl src/run_ECR.sh
+
 noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/diskBasedUnitigger.h			\
                   src/fibonacci_coding.hpp src/sr_names.hpp	\
                   src/bloom_filter.hpp src/MurmurHash3.h	\
                   src/bloom_hash.hpp src/bloom_counter2.hpp	\
                   src/mer_dna.hpp src/read_parser.hpp
+
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 BUILT_SOURCES              += src/error_corrected2frg_cmdline.hpp
 reverse_complement_SOURCES = src/reverse_complement.cc
@@ -127,6 +130,15 @@ outputRecordsNotOnList_SOURCES = src2/outputRecordsNotOnList.cc
 dist_bin_SCRIPTS += src2/closeGaps.perl src2/getEndSequencesOfContigs.perl \
                     src2/create_end_pairs.perl src2/outputJoinedPairs.perl \
                     src2/getSequenceForClosedGaps.perl
+
+##############################
+# data generation
+##############################
+dist_data_DATA = data/adapter_0
+CLEANFILES += data/adapter_0
+
+%adapter_0: %adapter.fa
+	$(AM_V_GEN)jellyfish count -m 24 -s 5k -C -t 10 -r -o $*adapter $<
 
 
 ##############################
