@@ -71,6 +71,7 @@ VI)  Make sure you allow for an appropriate set of params
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <map>
 #include <cctype>
 #include <iostream>
 #include <stdint.h>
@@ -79,6 +80,7 @@ VI)  Make sure you allow for an appropriate set of params
 #include <vector>
 #include <string>
 #include <charb.hpp>
+#include <exp_vector.hpp>
 #include <misc.hpp>
 using namespace std;
 
@@ -94,8 +96,6 @@ char *kUnitigSpace, **kUnitigSeq;
 int *kUnitigLengths;
 charb line(1000000);
 charb reverseComplementSpace(1000000), outputSeqSpace(3000000);
-typedef ExpandingBuffer<charb, remaper<charb> > twoD_charb_buf;
-ExpandingBuffer<twoD_charb_buf>  superReadsByLength(50000);
 ExpBuffer<char*> flds;
 bool isJumpLibrary;
 
@@ -140,7 +140,12 @@ int main (int argc, char **argv)
      int minReadsInSuperRead = 2;
      int minOvlLen = 30;
      int minReadLength = 64, maxReadLength = 2047;
-     
+     bool renameSuperReads = false;
+     int maxSuperReadLength = 0;
+     exp_vector<int> maxSuperReadNumbersUsed;
+     std::map<uint64_t, string> oldSuperReadName;
+     std::map<uint64_t, string> superReadSequences;
+
      // (VI) above
      workingDir = (char *) ".";
      sprintf (superReadListFile, "%s/%s", workingDir, DEFAULT_SUPER_READ_LIST_FILE);
@@ -199,6 +204,9 @@ int main (int argc, char **argv)
 	       continue; }
 	  if (strcmp (argv[i], "-jump-library") == 0) {
 	       isJumpLibrary = true;
+	       continue; }
+	  if (strcmp (argv[i], "-rename-super-reads") == 0) {
+	       renameSuperReads = true;
 	       continue; }
 	  if (argNum == 0)
 	       workingDir = argv[i];
@@ -411,17 +419,50 @@ int main (int argc, char **argv)
 			 
 	  // If we get here it's a regular super-reads run,
 	  // not a jumping library
-	  if (! noSequence)
-	       fputc ('>', outfile);
-	  fputs (superReadName, outfile); fputc ('\n', outfile);
-	  fputs (superReadName,goodFile); fputc ('\n',goodFile);
-	  if (! noSequence) {
-	       fputs (outputSeqSpace, outfile); fputc ('\n', outfile); }
-	  if (strlen (superReadNameAndLengthsFilename) != 0) 
-	       superReadsByLength[outputSeqLen].push_back((charb)superReadName);
+	  if (! renameSuperReads) {
+	       if (! noSequence)
+		    fputc ('>', outfile);
+	       fputs (superReadName, outfile); fputc ('\n', outfile);
+	       fputs (superReadName,goodFile); fputc ('\n',goodFile);
+	       if (! noSequence) {
+		    fputs (outputSeqSpace, outfile); fputc ('\n', outfile); }
+	  }
+	  else {
+	       std::string superReadNameString = std::string (superReadName);
+	       int superReadLen = strlen (outputSeqSpace);
+	       if (maxSuperReadLength < superReadLen) {
+		    maxSuperReadLength = superReadLen;
+		    maxSuperReadNumbersUsed[superReadLen] = 0; }
+	       uint64_t tempVar = 1000000000;
+	       tempVar *= superReadLen;
+	       tempVar += maxSuperReadNumbersUsed[superReadLen];
+	       superReadSequences[tempVar] = std::string (outputSeqSpace);
+	       oldSuperReadName[tempVar] = superReadNameString;
+	       ++maxSuperReadNumbersUsed[superReadLen]; }
      }
 
      fclose (infile);
+
+     if (renameSuperReads && (! isJumpLibrary)) {
+	  int fauxSuperReadNumber = 0;
+	  for (int i2=maxSuperReadLength; i2>=0; i2--) {
+	       for (int j=0; j<maxSuperReadNumbersUsed[i2]; j++) {
+		    uint64_t tempSuperReadName = 1000000000;
+		    tempSuperReadName *= i2;
+		    tempSuperReadName += j;
+		    if (! noSequence)
+			 fputc('>', outfile);
+		    fprintf (outfile, "%d\n", fauxSuperReadNumber);
+		    fputs (oldSuperReadName[tempSuperReadName].c_str(), goodFile);
+		    fputc ('\n', goodFile);
+		    if (! noSequence) {
+			 fputs (superReadSequences[tempSuperReadName].c_str(), outfile);
+			 fputc ('\n', outfile); }
+		    ++fauxSuperReadNumber;
+	       }
+	  }
+     }
+
      if (! isJumpLibrary)
 	  fclose (goodFile);
      if (strlen(goodSequenceOutputFilename) != 0)
@@ -429,11 +470,16 @@ int main (int argc, char **argv)
 
      if (strlen(superReadNameAndLengthsFilename) != 0) {
 	  outfile = Fopen (superReadNameAndLengthsFilename, "w");
-	  for (unsigned int i=superReadsByLength.size()-1; i!=0; i--) {
-	       if (superReadsByLength[i].size() == 0)
-		    continue;
-	       for (unsigned int j=0; j<superReadsByLength[i].size(); j++)
-		    fprintf (outfile, "%s %d\n", (char*)superReadsByLength[i][j], i);
+
+	  for (int i2=maxSuperReadLength; i2>=0; i2--) {
+	       for (int j=0; j<maxSuperReadNumbersUsed[i2]; j++) {
+		    uint64_t tempSuperReadName = 1000000000;
+		    tempSuperReadName *= i2;
+		    tempSuperReadName += j;
+		    fputs (oldSuperReadName[tempSuperReadName].c_str(), outfile);
+		    fputc (' ', outfile);
+		    fprintf (outfile, "%d\n", i2);
+	       }
 	  }
 	  fclose (outfile);
      }
