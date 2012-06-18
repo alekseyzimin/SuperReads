@@ -595,7 +595,7 @@ print FILE "rm -rf CA\n";
 }
 
 #estimating mer threshold for overlapper to cover 90% of all distinct k-mers
-print FILE "ovlMerThreshold=`jellyfish histo -t $NUM_THREADS k_u_hash_0 | awk '{if(\$1>1) {dist+=\$2;if(dist>int(\"'\$ESTIMATED_GENOME_SIZE'\")*0.9&&flag==0){print \$1;flag=1}}}'`\n";
+print FILE "ovlMerThreshold=`jellyfish histo -t $NUM_THREADS k_u_hash_0 | awk '{if(\$1>1) {dist+=\$2;if(dist>int(\"'\$ESTIMATED_GENOME_SIZE'\")*0.95&&flag==0){print \$1;flag=1}}}'`\n";
 print FILE "echo ovlMerThreshold=\$ovlMerThreshold\n\n";
 
 #this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
@@ -605,35 +605,7 @@ $other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClear
 $other_parameters="doFragmentCorrection=0 doOverlapBasedTrimming=0 doExtendClearRanges=0 ovlMerSize=30";
 }
 
-#data filtering
-if(scalar(@jump_info_array)>0){
-    print FILE "runCA  gkpFixInsertSizes=0 jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=\$ovlMerThreshold bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
-
-#here we filter libraries for chimerism and redundancy
-#we also reduce the insert coverage by jump libraries if necessary: no more than 100x insert coverage by all libraries
-
-    print FILE "if [[ ! -e CA/4-unitigger/unitigger.err ]];then\n";
-    print FILE "echo \"CA failed, check output under CA/ and runCA0.out\"\n";
-    print FILE "exit\n";
-    print FILE "fi\n";
-
-    print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.ext.reduced.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid 700\n";
-
-#we should not check for redundancy on the extended jump reads -- it will wipe them all out
-    print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" mateiid 0\"}'  > gkp.edits.msg\n";
-    if($EXTEND_JUMP_READS==0){
-	print FILE "cat genome.redundant.uid |awk '{print \"frg uid \"\$1\" isdeleted 1\"}' >> gkp.edits.msg\n";
-        print FILE "overlapStore -d ../genome.ovlStore | perl -e '{open(FILE,\"genome.redundant.uid\");while(\$line=<FILE>){chomp(\$line);\$h{\$line}=1}open(FILE,\"genome.uidMuid\");\$iid=0;while(\$line=<FILE>){\@f=split(/\\s+/,\$line);\$bad_iids{\$iid}=1 if(defined \$h{\$f[0]});\$iid++;} \%h=(); while(\$line=<STDIN>){\$line=~s/^\\s+//;\@f=split(/\\s+/,\$line);print \"\$f[0] \$f[1] \$f[2] \$f[3] \$f[4] \$f[5] \$f[6]\\n\" if(not(defined(\$bad_iids{\$f[0]}))&& not(defined(\$bad_iids{\$f[1]})));}}' | convertOverlap -b -ovl > overlaps.ovb\n";
-    print FILE "overlapStore -c genome.ovlStore -g ../genome.gkpStore -M 8192 -t $NUM_THREADS overlaps.ovb 1>overlapStore.err 2>&1\n";
-    print FILE "rm -rf ../*.ovlStore\nmv genome.ovlStore ../\n";
-    }
-    print FILE "echo -n \"Deleted reads due to redundancy/chimerism: \"\nwc -l gkp.edits.msg\n";
-    print FILE "gatekeeper --edit gkp.edits.msg ../genome.gkpStore 1>gatekeeper.err 2>&1\n";
-    print FILE "cd ../\nrm -rf *.tigStore\ncd ../\n\n";
-    print FILE "\n";
-}
-
-print FILE "runCA ovlMerThreshold=\$ovlMerThreshold bogBadMateDepth=20 gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
 
 #now we check if the unitig consensus which is sometimes problematic, failed, and fix the unitigs
 print FILE "if [[ -e \"CA/5-consensus/consensus.success\" ]];then\n";
