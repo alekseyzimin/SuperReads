@@ -482,7 +482,7 @@ if(scalar(@jump_info_array)>0){
 
 #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
     if(not(-e "chimeric_sj.txt")||$rerun_pe==1||$rerun_sj==1){
-	print FILE "filter_alt.pl < work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt >  chimeric_sj.txt \n";
+	print FILE "filter_alt.pl outtie < work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt >  chimeric_sj.txt \n";
     $rerun_sj=1;
     }
 
@@ -615,7 +615,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "exit\n";
     print FILE "fi\n";
 
-    print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.ext.reduced.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid 700\n";
+    print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.ext.reduced.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid\n";
     print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" mateiid 0\"}'  > gkp.edits.msg\n";
     print FILE "echo -n \"Found additional non-junction reads: \"\nwc -l gkp.edits.msg\n";
     print FILE "gatekeeper --edit gkp.edits.msg ../genome.gkpStore 1>gatekeeper.err 2>&1\n";

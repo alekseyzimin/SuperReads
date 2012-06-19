@@ -1,5 +1,15 @@
 #!/usr/bin/perl
 
+$orientation1="F";
+$orientation2="R";
+if($ARGV[0] eq "innie"){
+print STDERR "Assuming innie orientation\n";
+$orientation1="R";
+$orientation2="F";
+}else{
+print STDERR "Assuming outtie orientation\n";
+}
+
 $last_prefix="";
 $last_readnum=-2;
 $last_superread="";
@@ -13,10 +23,14 @@ while($line=<STDIN>){
   if($readnum%2==1){
     if($prefix eq $last_prefix && ($readnum-1)==$last_readnum){
       if($F[1] eq $last_superread){
-        if(abs($last_pos-$F[2])<700){
+        if($last_ori eq $orientation2 && $F[3] eq $orientation1 && $last_pos-$F[2]>0 && $last_pos-$F[2]<700){
           print "$prefix$last_readnum\n$prefix$readnum\n";
-        }
+        }elsif($last_ori eq $orientation1 && $F[3] eq $orientation2 && $F[2]-$last_pos>0 && $F[2]-$last_pos<700){
+	  print "$prefix$last_readnum\n$prefix$readnum\n";
+	}
       }else{
+	#next; #the below statement will knock out all jumping mates that share a k-unitig
+	next if(not($last_superread =~ /F|R/));
         @k_u=split(/_/,$last_superread);
         %h=();
         foreach $k(@k_u){
@@ -40,6 +54,7 @@ while($line=<STDIN>){
     $last_readnum=$readnum;
     $last_superread=$F[1];
     $last_pos=$F[2];
+    $last_ori=$F[3];
   }
 } 
 
