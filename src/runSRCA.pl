@@ -604,6 +604,24 @@ $other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClear
 }else{
 $other_parameters="doFragmentCorrection=0 doOverlapBasedTrimming=0 doExtendClearRanges=0 ovlMerSize=30";
 }
+#filter out non-junction fragments
+
+if(scalar(@jump_info_array)>0){
+    print FILE "runCA  gkpFixInsertSizes=0 jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=\$ovlMerThreshold bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
+
+
+    print FILE "if [[ ! -e CA/4-unitigger/unitigger.err ]];then\n";
+    print FILE "echo \"CA failed, check output under CA/ and runCA0.out\"\n";
+    print FILE "exit\n";
+    print FILE "fi\n";
+
+    print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.ext.reduced.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid 700\n";
+    print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" mateiid 0\"}'  > gkp.edits.msg\n";
+    print FILE "Found additional non-junction reads: \"\nwc -l gkp.edits.msg\n";
+    print FILE "gatekeeper --edit gkp.edits.msg ../genome.gkpStore 1>gatekeeper.err 2>&1\n";
+    print FILE "cd ../\nrm -rf *.tigStore\ncd ../\n\n";
+    print FILE "\n";
+}
 
 print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
 
