@@ -419,6 +419,20 @@ int main (int argc, char **argv)
 			 
 	  // If we get here it's a regular super-reads run,
 	  // not a jumping library
+	  uint64_t tempVar;
+	  if ((strlen(superReadNameAndLengthsFilename) != 0) ||
+	      renameSuperReads) {
+	       std::string superReadNameString = std::string (superReadName);
+	       int superReadLen = strlen (outputSeqSpace);
+	       if (maxSuperReadLength < superReadLen) {
+		    maxSuperReadLength = superReadLen;
+		    maxSuperReadNumbersUsed[superReadLen] = 0; }
+	       tempVar = 1000000000;
+	       tempVar *= superReadLen;
+	       tempVar += maxSuperReadNumbersUsed[superReadLen];
+	       oldSuperReadName[tempVar] = superReadNameString;
+	       ++maxSuperReadNumbersUsed[superReadLen]; }
+
 	  if (! renameSuperReads) {
 	       if (! noSequence)
 		    fputc ('>', outfile);
@@ -428,17 +442,8 @@ int main (int argc, char **argv)
 		    fputs (outputSeqSpace, outfile); fputc ('\n', outfile); }
 	  }
 	  else {
-	       std::string superReadNameString = std::string (superReadName);
-	       int superReadLen = strlen (outputSeqSpace);
-	       if (maxSuperReadLength < superReadLen) {
-		    maxSuperReadLength = superReadLen;
-		    maxSuperReadNumbersUsed[superReadLen] = 0; }
-	       uint64_t tempVar = 1000000000;
-	       tempVar *= superReadLen;
-	       tempVar += maxSuperReadNumbersUsed[superReadLen];
 	       superReadSequences[tempVar] = std::string (outputSeqSpace);
-	       oldSuperReadName[tempVar] = superReadNameString;
-	       ++maxSuperReadNumbersUsed[superReadLen]; }
+	  }
      }
 
      fclose (infile);
