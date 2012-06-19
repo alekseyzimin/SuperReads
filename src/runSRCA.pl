@@ -482,7 +482,7 @@ if(scalar(@jump_info_array)>0){
 
 #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
     if(not(-e "chimeric_sj.txt")||$rerun_pe==1||$rerun_sj==1){
-	print FILE "awk '{if(int(substr(\$1,3))%2==0){print \$3\" \"\$2\" \"\$1;}else{print \$3\" \"\$2\" \"substr(\$1,1,2)\"\"int(substr(\$1,3))-1}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt |uniq -D -f 1| awk 'BEGIN{insert=\"\";}{if(\$3!=insert){start=\$1;insert=\$3}else{if(start>\$1){print insert\" \"start-\$1}else{print insert\" \"\$1-start}}}' | perl -ane '{if(\$F[1]<700){print STDOUT \"\$F[0]\\n\",substr(\$F[0],0,2),int(substr(\$F[0],2))+1,\"\\n\";}}' 1> chimeric_sj.txt \n";
+	print FILE "filter_alt.pl < work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt >  chimeric_sj.txt \n";
     $rerun_sj=1;
     }
 
