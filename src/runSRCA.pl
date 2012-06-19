@@ -617,7 +617,7 @@ if(scalar(@jump_info_array)>0){
 
     print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.ext.reduced.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid 700\n";
     print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" mateiid 0\"}'  > gkp.edits.msg\n";
-    print FILE "Found additional non-junction reads: \"\nwc -l gkp.edits.msg\n";
+    print FILE "echo -n \"Found additional non-junction reads: \"\nwc -l gkp.edits.msg\n";
     print FILE "gatekeeper --edit gkp.edits.msg ../genome.gkpStore 1>gatekeeper.err 2>&1\n";
     print FILE "cd ../\nrm -rf *.tigStore\ncd ../\n\n";
     print FILE "\n";
