@@ -31,6 +31,7 @@
 #include <map>
 #include <iostream>
 #include <misc.hpp>
+#include <stdint.h>
 using namespace std;
 
 struct oldSuperReadPlacementStruct
@@ -48,12 +49,14 @@ FILE *Fopen (const char *fn, const char *mode);
 
 int main (int argc, char **argv)
 {
-     set<string> isGoodSuperRead;
+     map<string, uint32_t> isGoodSuperRead;
+     map<string, uint32_t>::iterator it2;
      FILE *infile;
      char *goodFilename=NULL;
      char *readPlacementFilename = NULL;
      char *superReadReductionFile = NULL;
      char *cptr;
+     bool translateSuperReadNames = false;
      for (int i=1; i<argc; i++) {
 	  if (strcmp(argv[i], "--reduce-file") == 0) {
 	       ++i;
@@ -67,6 +70,9 @@ int main (int argc, char **argv)
                ++i;
                readPlacementFilename = argv[i];
                continue; }
+	  if (strcmp(argv[i], "--translate-super-read-names") == 0) {
+	       translateSuperReadNames = true;
+	       continue; }
           //if we get here, then there is a problem with the arguments
                fprintf (stderr, "Unrecognized flag '%s'. Bye!\n", argv[i]);
                exit (1); 
@@ -92,13 +98,15 @@ int main (int argc, char **argv)
      
      if (goodFilename != NULL) {
      infile = Fopen (goodFilename, "r");
+     uint32_t superReadNum = 0;
      while (fgets (line, 1000000, infile)) {
 	  if (! isdigit(line[0]))
 	       continue;
 	  cptr = line;
 	  while (! isspace(*cptr)) ++cptr;
 	  *cptr = 0;
-	  isGoodSuperRead.insert (string(line));
+	  isGoodSuperRead[string(line)] = superReadNum;
+	  ++superReadNum;
      }
      fclose (infile);
      }
@@ -107,29 +115,38 @@ int main (int argc, char **argv)
      while (fgets (line, 1000000, infile)) {
 	  getFldsFromLine (line, flds);
 	  string superRead = string(flds[1]);
-          if(goodFilename != NULL){
-	  if (isGoodSuperRead.find (superRead) == isGoodSuperRead.end())
-	       continue;
+          if(goodFilename != NULL) {
+	       it2 = isGoodSuperRead.find (superRead);
+	       if (it2 == isGoodSuperRead.end())
+		    continue;
           }
 	  if (superReadReductionFile == NULL) {
 	       for (int i=0; i<4; i++) {
-		    fputs (flds[i], stdout);
+		    if ((i != 1) || (! translateSuperReadNames))
+			 fputs (flds[i], stdout);
+		    else
+			 fprintf (stdout, "%u", (unsigned int) it2->second);
 		    if (i<3)
 			 fputc (' ', stdout);
 		    else
 			 fputc ('\n', stdout); }
-	       continue; }
+	       continue;
+	  }
 	       
 	  // We only get here if there is a superReadReductionFile
-	  auto it = oldSuperReadToNewSuperReadMap.find(superRead);
+	  map<string, struct oldSuperReadPlacementStruct>::iterator it = oldSuperReadToNewSuperReadMap.find(superRead);
 	  if (it == oldSuperReadToNewSuperReadMap.end()) {
 	       for (int i=0; i<4; i++) {
-		    fputs (flds[i], stdout);
+		    if ((i != 1) || (! translateSuperReadNames))
+			 fputs (flds[i], stdout);
+		    else
+			 fprintf (stdout, "%u", (unsigned int) it2->second);
 		    if (i<3)
 			 fputc (' ', stdout);
 		    else
 			 fputc ('\n', stdout); }
-	       continue; }
+	       continue;
+	  }
 	  int offset = atoi(flds[2]);
 	  char ori = *flds[3];
 	  if (it->second.newOri == 'F') {
@@ -138,7 +155,18 @@ int main (int argc, char **argv)
 	       ori = (ori == 'F') ? 'R' : 'F';
 	       offset = (it->second).newOffsetToStart - offset;
 	  }
-	  cout << flds[0] << " " << (it->second).newSuperReadName << " " << offset << " " << ori << '\n';
+	  string tempString = (it->second).newSuperReadName;
+	  string newTempString;
+	  char localNumStr[20];
+
+	  if (translateSuperReadNames) {
+	       it2 = isGoodSuperRead.find (tempString);
+	       if (it2 == isGoodSuperRead.end())
+		    continue;
+	       sprintf (localNumStr, "%u", (unsigned int) it2->second);
+	       tempString = string (localNumStr); }
+	       
+	  cout << flds[0] << " " << tempString << " " << offset << " " << ori << '\n';
      }
      fclose (infile);
 }
