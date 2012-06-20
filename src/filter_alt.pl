@@ -29,7 +29,7 @@ while($line=<STDIN>){
 	  print "$prefix$last_readnum\n$prefix$readnum\n";
 	}
       }else{
-	#next; #the below statement will knock out all jumping mates that share a k-unitig
+	next; #the below statement will knock out all jumping mates that share a k-unitig
 	next if(not($last_superread =~ /F|R/));
         @k_u=split(/_/,$last_superread);
         %h=();
