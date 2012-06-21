@@ -25,33 +25,38 @@ while($line=<STDIN>){
     @f=split(/\s+/,$line);
     $prefix=substr($f[0],1,2);
     $readnumber=substr($f[0],3);
+    $editline="";
+    for($i=1;$i<scalar(@f);$i++){
+	$editline.="$f[$i] ";
+	}
 
 #print "DEBUG $prefix | $readnumber | $prefixHold | $readnumberHold\n";
 
     if($readnumber%2==0){#if the read is even we simply remember it
 	if($readnumberHold!=-1){
-	    print ">$prefixHold",$readnumberHold,"\n$sequenceHold\n>$prefixHold",$readnumberHold+1,"\nN\n";
+	    print ">$prefixHold$readnumberHold $editlineHold\n$sequenceHold\n>$prefixHold",$readnumberHold+1,"\nN\n";
 	}
 	$prefixHold=$prefix;
 	$readnumberHold=int($readnumber);
+        $editlineHold=$editline;
 	$line=<STDIN>;
 	chomp($line);
 	$sequenceHold=$line;
     }
-    elsif($readnumberHold==-1){#the prevois even read is missing
+    elsif($readnumberHold==-1){#the previous even read is missing
 	print ">$prefix",$readnumber-1,"\nN\n$line\n";
 	$line=<STDIN>;
 	print $line;
     }
     elsif($readnumber-1!=$readnumberHold){#previous mate is missing odd and current is missing even
-	print ">$prefixHold$readnumberHold\n$sequenceHold\n>$prefixHold",$readnumberHold+1,"\nN\n>$prefix",$readnumber-1,"\nN\n$line\n";
+	print ">$prefixHold$readnumberHold $editlineHold\n$sequenceHold\n>$prefixHold",$readnumberHold+1,"\nN\n>$prefix",$readnumber-1,"\nN\n$line\n";
 	$line=<STDIN>;
 	print $line;
 	$prefixHold="";
 	$readnumberHold=-1;
     }
     elsif($readnumber-1==$readnumberHold){
-	print ">$prefixHold$readnumberHold\n$sequenceHold\n$line\n";
+	print ">$prefixHold$readnumberHold $editlineHold\n$sequenceHold\n$line\n";
 	$line=<STDIN>;
 	print $line;
 	$prefixHold="";

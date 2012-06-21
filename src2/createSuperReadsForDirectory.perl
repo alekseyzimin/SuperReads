@@ -204,14 +204,18 @@ if ($noReduce==0) {
     $localGoodSequenceOutputFile = "${finalSuperReadSequenceFile}.all";
     $superReadNameAndLengthsFile = "$workingDirectory/sr_sizes.tmp";
     $reduceFile = "$workingDirectory/reduce.tmp";
+    $reduceFileTranslated = "$workingDirectory/reduce.translated.tmp";
     $tflag = "-rename-super-reads";
     if ($keepKUnitigsInSuperreadNames) {
 	$tflag = ""; }
     $cmd = "cat $superReadCountsFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile -good-sequence-output-file $localGoodSequenceOutputFile -super-read-name-and-lengths-file $superReadNameAndLengthsFile $tflag 2> $sequenceCreationErrorFile";
     &runCommandAndExitIfBad ($cmd, $superReadNameAndLengthsFile, 1, "createFastaSuperReadSequences", $localGoodSequenceOutputFile, $goodSuperReadsNamesFile, $superReadNameAndLengthsFile);
-
+    
     $cmd = "$exeDir/reduce_sr $maxKUnitigNumber $mergedKUnitigLengthsFile $merLen $superReadNameAndLengthsFile -o $reduceFile";
     &runCommandAndExitIfBad ($cmd, $reduceFile, 1, "reduceSuperReads", $reduceFile, $fastaSuperReadErrorsFile);
+
+    $cmd = "perl -e '{\$n=0;open(FILE,\"$goodSuperReadsNamesFile\");while(\$line=<FILE>){chomp(\$line);\$sr_number{\$line}=\$n++;}while(\$line=<STDIN>){chomp(\$line);\@f=split(\" \",\$line);print \"\$sr_number{\$f[0]} \$sr_number{\$f[1]} \$f[2] \$f[3]\\n\"}}' < $reduceFile > $reduceFileTranslated";
+     &runCommandAndExitIfBad ($cmd, $reduceFileTranslated, 1, "translateReduceFile", $reduceFileTranslated);
 
     $tflag = "--translate-super-read-names";
     if ($keepKUnitigsInSuperreadNames) {
@@ -219,7 +223,7 @@ if ($noReduce==0) {
     $cmd = "$exeDir/eliminateBadSuperReadsUsingList --read-placement-file $joinerOutput --good-super-reads-file $goodSuperReadsNamesFile $tflag --reduce-file $reduceFile > $finalReadPlacementFile";
     &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1, "createFinalReadPlacementFile", $finalReadPlacementFile);
 
-    $cmd = "$exeDir/outputRecordsNotOnList $reduceFile $localGoodSequenceOutputFile 0 --fld-num 0 > $finalSuperReadSequenceFile";
+    $cmd = "$exeDir/outputRecordsNotOnList $reduceFileTranslated $localGoodSequenceOutputFile 0 --fld-num 0 > $finalSuperReadSequenceFile";
     &runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1, "createFinalSuperReadFastaSequences", $finalSuperReadSequenceFile); }
 else {
     $tflag = "-rename-super-reads";
