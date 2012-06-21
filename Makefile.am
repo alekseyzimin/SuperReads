@@ -107,8 +107,10 @@ dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
 
 killBadKUnitigs_SOURCES = src2/killBadKUnitigs.cc
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
-findMatchesBetweenKUnitigsAndReads_SOURCES =    \
-src2/findMatchesBetweenKUnitigsAndReads.cc src/read_parser.cc src/mer_dna.cc
+findMatchesBetweenKUnitigsAndReads_SOURCES = src/read_parser.cc				\
+                                             src2/findMatchesBetweenKUnitigsAndReads.cc	\
+                                             src/mer_dna.cc				\
+                                             src/gcc_builtins.cc
 BUILT_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
