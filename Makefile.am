@@ -58,7 +58,7 @@ V_YAGGO_0 = @echo "  YAGGO " $@;
 ##############################
 bin_PROGRAMS += create_k_unitigs error_corrected2frg		\
                 reverse_complement reduce_sr sorted_merge	\
-                create_k_unitigs_large_k
+                create_k_unitigs_large_k homo_trim
 
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl		\
@@ -76,6 +76,7 @@ noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/bloom_hash.hpp src/bloom_counter2.hpp	\
                   src/mer_dna.hpp src/read_parser.hpp
 
+homo_trim_SOURCES = src/homo_trim.cc
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 BUILT_SOURCES              += src/error_corrected2frg_cmdline.hpp
 reverse_complement_SOURCES = src/reverse_complement.cc
