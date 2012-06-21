@@ -41,6 +41,9 @@
 # -mikedebug : don't kill off intermediate results
 # -jumplibraryreads : we are generating for jump-library reads; a k-unitigs
 #                                 file must be specified
+# -keep-kunitigs-in-superread-names : Use the super-read names which have the
+#                 k-unitig numbers in them; otherwise use numeric names
+#                 (lower numbers correspond to shorter super-reads)
 # -time : time the commands
 # -h : help 
 
@@ -115,7 +118,6 @@ $kUnitigOverlapsFile = "${prefixForOverlapsBetweenKUnitigs}.overlaps";
 $superReadCountsFile = "$workingDirectory/superReadCounts.all";
 
 $joinerOutput = "$workingDirectory/readPositionsInSuperReads";
-$readsInGoodSuperReads = "$workingDirectory/readPositionsInGoodSuperReads";
 
 $readKUnitigMatchOutput = "$workingDirectory/newTestOutput.nucmerLinesOnly";
 $sequenceCreationErrorFile = "$workingDirectory/createFastaSuperReadSequences.errors.txt";
@@ -202,25 +204,34 @@ if ($noReduce==0) {
     $localGoodSequenceOutputFile = "${finalSuperReadSequenceFile}.all";
     $superReadNameAndLengthsFile = "$workingDirectory/sr_sizes.tmp";
     $reduceFile = "$workingDirectory/reduce.tmp";
-    $cmd = "cat $superReadCountsFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile -good-sequence-output-file $localGoodSequenceOutputFile -super-read-name-and-lengths-file $superReadNameAndLengthsFile 2> $sequenceCreationErrorFile";
+    $tflag = "-rename-super-reads";
+    if ($keepKUnitigsInSuperreadNames) {
+	$tflag = ""; }
+    $cmd = "cat $superReadCountsFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile -good-sequence-output-file $localGoodSequenceOutputFile -super-read-name-and-lengths-file $superReadNameAndLengthsFile $tflag 2> $sequenceCreationErrorFile";
     &runCommandAndExitIfBad ($cmd, $superReadNameAndLengthsFile, 1, "createFastaSuperReadSequences", $localGoodSequenceOutputFile, $goodSuperReadsNamesFile, $superReadNameAndLengthsFile);
 
     $cmd = "$exeDir/reduce_sr $maxKUnitigNumber $mergedKUnitigLengthsFile $merLen $superReadNameAndLengthsFile -o $reduceFile";
     &runCommandAndExitIfBad ($cmd, $reduceFile, 1, "reduceSuperReads", $reduceFile, $fastaSuperReadErrorsFile);
 
-    $cmd = "$exeDir/eliminateBadSuperReadsUsingList --read-placement-file $joinerOutput --good-super-reads-file $goodSuperReadsNamesFile > $readsInGoodSuperReads";
-    &runCommandAndExitIfBad ($cmd, $readsInGoodSuperReads, 1, "createFinalReadPlacementFileFilterGood", $readsInGoodSuperReads);
-
-    $cmd = "$exeDir/eliminateBadSuperReadsUsingList  --read-placement-file $readsInGoodSuperReads --reduce-file $reduceFile > $finalReadPlacementFile";
+    $tflag = "--translate-super-read-names";
+    if ($keepKUnitigsInSuperreadNames) {
+	$tflag = ""; }
+    $cmd = "$exeDir/eliminateBadSuperReadsUsingList --read-placement-file $joinerOutput --good-super-reads-file $goodSuperReadsNamesFile $tflag --reduce-file $reduceFile > $finalReadPlacementFile";
     &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1, "createFinalReadPlacementFile", $finalReadPlacementFile);
 
     $cmd = "$exeDir/outputRecordsNotOnList $reduceFile $localGoodSequenceOutputFile 0 --fld-num 0 > $finalSuperReadSequenceFile";
     &runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1, "createFinalSuperReadFastaSequences", $finalSuperReadSequenceFile); }
 else {
-    $cmd = "cat $superReadCountsFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile 2> $sequenceCreationErrorFile > $finalSuperReadSequenceFile";
+    $tflag = "-rename-super-reads";
+    if ($keepKUnitigsInSuperreadNames) {
+	$tflag = ""; }
+    $cmd = "cat $superReadCountsFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile $tflag 2> $sequenceCreationErrorFile > $finalSuperReadSequenceFile";
     &runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1, "createFastaSuperReadSequences", $finalSuperReadSequenceFile, $goodSuperReadsNamesFile);
 
-    $cmd = "$exeDir/eliminateBadSuperReadsUsingList --read-placement-file $joinerOutput --good-super-reads-file $goodSuperReadsNamesFile > $finalReadPlacementFile";
+    $tflag = "--translate-super-read-names";
+    if ($keepKUnitigsInSuperreadNames) {
+	$tflag = ""; }
+    $cmd = "$exeDir/eliminateBadSuperReadsUsingList --read-placement-file $joinerOutput --good-super-reads-file $goodSuperReadsNamesFile $tflag > $finalReadPlacementFile";
     &runCommandAndExitIfBad ($cmd, $finalReadPlacementFile, 1, "createFinalReadPlacementFile", $finalReadPlacementFile, $fastaSuperReadErrorsFile);
 }
 
@@ -308,6 +319,9 @@ sub processArgs
 	    next; }
 	elsif ($ARGV[$i] eq "-mikedebug") {
 	    $mikedebug = 1;
+	    next; }
+	elsif ($ARGV[$i] eq "-keep-kunitigs-in-superread-names") {
+	    $keepKUnitigsInSuperreadNames = 1;
 	    next; }
 	elsif ($ARGV[$i] eq "-time") {
 	    $timeIt = 1;

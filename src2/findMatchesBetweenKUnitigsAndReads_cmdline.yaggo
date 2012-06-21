@@ -9,14 +9,20 @@ option("l", "long") {
 option("o", "output") {
   description "Output file"
   c_string; default "kunitigs_reads_matches" }
+option("m", "mer") {
+  description "Length of mer"
+  uint32; required }
 option("gzip") {
   description "Gzip output"
   off }
 option("t", "threads") {
   description "Number of threads"
   uint32; default "1" }
-arg("jellyfishdb") {
-  description "Jellyfish database"
+option("v", "verbose") {
+  description "Be verbose"
+  off }
+option("jellyfishdb") {
+  description "Jellyfish database. Valid only if m <= 31"
   c_string; typestr "path" }
 arg("kUnitigFile") {
   description "Fasta file with k-unitigs sequences"
