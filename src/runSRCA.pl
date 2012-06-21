@@ -566,7 +566,7 @@ print FILE "echo -n 'Linking PE reads ';\ncat ??.linking.frg |grep '^{FRG' |wc -
 
 #create frg file for super reads
 if(not(-e "superReadSequences_shr.frg")||$rerun_pe==1){
-    print FILE "awk 'BEGIN{f=1}{if(f==0){print l\" \"\$1\" \"length(\$1)}else{l=\$1}f=1-f;}' work1/superReadSequences.fasta |sort -grk3,3 -S 20%| awk '{print \$1\"\\n\"\$2}' | create_sr_frg.pl 2>renamed_sr.txt | fasta2frg.pl sr >  superReadSequences_shr.frg\n";
+    print FILE "cat work1/superReadSequences.fasta | create_sr_frg.pl 2>renamed_sr.txt | fasta2frg.pl sr >  superReadSequences_shr.frg\n";
 }
 
 ###done with super reads for PE###
