@@ -55,7 +55,7 @@ int main (int argc, char **argv)
      char *goodFilename=NULL;
      char *readPlacementFilename = NULL;
      char *superReadReductionFile = NULL;
-     char *cptr;
+     char *cptr, strSpace[200];
      bool translateSuperReadNames = false;
      for (int i=1; i<argc; i++) {
 	  if (strcmp(argv[i], "--reduce-file") == 0) {
@@ -83,6 +83,9 @@ int main (int argc, char **argv)
         exit (1); 
      }
        
+     if (goodFilename == NULL)
+	  translateSuperReadNames = false;
+
      if (superReadReductionFile != NULL) {
 	  infile = Fopen (superReadReductionFile, "r");
 	  while (fgets (line, 1000000, infile)) {
@@ -97,20 +100,20 @@ int main (int argc, char **argv)
      }
      
      if (goodFilename != NULL) {
-     infile = Fopen (goodFilename, "r");
-     uint32_t superReadNum = 0;
-     while (fgets (line, 1000000, infile)) {
-	  if (! isdigit(line[0]))
-	       continue;
-	  cptr = line;
-	  while (! isspace(*cptr)) ++cptr;
-	  *cptr = 0;
-	  isGoodSuperRead[string(line)] = superReadNum;
-	  ++superReadNum;
+	  infile = Fopen (goodFilename, "r");
+	  uint32_t superReadNum = 0;
+	  while (fgets (line, 1000000, infile)) {
+	       if (! isdigit(line[0]))
+		    continue;
+	       cptr = line;
+	       while (! isspace(*cptr)) ++cptr;
+	       *cptr = 0;
+	       isGoodSuperRead[string(line)] = superReadNum;
+	       ++superReadNum;
+	  }
+	  fclose (infile);
      }
-     fclose (infile);
-     }
-
+     
      infile = Fopen (readPlacementFilename, "r");
      while (fgets (line, 1000000, infile)) {
 	  getFldsFromLine (line, flds);
@@ -134,13 +137,16 @@ int main (int argc, char **argv)
 	  }
 	       
 	  // We only get here if there is a superReadReductionFile
+	  if (translateSuperReadNames) {
+	       sprintf (strSpace, "%u", (unsigned int) it2->second);
+	       superRead = string (strSpace); }
 	  map<string, struct oldSuperReadPlacementStruct>::iterator it = oldSuperReadToNewSuperReadMap.find(superRead);
 	  if (it == oldSuperReadToNewSuperReadMap.end()) {
 	       for (int i=0; i<4; i++) {
 		    if ((i != 1) || (! translateSuperReadNames))
 			 fputs (flds[i], stdout);
 		    else
-			 fprintf (stdout, "%u", (unsigned int) it2->second);
+			 fputs (superRead.c_str(), stdout);
 		    if (i<3)
 			 fputc (' ', stdout);
 		    else
@@ -155,18 +161,7 @@ int main (int argc, char **argv)
 	       ori = (ori == 'F') ? 'R' : 'F';
 	       offset = (it->second).newOffsetToStart - offset;
 	  }
-	  string tempString = (it->second).newSuperReadName;
-	  string newTempString;
-	  char localNumStr[20];
-
-	  if (translateSuperReadNames) {
-	       it2 = isGoodSuperRead.find (tempString);
-	       if (it2 == isGoodSuperRead.end())
-		    continue;
-	       sprintf (localNumStr, "%u", (unsigned int) it2->second);
-	       tempString = string (localNumStr); }
-	       
-	  cout << flds[0] << " " << tempString << " " << offset << " " << ori << '\n';
+	  cout << flds[0] << " " << (it->second).newSuperReadName << " " << offset << " " << ori << '\n';
      }
      fclose (infile);
 }
