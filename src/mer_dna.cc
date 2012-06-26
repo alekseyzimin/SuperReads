@@ -117,6 +117,26 @@ void mer_dna::reverse_complement() {
     large_shift_right(rs);
 }
 
+mer_dna mer_dna::get_reverse_complement() const {
+  mer_dna res(*this);
+  res.reverse_complement();
+  return res;
+}
+
+void mer_dna::canonicalize() {
+  mer_dna rc = this->get_reverse_complement();
+  if(rc < *this)
+    *this = rc;
+}
+
+mer_dna mer_dna::get_canonical() const {
+  mer_dna rc = this->get_reverse_complement();
+  if(rc < *this)
+    return rc;
+  else
+    return *this;
+}
+
 void mer_dna::large_shift_right(unsigned int rs) {
   if(nb_words() > 1) {
     const unsigned int barrier = (nb_words() - 1) & ((uint64_t)-1 << 2);

@@ -16,19 +16,21 @@
 
 #include <err.hpp>
 
-namespace err {
-  std::ostream &operator<<(std::ostream &os, const err::substr &ss) {
-    os.write(ss._s, ss._l);
-    return os;
-  }
+namespace jflib {
+  namespace err {
+    std::ostream &operator<<(std::ostream &os, const err::substr &ss) {
+      os.write(ss._s, ss._l);
+      return os;
+    }
 
-  std::ostream &operator<<(std::ostream &os, const err::no_t &x) {
-    x.write(os, errno);
-    return os;
-  }
+    std::ostream &operator<<(std::ostream &os, const err::no_t &x) {
+      x.write(os, errno);
+      return os;
+    }
 
-  std::ostream &operator<<(std::ostream &os, const err::str &x) {
-    err::no_t::write(os, errno);
-    return os;
+    std::ostream &operator<<(std::ostream &os, const err::str &x) {
+      err::no_t::write(os, errno);
+      return os;
+    }
   }
 }
