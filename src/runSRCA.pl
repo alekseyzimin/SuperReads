@@ -39,6 +39,7 @@
 #
 
 #parsing config file
+my $KMER=31;
 my $JELLYFISH_PATH="";
 my $SR_PATH="";
 my $CA_PATH="";
@@ -133,6 +134,14 @@ while($line=<FILE>){
             $f[1]=~s/\s+$//;
             $LIMIT_JUMP_COVERAGE=int($f[1]);
             die("bad value for LIMIT_JUMP_COVERAGE") if($LIMIT_JUMP_COVERAGE<1);
+            next;
+        }
+        elsif($line =~ /^GRAPH_KMER_SIZE/){
+            @f=split(/=/,$line);
+            $f[1]=~s/^\s+//;
+            $f[1]=~s/\s+$//;
+            $KMER=int($f[1]);
+            die("bad value for GRAPH_KMER_SIZE") if($KMER<15 || $KMER>101);
             next;
         }
         elsif($line =~ /^USE_LINKING_MATES/){
@@ -437,30 +446,38 @@ if(scalar(@jump_info_array)>0){
 
 ###done error correct JUMP###
 print FILE "\n";
-###build k-unitigs###
+###estimate genome size###
 
 if(scalar(@jump_info_array)>0){
-	$k_u_arg="pe.cor.fa sj.cor.fa";
+        $k_u_arg="pe.cor.fa sj.cor.fa";
 }else{
-	$k_u_arg="pe.cor.fa";
+        $k_u_arg="pe.cor.fa";
 }
 
-if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
-	print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s \$JF_SIZE -o k_u_hash $k_u_arg\n";
-	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
-	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
-        $rerun_pe=1;
-	$rerun_sj=1;
+if(not(-e "k_u_hash_0")||$rerun_pe==1||$rerun_sj==1){
+print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s \$JF_SIZE -o k_u_hash $k_u_arg\n";
 }
-
-###done build k-unitigs###
-print FILE "\n";
-###estimate genome size###
 
 print FILE "ESTIMATED_GENOME_SIZE=`jellyfish histo -t $NUM_THREADS -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
 print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
 
-###done estimate genome size###
+####done estimate genome size###
+print FILE "\n";
+###build k-unitigs###
+
+if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
+	if($KMER>31)
+	{
+	print FILE "create_k_unitigs_large_k -t $NUM_THREADS -m $KMER -n \$ESTIMATED_GENOME_SIZE -l $KMER -f 0.0001 $k_u_arg | awk '{if(\$1 ~ /^>/) readname=\$1; else print readname\" length:\"length(\$1)\"\\n\"\$1;}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+	}else{
+	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l $KMER -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
+	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+        $rerun_pe=1;
+	$rerun_sj=1;
+}
+}
+
+###done build k-unitigs###
 print FILE "\n";
 ###super reads and filtering for jump###
 
@@ -472,7 +489,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "rm -rf work2\n";
     $rerun_sj=1;
     }
-    print FILE "createSuperReadsForDirectory.perl -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
+    print FILE "createSuperReadsForDirectory.perl -l $KMER -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
     print FILE "if [[ ! -e work2/superReads.success ]];then\n";
@@ -536,7 +553,7 @@ if($rerun_pe==1|| not(-e "work1")){
     $rerun_pe=1;
 	}
 
-print FILE "createSuperReadsForDirectory.perl -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+print FILE "createSuperReadsForDirectory.perl -l $KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
 print FILE "if [[ ! -e work1/superReads.success ]];then\n";
