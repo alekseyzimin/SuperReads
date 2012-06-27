@@ -131,27 +131,12 @@ public:
         continue;
       current = *stream;
       
-      unsigned int count = 0;
-      // Check fwd continuation. Grow k-unitig if not unique
-      bool unique_fwd_cont = next_mer(forward, current, continuation, &count);
-      bool unique_bwd_return = true;
-      if(unique_fwd_cont)
-        unique_bwd_return = next_mer(backward, continuation, tmp, &count);
-      if(!unique_fwd_cont || !unique_bwd_return) {
+      // Grow unitig if a starting (branching) mer
+      if(starting_mer(forward, current)) {
         grow_unitig(backward, current, output);
-        continue;
-      }
-
-      // Check bwd continuation. Grow k-unitig if not unique
-      bool unique_bwd_cont = next_mer(backward, current, continuation, &count);
-      bool unique_fwd_return = true;
-      if(unique_bwd_cont)
-        unique_fwd_return = next_mer(forward, continuation, tmp, &count);
-      if(!unique_bwd_cont || !unique_fwd_return) {
+      } else if(starting_mer(backward, current)) {
         grow_unitig(forward, current, output);
-        continue;
       }
-
       // Unique continuation on both sides -> middle of k-unitig: do nothing
     }
   }
@@ -225,6 +210,29 @@ private:
         if(count)
           *count = low_cont_count;
         return true;
+    }
+    return false;
+  }
+
+  // Return true if m is a starting mer in the given dir: a mer is a
+  // starting mer if it is branching forward, or backward, or dries
+  // out, maybe after some number of low count mer to skip.
+  bool starting_mer(direction dir, mer_dna m) {
+    int low_cont = args.cont_on_low_arg;
+    mer_dna continuation(m.k());
+
+    while(true) {
+      unsigned int count       = 0;
+      if(!next_mer(dir, m, continuation, &count))
+        return true;
+      if(count >= args.quality_threshold_arg) {
+        if(!next_mer(rev_direction(dir), continuation, m, &count))
+          return true;
+        break;
+      }
+      if(--low_cont < 0)
+        return true;
+      m = continuation;
     }
     return false;
   }
