@@ -123,8 +123,6 @@ public:
     mer_dna                          tmp(mer_len_);
 
     for( ; stream; ++stream) {
-      if(!stream.canonical().to_str().compare("CCCCCCCCCCCCCCCCCACCCCCCCCCCCAC"))
-        asm("int3");
       auto is_new = used_mers_.insert(stream.canonical());
       if(!is_new.second)
         continue;
