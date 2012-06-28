@@ -468,7 +468,7 @@ print FILE "\n";
 if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
 	if($KMER>31)
 	{
-	print FILE "create_k_unitigs_large_k -t $NUM_THREADS -m $KMER -n \$ESTIMATED_GENOME_SIZE -l $KMER -f 0.000001 $k_u_arg | awk '{if(\$1 ~ /^>/) readname=\$1; else print readname\" length:\"length(\$1)\"\\n\"\$1;}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+	print FILE "create_k_unitigs_large_k -t $NUM_THREADS -m $KMER -n \$ESTIMATED_GENOME_SIZE -l $KMER -f 0.000001 $k_u_arg > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
 	}else{
 	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l $KMER -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
 	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
