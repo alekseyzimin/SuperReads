@@ -298,7 +298,7 @@ private:
     if(start.k() + seq.length() < args.min_len_arg)
       return;
     uint64_t id = (unitig_id_ += 1) - 1;
-    output << ">" << id << "\n";
+    output << ">" << id << " length:" << (start.k() + seq.size()) << "\n";
     if(dir == backward) {
       std::string reversed(seq.rbegin(), seq.rend());
       output << reversed << start << "\n";
