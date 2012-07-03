@@ -119,6 +119,18 @@ public:
     return *this;
   }
 
+  mer_dna& operator=(const char* s) {
+    from_str(s);
+    return *this;
+  }
+
+  mer_dna& operator=(const std::string& s) {
+    if(s.size() != _k)
+      throw std::length_error("Wrong input string size");
+    from_str(s.c_str());
+    return *this;
+  }
+
   // Shift the k-mer by 1 base, left or right. The char version take
   // a base 'A', 'C', 'G', or 'T'. The uint64_t version takes a code
   // in [0, 3] (not check of validity of argument, taken modulo
@@ -154,6 +166,10 @@ public:
   }
 
   void reverse_complement();
+  void canonicalize();
+
+  mer_dna get_reverse_complement() const;
+  mer_dna get_canonical() const;
 
   // Transform the k-mer into a string. For the char * version,
   // assume that the buffer is large enough to receive k+1

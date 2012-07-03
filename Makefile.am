@@ -58,7 +58,7 @@ V_YAGGO_0 = @echo "  YAGGO " $@;
 ##############################
 bin_PROGRAMS += create_k_unitigs error_corrected2frg		\
                 reverse_complement reduce_sr sorted_merge	\
-                create_k_unitigs_large_k homo_trim
+                create_k_unitigs_large_k homo_trim bloom_query
 
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl		\
@@ -90,6 +90,9 @@ create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
                                    src/read_parser.cc src/mer_dna.cc	\
                                    src/MurmurHash3.cpp src/mer_stream.hpp
 BUILT_SOURCES += src/create_k_unitigs_large_k_cmdline.hpp
+bloom_query_SOURCES = src/bloom_query.cc src/mer_dna.cc	\
+                      src/MurmurHash3.cpp
+BUILT_SOURCES += src/bloom_query_cmdline.hpp
 
 ##############################
 # src2 pipeline

@@ -80,7 +80,9 @@ struct overlapDataStruct
      int ahg;
      int bhg;
      char netOri;
-} *overlapData;
+};
+
+ExpandingBuffer< struct overlapDataStruct > overlapData(1000);
 
 charb line(2000);
 char **kUnitigSequences;
@@ -125,8 +127,6 @@ int main (int argc, char *argv[])
 
      mallocOrDie (kUnitigSequences, largestKUnitigNumber+1, char *);
      mallocOrDie (kUnitigLengths, largestKUnitigNumber+1, int);
-     llval = largestKUnitigNumber+1; llval *= EST_OVLS_PER_KUNITIG;
-     mallocOrDie (overlapData, llval, struct overlapDataStruct);
      mallocOrDie (startOverlapByUnitig, largestKUnitigNumber+2, uint64_t);
      loadKUnitigSequences (inputPrefix, numInputFiles);
 

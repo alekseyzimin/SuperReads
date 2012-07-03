@@ -53,6 +53,14 @@ public:
     data_(realloc(0, 0, m_ / 5 + (m_ % 5 != 0))),
     hash_fns_() { }
 
+  bloom_counter2(size_t m, unsigned long k, unsigned char* ptr) :
+    m_(m), k_(k), data_(ptr), hash_fns_() { }
+
+
+  void write_bits(std::ostream& out) {
+    out.write((char*)data_, m_ / 5 + (m_ % 5 != 0));
+  }
+
   // Number of hash functions
   unsigned long k() const { return k_; }
   // Size of bit vector

@@ -221,7 +221,19 @@ TEST_P(KMer, ReverseComplement) {
   EXPECT_EQ(rc, m.to_str());
   mer_dna rm(rc);
   EXPECT_EQ(rm, m);
+  EXPECT_EQ(m, m.get_reverse_complement().get_reverse_complement());
 }
+
+TEST_P(KMer, Canonical) {
+  mer_dna m(GetParam());
+  mer_dna canonical = m.get_canonical();
+
+  EXPECT_FALSE(m < canonical);
+  EXPECT_TRUE(canonical == m || canonical == m.get_reverse_complement());
+  m.canonicalize();
+  EXPECT_EQ(canonical, m.get_canonical());
+}
+
 
 // TEST_P(KMer, SetBits) {
 //   mer_dna m(GetParam());

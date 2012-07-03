@@ -39,6 +39,7 @@
 #
 
 #parsing config file
+my $KMER=31;
 my $JELLYFISH_PATH="";
 my $SR_PATH="";
 my $CA_PATH="";
@@ -133,6 +134,14 @@ while($line=<FILE>){
             $f[1]=~s/\s+$//;
             $LIMIT_JUMP_COVERAGE=int($f[1]);
             die("bad value for LIMIT_JUMP_COVERAGE") if($LIMIT_JUMP_COVERAGE<1);
+            next;
+        }
+        elsif($line =~ /^GRAPH_KMER_SIZE/){
+            @f=split(/=/,$line);
+            $f[1]=~s/^\s+//;
+            $f[1]=~s/\s+$//;
+            $KMER=int($f[1]);
+            die("bad value for GRAPH_KMER_SIZE") if($KMER<15 || $KMER>101);
             next;
         }
         elsif($line =~ /^USE_LINKING_MATES/){
@@ -294,7 +303,7 @@ else{
     die("createSuperReadsForDirectory.perl not found at ${SR_PATH}");
 }
 
-print "\nPARAMETERS:\nKMER_COUNT_THRESHOLD = $KMER_COUNT_THRESHOLD\nLIMIT_JUMP_COVERAGE = $LIMIT_JUMP_COVERAGE\nNUM_THREADS = $NUM_THREADS\nJF_SIZE = $JF_SIZE\nEXTEND_JUMP_READS = $EXTEND_JUMP_READS\nCA_PARAMETERS = $CA_PARAMETERS\n\n";
+print "\nPARAMETERS:\nGRAPH_KMER_SIZE = $KMER\nUSE_LINKING_MATES = $USE_LINKING_MATES\nKMER_COUNT_THRESHOLD = $KMER_COUNT_THRESHOLD\nLIMIT_JUMP_COVERAGE = $LIMIT_JUMP_COVERAGE\nNUM_THREADS = $NUM_THREADS\nJF_SIZE = $JF_SIZE\nEXTEND_JUMP_READS = $EXTEND_JUMP_READS\nCA_PARAMETERS = $CA_PARAMETERS\n\n";
 print "DATA:\nPE:\n";
 foreach $v(@pe_info_array){
     print "$v\n";
@@ -415,7 +424,7 @@ print FILE "\n";
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
     print FILE "cat combined_0 > /dev/null\n";
-    print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/../share/adapter_0 --trim-contaminant -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log| homo_trim 2 | add_missing_mates.pl > pe.cor.fa\n";
+    print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log| homo_trim 2 | add_missing_mates.pl > pe.cor.fa\n";
     $rerun_pe=1;
 }
 #compute average PE read length -- we will need this for Astat later
@@ -430,37 +439,45 @@ if(scalar(@jump_info_array)>0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
         print FILE "cat combined_0 > /dev/null\n";
-	print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/../share/adapter_0 --trim-contaminant -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log | homo_trim 2 | add_missing_mates.pl > sj.cor.fa\n";
+	print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log | homo_trim 2 | add_missing_mates.pl > sj.cor.fa\n";
         $rerun_sj=1;
     }
 }
 
 ###done error correct JUMP###
 print FILE "\n";
-###build k-unitigs###
+###estimate genome size###
 
 if(scalar(@jump_info_array)>0){
-	$k_u_arg="pe.cor.fa sj.cor.fa";
+        $k_u_arg="pe.cor.fa sj.cor.fa";
 }else{
-	$k_u_arg="pe.cor.fa";
+        $k_u_arg="pe.cor.fa";
 }
 
-if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
-	print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s \$JF_SIZE -o k_u_hash $k_u_arg\n";
-	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l 31 -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
-	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
-        $rerun_pe=1;
-	$rerun_sj=1;
+if(not(-e "k_u_hash_0")||$rerun_pe==1||$rerun_sj==1){
+print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s \$JF_SIZE -o k_u_hash $k_u_arg\n";
 }
-
-###done build k-unitigs###
-print FILE "\n";
-###estimate genome size###
 
 print FILE "ESTIMATED_GENOME_SIZE=`jellyfish histo -t $NUM_THREADS -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
 print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
 
-###done estimate genome size###
+####done estimate genome size###
+print FILE "\n";
+###build k-unitigs###
+
+if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
+	if($KMER>31)
+	{
+	print FILE "create_k_unitigs_large_k -c ",int($KMER/2)," -t $NUM_THREADS -m $KMER -n \$ESTIMATED_GENOME_SIZE -l $KMER -f 0.000001 $k_u_arg | grep -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+	}else{
+	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l $KMER -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
+	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+        $rerun_pe=1;
+	$rerun_sj=1;
+}
+}
+
+###done build k-unitigs###
 print FILE "\n";
 ###super reads and filtering for jump###
 
@@ -472,7 +489,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "rm -rf work2\n";
     $rerun_sj=1;
     }
-    print FILE "createSuperReadsForDirectory.perl -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
+    print FILE "createSuperReadsForDirectory.perl -l $KMER -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
     print FILE "if [[ ! -e work2/superReads.success ]];then\n";
@@ -536,7 +553,7 @@ if($rerun_pe==1|| not(-e "work1")){
     $rerun_pe=1;
 	}
 
-print FILE "createSuperReadsForDirectory.perl -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+print FILE "createSuperReadsForDirectory.perl -l $KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
 print FILE "if [[ ! -e work1/superReads.success ]];then\n";

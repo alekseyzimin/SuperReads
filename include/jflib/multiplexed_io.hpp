@@ -218,7 +218,7 @@ namespace jflib {
         size_t clen = pptr() - pbase();
         if(clen == 0)
           return;
-        _elt->set_write_len(pptr() - pbase());
+        _elt->set_write_len(clen);
         ++_nbr;
         if(2 * clen >= (size_t)(epptr() - pptr()) * _nbr) {
           _elt->set_do_sync(false);
@@ -254,8 +254,7 @@ namespace jflib {
             const char* nbase = _elt->resize(2 * _overflow_buffer.write_len());
             if(!nbase)
               return EOF;
-            if(nbase != pbase())
-              setp(_elt->base(), _elt->end());
+            setp(_elt->base(), _elt->end());
             memcpy(pbase(), _overflow_buffer.base(), _overflow_buffer.write_len());
             pbump(_overflow_buffer.write_len());
           }
@@ -274,7 +273,7 @@ namespace jflib {
       bool update_buffer() {
         if(!_closed)
           _closed = _pool->is_closed_B_to_A();
-
+        
         if(_closed) {
           _elt.release();
           setp(0, 0);

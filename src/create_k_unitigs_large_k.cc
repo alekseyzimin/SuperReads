@@ -22,6 +22,8 @@
 #include <iostream>
 #include <memory>
 #include <algorithm>
+#include <set>
+#include <jellyfish/mapped_file.hpp>
 #include <thread_exec.hpp>
 #include <gzip_stream.hpp>
 #include <src/bloom_counter2.hpp>
@@ -74,10 +76,11 @@ typedef populate_mer_set<mer_bloom_counter2, read_parser> mer_populate;
 // set.
 template<typename set_type>
 bool insert_canonical(set_type& set, const mer_dna& mer) {
-  mer_dna rc(mer);
-  rc.reverse_complement();
-  bool res = set.insert(rc < mer ? rc : mer).second;
-  return res;
+  return set.insert(mer.get_canonical()).second;
+  // mer_dna rc(mer);
+  // rc.reverse_complement();
+  // bool res = set.insert(rc < mer ? rc : mer).second;
+  // return res;
 }
 
 /* - mer_counts_type maps k-mer to counts. Has operator[] returning
@@ -128,27 +131,12 @@ public:
         continue;
       current = *stream;
       
-      unsigned int count = 0;
-      // Check fwd continuation. Grow k-unitig if not unique
-      bool unique_fwd_cont = next_mer(forward, current, continuation, &count);
-      bool unique_bwd_return = true;
-      if(unique_fwd_cont)
-        unique_bwd_return = next_mer(backward, continuation, tmp, &count);
-      if(!unique_fwd_cont || !unique_bwd_return) {
+      // Grow unitig if a starting (branching) mer
+      if(starting_mer(forward, current)) {
         grow_unitig(backward, current, output);
-        continue;
-      }
-
-      // Check bwd continuation. Grow k-unitig if not unique
-      bool unique_bwd_cont = next_mer(backward, current, continuation, &count);
-      bool unique_fwd_return = true;
-      if(unique_bwd_cont)
-        unique_fwd_return = next_mer(forward, continuation, tmp, &count);
-      if(!unique_bwd_cont || !unique_fwd_return) {
+      } else if(starting_mer(backward, current)) {
         grow_unitig(forward, current, output);
-        continue;
       }
-
       // Unique continuation on both sides -> middle of k-unitig: do nothing
     }
   }
@@ -205,7 +193,7 @@ private:
           return false;
         code       = i;
         cont_count = cont_count_;
-      } else if(cont_count > 0) {
+      } else if(cont_count_ > 0) {
         ++nb_low_cont;
         low_code       = i;
         low_cont_count = cont_count_;
@@ -226,26 +214,58 @@ private:
     return false;
   }
 
+  // Return true if m is a starting mer in the given dir: a mer is a
+  // starting mer if it is branching forward, or backward, or dries
+  // out, maybe after some number of low count mer to skip.
+  bool starting_mer(direction dir, mer_dna m) {
+    int low_cont = args.cont_on_low_arg;
+    mer_dna continuation(m.k());
+
+    while(true) {
+      unsigned int count       = 0;
+      if(!next_mer(dir, m, continuation, &count))
+        return true;
+      if(count >= args.quality_threshold_arg) {
+        if(!next_mer(rev_direction(dir), continuation, m, &count))
+          return true;
+        break;
+      }
+      if(--low_cont < 0)
+        return true;
+      m = continuation;
+    }
+    return false;
+  }
+
   void grow_unitig(const direction dir, const mer_dna& start, jflib::omstream& output) {
     bool start_new = insert_canonical(end_points_, start);
     if(!start_new)
       return;
 
-    mer_dna       mer1(start);
-    mer_dna       mer2(start.k());
-    mer_dna       mer3(start.k());
-    mer_dna      *current = &mer1;
-    mer_dna      *cont    = &mer2;
-    unsigned int  count   = 0;
-    unsigned int  low_run = 0;
-    unsigned int  index   = dir == forward ? 0 : start.k() - 1;
-    std::string   seq;
-    
+    mer_dna            mer1(start);
+    mer_dna            mer2(start.k());
+    mer_dna            mer3(start.k());
+    mer_dna           *current = &mer1;
+    mer_dna           *cont    = &mer2;
+    unsigned int       count   = 0;
+    unsigned int       low_run = 0;
+    unsigned int       index   = dir == forward ? 0 : start.k() - 1;
+    std::string        seq;
+    std::set<mer_dna>  set; // Set of used mers to avoid endless loop
+
     while(true) {
       insert_canonical(used_mers_, *current);
+      if(!insert_canonical(set, *current))
+        return; // loop. Don't output anything
       if(!next_mer(dir, *current, *cont, &count))
         break;
       if(!next_mer(rev_direction(dir), *cont, mer3))
+        break;
+      // This can happen (only) with continuation on low. It does not
+      // create a branch as far as next_mer is concerned if one low
+      // count and one high count, but it still a branch in this case:
+      // there are two way to go through that region
+      if(mer3 != *current)
         break;
       seq += (char)cont->base(index);
 
@@ -267,15 +287,18 @@ private:
     // from opposite ends. Output only if the current thread has the
     // "largest" end k-mer.
     bool end_new = insert_canonical(end_points_, *current);
-    if(!end_new)
-      if(start < *current)
+    if(!end_new) {
+      mer_dna start_c = start.get_canonical();
+      mer_dna end_c = current->get_canonical();
+      if(start_c < end_c)
         return;
+    }
     
     // Output results
     if(start.k() + seq.length() < args.min_len_arg)
       return;
     uint64_t id = (unitig_id_ += 1) - 1;
-    output << ">" << id << "\n";
+    output << ">" << id << " length:" << (start.k() + seq.size()) << "\n";
     if(dir == backward) {
       std::string reversed(seq.rbegin(), seq.rend());
       output << reversed << start << "\n";
@@ -303,12 +326,34 @@ int main(int argc, char *argv[])
     args.min_len_arg = args.mer_arg + 1;
 
   // Populate Bloom filter with k-mers
-  mer_bloom_counter2 kmers(args.false_positive_arg, args.nb_mers_arg);
+  std::auto_ptr<mer_bloom_counter2> kmers;
+
   {
-    read_parser parser(args.input_arg.begin(), args.input_arg.end(),
-                       args.threads_arg);
-    mer_populate populate(args.mer_arg, kmers, parser);
-    populate.exec_join(args.threads_arg);
+    if(args.load_given) {
+      mapped_file dbf(args.load_arg);
+      uint64_t* base = (uint64_t*)dbf.base();
+      kmers.reset(new mer_bloom_counter2(base[0], base[1], (unsigned char*)(base + 2)));
+    } else {
+      kmers.reset(new mer_bloom_counter2(args.false_positive_arg, args.nb_mers_arg));
+      read_parser parser(args.input_arg.begin(), args.input_arg.end(),
+                         args.threads_arg);
+      mer_populate populate(args.mer_arg, *kmers, parser);
+      populate.exec_join(args.threads_arg);
+    }
+  }
+  
+  if(args.save_given) {
+    std::ofstream save_file(args.save_arg);
+    if(!save_file) {
+      std::cerr << "Can't open file '" << args.save_arg << "'" << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    uint64_t x;
+    x = kmers->m();
+    save_file.write((char*)&x, sizeof(x));
+    x = kmers->k();
+    save_file.write((char*)&x, sizeof(x));
+    kmers->write_bits(save_file);
   }
 
   {
@@ -316,7 +361,7 @@ int main(int argc, char *argv[])
     bloom_filter_type used(args.false_positive_arg, args.nb_mers_arg);
     read_parser parser(args.input_arg.begin(), args.input_arg.end(),
                        args.threads_arg);
-    unitiger_type unitiger(args.mer_arg, kmers, used, args.threads_arg, parser, 
+    unitiger_type unitiger(args.mer_arg, *kmers, used, args.threads_arg, parser, 
                            *output_ostream);
     unitiger.exec_join(args.threads_arg);
   }

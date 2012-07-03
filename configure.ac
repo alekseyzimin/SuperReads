@@ -6,6 +6,7 @@ AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_LIBTOOL
+AC_LANG(C++)
 
 # Checks for programs.
 AC_PROG_AWK
@@ -38,14 +39,14 @@ AC_ARG_VAR([DEV_CXXFLAGS], [Extra compiler flags for development])
 if test "x$DEV_CXXFLAGS" = "x"; then
 DEV_CXXFLAGS=-Werror
 # Check for -Wunused-but-set-variable
-my_save_cflags="$CFLAGS"
-CFLAGS=-Wunused-but-set-variable
+my_save_cxxflags="$CXXFLAGS"
+CXXFLAGS=-Wunused-but-set-variable
 AC_MSG_CHECKING([whether CXX supports -Wunused-but-set-variable])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
     [AC_MSG_RESULT([yes])]
     [DEV_CXXFLAGS="$DEV_CXXFLAGS -Wunused-but-set-variable"],
     [AC_MSG_RESULT([no])])
-CFLAGS="$my_save_cflags"
+CXXFLAGS="$my_save_cxxflags"
 fi
 AC_SUBST([DEV_CXXFLAGS])
 

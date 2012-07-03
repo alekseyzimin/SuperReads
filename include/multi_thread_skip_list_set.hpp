@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <utility>
+#include <functional>
 #include <jflib/atomic_field.hpp>
 #include <jflib/compare_and_swap.hpp>
 #include <jflib/locks_pthread.hpp>

@@ -1,0 +1,8 @@
+purpose "Query a bloom filter of mers"
+
+option("m", "mer") {
+  description "k-mer size"
+  int; required; }
+arg("input") {
+  description "Mer bloom filter"
+  c_string; typestr "path" }

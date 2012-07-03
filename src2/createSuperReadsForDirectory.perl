@@ -142,6 +142,8 @@ if ($jumpLibraryReads) {
 $cmd = "cat $kUnitigsFile | $exeDir/getLengthStatisticsForKUnitigsFile.perl $workingDirectory > $kUnitigLengthsFile";
 &runCommandAndExitIfBad ($cmd, $kUnitigLengthsFile, 1, "createLengthStatisticsFiles", $totBasesInKUnitigsFile, $numKUnitigsFile, $maxKUnitigNumberFile, $kUnitigLengthsFile);
 
+$jellyfishMatchArg="";
+if($merLen<=31){
 $minSizeNeededForTable = &reportMinJellyfishTableSizeForKUnitigs;
  redoKUnitigsJellyfish:
     $cmd = "jellyfish count -m $merLen -r -o $jellyfishKUnitigDataPrefix -c 6 -p 126 --both-strands -s $minSizeNeededForTable -t $numProcessors $kUnitigsFile";
@@ -152,6 +154,8 @@ if ($tableResizeFactor > 1) {
     $tableSize *= 2;
     print "Resizing the table to $tableSize for the k-unitig jellyfish run\n";
     goto redoKUnitigsJellyfish; }
+$jellyfishMatchArg="--jellyfishdb=$jellyfishKUnitigHashFile";
+}
 
 # In addition to obvious output file, this also generates the files
 # mergedKUnitigs.numKUnitigs.txt, mergedKUnitigs.maxKUnitigNumber.txt, and mergedKUnitigs.totBasesInKUnitigs.txt in
@@ -171,11 +175,11 @@ if ($mergedUnitigDataPrefix) {
 
 if ($lowMemory==0) {
     # Find the matches of k-unitigs to reads and pipe to the shooting method
-    $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads -m $merLen --jellyfishdb=$jellyfishKUnitigHashFile -t $numProcessors -o /dev/fd/1 $kUnitigsFile $maxKUnitigNumberFile  @fastaFiles | $exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors --join-aggressive $joinAggressive /dev/fd/0";
+    $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads -m $merLen $jellyfishMatchArg -t $numProcessors -o /dev/fd/1 $kUnitigsFile $maxKUnitigNumberFile  @fastaFiles | $exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors --join-aggressive $joinAggressive /dev/fd/0";
     &runCommandAndExitIfBad ($cmd, $joinerOutput, 1, "joinKUnitigs", $joinerOutput); }
 else {
     # Find the matches of k-unitigs to reads, save to disk
-    $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads -m $merLen --jellyfishdb=$jellyfishKUnitigHashFile -t $numProcessors -o $readKUnitigMatchOutput $kUnitigsFile $maxKUnitigNumberFile  @fastaFiles";
+    $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads -m $merLen $jellyfishMatchArg -t $numProcessors -o $readKUnitigMatchOutput $kUnitigsFile $maxKUnitigNumberFile  @fastaFiles";
 &runCommandAndExitIfBad ($cmd, $readKUnitigMatchOutput, 1, "findReadKUnitigMatches", $readKUnitigMatchOutput);
     if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile); }
 
