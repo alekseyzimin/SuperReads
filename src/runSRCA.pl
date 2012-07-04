@@ -257,7 +257,7 @@ while($line=<FILE>){
 	    die("duplicate id for JUMP library $f1[0]") if(defined($used_library_ids{$f1[0]}));
 	    $jump_info_line.="$f1[0] ";
 	    $used_library_ids{$f1[0]}=1;
-	    die("improper mean for JUMP library $f1[0]") if(not(int($f1[1])>0));
+	    die("improper mean for JUMP library $f1[0]") if(int($f1[1])==0);
 	    $jump_info_line.="$f1[1] ";
 	    die("improper stdev for JUMP library $f1[0]") if(not(int($f1[2])>0));
 	    $jump_info_line.="$f1[2] ";
@@ -525,7 +525,7 @@ if(scalar(@jump_info_array)>0){
 	@f=split(/\s+/,$jump_info_array[$i]);
 	print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
 	print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.fa | grep -v '^\\-\\-' > $f[0].tmp\n";
-	print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp | grep '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
+	print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp | grep '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
         }
     print FILE "JUMP_BASES_COVERED=`awk 'BEGIN{b=0}{b+=\$1*\$2;}END{print b}' compute_jump_coverage.txt`\n";
 
@@ -535,8 +535,10 @@ if(scalar(@jump_info_array)>0){
     for($i=0;$i<scalar(@jump_info_array);$i++){
 	@f=split(/\s+/,$jump_info_array[$i]);
         $list_of_frg_files.="$f[0].cor.clean.frg ";
-        print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep -v '^\\-\\-' > $f[0].tmp\n";
-        print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].cor.clean.frg\n";
+        my $if_innie="";
+        $if_innie=" | reverse_complement " if($f[1]<0);
+        print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep -v '^\\-\\-' $if_innie > $f[0].tmp\n";
+        print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp > $f[0].cor.clean.frg\n";
         print FILE "rm -f $f[0].tmp\n";
     }
 }
