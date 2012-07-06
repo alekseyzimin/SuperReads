@@ -391,12 +391,21 @@ int main (int argc, char **argv)
 	       continue; }
 	  if (isJumpLibrary) {
 	       int amtOfSequenceToOutput;
-	       if (readOri == 'F')
+	       if (readOri == 'F') {
 		    amtOfSequenceToOutput = outputSeqLen - readStart;
+		    if (amtOfSequenceToOutput < minReadLength) {
+			 readStart = outputSeqLen - minReadLength;
+			 if (readStart < 0)
+			      readStart = 0;
+			 amtOfSequenceToOutput = outputSeqLen - readStart; }
+	       }
 	       else {
+		    if (readStart < minReadLength)
+			 readStart = minReadLength;
 		    if (readStart > outputSeqLen)
 			 readStart = outputSeqLen;
-		    amtOfSequenceToOutput = readStart; }
+		    amtOfSequenceToOutput = readStart;
+	       }
 	       if (amtOfSequenceToOutput < minReadLength) {
 //		    sprintf (errorMessageLine, "super-read for read %s is too short\n", readName);
 //		    fputs (errorMessageLine, stderr);
