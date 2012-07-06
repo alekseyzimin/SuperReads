@@ -61,6 +61,7 @@ my @other_info_array=();
 my %used_library_ids;
 my $LIMIT_JUMP_COVERAGE=60;
 my $USE_LINKING_MATES=1;
+my $homo_trim_string=" | homo_trim  $TRIM_PARAM ";
 
 open(FILE,$ARGV[0]);
 while($line=<FILE>){
@@ -119,6 +120,15 @@ while($line=<FILE>){
 	    die("bad value for EXTEND_JUMP_READS") if($EXTEND_JUMP_READS!=1 && $EXTEND_JUMP_READS!=0);
 	    next;
 	}
+        elsif($line =~ /^DO_HOMOPOLYMER_TRIM/){
+            @f=split(/=/,$line);
+            $f[1]=~s/^\s+//;
+            $f[1]=~s/\s+$//;
+            $DO_HOMOPOLYMER_TRIM=int($f[1]);
+	    $homo_trim_string="" if($DO_HOMOPOLYMER_TRIM==0);    
+            die("bad value for DO_HOMOPOLYMER_TRIM") if($DO_HOMOPOLYMER_TRIM!=1 && $DO_HOMOPOLYMER_TRIM!=0);
+            next;
+        }
 	elsif($line =~ /^CA_PARAMETERS/){
 	    @f=split(/=/,$line);
 	    $CA_PARAMETERS=$f[1];
@@ -303,7 +313,7 @@ else{
     die("createSuperReadsForDirectory.perl not found at ${SR_PATH}");
 }
 
-print "\nPARAMETERS:\nGRAPH_KMER_SIZE = $KMER\nUSE_LINKING_MATES = $USE_LINKING_MATES\nKMER_COUNT_THRESHOLD = $KMER_COUNT_THRESHOLD\nLIMIT_JUMP_COVERAGE = $LIMIT_JUMP_COVERAGE\nNUM_THREADS = $NUM_THREADS\nJF_SIZE = $JF_SIZE\nEXTEND_JUMP_READS = $EXTEND_JUMP_READS\nCA_PARAMETERS = $CA_PARAMETERS\n\n";
+print "\nPARAMETERS:\nGRAPH_KMER_SIZE = $KMER\nUSE_LINKING_MATES = $USE_LINKING_MATES\nKMER_COUNT_THRESHOLD = $KMER_COUNT_THRESHOLD\nLIMIT_JUMP_COVERAGE = $LIMIT_JUMP_COVERAGE\nNUM_THREADS = $NUM_THREADS\nJF_SIZE = $JF_SIZE\nEXTEND_JUMP_READS = $EXTEND_JUMP_READS\nCA_PARAMETERS = $CA_PARAMETERS\nDO_HOMOPOLYMER_TRIM = $DO_HOMOPOLYMER_TRIM\n\n";
 print "DATA:\nPE:\n";
 foreach $v(@pe_info_array){
     print "$v\n";
@@ -424,7 +434,7 @@ print FILE "\n";
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
     print FILE "cat combined_0 > /dev/null\n";
-    print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log| homo_trim 2 | add_missing_mates.pl > pe.cor.fa\n";
+    print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > pe.cor.fa\n";
     $rerun_pe=1;
 }
 #compute average PE read length -- we will need this for Astat later
@@ -439,7 +449,7 @@ if(scalar(@jump_info_array)>0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
         print FILE "cat combined_0 > /dev/null\n";
-	print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log | homo_trim 2 | add_missing_mates.pl > sj.cor.fa\n";
+	print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > sj.cor.fa\n";
         $rerun_sj=1;
     }
 }
