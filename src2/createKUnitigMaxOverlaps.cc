@@ -67,6 +67,7 @@
 #define EST_OVLS_PER_KUNITIG 5
 
 struct endKUnitigKmerStruct {
+//gcc 4.5.x has a bug -- it does not support __int128, but 4.4.x and 4.6.x and 4.7.x does
      unsigned __int128 kMerValue;
      int kUnitigNumber;
      unsigned char kUnitigEnd; // 0 or 1
