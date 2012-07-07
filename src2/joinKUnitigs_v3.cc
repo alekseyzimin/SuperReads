@@ -404,7 +404,7 @@ int getInt (const char *fname);
 // TODO: merge and template the following two functions
 unitig_ori_offsets::iterator find_within(unitig_ori_offsets& tree,
                                             abbrevUnitigLocStruct x, int delta) {
-  x.frontEdgeOffset -= (delta - 1);
+  x.frontEdgeOffset -= delta;
   auto res = tree.lower_bound(x);
   if(res == tree.end())
     return res;
@@ -416,7 +416,7 @@ unitig_ori_offsets::iterator find_within(unitig_ori_offsets& tree,
   KUnitigsJoinerThread::unitig_print_path::iterator find_within(KUnitigsJoinerThread::unitig_print_path& tree,
                                                           KUnitigsJoinerThread::unitigPathPrintStruct x, 
                                                           int delta) {
-  x.frontEdgeOffset -= (delta - 1);
+  x.frontEdgeOffset -= delta;
   auto res = tree.lower_bound(x);
   while (1) {
        if(res == tree.end())
@@ -711,7 +711,7 @@ int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& o
 {
      ExpBuffer<char*> flds;
 
-     rdPrefixHold[0] = rdPrefixHold[1];
+     rdPrefixHold[0] = rdPrefixHold[1] = 0;
      evenReadMatchStructs.clear();
      oddReadMatchStructs.clear();
      
@@ -1006,6 +1006,7 @@ void KUnitigsJoinerThread::printPathNode (const T& ptr) // take a ptr/iterator t
 	  beginOffset = ptr->frontEdgeOffset;
 	  endOffset = beginOffset - unitigLengths[ptr->unitig1];
      }
+//     fprintf (stderr, "In printPathNode:\n");
 //     fprintf (stderr, "uni = %d, offset = %d, ori = %c, beginOffset = %d, endOffset = %d, numOvlsIn = %d, numOvlsOut = %d\n", ptr->unitig1, ptr->frontEdgeOffset, ptr->ori, beginOffset, endOffset, ptr->numOverlapsIn, ptr->numOverlapsOut);
      augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath].unitig1 = ptr->unitig1;
      augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath].frontEdgeOffset = ptr->frontEdgeOffset;
@@ -1219,8 +1220,14 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
                                               default_max_offset_considered_same);
 	       int frontEdgeOffset1 = rear_unitig->frontEdgeOffset;
 	       int frontEdgeOffset2 = front_unitig->frontEdgeOffset;
-	       if (frontEdgeOffset2 - frontEdgeOffset1 != unitigLengths[front_unitig->unitig1] - args.min_overlap_length_arg)
+//	       fprintf (stderr, "At 31411: front_unitig = %d, rear_unitig = %d, frontEdgeOffset2 = %d, frontEdgeOffset1 = %d, firstUnitigLen = %d, minOvlLen = %d\n", (int) front_unitig->unitig1, (int) rear_unitig->unitig1, (int) frontEdgeOffset2, (int) frontEdgeOffset1, (int) unitigLengths[front_unitig->unitig1], (int) args.min_overlap_length_arg);
+	       int diff = (frontEdgeOffset2 - frontEdgeOffset1) - (unitigLengths[front_unitig->unitig1] - args.min_overlap_length_arg);
+	       if (diff < 0)
+		    diff = - diff;
+//	       if (frontEdgeOffset2 - frontEdgeOffset1 != unitigLengths[front_unitig->unitig1] - args.min_overlap_length_arg)
+	       if (diff > default_max_offset_considered_same)
 		    continue;
+//	       fprintf (stderr, "At 31415: front_unitig = %d, rear_unitig = %d\n", (int) front_unitig->unitig1, (int) rear_unitig->unitig1);
 	       ++(rear_unitig->numOverlapsOut);
 	       if (rear_unitig->numOverlapsOut > 1) {
 		    if (rear_unitig->frontEdgeOffset < splitJoinWindowMin)
