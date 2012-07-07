@@ -67,7 +67,7 @@
 #define EST_OVLS_PER_KUNITIG 5
 
 struct endKUnitigKmerStruct {
-     unsigned long long kMerValue;
+     unsigned __int128 kMerValue;
      int kUnitigNumber;
      unsigned char kUnitigEnd; // 0 or 1
      unsigned char ori; // 0 or 1
