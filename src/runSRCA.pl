@@ -499,7 +499,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "rm -rf work2\n";
     $rerun_sj=1;
     }
-    print FILE "createSuperReadsForDirectory.perl -l $KMER -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
+    print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -l $KMER -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
     print FILE "if [[ ! -e work2/superReads.success ]];then\n";

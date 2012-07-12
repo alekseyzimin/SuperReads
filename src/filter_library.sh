@@ -4,7 +4,7 @@
 #$3 file with ALL jump library UIDs
 #$4 threshold for chimeric sizes (750)
 
-echo "Filtering libraries for chimerism...";
+echo "Filtering libraries for non-junction mates...";
 
 #dump all read uids
 gatekeeper -dumpfragments -tabular $1/$2.gkpStore |awk '{print $1" "$3}' > $2.uidMuid
