@@ -170,7 +170,8 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_read_parser.cc			\
                     unittests/test_hash.cc				\
                     unittests/test_exp_vector.cc			\
-                    unittests/test_mer_stream.cc
+                    unittests/test_mer_stream.cc			\
+                    unittests/test_int128.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
                      src/gcc_builtins.cc src/mer_dna.cc			\
                      src/read_parser.cc unittests/misc.cc

@@ -33,6 +33,8 @@ AC_ARG_VAR([YAGGO], [Yaggo switch parser generator])
 AS_IF([test "x$YAGGO" = "x"], [AC_PATH_PROG([YAGGO], [yaggo], [false])])
 
 # Checks for typedefs, structures, and compiler characteristics.
+AC_CHECK_TYPE(__int128,
+        AC_DEFINE([HAVE_INT128], [1], [Define if type __int128 is supported]))
 
 # Extra compiler debugging
 AC_ARG_VAR([DEV_CXXFLAGS], [Extra compiler flags for development])
