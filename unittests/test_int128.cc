@@ -89,9 +89,30 @@ namespace {
     EXPECT_EQ(r, os.str());
   }
 
+  void testu128(std::string r, unsigned __int128 x) {
+    std::ostringstream os;
+    os << x;
+    EXPECT_EQ(r, os.str());
+  }
+
   TEST(TestInt128, PrintSigned128) {
     test128("1267650600228229401496703205376", (__int128)1 << 100);
     test128("-633825300187901677043189809151", -(((__int128)1 << 66) + ((__int128)1 << 99) - (__int128)1));
+  }
+
+  TEST(TestInt128, LimitsSigned) {
+    test128("170141183460469231731687303715884105727", std::numeric_limits<__int128>::max());
+    test128("-170141183460469231731687303715884105728", std::numeric_limits<__int128>::min());
+    EXPECT_EQ(127, std::numeric_limits<__int128>::digits);
+    EXPECT_EQ(38, std::numeric_limits<__int128>::digits10);
+  }
+
+  TEST(TestInt128, LimitsUnsigned) {
+    testu128("340282366920938463463374607431768211455",
+            std::numeric_limits<unsigned __int128>::max());
+    testu128("0", std::numeric_limits<unsigned __int128>::min());
+    EXPECT_EQ(128, std::numeric_limits<unsigned __int128>::digits);
+    EXPECT_EQ(39, std::numeric_limits<unsigned __int128>::digits10);
   }
 
 }

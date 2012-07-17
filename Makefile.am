@@ -43,7 +43,7 @@ noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/tmpstream.hpp $(UTILS_I)/exp_vector.hpp
 
 noinst_LIBRARIES = libutils.a
-libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp
+libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp lib/int128.cc
 LDADD = libutils.a
 
 # Yaggo automatic rules with silencing
@@ -179,7 +179,7 @@ all_tests_CXXFLAGS = $(AM_CXXFLAGS)					\
 -I$(top_srcdir)/unittests/gtest/include -I$(top_srcdir)unittests/gtest	\
 -I$(top_srcdir)/include -I$(top_srcdir)
 all_tests_LDFLAGS = $(AM_LDFLAGS)
-all_tests_LDADD = libgtest.a
+all_tests_LDADD = libutils.a libgtest.a
 BUILT_SOURCES += unittests/test_main_cmdline.hpp
 noinst_HEADERS += unittests/test_main_cmdline.hpp unittests/misc.hpp
 
