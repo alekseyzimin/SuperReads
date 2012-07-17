@@ -47,10 +47,10 @@
   NOTE2: This program assumes the k-unitig numbers are in increasing order
   in each file (unless the -largest-kunitig-number flag is used).
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -58,21 +58,27 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <sys/wait.h>
-#include <assert.h>
+#include <cassert>
+#include <string>
+#include <vector>
 
 #include <err.hpp>
 #include <charb.hpp>
+#include <src/mer_dna.hpp>
 
 #define KMER_LENGTH 31
 #define EST_OVLS_PER_KUNITIG 5
 
-struct endKUnitigKmerStruct {
-//gcc 4.5.x has a bug -- it does not support __int128, but 4.4.x and 4.6.x and 4.7.x does
-     unsigned __int128 kMerValue;
+int kmerLen;
+
+class endKUnitigKmerStruct {
+public:
+     mer_dna kMerValue;  // (kmerLen as an arg?)
      int kUnitigNumber;
      unsigned char kUnitigEnd; // 0 or 1
      unsigned char ori; // 0 or 1
-} *kMerMinusOneValuesAtEndOfKUnitigs, **ptrsToEndKUnitigKmerStructs;
+     endKUnitigKmerStruct (unsigned int k) : kMerValue(k) { }
+} **ptrsToEndKUnitigKmerStructs;
 
 struct overlapDataStruct
 {
@@ -91,14 +97,13 @@ unsigned char **kUnitigSequenceCounts;
 unsigned char *endIsDone;
 int *kUnitigLengths;
 uint64_t largestKUnitigNumber;
-int kmerLen;
 char *inputPrefix, *outputPrefix;
 uint64_t *startOverlapByUnitig;
 struct overlapDataStruct *overlapDataToSave;
 bool createCoordsFile;
 
 void reportKUnitigEndMatches (void);
-int kmerStructCompare (struct endKUnitigKmerStruct **ptr1, struct endKUnitigKmerStruct **ptr2);
+int kmerStructCompare (const endKUnitigKmerStruct **ptr1, const endKUnitigKmerStruct **ptr2);
 void loadKUnitigEndingKMerValues (void);
 int getLargestKUnitigNumber (char *prefix, int numInputFiles);
 int getNumInputFiles (char *prefix);
@@ -132,12 +137,9 @@ int main (int argc, char *argv[])
      loadKUnitigSequences (inputPrefix, numInputFiles);
 
      llval = largestKUnitigNumber+1; llval *= 4;
-     mallocOrDie (kMerMinusOneValuesAtEndOfKUnitigs, llval, struct endKUnitigKmerStruct);
+     mallocOrDie (ptrsToEndKUnitigKmerStructs, llval, endKUnitigKmerStruct *);
      loadKUnitigEndingKMerValues ();
-     mallocOrDie (ptrsToEndKUnitigKmerStructs, llval, struct endKUnitigKmerStruct *);
-     for (uint64_t i=0; i<4*(largestKUnitigNumber+1); i++)
-	  ptrsToEndKUnitigKmerStructs[i] = kMerMinusOneValuesAtEndOfKUnitigs+i;
-     qsort (ptrsToEndKUnitigKmerStructs, 4*(largestKUnitigNumber+1), sizeof (struct endKUnitigKmerStruct *), (int (*)(const void*, const void*)) kmerStructCompare);
+     qsort (ptrsToEndKUnitigKmerStructs, 4*(largestKUnitigNumber+1), sizeof (endKUnitigKmerStruct *), (int (*)(const void*, const void*)) kmerStructCompare);
 
      mallocOrDie (endIsDone, largestKUnitigNumber+1, unsigned char);
 
@@ -149,7 +151,7 @@ int main (int argc, char *argv[])
 void reportKUnitigEndMatches (void)
 {
      uint64_t beginIndex, endIndex;
-     struct endKUnitigKmerStruct *ptr1, *ptr2;
+     endKUnitigKmerStruct *ptr1, *ptr2;
      uint64_t i, j;
      int totKUniStartSep;
      int kUni1, kUni2, ahg, bhg, begin1, end1, begin2, end2;
@@ -326,10 +328,10 @@ void reportKUnitigEndMatches (void)
      fclose (overlapsFile);
 }
 	  
-int kmerStructCompare (struct endKUnitigKmerStruct **ptr1, struct endKUnitigKmerStruct **ptr2)
+int kmerStructCompare (const endKUnitigKmerStruct **ptr1, const endKUnitigKmerStruct **ptr2)
 {
      if ((*ptr1)->kMerValue < (*ptr2)->kMerValue) return (-1);
-     if ((*ptr1)->kMerValue > (*ptr2)->kMerValue) return (1);
+     if ((*ptr2)->kMerValue < (*ptr1)->kMerValue) return (1);
      if ((*ptr1)->kUnitigNumber < (*ptr2)->kUnitigNumber) return (-1);
      if ((*ptr1)->kUnitigNumber > (*ptr2)->kUnitigNumber) return (1);
      if ((*ptr1)->kUnitigEnd < (*ptr2)->kUnitigEnd) return (-1);
@@ -341,83 +343,54 @@ int kmerStructCompare (struct endKUnitigKmerStruct **ptr1, struct endKUnitigKmer
 
 void loadKUnitigEndingKMerValues (void)
 {
-     unsigned long long mask = 0ULL;
-     int i;
      uint64_t kUnitigNumber, index;
+     mer_dna maxVal = mer_dna (kmerLen-1);
+     maxVal.polyA();
+     maxVal.reverse_complement();
      
-     for (i=0; i<32; i++) {
-	  mask <<= 2;
-	  mask += 3; }
      for (kUnitigNumber=0; kUnitigNumber<=largestKUnitigNumber; kUnitigNumber++) {
 	  index = 4 * kUnitigNumber;
 	  if (kUnitigLengths[kUnitigNumber] == 0) {
-	       kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue = kMerMinusOneValuesAtEndOfKUnitigs[index+1].kMerValue = kMerMinusOneValuesAtEndOfKUnitigs[index+2].kMerValue = kMerMinusOneValuesAtEndOfKUnitigs[index+3].kMerValue = mask;
-	       kMerMinusOneValuesAtEndOfKUnitigs[index].kUnitigNumber = kMerMinusOneValuesAtEndOfKUnitigs[index+1].kUnitigNumber = kMerMinusOneValuesAtEndOfKUnitigs[index+2].kUnitigNumber = kMerMinusOneValuesAtEndOfKUnitigs[index+3].kUnitigNumber = kUnitigNumber;
-	       kMerMinusOneValuesAtEndOfKUnitigs[index].kUnitigEnd = kMerMinusOneValuesAtEndOfKUnitigs[index+1].kUnitigEnd = 0;
-	       kMerMinusOneValuesAtEndOfKUnitigs[index+2].kUnitigEnd = kMerMinusOneValuesAtEndOfKUnitigs[index+3].kUnitigEnd = 1;
-	       kMerMinusOneValuesAtEndOfKUnitigs[index].ori = kMerMinusOneValuesAtEndOfKUnitigs[index+2].ori = 0;
-	       kMerMinusOneValuesAtEndOfKUnitigs[index+1].ori = kMerMinusOneValuesAtEndOfKUnitigs[index+3].ori = 1;
+	       ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(kmerLen-1);
+	       ptrsToEndKUnitigKmerStructs[index+1] = new endKUnitigKmerStruct(kmerLen-1);
+	       ptrsToEndKUnitigKmerStructs[index+2] = new endKUnitigKmerStruct(kmerLen-1);
+	       ptrsToEndKUnitigKmerStructs[index+3] = new endKUnitigKmerStruct(kmerLen-1);
+	       ptrsToEndKUnitigKmerStructs[index]->kMerValue = ptrsToEndKUnitigKmerStructs[index+1]->kMerValue = ptrsToEndKUnitigKmerStructs[index+2]->kMerValue = ptrsToEndKUnitigKmerStructs[index+3]->kMerValue = maxVal;
+	       ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = ptrsToEndKUnitigKmerStructs[index+1]->kUnitigNumber = ptrsToEndKUnitigKmerStructs[index+2]->kUnitigNumber = ptrsToEndKUnitigKmerStructs[index+3]->kUnitigNumber = kUnitigNumber;
+	       ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = ptrsToEndKUnitigKmerStructs[index+1]->kUnitigEnd = 0;
+	       ptrsToEndKUnitigKmerStructs[index+2]->kUnitigEnd = ptrsToEndKUnitigKmerStructs[index+3]->kUnitigEnd = 1;
+	       ptrsToEndKUnitigKmerStructs[index]->ori = ptrsToEndKUnitigKmerStructs[index+2]->ori = 0;
+	       ptrsToEndKUnitigKmerStructs[index+1]->ori = ptrsToEndKUnitigKmerStructs[index+3]->ori = 1;
 	       continue;
 	  }
 	  // k-mer at beginning of k-unitig, forward ori
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue = 0ULL;
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].kUnitigNumber = kUnitigNumber;
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].kUnitigEnd = 0;
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].ori = 0;
-	  for (i=0; i<kmerLen-1; i++) {
-	       kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue <<= 2;
-	       switch (kUnitigSequences[kUnitigNumber][i]) {
-	       case 'a': case 'A': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 0; break;
-	       case 'c': case 'C': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 1; break;
-	       case 'g': case 'G': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 2; break;
-	       case 't': case 'T': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 3; break;
-	       }
-	  }
+	  std::string kUnitigSequence = std::string (kUnitigSequences[kUnitigNumber]);
+	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(kmerLen-1);
+	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = kUnitigSequence.substr(0, kmerLen-1);
+	  ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = kUnitigNumber;
+	  ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = 0;
+	  ptrsToEndKUnitigKmerStructs[index]->ori = 0;
 	  ++index;
 	  // k-mer at beginning of k-unitig, reverse ori
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue = 0ULL;
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].kUnitigNumber = kUnitigNumber;
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].kUnitigEnd = 0;
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].ori = 1;
-	  for (i=kmerLen-2; i>=0; i--) {
-	       kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue <<= 2;
-	       switch (kUnitigSequences[kUnitigNumber][i]) {
-	       case 't': case 'T': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 0; break;
-	       case 'g': case 'G': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 1; break;
-	       case 'c': case 'C': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 2; break;
-	       case 'a': case 'A': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 3; break;
-	       }
-	  }
+	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(kmerLen-1);
+	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = (ptrsToEndKUnitigKmerStructs[index-1]->kMerValue).get_reverse_complement();
+	  ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = kUnitigNumber;
+	  ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = 0;
+	  ptrsToEndKUnitigKmerStructs[index]->ori = 1;
 	  ++index;
 	  // k-mer at end of k-unitig, forward ori
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue = 0ULL;
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].kUnitigNumber = kUnitigNumber;
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].kUnitigEnd = 1;
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].ori = 0;
-	  for (i=kUnitigLengths[kUnitigNumber]-kmerLen+1; i<kUnitigLengths[kUnitigNumber]; i++) {
-	       kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue <<= 2;
-	       switch (kUnitigSequences[kUnitigNumber][i]) {
-	       case 'a': case 'A': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 0; break;
-	       case 'c': case 'C': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 1; break;
-	       case 'g': case 'G': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 2; break;
-	       case 't': case 'T': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 3; break;
-	       }
-	  }
+	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(kmerLen-1);
+	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = kUnitigSequence.substr(kUnitigLengths[kUnitigNumber]-kmerLen+1, kmerLen-1);
+	  ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = kUnitigNumber;
+	  ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = 1;
+	  ptrsToEndKUnitigKmerStructs[index]->ori = 0;
 	  ++index;
 	  // k-mer at end of k-unitig, reverse ori
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue = 0ULL;
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].kUnitigNumber = kUnitigNumber;
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].kUnitigEnd = 1;
-	  kMerMinusOneValuesAtEndOfKUnitigs[index].ori = 1;
-	  for (i=kUnitigLengths[kUnitigNumber]-1; i>kUnitigLengths[kUnitigNumber]-kmerLen; i--) {
-	       kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue <<= 2;
-	       switch (kUnitigSequences[kUnitigNumber][i]) {
-	       case 't': case 'T': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 0; break;
-	       case 'g': case 'G': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 1; break;
-	       case 'c': case 'C': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 2; break;
-	       case 'a': case 'A': kMerMinusOneValuesAtEndOfKUnitigs[index].kMerValue += 3; break;
-	       }
-	  }
+	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(kmerLen-1);
+	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = (ptrsToEndKUnitigKmerStructs[index-1]->kMerValue).get_reverse_complement();
+	  ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = kUnitigNumber;
+	  ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = 1;
+	  ptrsToEndKUnitigKmerStructs[index]->ori = 1;
      }
 }	       
 

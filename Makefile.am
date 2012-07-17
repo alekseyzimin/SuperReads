@@ -117,7 +117,7 @@ findMatchesBetweenKUnitigsAndReads_SOURCES = src/read_parser.cc				\
                                              src/mer_dna.cc				\
                                              src/gcc_builtins.cc
 BUILT_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
-createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc
+createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc src/mer_dna.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFile.cc	\
