@@ -624,7 +624,7 @@ print FILE "rm -rf CA\n";
 }
 
 #estimating mer threshold for overlapper to cover 90% of all distinct k-mers
-print FILE "ovlMerThreshold=`jellyfish histo -t $NUM_THREADS k_u_hash_0 | awk '{if(\$1>1) {dist+=\$2;if(dist>int(\"'\$ESTIMATED_GENOME_SIZE'\")*0.95&&flag==0){print \$1;flag=1}}}'`\n";
+print FILE "ovlMerThreshold=`jellyfish histo -t $NUM_THREADS k_u_hash_0 | awk '{thresh=75;if(\$1>1) {dist+=\$2;if(dist>int(\"'\$ESTIMATED_GENOME_SIZE'\")*0.98&&flag==0){if(\$1>thresh) thresh=\$1;flag=1}}}END{print thresh}'`\n";
 print FILE "echo ovlMerThreshold=\$ovlMerThreshold\n\n";
 
 #this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
