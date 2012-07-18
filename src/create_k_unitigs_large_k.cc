@@ -169,21 +169,21 @@ private:
     cont = start;
 
     if(dir == forward) {
-      cont.shift_left((uint64_t)0);
-      cont_comp.shift_right((uint64_t)0);
+      cont.shift_left(0);
+      cont_comp.shift_right(0);
       index = 0;
     } else {
-      cont.shift_right((uint64_t)0);
-      cont_comp.shift_left((uint64_t)0);
+      cont.shift_right(0);
+      cont_comp.shift_left(0);
       index = cont.k() - 1;
     }
     auto base = cont.base(index); // Point to first or last base. Correct base to change
     auto base_comp = cont_comp.base(cont.k() - 1 - index);
 
     int          nb_cont    = 0, nb_low_cont = 0;
-    uint64_t     code       = 0, low_code = 0;
+    int          code       = 0, low_code = 0;
     unsigned int cont_count = 0, low_cont_count = 0;
-    for(uint64_t i = 0; i < 4; ++i) {
+    for(int i = 0; i < 4; ++i) {
       base      = i;
       base_comp = mer_dna::complement(i);
       

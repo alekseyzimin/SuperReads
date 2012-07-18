@@ -30,7 +30,7 @@
 #include <limits>
 #include <cstring>
 
-// This might be very slow
+// Output of __int128: this might be slow
 namespace __int128_ns {
   template<int base>
   void __print_digits(std::ostream& os, unsigned __int128 x,

@@ -25,7 +25,7 @@ public:
   mer_stream& operator++() {
     while(true) {
       while(s_ < e_) {
-        uint64_t code = mer_type::code(*s_++);
+        int code = mer_type::code(*s_++);
         switch(code) {
         case mer_type::CODE_COMMENT:
           s_ = e_; // Skip read

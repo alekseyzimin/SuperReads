@@ -34,10 +34,10 @@
 #endif
 
 #include <multi_thread_skip_list_map.hpp>
+#include <jellyfish/err.hpp>
 #include <src/mer_dna.hpp>
 #include <src/read_parser.hpp>
 
-// #include <jellyfish/err.hpp>
 #include <jellyfish/mer_counting.hpp>
 #include <jellyfish/mapped_file.hpp>
 #include <jellyfish/invertible_hash_array.hpp>
@@ -148,7 +148,7 @@ public:
       info.kmerOriInKunitig = ori;
       auto res = thread_.insert(std::make_pair(mer, info));
       if(!res.second)
-        die << "kmer " << mer << " already present in map";
+        die << "kmer " << mer.to_str() << " already present in map";
     }
   };
   thread_type thread() { return thread_type(kMerUnitigInfo_); }
