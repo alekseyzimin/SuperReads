@@ -143,9 +143,10 @@ dist_bin_SCRIPTS += src2/closeGaps.perl src2/getEndSequencesOfContigs.perl \
 ##############################
 dist_data_DATA = data/adapter_0
 CLEANFILES += data/adapter_0
+SUFFIXES = _0 .fa
 
-%adapter_0: %adapter.fa
-	$(AM_V_GEN)mkdir -p $(@D); jellyfish count -m 24 -s 5k -C -t 10 -r -o $*adapter $<
+.fa_0:
+	$(AM_V_GEN)mkdir -p $(@D); jellyfish count -m 24 -s 5k -C -t 10 -r -o $$(dirname $@)/$$(basename $@ _0) $<
 
 
 ##############################
