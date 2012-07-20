@@ -138,10 +138,12 @@ namespace {
                            ValueTypeContainer<mer_dna_ns::mer_base<uint64_t>, 1>,
                            ValueTypeContainer<mer_dna_ns::mer_base<uint64_t>, 2>,
                            ValueTypeContainer<mer_dna_ns::mer_base<uint64_t>, 3>,
+#ifdef HAVE_INT128
                            ValueTypeContainer<mer_dna_ns::mer_base<unsigned __int128>, 0>,
                            ValueTypeContainer<mer_dna_ns::mer_base<unsigned __int128>, 1>,
                            ValueTypeContainer<mer_dna_ns::mer_base<unsigned __int128>, 2>,
                            ValueTypeContainer<mer_dna_ns::mer_base<unsigned __int128>, 3>,
+#endif
                            ValueTypeContainer<mer_dna_ns::mer_base<uint32_t>, 3>
                            > KMerTypes;
   TYPED_TEST_CASE(KMer, KMerTypes);
