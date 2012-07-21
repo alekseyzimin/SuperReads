@@ -55,17 +55,3 @@ const int mer_dna_ns::dna_codes::codes[256] = {
 #undef C
 #undef G
 #undef T
-
-std::ostream& operator<<(std::ostream& os, const mer_dna64& mer) {
-  char s[mer.k() + 1];
-  mer.to_str(s);
-  return os << s;
-}
-
-#ifdef HAVE_INT128
-std::ostream& operator<<(std::ostream& os, const mer_dna128& mer) {
-  char s[mer.k() + 1];
-  mer.to_str(s);
-  return os << s;
-}
-#endif

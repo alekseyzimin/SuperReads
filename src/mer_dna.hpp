@@ -472,18 +472,13 @@ std::ostream& operator<<(std::ostream& os, const mer_dna_ns::mer_base<T>& mer) {
   return os << s;
 }
 
+typedef mer_dna_ns::mer_base<uint32_t> mer_dna32;
 typedef mer_dna_ns::mer_base<uint64_t> mer_dna64;
 #ifdef HAVE_INT128
 typedef mer_dna_ns::mer_base<unsigned __int128> mer_dna128;
-typedef mer_dna128 mer_dna;
-#else
+#endif
+
 typedef mer_dna64 mer_dna;
-#endif
 
-std::ostream& operator<<(std::ostream& os, const mer_dna64& mer);
-
-#ifdef HAVE_INT128
-std::ostream& operator<<(std::ostream& os, const mer_dna128& mer);
-#endif
 
 #endif
