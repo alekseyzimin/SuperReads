@@ -52,8 +52,9 @@ namespace {
       { 33, 2, 2, (uint64_t)0x3, 0 }, { 64, 2, 64, (uint64_t)-1, 62 },
       { 65, 3, 2, (uint64_t)0x3, 0 }
     };
+    typedef mer_dna_ns::mer_base_dynamic<uint64_t> mer64;
     for(size_t i = 0; i < sizeof(ary) / sizeof(sinfo); ++i) {
-      mer_dna64 m(ary[i].k);
+      mer64 m(ary[i].k);
       EXPECT_EQ(ary[i].k, m.k());
       EXPECT_EQ(ary[i].nb_words, m.nb_words());
       EXPECT_EQ(ary[i].nb_msb, m.nb_msb());
@@ -77,8 +78,9 @@ namespace {
       { 64, 1, 128, (unsigned __int128)-1, 126 },
       { 65, 2, 2, (unsigned __int128)0x3, 0 }
     };
+    typedef mer_dna_ns::mer_base_dynamic<unsigned __int128> mer128;
     for(size_t i = 0; i < sizeof(ary) / sizeof(sinfo); ++i) {
-      mer_dna128 m(ary[i].k);
+      mer128 m(ary[i].k);
       EXPECT_EQ(ary[i].k, m.k());
       EXPECT_EQ(ary[i].nb_words, m.nb_words());
       EXPECT_EQ(ary[i].nb_msb, m.nb_msb());
@@ -117,34 +119,49 @@ namespace {
   }
 
 
+  // Value Type Container class
   template <typename T, int N>
-  class ValueTypeContainer {
+  class VTC {
   public:
     typedef T Type;
     static const int test_id = N;
   };
   template <typename T, int N>
-  const int ValueTypeContainer<T, N>::test_id;
+  const int VTC<T, N>::test_id;
 
   template<typename VT>
   class KMer : public ::testing::Test {
   public:
     typedef typename VT::Type Type;
+    void SetUp() {
+      Type::k(GetParam().size());
+    }
     const std::string& GetParam() const {
       return *test_mers[VT::test_id];
     }
   };
-  typedef ::testing::Types<ValueTypeContainer<mer_dna_ns::mer_base<uint64_t>, 0>,
-                           ValueTypeContainer<mer_dna_ns::mer_base<uint64_t>, 1>,
-                           ValueTypeContainer<mer_dna_ns::mer_base<uint64_t>, 2>,
-                           ValueTypeContainer<mer_dna_ns::mer_base<uint64_t>, 3>,
+  typedef ::testing::Types<VTC<mer_dna_ns::mer_base_dynamic<uint64_t>, 0>,
+                           VTC<mer_dna_ns::mer_base_dynamic<uint64_t>, 1>,
+                           VTC<mer_dna_ns::mer_base_dynamic<uint64_t>, 2>,
+                           VTC<mer_dna_ns::mer_base_dynamic<uint64_t>, 3>,
 #ifdef HAVE_INT128
-                           ValueTypeContainer<mer_dna_ns::mer_base<unsigned __int128>, 0>,
-                           ValueTypeContainer<mer_dna_ns::mer_base<unsigned __int128>, 1>,
-                           ValueTypeContainer<mer_dna_ns::mer_base<unsigned __int128>, 2>,
-                           ValueTypeContainer<mer_dna_ns::mer_base<unsigned __int128>, 3>,
+                           VTC<mer_dna_ns::mer_base_dynamic<unsigned __int128>, 0>,
+                           VTC<mer_dna_ns::mer_base_dynamic<unsigned __int128>, 1>,
+                           VTC<mer_dna_ns::mer_base_dynamic<unsigned __int128>, 2>,
+                           VTC<mer_dna_ns::mer_base_dynamic<unsigned __int128>, 3>,
 #endif
-                           ValueTypeContainer<mer_dna_ns::mer_base<uint32_t>, 3>
+                           VTC<mer_dna_ns::mer_base_static<uint32_t>, 3>,
+                           VTC<mer_dna_ns::mer_base_static<uint64_t>, 0>,
+                           VTC<mer_dna_ns::mer_base_static<uint64_t>, 1>,
+                           VTC<mer_dna_ns::mer_base_static<uint64_t>, 2>,
+                           VTC<mer_dna_ns::mer_base_static<uint64_t>, 3>,
+#ifdef HAVE_INT128
+                           VTC<mer_dna_ns::mer_base_static<unsigned __int128>, 0>,
+                           VTC<mer_dna_ns::mer_base_static<unsigned __int128>, 1>,
+                           VTC<mer_dna_ns::mer_base_static<unsigned __int128>, 2>,
+                           VTC<mer_dna_ns::mer_base_static<unsigned __int128>, 3>,
+#endif
+                           VTC<mer_dna_ns::mer_base_static<uint32_t>, 3>
                            > KMerTypes;
   TYPED_TEST_CASE(KMer, KMerTypes);
 
@@ -209,10 +226,10 @@ namespace {
     // m3[0] = 0;
     // EXPECT_FALSE(m1 == m3);
 
-    typename TypeParam::Type m4(this->GetParam().size() + 1);
-    EXPECT_FALSE(m1 == m4);
-    typename TypeParam::Type m5(this->GetParam().size() - 1);
-    EXPECT_FALSE(m1 == m5);
+    // typename TypeParam::Type m4(this->GetParam().size() + 1);
+    // EXPECT_FALSE(m1 == m4);
+    // typename TypeParam::Type m5(this->GetParam().size() - 1);
+    // EXPECT_FALSE(m1 == m5);
   
   }
 
@@ -288,7 +305,7 @@ namespace {
     std::string rc(this->GetParam().size(), 'A');
     for(size_t i = 0; i < rc.size(); ++i)
       rc[i] = rc_base(this->GetParam()[this->GetParam().size() - 1 - i]);
-
+    EXPECT_EQ(this->GetParam().size(), m.k());
     m.reverse_complement();
     EXPECT_EQ(rc, m.to_str());
     typename TypeParam::Type rm(rc);

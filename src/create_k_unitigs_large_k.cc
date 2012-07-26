@@ -288,9 +288,7 @@ private:
     // "largest" end k-mer.
     bool end_new = insert_canonical(end_points_, *current);
     if(!end_new) {
-      mer_dna start_c = start.get_canonical();
-      mer_dna end_c = current->get_canonical();
-      if(start_c < end_c)
+      if(start.get_canonical() < current->get_canonical())
         return;
     }
     

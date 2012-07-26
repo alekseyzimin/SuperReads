@@ -55,3 +55,6 @@ const int mer_dna_ns::dna_codes::codes[256] = {
 #undef C
 #undef G
 #undef T
+
+const char* const mer_dna_ns::error_different_k = "Length of k-mers are different";
+const char* const mer_dna_ns::error_short_string = "Input string is to short";

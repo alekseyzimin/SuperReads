@@ -34,6 +34,9 @@ namespace mer_dna_ns {
     static const int  codes[256];
     static const char rev_codes[4];
   };
+  
+  extern const char* const error_different_k;
+  extern const char* const error_short_string;
 
 
   // Checkered mask. cmask<uint16_t, 1> is every other bit on
@@ -80,48 +83,57 @@ namespace mer_dna_ns {
     return ((U)-1) - w;
   }
 #endif
+  
+  template<typename T, typename derived> class mer_base;
 
-  template <typename T = uint64_t>
+  template<typename T>
+  class base_proxy {
+  public:
+    typedef T base_type;
+
+    base_proxy(base_type* w, unsigned int i) :
+      word_(w), i_(i) { }
+
+    base_proxy& operator=(char base) { return this->operator=(dna_codes::codes[(int)(unsigned char)base]); }
+    base_proxy& operator=(int code) {
+      base_type mask = (base_type)0x3 << i_;
+      *word_ = (*word_ & ~mask) | ((base_type)code << i_);
+      return *this;
+    }
+    int code() const { return (*word_ >> i_) & (base_type)0x3; }
+    operator char() const { return dna_codes::rev_codes[code()]; }
+
+  private:
+    base_type* const word_;
+    unsigned int     i_;
+  };
+
+
+  template<typename T, typename derived>
   class mer_base {
   public:
+    typedef T base_type;
     enum { CODE_A, CODE_C, CODE_G, CODE_T,
            CODE_RESET = -1, CODE_IGNORE = -2, CODE_COMMENT = -3 };
-    typedef T base_type;
     
-    // Uninitialized k-mer.
-    mer_base(unsigned int k) : 
-      _k(k),
-      _data(new base_type[nb_words()]) 
-    { }
+    explicit mer_base(unsigned int k) : 
+      _data(new base_type[derived::nb_words(k)]) 
+    { 
+      memset(_data, '\0', nb_words(k) * sizeof(base_type));
+    }
 
     mer_base(const mer_base &m) : 
-      _k(m.k()),
-      _data(new base_type[nb_words()])
+      _data(new base_type[nb_words(static_cast<const derived*>(&m)->k())])
     {
-      memcpy(_data, m._data, nb_words() * sizeof(base_type));
-    }
-
-    // Initialize from a string. The result is unspecified if invalid
-    // characters are encountered.
-    mer_base(unsigned int k, const char *s) :
-      _k(k),
-      _data(new base_type[nb_words()])
-    {
-      from_chars(s);
-    }
-
-    mer_base(const std::string &s) :
-      _k(s.size()),
-      _data(new base_type[nb_words()])
-    {
-      from_chars(s.begin());
+      memcpy(_data, m._data, nb_words(static_cast<const derived*>(&m)->k()) * sizeof(base_type));
     }
 
     ~mer_base() {
       delete [] _data;
     }
 
-    unsigned int k() const { return _k; }
+    operator derived() { return *static_cast<derived*>(this); }
+    operator const derived() const { return *static_cast<const derived*>(this); }
     
     // Direct access to data. No bound or consistency check. Use with caution!
     //  base_type operator[](unsigned int i) { return _data[i]; }
@@ -129,8 +141,6 @@ namespace mer_dna_ns {
     base_type operator[](unsigned int i) const { return _data[i]; }
 
     bool operator==(const mer_base& rhs) const {
-      if(_k != rhs._k)
-        return false;
       unsigned int i = nb_words() - 1;
       bool res = (_data[i] & msw()) == (rhs._data[i] & msw());
       while(res && i > 7) {
@@ -158,8 +168,6 @@ namespace mer_dna_ns {
 
     bool operator!=(const mer_base& rhs) { return !this->operator==(rhs); }
     bool operator<(const mer_base& rhs) const {
-      if(_k != rhs._k)
-        return false;  // Really they are not comparable. Should we throw instead?
       unsigned int i = nb_words();
       while(i >= 8) {
         i -= 8;
@@ -184,53 +192,30 @@ namespace mer_dna_ns {
       return false;
     }
 
-  
-    class base_proxy {
-      base_type* const word_;
-      unsigned int    i_;
-      base_proxy(base_type* data, unsigned int i) :
-        word_(data + i / wbases), i_(2 * (i % wbases)) { }
-      friend class mer_base;
-    public:
-      base_proxy& operator=(char base) { return this->operator=(mer_base::code(base)); }
-      base_proxy& operator=(int code) {
-        base_type mask = c3 << i_;
-        *word_ = (*word_ & ~mask) | ((base_type)code << i_);
-        return *this;
-      }
-      int code() const { return (*word_ >> i_) & (base_type)0x3; }
-      operator char() const { return dna_codes::rev_codes[code()]; }
-    };
-
-  public:
-    base_proxy base(unsigned int i) { return base_proxy(_data, i); }
+    base_proxy<base_type> base(unsigned int i) { return base_proxy<base_type>(_data + i / wbases, 2 * (i % wbases)); }
 
     // Make current k-mer all As.
     void polyA() {
       memset(_data, '\0', sizeof(base_type) * nb_words());
     }
 
-    mer_base &operator=(const mer_base &o) {
-      if(this != &o) {
-        if(_k != o._k)
-          throw std::length_error("k-mer of different length");
-        memcpy(_data, o._data, sizeof(base_type) * nb_words());
-      }
-      return *this;
+    derived& operator=(const mer_base& rhs) {
+      memcpy(_data, rhs._data, nb_words() * sizeof(base_type));
+      return *static_cast<derived*>(this);
     }
 
-    mer_base& operator=(const char* s) {
-      if(strlen(s) < _k)
-        throw std::length_error("Input string is to short");
+    derived& operator=(const char* s) {
+      if(strlen(s) < static_cast<derived*>(this)->k())
+        throw std::length_error(error_short_string);
       from_chars(s);
-      return *this;
+      return *static_cast<derived*>(this);
     }
 
-    mer_base& operator=(const std::string& s) {
-      if(s.size() < _k)
-        throw std::length_error("Input string is to short");
+    derived& operator=(const std::string& s) {
+      if(s.size() < static_cast<derived*>(this)->k())
+        throw std::length_error(error_short_string);
       from_chars(s.c_str());
-      return *this;
+      return *static_cast<derived*>(this);
     }
 
     // Shift the k-mer by 1 base, left or right. The char version take
@@ -265,7 +250,7 @@ namespace mer_dna_ns {
 
     base_type shift_right(int c) { 
       const base_type r = _data[0] & c3;
-      if(nb_words() > 1) {
+      if(nb_words() > 1){ 
         const unsigned int barrier = (nb_words() - 1) & (~c3);
         unsigned int i = 0;
   
@@ -289,9 +274,9 @@ namespace mer_dna_ns {
     }
 
     // Non DNA codes are negative
-    static inline bool not_dna(int c) { return c < 0; }
-    static int code(char c) { return dna_codes::codes[(int)(unsigned char)c]; }
-    static char rev_code(int x) { return dna_codes::rev_codes[x]; }
+    inline static bool not_dna(int c) { return c < 0; }
+    inline static int code(char c) { return dna_codes::codes[(int)(unsigned char)c]; }
+    inline static char rev_code(int x) { return dna_codes::rev_codes[x]; }
     static int complement(int x) { return (base_type)3 - x; }
     static char complement(char c) { 
       switch(c) {
@@ -333,19 +318,19 @@ namespace mer_dna_ns {
     }
 
     void canonicalize() {
-      mer_base rc = this->get_reverse_complement();
+      derived rc = this->get_reverse_complement();
       if(rc < *this)
         *this = rc;
     }
 
-    mer_base get_reverse_complement() const {
-      mer_base res(*this);
+    derived get_reverse_complement() const {
+      derived res(*this);
       res.reverse_complement();
       return res;
     }
 
-    mer_base get_canonical() const {
-      mer_base rc = this->get_reverse_complement();
+    derived get_canonical() const {
+      derived rc = this->get_reverse_complement();
       if(rc < *this)
         return rc;
       else
@@ -354,7 +339,7 @@ namespace mer_dna_ns {
 
     // Transfomr the k-mer into a C++ string.
     std::string to_str() const {
-      std::string res(_k, '\0');
+      std::string res(static_cast<const derived*>(this)->k(), '\0');
       to_chars(res.begin());
       return res;
     }
@@ -400,26 +385,24 @@ namespace mer_dna_ns {
     // Internal stuff
 
     // Number of words in _data
-    inline unsigned int nb_words() const { 
-      return (_k / wbases) + (_k % wbases != 0);
-    }
+    inline static unsigned int nb_words(unsigned int k) { return (k / wbases) + (k % wbases != 0); }
+    inline unsigned int nb_words() const { return nb_words(static_cast<const derived*>(this)->k()); }
 
     // Mask of highest word
     inline base_type msw() const { return ((base_type)1 << nb_msb()) - 1; }
     // Nb of bits used in highest word
     inline  unsigned int nb_msb() const {
-      base_type nb = (_k % wbases) * 2;
+      base_type nb = (static_cast<const derived*>(this)->k() % wbases) * 2;
       return nb ? nb : wbits;
     }
     // How much to shift last base in last word of _data
     inline unsigned int lshift() const { return nb_msb() - 2; }
 
-  private:
-    static const base_type c3 = (base_type)0x3;
-    static const int wshift = sizeof(base_type) * 8 - 2; // left shift in 1 word
-    static const int wbases = 4 * sizeof(base_type); // bases in a word
-    static const int wbits  = 8 * sizeof(base_type); // bits in a word
-    const unsigned int     _k;
+  protected:
+    static const base_type c3     = (base_type)0x3;
+    static const int       wshift = sizeof(base_type) * 8 - 2; // left shift in 1 word
+    static const int       wbases = 4 * sizeof(base_type); // bases in a word
+    static const int       wbits  = 8 * sizeof(base_type); // bits in a word
     base_type * const      _data;
     
     template<typename InputIterator>
@@ -463,19 +446,90 @@ namespace mer_dna_ns {
       _data[nb_words() - 1]  &= msw();
     }
   };
+
+  // Mer type where the length is kept in each mer object: allows to
+  // manipulate mers of different size within the same application.
+  template<typename T = uint64_t>
+  class mer_base_dynamic : public mer_base<T, mer_base_dynamic<T> > {
+  public:
+    typedef mer_base<T, mer_base_dynamic<T> > super;
+    typedef T base_type;
+
+    explicit mer_base_dynamic(unsigned int k) : super(k), k_(k) { }
+    mer_base_dynamic(const mer_base_dynamic& rhs) : super(rhs), k_(rhs.k()) { }
+    mer_base_dynamic(unsigned int k, const char* s) : super(k), k_(k) {
+      super::from_chars(s);
+    }
+    mer_base_dynamic(const char* s) : super(strlen(s)), k_(strlen(s)) {
+      super::from_chars(s);
+    }
+    mer_base_dynamic(const std::string& s) : super(s.size()), k_(s.size()) {
+      super::from_chars(s.begin());
+    }
+    
+    ~mer_base_dynamic() { }
+
+    mer_base_dynamic& operator=(const mer_base_dynamic rhs) {
+      if(k_ != rhs.k_)
+        throw std::length_error(error_different_k);
+      super::operator=(rhs);
+      return *this;
+    }
+
+    unsigned int k() const { return k_; }
+    static unsigned int k(unsigned int k) { return k; }
+
+  private:
+    const unsigned int k_;
+  };
+
+  // Mer type where the length is a static variable: the mer size is
+  // fixed for all k-mers in the application.
+  template<typename T = uint64_t>
+  class mer_base_static : public mer_base<T, mer_base_static<T> > {
+  public:
+    typedef mer_base<T, mer_base_static<T> > super;
+    typedef T base_type;
+    
+    explicit mer_base_static() { }
+    explicit mer_base_static(unsigned int k) : super(k) {
+      if(k != k_)
+        throw std::length_error(error_different_k);
+    }
+    mer_base_static(const mer_base_static& rhs) : super(rhs) { }
+    
+    mer_base_static(unsigned int k, const char* s) : super(k_) {
+      super::from_chars(s);
+    }
+    mer_base_static(const char* s) : super(k_) {
+      super::from_chars(s);
+    }
+    mer_base_static(const std::string& s) : super(k_) {
+      super::from_chars(s.begin());
+    }
+    
+    ~mer_base_static() { }
+
+    static unsigned int k() { return k_; }
+    static unsigned int k(unsigned int k) { std::swap(k, k_); return k; }
+  private:
+    static unsigned int k_;
+  };
+  template<typename T>
+  unsigned int mer_base_static<T>::k_ = 22;
 }
 
-template<typename T>
-std::ostream& operator<<(std::ostream& os, const mer_dna_ns::mer_base<T>& mer) {
-  char s[mer.k() + 1];
+template<typename T, typename derived>
+std::ostream& operator<<(std::ostream& os, const mer_dna_ns::mer_base<T, derived>& mer) {
+  char s[static_cast<const derived>(mer).k() + 1];
   mer.to_str(s);
   return os << s;
 }
 
-typedef mer_dna_ns::mer_base<uint32_t> mer_dna32;
-typedef mer_dna_ns::mer_base<uint64_t> mer_dna64;
+typedef mer_dna_ns::mer_base_static<uint32_t> mer_dna32;
+typedef mer_dna_ns::mer_base_static<uint64_t> mer_dna64;
 #ifdef HAVE_INT128
-typedef mer_dna_ns::mer_base<unsigned __int128> mer_dna128;
+typedef mer_dna_ns::mer_base_static<unsigned __int128> mer_dna128;
 #endif
 
 typedef mer_dna64 mer_dna;

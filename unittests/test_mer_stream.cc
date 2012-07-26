@@ -32,7 +32,7 @@ namespace {
 
     for(int i = 0; stream; ++stream, ++i) {
       EXPECT_EQ(sequence.substr(i, 10), stream.fmer().to_str());
-      mer_dna rmer = stream.rmer();
+      mer_dna rmer(stream.rmer());
       rmer.reverse_complement();
       EXPECT_EQ(sequence.substr(i, 10), rmer.to_str());
     }
