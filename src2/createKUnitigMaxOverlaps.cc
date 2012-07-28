@@ -69,8 +69,6 @@
 #define KMER_LENGTH 31
 #define EST_OVLS_PER_KUNITIG 5
 
-int kmerLen;
-
 class endKUnitigKmerStruct {
 public:
      mer_dna kMerValue;  // (kmerLen as an arg?)
@@ -210,11 +208,11 @@ void reportKUnitigEndMatches (void)
 			 isGoodOverlap = 1;
 		    if (isGoodOverlap) {
 			 if (ptr1->kUnitigEnd == 0) {
-			      ahg = (kmerLen-1) - kUnitigLengths[kUni2];
-			      bhg = (kmerLen-1) - kUnitigLengths[kUni1]; }
+			      ahg = (mer_dna::k()-1) - kUnitigLengths[kUni2];
+			      bhg = (mer_dna::k()-1) - kUnitigLengths[kUni1]; }
 			 else {
-			      ahg = kUnitigLengths[kUni1] - (kmerLen-1);
-			      bhg = kUnitigLengths[kUni2] - (kmerLen-1); }
+			      ahg = kUnitigLengths[kUni1] - (mer_dna::k()-1);
+			      bhg = kUnitigLengths[kUni2] - (mer_dna::k()-1); }
 		    }
 		    else {
 			 if (ptr1->kUnitigEnd == 0) {
@@ -226,10 +224,10 @@ void reportKUnitigEndMatches (void)
 		    }
 		    if (ptr1->kUnitigEnd == 0) {
 			 begin1 = 1;
-			 end1 = kmerLen-1; }
+			 end1 = mer_dna::k()-1; }
 		    else {
 			 end1 = kUnitigLengths[kUni1];
-			 begin1 = end1 - (kmerLen-1) + 1; }
+			 begin1 = end1 - (mer_dna::k()-1) + 1; }
 		    if (netOri == 'N') {
 			 begin2 = begin1 - ahg;
 			 end2 = end1 - ahg; }
@@ -344,17 +342,17 @@ int kmerStructCompare (const endKUnitigKmerStruct **ptr1, const endKUnitigKmerSt
 void loadKUnitigEndingKMerValues (void)
 {
      uint64_t kUnitigNumber, index;
-     mer_dna maxVal = mer_dna (kmerLen-1);
+     mer_dna maxVal;
      maxVal.polyA();
      maxVal.reverse_complement();
      
      for (kUnitigNumber=0; kUnitigNumber<=largestKUnitigNumber; kUnitigNumber++) {
 	  index = 4 * kUnitigNumber;
 	  if (kUnitigLengths[kUnitigNumber] == 0) {
-	       ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(kmerLen-1);
-	       ptrsToEndKUnitigKmerStructs[index+1] = new endKUnitigKmerStruct(kmerLen-1);
-	       ptrsToEndKUnitigKmerStructs[index+2] = new endKUnitigKmerStruct(kmerLen-1);
-	       ptrsToEndKUnitigKmerStructs[index+3] = new endKUnitigKmerStruct(kmerLen-1);
+	       ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k()-1);
+	       ptrsToEndKUnitigKmerStructs[index+1] = new endKUnitigKmerStruct(mer_dna::k()-1);
+	       ptrsToEndKUnitigKmerStructs[index+2] = new endKUnitigKmerStruct(mer_dna::k()-1);
+	       ptrsToEndKUnitigKmerStructs[index+3] = new endKUnitigKmerStruct(mer_dna::k()-1);
 	       ptrsToEndKUnitigKmerStructs[index]->kMerValue = ptrsToEndKUnitigKmerStructs[index+1]->kMerValue = ptrsToEndKUnitigKmerStructs[index+2]->kMerValue = ptrsToEndKUnitigKmerStructs[index+3]->kMerValue = maxVal;
 	       ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = ptrsToEndKUnitigKmerStructs[index+1]->kUnitigNumber = ptrsToEndKUnitigKmerStructs[index+2]->kUnitigNumber = ptrsToEndKUnitigKmerStructs[index+3]->kUnitigNumber = kUnitigNumber;
 	       ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = ptrsToEndKUnitigKmerStructs[index+1]->kUnitigEnd = 0;
@@ -365,28 +363,28 @@ void loadKUnitigEndingKMerValues (void)
 	  }
 	  // k-mer at beginning of k-unitig, forward ori
 	  std::string kUnitigSequence = std::string (kUnitigSequences[kUnitigNumber]);
-	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(kmerLen-1);
-	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = kUnitigSequence.substr(0, kmerLen-1);
+	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k()-1);
+	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = kUnitigSequence.substr(0, mer_dna::k()-1);
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = kUnitigNumber;
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = 0;
 	  ptrsToEndKUnitigKmerStructs[index]->ori = 0;
 	  ++index;
 	  // k-mer at beginning of k-unitig, reverse ori
-	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(kmerLen-1);
+	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k()-1);
 	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = (ptrsToEndKUnitigKmerStructs[index-1]->kMerValue).get_reverse_complement();
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = kUnitigNumber;
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = 0;
 	  ptrsToEndKUnitigKmerStructs[index]->ori = 1;
 	  ++index;
 	  // k-mer at end of k-unitig, forward ori
-	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(kmerLen-1);
-	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = kUnitigSequence.substr(kUnitigLengths[kUnitigNumber]-kmerLen+1, kmerLen-1);
+	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k()-1);
+	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = kUnitigSequence.substr(kUnitigLengths[kUnitigNumber]-mer_dna::k()+1, mer_dna::k()-1);
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = kUnitigNumber;
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = 1;
 	  ptrsToEndKUnitigKmerStructs[index]->ori = 0;
 	  ++index;
 	  // k-mer at end of k-unitig, reverse ori
-	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(kmerLen-1);
+	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k()-1);
 	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = (ptrsToEndKUnitigKmerStructs[index-1]->kMerValue).get_reverse_complement();
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = kUnitigNumber;
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = 1;
@@ -514,7 +512,34 @@ FILE *Fopen (const char *fn, const char *mode)
 
 void giveUsageAndExit (void)
 {
-     fprintf (stderr, "This program outputs the overlaps file as well as (optionally) the coords file for a given set of\n k-unitigs generated by k-mers of length K that overlap by exactly\n (K-1) bases. We work, by default, with k-unitigs generated using a\n k-mer size of 31, but if another k-mer size was used, use the flag\n-kmervalue kMerSize\n to specify the k-mer size used when generating the k-unitigs.\n\nThe first non-flag arg is the prefix used for the k-unitigs files.\n It assumes that the files are named *_#.fa, where\n * is the prefix specified and the #s start from 0 and continue until\n the last one. This arg may also be used to specify the complete\n filename. Note that all input files are assumed to have k-unitig\n numbers in ascending order.\n\nThe second non-flag arg is the prefix used for the output files.\n The program will generate the files\n prefix.coords   and   prefix.overlaps.\n\n So the final syntax is\n\ncreateKUnitigMaxOverlaps [flags] inputPrefix outputPrefix\n where the possible flags are\n   -h: help and exit\n   -kmervalue kMerSize\n   -create-coords-file to output the coords file as well as the overlaps file\n   -largest-kunitig-number largestKUnitigNumber (in this case the\n       k-unitigs don't have to be in numeric order in the files.)\n");
+     fprintf (stderr, 
+              "This program outputs the overlaps file as well as (optionally) the coords file for a given set of\n" 
+              " k-unitigs generated by k-mers of length K that overlap by exactly\n"
+              " (K-1) bases. We work, by default, with k-unitigs generated using a\n"
+              " k-mer size of 31, but if another k-mer size was used, use the flag\n"
+              "-kmervalue kMerSize\n"
+              " to specify the k-mer size used when generating the k-unitigs.\n"
+              "\n"
+              "The first non-flag arg is the prefix used for the k-unitigs files.\n"
+              " It assumes that the files are named *_#.fa, where\n"
+              " * is the prefix specified and the #s start from 0 and continue until\n"
+              " the last one. This arg may also be used to specify the complete\n"
+              " filename. Note that all input files are assumed to have k-unitig\n"
+              " numbers in ascending order.\n"
+              "\n"
+              "The second non-flag arg is the prefix used for the output files.\n"
+              " The program will generate the files\n"
+              " prefix.coords   and   prefix.overlaps.\n"
+              "\n"
+              " So the final syntax is\n"
+              "\n"
+              "createKUnitigMaxOverlaps [flags] inputPrefix outputPrefix\n"
+              " where the possible flags are\n"
+              "   -h: help and exit\n"
+              "   -kmervalue kMerSize\n"
+              "   -create-coords-file to output the coords file as well as the overlaps file\n"
+              "   -largest-kunitig-number largestKUnitigNumber (in this case the\n"
+              "       k-unitigs don't have to be in numeric order in the files.)\n");
      exit (0);
 }
 
@@ -522,7 +547,7 @@ void processArgs (int argc, char **argv)
 {
      int numArgsSeen, i;
      inputPrefix = outputPrefix = NULL;
-     kmerLen = KMER_LENGTH;
+     mer_dna::k(KMER_LENGTH);
      numArgsSeen = 0;
      largestKUnitigNumber = 0;
      createCoordsFile = false;
@@ -531,7 +556,7 @@ void processArgs (int argc, char **argv)
 	       giveUsageAndExit();
 	  if (strcmp (argv[i], "-kmervalue") == 0) {
 	       ++i;
-	       kmerLen = atoi (argv[i]);
+	       mer_dna::k(atoi (argv[i]));
 	       continue; }
 	  if (strcmp (argv[i], "-largest-kunitig-number") == 0) {
 	       ++i;

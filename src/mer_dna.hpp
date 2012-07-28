@@ -491,8 +491,8 @@ namespace mer_dna_ns {
     typedef mer_base<T, mer_base_static<T> > super;
     typedef T base_type;
     
-    explicit mer_base_static() { }
-    explicit mer_base_static(unsigned int k) : super(k) {
+    explicit mer_base_static() : super(k_) { }
+    explicit mer_base_static(unsigned int k) : super(k_) {
       if(k != k_)
         throw std::length_error(error_different_k);
     }

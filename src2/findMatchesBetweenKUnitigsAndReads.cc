@@ -94,7 +94,7 @@ public:
     dbf_.random().load();
   }
 
-  int mer_len() { return hash_->get_key_len() / 2; }
+  unsigned int mer_len() { return hash_->get_key_len() / 2; }
 
   class thread_type {
     inv_hash_storage_t* hash_;
@@ -165,8 +165,6 @@ public:
 ExpBuffer<uint64_t> kUnitigLengths;
 int            readNumber; // TODO: Remove: it is not really used
 int            longOutput;
-int            mer_len;
-
 
 template<typename mer_unitig_info_type>
 class ReadKunitigs : public thread_exec {
@@ -179,8 +177,8 @@ public:
 
   virtual void start(int th_id) {
     read_parser::stream unitig_stream(unitig_parser);
-    mer_dna             fwd_mer(mer_len);
-    mer_dna             rev_mer(mer_len);
+    mer_dna             fwd_mer;
+    mer_dna             rev_mer;
     auto                thread_unitig_info = mer_unitig_info.thread();
 
     for( ; unitig_stream; ++unitig_stream) {
@@ -191,11 +189,11 @@ public:
       if(fields_read != 2)
         die << "Fasta header of file does not match pattern '>UnitigiNumber length:UnitigLength'\n"
             << unitig_stream->header << "\n";
-      if(unitig_stream->sequence.size() < (size_t)mer_len)
+      if(unitig_stream->sequence.size() < (size_t)mer_dna::k())
         continue;
       char* cptr = unitig_stream->sequence;
       // Prime the k-mers
-      for(int i = 0; i < mer_len - 1; ++i, ++cptr) {
+      for(int i = 0; i < (int)mer_dna::k() - 1; ++i, ++cptr) {
         fwd_mer.shift_left(*cptr);
         rev_mer.shift_right(mer_dna::complement(*cptr));
       }
@@ -210,7 +208,7 @@ public:
           searchValue = &rev_mer;
           ori         = 1;
         }
-        thread_unitig_info.set(*searchValue, kUnitigNumber, cptr - unitig_stream->sequence.begin() - (mer_len - 1),
+        thread_unitig_info.set(*searchValue, kUnitigNumber, cptr - unitig_stream->sequence.begin() - (mer_dna::k() - 1),
                                ori);
       }
     }
@@ -322,7 +320,7 @@ int main(int argc, char *argv[])
 
      if(args.mer_arg == 0 || args.mer_arg > 10000)
        die << "Mer_len '" << args.mer_arg << "' is out of range";
-     mer_len = args.mer_arg;
+     mer_dna::k(args.mer_arg);
 
      // Find out the last kUnitig number
      {
@@ -333,7 +331,7 @@ int main(int argc, char *argv[])
      }
 
      if(args.verbose_flag)
-       std::cerr << "mer length: " << mer_len << "\n";
+       std::cerr << "mer length: " << mer_dna::k() << "\n";
 
      std::auto_ptr<mer_unitig_info_base> mer_unitig_info;
      if(args.jellyfishdb_given) {
@@ -341,8 +339,8 @@ int main(int argc, char *argv[])
          die << "Mer size of " << args.mer_arg << " is incompatible with jellyfishdb switch (must have m <= 31).";
        auto jf_info = new jf_kmer_unitig_info(args.jellyfishdb_arg);
        mer_unitig_info.reset(jf_info);
-       if(mer_len != jf_info->mer_len())
-         die << "Mer length '" << mer_len << "' does not match jellyfish's mer length '" << jf_info->mer_len() << "'";
+       if(mer_dna::k() != jf_info->mer_len())
+         die << "Mer length '" << mer_dna::k() << "' does not match jellyfish's mer length '" << jf_info->mer_len() << "'";
        ReadKunitigs<jf_kmer_unitig_info> KUnitigReader(args.kUnitigFile_arg, *jf_info, args.threads_arg);
        KUnitigReader.exec_join(args.threads_arg);
      } else {
@@ -372,8 +370,8 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
                         header_output& out)
 {
      int readLength;
-     mer_dna readKmer(mer_len), readRevCompKmer(mer_len);
-     mer_dna readKmerTmp(mer_len), readRevCompKmerTmp(mer_len);
+     mer_dna readKmer, readRevCompKmer;
+     mer_dna readKmerTmp, readRevCompKmerTmp;
      unsigned char kUnitigOri, netOri, netOriHold, ori;
      int nextWithN;
      int jtmp, ktmp, tempIndex;
@@ -392,7 +390,7 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 #endif
 
      readLength = readBasesEnd - readBasesBegin;
-     if(readLength < mer_len)
+     if((unsigned int)readLength < mer_dna::k())
        return;
 
      if (longOutput)
@@ -400,7 +398,7 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
              << " readLength = " << readLength << "\n";
        //fprintf (out, "readNumber = %d, readLength = %d\n", readNumber, readLength);
      //     readKmer = readRevCompKmer = 0;
-     for (int j=0; j<mer_len; j++)
+     for (unsigned int j=0; j<mer_dna::k(); j++)
        readKmer.shift_left(readBasesBegin[j]);
      readRevCompKmer = readKmer;
      readRevCompKmer.reverse_complement();
@@ -411,7 +409,7 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	  if (readBasesBegin[j] == 'N') {
 	       nextWithN = j;
 	       break; }
-     for (int j=0, k=readLength-mer_len; k>=0; j++, k--) {
+     for (int j=0, k=readLength-mer_dna::k(); k>=0; j++, k--) {
 	  // Re-setting nextWithN if necessary
 	  if (nextWithN < j)
 	       for (jtmp=j; jtmp<readLength; jtmp++)
@@ -421,11 +419,11 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	  if (nextWithN < j)
 	       nextWithN = readLength;
 	  if (j>0) {
-            readKmer.shift_left(readBasesBegin[j+mer_len-1]);
-            readRevCompKmer.shift_right(mer_dna::complement(readBasesBegin[j+mer_len-1]));
+            readKmer.shift_left(readBasesBegin[j+mer_dna::k()-1]);
+            readRevCompKmer.shift_right(mer_dna::complement(readBasesBegin[j+mer_dna::k()-1]));
           }
 
-	  if (nextWithN-j < mer_len)
+	  if (nextWithN-j < (int)mer_dna::k())
 	       continue;
           const mer_dna* searchValue = &readKmer;
           ori = 0;
@@ -449,7 +447,7 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	  if (netOri == 0) // The read is 'F' in kUnitig
 	       kUnitigOffsetOfFirstBaseInRead = kUnitigOffset - j;
 	  else
-	       kUnitigOffsetOfFirstBaseInRead = kUnitigOffset + j + (mer_len);
+	       kUnitigOffsetOfFirstBaseInRead = kUnitigOffset + j + mer_dna::k();
 	  if ((kUnitigOffsetOfFirstBaseInReadHold != kUnitigOffsetOfFirstBaseInRead) ||
 	      (kUnitigNumber != kUnitigNumberHold) ||
 	      (netOri != netOriHold) ||
@@ -482,7 +480,7 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	       intervalBegin = j; 
 #endif
 	       isFirstRecord = 1; }
-	  intervalEnd = j + mer_len;
+	  intervalEnd = j + mer_dna::k();
 	  if (netOri == 0)
 	       kUnitigOffsetOfLastBaseInRead = kUnitigOffsetOfFirstBaseInRead + readLength;
 	  else
@@ -543,23 +541,23 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	  ////////// END NUCMER END CALCULATIONS
 	  // Do we match at the end of the possible interval? (can jump)
 	  if (isFirstRecord) {
-	       jtmp = lastReadOffsetForNucmer - mer_len;
-	       ktmp = readLength - jtmp - mer_len;
+	       jtmp = lastReadOffsetForNucmer - mer_dna::k();
+	       ktmp = readLength - jtmp - mer_dna::k();
 	       // If the desired k-mer has an 'N', don't bother
 	       if (nextWithN < jtmp) {
-		    for (tempIndex=jtmp; tempIndex<jtmp+mer_len; tempIndex++)
+                   for (tempIndex=jtmp; tempIndex<jtmp+(int)mer_dna::k(); tempIndex++)
 			 if (readBasesBegin[tempIndex] == 'N')
 			      break; }
 	       else
 		    tempIndex = nextWithN;
-	       if (tempIndex-jtmp < mer_len) // It had an 'N'
+	       if (tempIndex-jtmp < (int)mer_dna::k()) // It had an 'N'
 		    continue;
 	       readKmerTmp = readKmer;
 	       readRevCompKmerTmp = readRevCompKmer;
-	       tempIndex = j + mer_len - jtmp;
+	       tempIndex = j + mer_dna::k() - jtmp;
 	       if (tempIndex < 0)
 		    tempIndex = 0;
-	       for (tempIndex=0; tempIndex<mer_len; tempIndex++) {
+	       for (tempIndex=0; tempIndex<(int)mer_dna::k(); tempIndex++) {
                  readKmerTmp.shift_left(readBasesBegin[jtmp+tempIndex]);
                  readRevCompKmerTmp.shift_right(mer_dna::complement(readBasesBegin[jtmp+tempIndex]));
                }
@@ -585,7 +583,7 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	       if (netOri == 0) // The read is 'F' in kUnitig
 		    kUnitigOffsetOfFirstBaseInRead = kUnitigOffset - jtmp;
 	       else
-		    kUnitigOffsetOfFirstBaseInRead = kUnitigOffset + jtmp + (mer_len);
+		    kUnitigOffsetOfFirstBaseInRead = kUnitigOffset + jtmp + mer_dna::k();
 	       if ((kUnitigOffsetOfFirstBaseInReadHold == kUnitigOffsetOfFirstBaseInRead) &&
 		   (kUnitigNumber == kUnitigNumberHold) &&
 		   (netOri == netOriHold)) {
@@ -593,7 +591,7 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 		    k = ktmp; 
 		    readKmer = readKmerTmp;
 		    readRevCompKmer = readRevCompKmerTmp;
-		    intervalEnd = j + mer_len; }
+		    intervalEnd = j + mer_dna::k(); }
 	  }
      }
      //	    break; // For debugging

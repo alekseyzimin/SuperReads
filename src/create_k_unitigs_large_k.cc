@@ -94,7 +94,6 @@ bool insert_canonical(set_type& set, const mer_dna& mer) {
  */
 template<typename mer_counts_type, typename used_type, typename end_points_type, typename parser_type>
 class create_k_unitig : public thread_exec {
-  int                           mer_len_;
   const mer_counts_type&        counts_; // Counts for k-mers
   used_type                     used_mers_; // Mark all k-mers whether they have been visited already
   end_points_type               end_points_; // End points of k-unitigs, to ouput only once
@@ -107,20 +106,20 @@ class create_k_unitig : public thread_exec {
   static direction rev_direction(direction dir) { return (direction)-dir; }
 
 public:
-  create_k_unitig(int mer_len, const mer_counts_type& counts, used_type& used,
+  create_k_unitig(const mer_counts_type& counts, used_type& used,
                   int threads, parser_type& parser, std::ostream& output) :
-    mer_len_(mer_len), counts_(counts), used_mers_(used),
+    counts_(counts), used_mers_(used),
     end_points_(args.false_positive_arg, args.nb_mers_arg / 10),
     threads_(threads), parser_(parser), output_multiplexer_(&output, 3 * threads, 4096),
     unitig_id_(0)
   { }
 
   virtual void start(int thid) {
-    mer_stream<mer_dna, read_parser> stream(mer_len_, parser_);
+    mer_stream<mer_dna, read_parser> stream(mer_dna::k(), parser_);
     jflib::omstream                  output(output_multiplexer_);
-    mer_dna                          current(mer_len_);
-    mer_dna                          continuation(mer_len_);
-    mer_dna                          tmp(mer_len_);
+    mer_dna                          current;
+    mer_dna                          continuation;
+    mer_dna                          tmp;
 
     for( ; stream; ++stream) {
       auto is_new = used_mers_.insert(stream.canonical());
@@ -219,7 +218,7 @@ private:
   // out, maybe after some number of low count mer to skip.
   bool starting_mer(direction dir, mer_dna m) {
     int low_cont = args.cont_on_low_arg;
-    mer_dna continuation(m.k());
+    mer_dna continuation;
 
     while(true) {
       unsigned int count       = 0;
@@ -243,8 +242,8 @@ private:
       return;
 
     mer_dna            mer1(start);
-    mer_dna            mer2(start.k());
-    mer_dna            mer3(start.k());
+    mer_dna            mer2;
+    mer_dna            mer3;
     mer_dna           *current = &mer1;
     mer_dna           *cont    = &mer2;
     unsigned int       count   = 0;
@@ -320,6 +319,8 @@ std::ostream* open_output() {
 int main(int argc, char *argv[])
 {
   args.parse(argc, argv);
+
+  mer_dna::k(args.mer_arg);
   if(!args.min_len_given)
     args.min_len_arg = args.mer_arg + 1;
 
@@ -359,7 +360,7 @@ int main(int argc, char *argv[])
     bloom_filter_type used(args.false_positive_arg, args.nb_mers_arg);
     read_parser parser(args.input_arg.begin(), args.input_arg.end(),
                        args.threads_arg);
-    unitiger_type unitiger(args.mer_arg, *kmers, used, args.threads_arg, parser, 
+    unitiger_type unitiger(*kmers, used, args.threads_arg, parser, 
                            *output_ostream);
     unitiger.exec_join(args.threads_arg);
   }

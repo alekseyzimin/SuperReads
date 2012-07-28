@@ -17,13 +17,15 @@ int main(int argc, char *argv[])
 {
   args.parse(argc, argv);
 
+  mer_dna::k(args.mer_arg);
+
   mapped_file dbf(args.input_arg);
   uint64_t* base = (uint64_t*)dbf.base();
   mer_bloom_counter2 mers(base[0], base[1], (unsigned char*)(base + 2));
 
   std::string word;
-  mer_dna m(args.mer_arg);
-  mer_dna mq(args.mer_arg);
+  mer_dna m;
+  mer_dna mq;
   while(true) {
     std::cin >> word;
     if(!std::cin) 
