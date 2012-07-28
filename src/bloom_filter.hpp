@@ -22,6 +22,7 @@
 #include <math.h>
 #include <vector>
 #include <algorithm>
+#include <divisor.hpp>
 #include <reallocators.hpp>
 #include <src/bloom_hash.hpp>
 
@@ -61,7 +62,9 @@ template<typename Key, typename HashPair = hash_pair<Key>, typename M=serial_acc
 class bloom_filter {
   typedef typename R::element_type  element_type;
   typedef typename R::element_type* element_pointer;
-  const size_t        m_;
+  // The number of bits in the structure, previously known as m_, is
+  // know stored as d_.d()
+  const divisor64     d_;
   const unsigned long k_;       // Number of hashes
   R                   realloc_;
   element_pointer     data_;
@@ -77,22 +80,22 @@ public:
   // BF with false positive rate of fp and estimated number of entries
   // of n.
   bloom_filter(double fp, size_t n) : 
-    m_(n * (size_t)lrint(-log(fp) / LOG2_SQ)),
+    d_(n * (size_t)lrint(-log(fp) / LOG2_SQ)),
     k_(lrint(-log(fp) / LOG2)),
     realloc_(),
-    data_(realloc_(0, 0, nb_elements(m_))),
+    data_(realloc_(0, 0, nb_elements(d_.d()))),
     hash_fns_(), mem_access_()
   { }
 
   bloom_filter(size_t m, unsigned long k) :
-    m_(m), k_(k), realloc_(),
-    data_(realloc_(0, 0, nb_elements(m_))),
+    d_(m), k_(k), realloc_(),
+    data_(realloc_(0, 0, nb_elements(d_.d()))),
     hash_fns_(), mem_access_() { }
 
   // Number of hash functions
   unsigned long k() const { return k_; }
   // Size of bit vector
-  size_t m() const { return m_; }
+  size_t m() const { return d_.d(); }
 
   // Std::set compatible insert method. There is no iterator for a
   // bloom filter, so return true for the first element of the
@@ -111,10 +114,12 @@ public:
     
   // Insert key with given hashes
   bool add(const uint64_t *hashes) {
-    bool     present = true;
+    bool         present = true;
+    const size_t base    = d_.remainder(hashes[0]);
+    const size_t inc     = d_.remainder(hashes[1]);
     
     for(unsigned long i = 0; i < k_; ++i) {
-      size_t pos    = (hashes[0] + i * hashes[1]) % m_;
+      size_t pos    = d_.remainder(base + i * inc);
       size_t elt_i  = pos / elt_size;
       size_t bit_i  = pos % elt_size;
       element_type mask = ((element_type)1) << bit_i;
@@ -136,8 +141,11 @@ public:
   }
 
   bool is_member(const uint64_t *hashes) const {
+    const size_t base    = d_.remainder(hashes[0]);
+    const size_t inc     = d_.remainder(hashes[1]);
+
     for(unsigned long i = 0; i < k_; ++i) {
-      size_t pos   = (hashes[0] + i * hashes[1]) % m_;
+      size_t pos   = d_.remainder(base + i * inc);
       size_t elt_i = pos / elt_size;
       size_t bit_i = pos % elt_size;
       if(!(mem_access_.fetch(data_ + elt_i) & ((element_type)1 << bit_i)))

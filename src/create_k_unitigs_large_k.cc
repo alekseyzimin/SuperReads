@@ -339,6 +339,7 @@ int main(int argc, char *argv[])
       mer_populate populate(args.mer_arg, *kmers, parser);
       populate.exec_join(args.threads_arg);
     }
+    exit(0);
   }
   
   if(args.save_given) {

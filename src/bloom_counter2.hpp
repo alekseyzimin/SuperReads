@@ -22,6 +22,7 @@
 #include <math.h>
 #include <limits.h>
 #include <reallocators.hpp>
+#include <divisor.hpp>
 #include <jflib/atomic_field.hpp>
 #include <jflib/compare_and_swap.hpp>
 #include <src/bloom_hash.hpp>
@@ -32,7 +33,9 @@
  */
 template<typename Key, typename HashPair = hash_pair<Key>, typename R=remaper<unsigned char> >
 class bloom_counter2 {
-  const size_t          m_;
+  // The number of bits in the structure, previously known as m_, is
+  // know stored as d_.d()
+  const divisor64       d_;
   const unsigned long   k_;
   R                     realloc;
   unsigned char * const data_;
@@ -42,29 +45,29 @@ public:
   typedef Key key_type;
 
   bloom_counter2(double fp, size_t n) :
-    m_(n * (size_t)lrint(-log(fp) / LOG2_SQ)),
+    d_(n * (size_t)lrint(-log(fp) / LOG2_SQ)),
     k_(lrint(-log(fp) / LOG2)),
     realloc(),
-    data_(realloc(0, 0, m_ / 5 + (m_ % 5 != 0))),
+    data_(realloc(0, 0, d_.d() / 5 + (d_.d() % 5 != 0))),
     hash_fns_() { }
 
   bloom_counter2(size_t m, unsigned long k) :
-    m_(m), k_(k), realloc(), 
-    data_(realloc(0, 0, m_ / 5 + (m_ % 5 != 0))),
+    d_(m), k_(k), realloc(), 
+    data_(realloc(0, 0, d_.d() / 5 + (d_.d() % 5 != 0))),
     hash_fns_() { }
 
   bloom_counter2(size_t m, unsigned long k, unsigned char* ptr) :
-    m_(m), k_(k), data_(ptr), hash_fns_() { }
+    d_(m), k_(k), data_(ptr), hash_fns_() { }
 
 
   void write_bits(std::ostream& out) {
-    out.write((char*)data_, m_ / 5 + (m_ % 5 != 0));
+    out.write((char*)data_, m() / 5 + (m() % 5 != 0));
   }
 
   // Number of hash functions
   unsigned long k() const { return k_; }
   // Size of bit vector
-  size_t m() const { return m_ ; }
+  size_t m() const { return d_.d() ; }
 
   // Insert key k. Returns previous value of k
   unsigned int insert(const Key &k) {
@@ -76,8 +79,11 @@ public:
   // Insert key with given hashes
   unsigned int insert(const uint64_t* hashes) {
     unsigned char res = 2;
+    const size_t base = d_.remainder(hashes[0]);
+    const size_t inc  = d_.remainder(hashes[1]);
+
     for(unsigned long i = 0; i < k_; ++i) {
-      size_t        p    = (hashes[0] % m_ + i * (hashes[1] % m_)) % m_;
+      const size_t  p    = d_.remainder(base + i * inc);
       const size_t  off  = p / 5;
       const size_t  boff = p % 5;
       unsigned char v    = jflib::a_load(&data_[off]);
@@ -119,8 +125,11 @@ public:
 
   unsigned int check(uint64_t *hashes) const {
     unsigned char res = 2;
+    const size_t base = d_.remainder(hashes[0]);
+    const size_t inc  = d_.remainder(hashes[1]);
+
     for(unsigned int i = 0; i < k_; ++i) {
-      size_t        p    = (hashes[0] % m_ + i * (hashes[1] % m_)) % m_;
+      size_t        p    = d_.remainder(base + i * inc);
       const size_t  off  = p / 5;
       const size_t  boff = p % 5;
       unsigned char w    = jflib::a_load(&data_[off]);
