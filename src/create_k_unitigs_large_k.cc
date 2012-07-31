@@ -28,7 +28,6 @@
 #include <gzip_stream.hpp>
 #include <src/bloom_counter2.hpp>
 #include <src/MurmurHash3.h>
-#include <multi_thread_skip_list_set.hpp>
 #include <src/read_parser.hpp>
 #include <src/mer_dna.hpp>
 #include <src/mer_stream.hpp>
@@ -339,7 +338,6 @@ int main(int argc, char *argv[])
       mer_populate populate(args.mer_arg, *kmers, parser);
       populate.exec_join(args.threads_arg);
     }
-    exit(0);
   }
   
   if(args.save_given) {

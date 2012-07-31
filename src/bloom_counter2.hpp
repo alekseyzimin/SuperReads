@@ -27,6 +27,11 @@
 #include <jflib/compare_and_swap.hpp>
 #include <src/bloom_hash.hpp>
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+#include <gcc_builtins.hpp>
+
 #define LOG2    0.6931471805599453
 #define LOG2_SQ 0.4804530139182014
 /* Bloom counter with 3 values: 0, 1 or 2. It is thread safe and lock free.
@@ -40,6 +45,11 @@ class bloom_counter2 {
   R                     realloc;
   unsigned char * const data_;
   HashPair              hash_fns_;
+
+  struct prefetch_info {
+    size_t         boff;
+    unsigned char* pos;
+  };
 
 public:
   typedef Key key_type;
@@ -78,16 +88,24 @@ public:
 
   // Insert key with given hashes
   unsigned int insert(const uint64_t* hashes) {
-    unsigned char res = 2;
+    // Prefetch memory locations
+    prefetch_info pinfo[k()];
     const size_t base = d_.remainder(hashes[0]);
     const size_t inc  = d_.remainder(hashes[1]);
-
     for(unsigned long i = 0; i < k_; ++i) {
-      const size_t  p    = d_.remainder(base + i * inc);
-      const size_t  off  = p / 5;
-      const size_t  boff = p % 5;
-      unsigned char v    = jflib::a_load(&data_[off]);
+      const size_t p   = d_.remainder(base + i * inc);
+      const size_t off = p / 5;
+      pinfo[i].boff    = p % 5;
+      pinfo[i].pos     = data_ + off;
+      prefetch_write_no(pinfo[i].pos);
+    }
 
+    // Insert element
+    unsigned char res = 2;
+    for(unsigned long i = 0; i < k_; ++i) {
+      size_t        boff = pinfo[i].boff;
+      unsigned char v    = jflib::a_load(pinfo[i].pos);
+      
       while(true) {
         unsigned char w = v;
         switch(boff) {
@@ -100,6 +118,7 @@ public:
         w = w % 3;
         if(w == 2) break;
         unsigned char nv = v;
+
         switch(boff) {
         case 0: nv += 1;  break;
         case 1: nv += 3;  break;
@@ -107,7 +126,7 @@ public:
         case 3: nv += 27; break;
         case 4: nv += 81; break;
         }
-        if(jflib::cas(&data_[off], v, nv, &v)) {
+        if(jflib::cas(pinfo[i].pos, v, nv, &v)) {
           if(w < res)
             res = w;
           break;
@@ -124,15 +143,23 @@ public:
   }
 
   unsigned int check(uint64_t *hashes) const {
-    unsigned char res = 2;
+    // Prefetch memory locations
+    prefetch_info pinfo[k()];
     const size_t base = d_.remainder(hashes[0]);
     const size_t inc  = d_.remainder(hashes[1]);
+    for(unsigned long i = 0; i < k_; ++i) {
+      const size_t p   = d_.remainder(base + i * inc);
+      const size_t off = p / 5;
+      pinfo[i].boff    = p % 5;
+      pinfo[i].pos     = data_ + off;
+      prefetch_read_no(pinfo[i].pos);
+    }
 
-    for(unsigned int i = 0; i < k_; ++i) {
-      size_t        p    = d_.remainder(base + i * inc);
-      const size_t  off  = p / 5;
-      const size_t  boff = p % 5;
-      unsigned char w    = jflib::a_load(&data_[off]);
+    // Check element
+    unsigned char res = 2;
+    for(unsigned long i = 0; i < k_; ++i) {
+      size_t        boff = pinfo[i].boff;
+      unsigned char w    = jflib::a_load(pinfo[i].pos);
 
       switch(boff) {
       case 0:          break;

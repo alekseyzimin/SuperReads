@@ -11,6 +11,8 @@ class mer_stream {
   const char*                  e_;
 
 public:
+  typedef mer_type value_type;
+
   mer_stream(int mer_len, parser_type& parser) :
     fmer_(mer_len), rmer_(mer_len), input_stream_(parser),
     bases_(0), s_(0), e_(0)

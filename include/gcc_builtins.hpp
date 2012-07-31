@@ -19,6 +19,11 @@
 #ifndef __GCC_BUILTINS_HPP__
 #define __GCC_BUILTINS_HPP__
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+// TODO: check in configure the existence of hardware version
 template<typename T>
 int ctz(T x);
 
@@ -28,6 +33,26 @@ template<>
 int ctz<unsigned long>(unsigned long x);
 template<>
 int ctz<unsigned long long>(unsigned long long x);
+
+#ifdef HAVE_BUILTIN_PREFETCH
+inline void prefetch_read_no(const void* addr) { __builtin_prefetch(addr, 0, 0); }
+inline void prefetch_read_low(const void* addr) { __builtin_prefetch(addr, 0, 1); }
+inline void prefetch_read_med(const void* addr) { __builtin_prefetch(addr, 0, 2); }
+inline void prefetch_read_high(const void* addr) { __builtin_prefetch(addr, 0, 3); }
+inline void prefetch_write_no(const void* addr) { __builtin_prefetch(addr, 1, 0); }
+inline void prefetch_write_low(const void* addr) { __builtin_prefetch(addr, 1, 1); }
+inline void prefetch_write_med(const void* addr) { __builtin_prefetch(addr, 1, 2); }
+inline void prefetch_write_high(const void* addr) { __builtin_prefetch(addr, 1, 3); }
+#else // HAVE_BUILTIN_PREFETCH
+inline void prefetch_read_no(const void* addr) { }
+inline void prefetch_read_low(const void* addr) { }
+inline void prefetch_read_med(const void* addr) { }
+inline void prefetch_read_high(const void* addr) { }
+inline void prefetch_write_no(const void* addr) { }
+inline void prefetch_write_low(const void* addr) { }
+inline void prefetch_write_med(const void* addr) { }
+inline void prefetch_write_high(const void* addr) { }
+#endif // HAVE_BUILTIN_PREFETCH
 
 
 #endif /* __GCC_BUILTINS_HPP__ */

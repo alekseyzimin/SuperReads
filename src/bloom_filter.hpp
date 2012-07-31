@@ -25,6 +25,7 @@
 #include <divisor.hpp>
 #include <reallocators.hpp>
 #include <src/bloom_hash.hpp>
+#include <gcc_builtins.hpp>
 
 /* Bloom filter using Kirsh & Mitzenmacher double hashing. I.e., only
    two hash functions are computed and the k functions have values (0
@@ -73,6 +74,11 @@ class bloom_filter {
   
   typedef std::vector<bool>::reference bit;
 
+  struct prefetch_info {
+    size_t          boff;
+    element_pointer pos;
+  };
+
   static const size_t elt_size = sizeof(element_type) * 8;
   static size_t nb_elements(size_t m) { return m / elt_size + (m % elt_size != 0); }
 
@@ -114,17 +120,24 @@ public:
     
   // Insert key with given hashes
   bool add(const uint64_t *hashes) {
-    bool         present = true;
+    // Prefetch memory locations
+    prefetch_info pinfo[k()];
     const size_t base    = d_.remainder(hashes[0]);
     const size_t inc     = d_.remainder(hashes[1]);
-    
     for(unsigned long i = 0; i < k_; ++i) {
-      size_t pos    = d_.remainder(base + i * inc);
-      size_t elt_i  = pos / elt_size;
-      size_t bit_i  = pos % elt_size;
-      element_type mask = ((element_type)1) << bit_i;
-      element_type prev = mem_access_.fetch_and_or(data_ + elt_i, mask);
-      present = present && (prev & mask);
+      const size_t pos   = d_.remainder(base + i * inc);
+      const size_t elt_i = pos / elt_size;
+      pinfo[i].boff      = pos % elt_size;
+      pinfo[i].pos       = data_ + elt_i;
+      prefetch_write_no(pinfo[i].pos);
+    }
+    
+    // Check if element present
+    bool present = true;
+    for(unsigned long i = 0; i < k_; ++i) {
+      const element_type mask = ((element_type)1) << pinfo[i].boff;
+      const element_type prev = mem_access_.fetch_and_or(pinfo[i].pos, mask);
+      present                 = present && (prev & mask);
     }
 
     return present;
@@ -141,16 +154,21 @@ public:
   }
 
   bool is_member(const uint64_t *hashes) const {
+    // Prefetch memory locations
+    prefetch_info pinfo[k()];
     const size_t base    = d_.remainder(hashes[0]);
     const size_t inc     = d_.remainder(hashes[1]);
-
     for(unsigned long i = 0; i < k_; ++i) {
-      size_t pos   = d_.remainder(base + i * inc);
-      size_t elt_i = pos / elt_size;
-      size_t bit_i = pos % elt_size;
-      if(!(mem_access_.fetch(data_ + elt_i) & ((element_type)1 << bit_i)))
-        return false;
+      const size_t pos   = d_.remainder(base + i * inc);
+      const size_t elt_i = pos / elt_size;
+      pinfo[i].boff      = pos % elt_size;
+      pinfo[i].pos       = data_ + elt_i;
+      prefetch_read_no(pinfo[i].pos);
     }
+
+    for(unsigned long i = 0; i < k_; ++i)
+      if(!(mem_access_.fetch(pinfo[i].pos) & ((element_type)1 << pinfo[i].boff)))
+        return false;
     return true;
   }
 };

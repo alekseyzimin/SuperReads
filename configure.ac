@@ -34,7 +34,7 @@ AS_IF([test "x$YAGGO" = "x"], [AC_PATH_PROG([YAGGO], [yaggo], [false])])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_TYPE(__int128,
-        AC_DEFINE([HAVE_INT128], [1], [Define if type __int128 is supported]))
+              AC_DEFINE([HAVE_INT128], [1], [Define if type __int128 is supported]))
 
 # Extra compiler debugging
 AC_ARG_VAR([DEV_CXXFLAGS], [Extra compiler flags for development])
@@ -55,6 +55,14 @@ AC_SUBST([DEV_CXXFLAGS])
 # Checks for library functions.
 AC_FUNC_MMAP
 AC_CHECK_FUNCS([mremap])
+
+# Check for builtin functions
+AC_MSG_CHECKING([for __builtin_prefetch])
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[int x = 0;]],
+                                [[__builtin_prefetch(&x);]])],
+               [AC_MSG_RESULT([yes])]
+               [AC_DEFINE([HAVE_BUILTIN_PREFETCH], [1], [Defined if __builtin_prefetch is supported])],
+               [AC_MSG_RESULT([no])])
 
 # Debugging flag
 AC_ARG_ENABLE([debug], AS_HELP_STRING([--enable-debug], [Enable debugging]))

@@ -117,6 +117,8 @@ public:
     elt elt_;
     size_type i_;
   public:
+    typedef T value_type;
+
     /** Construct a stream from a multiplexed_parser. 
      * @param rp The multiplexed parser
      */
