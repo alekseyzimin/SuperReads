@@ -45,7 +45,11 @@ namespace {
   }
 
   TEST(Divisor, Print) {
+#ifdef HAVE_INT128
     const std::string res("d:2947104,p:22,m:7806571878267802146");
+#else
+    const std::string res("d:2947104,p:0,m:0");
+#endif
     std::ostringstream resos;
     divisor64 d(2947104);
 

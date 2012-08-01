@@ -13,6 +13,7 @@ namespace {
                       "TCGNGCAAGGCTGATGCATCTTTATTGGCGTAGGAATGGTCACCGTTCATT\n");
     std::istringstream fasta_stream(fasta);
     read_parser parser(fasta_stream, 1);
+    mer_dna::k(10);
     mer_stream<mer_dna, read_parser> stream(10, parser);
     
     int count = 0;
@@ -28,6 +29,7 @@ namespace {
     std::istringstream fasta_stream(fasta);
 
     read_parser parser(fasta_stream, 1);
+    mer_dna::k(10);
     mer_stream<mer_dna, read_parser> stream(10, parser);
 
     for(int i = 0; stream; ++stream, ++i) {
