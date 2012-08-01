@@ -143,18 +143,18 @@ $cmd = "cat $kUnitigsFile | $exeDir/getLengthStatisticsForKUnitigsFile.perl $wor
 &runCommandAndExitIfBad ($cmd, $kUnitigLengthsFile, 1, "createLengthStatisticsFiles", $totBasesInKUnitigsFile, $numKUnitigsFile, $maxKUnitigNumberFile, $kUnitigLengthsFile);
 
 $jellyfishMatchArg="";
-if($merLen<=31){
-$minSizeNeededForTable = &reportMinJellyfishTableSizeForKUnitigs;
- redoKUnitigsJellyfish:
+if ($merLen<=31) {
+    $minSizeNeededForTable = &reportMinJellyfishTableSizeForKUnitigs;
+  redoKUnitigsJellyfish:
     $cmd = "jellyfish count -m $merLen -r -o $jellyfishKUnitigDataPrefix -c 6 -p 126 --both-strands -s $minSizeNeededForTable -t $numProcessors $kUnitigsFile";
-&runCommandAndExitIfBad ($cmd, $jellyfishKUnitigHashFile, 1, "createKUnitigHashTable", "$workingDirectory/organismMerCountsForKUnitigs_0");
+    &runCommandAndExitIfBad ($cmd, $jellyfishKUnitigHashFile, 1, "createKUnitigHashTable", "$workingDirectory/organismMerCountsForKUnitigs_0");
 
-$tableResizeFactor = &returnTableResizeAmount ($jellyfishKUnitigDataPrefix, $jellyfishKUnitigHashFile);
-if ($tableResizeFactor > 1) {
-    $tableSize *= 2;
-    print "Resizing the table to $tableSize for the k-unitig jellyfish run\n";
-    goto redoKUnitigsJellyfish; }
-$jellyfishMatchArg="--jellyfishdb=$jellyfishKUnitigHashFile";
+    $tableResizeFactor = &returnTableResizeAmount ($jellyfishKUnitigDataPrefix, $jellyfishKUnitigHashFile);
+    if ($tableResizeFactor > 1) {
+	$minSizeNeededForTable *= 2;
+	print "Resizing the table to $minSizeNeededForTable for the k-unitig jellyfish run\n";
+	goto redoKUnitigsJellyfish; }
+    $jellyfishMatchArg="--jellyfishdb=$jellyfishKUnitigHashFile";
 }
 
 # In addition to obvious output file, this also generates the files

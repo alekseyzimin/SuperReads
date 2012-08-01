@@ -44,9 +44,12 @@ for (@lengthsToOutput) {
     # Do the stuff here
     open (OUTFILE, ">genome.ctg.fwd.pairs.$length");
     for ($i=0; $i<=$#ctgs; $i++) {
-	$prefix = substr ($outputSeqs[$i], 0, $length);
-	$suffix = substr ($outputSeqs[$i], -$length);
-	print OUTFILE "$ctgs[$i] $prefix $suffix\n";
+	if ($seqLens[$i] > $length) {
+	    $prefix = substr ($outputSeqs[$i], 0, $length);
+	    $suffix = substr ($outputSeqs[$i], -$length);
+	    print OUTFILE "$ctgs[$i] $prefix $suffix\n"; }
+	else {
+	    print OUTFILE "$ctgs[$i] $outputSeqs[$i]\n"; }
     }
     close (OUTFILE);
     # After file finished
@@ -56,9 +59,11 @@ for (@lengthsToOutput) {
 sub doOutputContigSeqs
 {
     if(length($contigSeq) > $maxLength) {
+	push (@seqLens, $maxLength);
 	push (@outputSeqs, substr($contigSeq, 0, $maxLength) . " " . substr($contigSeq, -$maxLength)); }
 #	print OUTFILE " ",substr($contigSeq, 0, $maxLength)," ",substr($contigSeq, -$maxLength),"\n"; }
     else {
+	push (@seqLens, length($contigSeq));
 	push (@outputSeqs, "$contigSeq $contigSeq"); }
 #	print OUTFILE" $contigSeq $contigSeq\n"; }
 }
