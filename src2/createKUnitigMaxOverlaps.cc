@@ -208,11 +208,11 @@ void reportKUnitigEndMatches (void)
 			 isGoodOverlap = 1;
 		    if (isGoodOverlap) {
 			 if (ptr1->kUnitigEnd == 0) {
-			      ahg = (mer_dna::k()-1) - kUnitigLengths[kUni2];
-			      bhg = (mer_dna::k()-1) - kUnitigLengths[kUni1]; }
+			      ahg = (mer_dna::k()) - kUnitigLengths[kUni2];
+			      bhg = (mer_dna::k()) - kUnitigLengths[kUni1]; }
 			 else {
-			      ahg = kUnitigLengths[kUni1] - (mer_dna::k()-1);
-			      bhg = kUnitigLengths[kUni2] - (mer_dna::k()-1); }
+			      ahg = kUnitigLengths[kUni1] - (mer_dna::k());
+			      bhg = kUnitigLengths[kUni2] - (mer_dna::k()); }
 		    }
 		    else {
 			 if (ptr1->kUnitigEnd == 0) {
@@ -224,10 +224,10 @@ void reportKUnitigEndMatches (void)
 		    }
 		    if (ptr1->kUnitigEnd == 0) {
 			 begin1 = 1;
-			 end1 = mer_dna::k()-1; }
+			 end1 = mer_dna::k(); }
 		    else {
 			 end1 = kUnitigLengths[kUni1];
-			 begin1 = end1 - (mer_dna::k()-1) + 1; }
+			 begin1 = end1 - (mer_dna::k()) + 1; }
 		    if (netOri == 'N') {
 			 begin2 = begin1 - ahg;
 			 end2 = end1 - ahg; }
@@ -349,10 +349,10 @@ void loadKUnitigEndingKMerValues (void)
      for (kUnitigNumber=0; kUnitigNumber<=largestKUnitigNumber; kUnitigNumber++) {
 	  index = 4 * kUnitigNumber;
 	  if (kUnitigLengths[kUnitigNumber] == 0) {
-	       ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k()-1);
-	       ptrsToEndKUnitigKmerStructs[index+1] = new endKUnitigKmerStruct(mer_dna::k()-1);
-	       ptrsToEndKUnitigKmerStructs[index+2] = new endKUnitigKmerStruct(mer_dna::k()-1);
-	       ptrsToEndKUnitigKmerStructs[index+3] = new endKUnitigKmerStruct(mer_dna::k()-1);
+	       ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k());
+	       ptrsToEndKUnitigKmerStructs[index+1] = new endKUnitigKmerStruct(mer_dna::k());
+	       ptrsToEndKUnitigKmerStructs[index+2] = new endKUnitigKmerStruct(mer_dna::k());
+	       ptrsToEndKUnitigKmerStructs[index+3] = new endKUnitigKmerStruct(mer_dna::k());
 	       ptrsToEndKUnitigKmerStructs[index]->kMerValue = ptrsToEndKUnitigKmerStructs[index+1]->kMerValue = ptrsToEndKUnitigKmerStructs[index+2]->kMerValue = ptrsToEndKUnitigKmerStructs[index+3]->kMerValue = maxVal;
 	       ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = ptrsToEndKUnitigKmerStructs[index+1]->kUnitigNumber = ptrsToEndKUnitigKmerStructs[index+2]->kUnitigNumber = ptrsToEndKUnitigKmerStructs[index+3]->kUnitigNumber = kUnitigNumber;
 	       ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = ptrsToEndKUnitigKmerStructs[index+1]->kUnitigEnd = 0;
@@ -363,28 +363,28 @@ void loadKUnitigEndingKMerValues (void)
 	  }
 	  // k-mer at beginning of k-unitig, forward ori
 	  std::string kUnitigSequence = std::string (kUnitigSequences[kUnitigNumber]);
-	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k()-1);
-	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = kUnitigSequence.substr(0, mer_dna::k()-1);
+	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k());
+	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = kUnitigSequence.substr(0, mer_dna::k());
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = kUnitigNumber;
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = 0;
 	  ptrsToEndKUnitigKmerStructs[index]->ori = 0;
 	  ++index;
 	  // k-mer at beginning of k-unitig, reverse ori
-	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k()-1);
+	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k());
 	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = (ptrsToEndKUnitigKmerStructs[index-1]->kMerValue).get_reverse_complement();
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = kUnitigNumber;
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = 0;
 	  ptrsToEndKUnitigKmerStructs[index]->ori = 1;
 	  ++index;
 	  // k-mer at end of k-unitig, forward ori
-	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k()-1);
-	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = kUnitigSequence.substr(kUnitigLengths[kUnitigNumber]-mer_dna::k()+1, mer_dna::k()-1);
+	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k());
+	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = kUnitigSequence.substr(kUnitigLengths[kUnitigNumber]-mer_dna::k(), mer_dna::k());
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = kUnitigNumber;
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = 1;
 	  ptrsToEndKUnitigKmerStructs[index]->ori = 0;
 	  ++index;
 	  // k-mer at end of k-unitig, reverse ori
-	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k()-1);
+	  ptrsToEndKUnitigKmerStructs[index] = new endKUnitigKmerStruct(mer_dna::k());
 	  ptrsToEndKUnitigKmerStructs[index]->kMerValue = (ptrsToEndKUnitigKmerStructs[index-1]->kMerValue).get_reverse_complement();
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigNumber = kUnitigNumber;
 	  ptrsToEndKUnitigKmerStructs[index]->kUnitigEnd = 1;
@@ -547,7 +547,7 @@ void processArgs (int argc, char **argv)
 {
      int numArgsSeen, i;
      inputPrefix = outputPrefix = NULL;
-     mer_dna::k(KMER_LENGTH);
+     mer_dna::k(KMER_LENGTH-1);
      numArgsSeen = 0;
      largestKUnitigNumber = 0;
      createCoordsFile = false;
@@ -556,7 +556,7 @@ void processArgs (int argc, char **argv)
 	       giveUsageAndExit();
 	  if (strcmp (argv[i], "-kmervalue") == 0) {
 	       ++i;
-	       mer_dna::k(atoi (argv[i]));
+	       mer_dna::k(atoi(argv[i]) - 1);
 	       continue; }
 	  if (strcmp (argv[i], "-largest-kunitig-number") == 0) {
 	       ++i;
