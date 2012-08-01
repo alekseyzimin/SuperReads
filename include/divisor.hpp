@@ -90,8 +90,20 @@ namespace divisor {
     }
 
     uint64_t d() const { return d_; }
-    uint64_t p() const { return p_; }
-    uint64_t m() const { return m_; }
+    uint64_t p() const { 
+#ifdef HAVE_INT128
+      return p_;
+#else
+      return 0;
+#endif
+    }
+    uint64_t m() const {
+#ifdef HAVE_INT128
+      return m_;
+#else
+      return 0;
+#endif
+    }
   };
 }
 
