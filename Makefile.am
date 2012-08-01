@@ -3,12 +3,13 @@ AM_CXXFLAGS = -I$(top_srcdir)/include -I$(top_srcdir) -Wall $(JELLYFISH_CFLAGS) 
 AM_LDFLAGS = -lpthread $(JELLYFISH_LIBS)
 AM_DEV_CXXFLAGS = $(DEV_CXXFLAGS)
 
-noinst_HEADERS = $(BUILT_SOURCES)
+noinst_HEADERS = $(YAGGO_SOURCES)
 bin_PROGRAMS =
 dist_bin_SCRIPTS =
 data_DATA =
-BUILT_SOURCES =
-CLEANFILES = $(BUILT_SOURCES)
+BUILT_SOURCES = $(YAGGO_SOURCES)
+CLEANFILES =
+DISTCLEANFILES = $(BUILT_SOURCES)
 
 EXTRA_DIST =
 
@@ -54,6 +55,7 @@ V_YAGGO_ = $(V_YAGGO_$(AM_DEFAULT_VERBOSITY))
 V_YAGGO_0 = @echo "  YAGGO " $@;
 .yaggo.hpp:
 	$(V_YAGGO)$(YAGGO) --license $(srcdir)/header-license -o $@ $<
+YAGGO_SOURCES = # Append all file to be built by yaggo
 
 ##############################
 # src pipeline
@@ -80,21 +82,21 @@ noinst_HEADERS += src/aligned_simple_array.hpp			\
 
 homo_trim_SOURCES = src/homo_trim.cc
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
-BUILT_SOURCES              += src/error_corrected2frg_cmdline.hpp
+YAGGO_SOURCES              += src/error_corrected2frg_cmdline.hpp
 reverse_complement_SOURCES = src/reverse_complement.cc
 create_k_unitigs_SOURCES = src/create_k_unitigs.cpp
-BUILT_SOURCES           += src/create_k_unitigs_cmdline.hpp
+YAGGO_SOURCES           += src/create_k_unitigs_cmdline.hpp
 reduce_sr_SOURCES = src/reduce_sr.cc
-BUILT_SOURCES    += src/reduce_sr_cmdline.hpp
+YAGGO_SOURCES    += src/reduce_sr_cmdline.hpp
 sorted_merge_SOURCES = src/sorted_merge.cc
-BUILT_SOURCES       += src/sorted_merge_cmdline.hpp
+YAGGO_SOURCES       += src/sorted_merge_cmdline.hpp
 create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
                                    src/read_parser.cc src/mer_dna.cc	\
                                    src/MurmurHash3.cpp src/mer_stream.hpp
-BUILT_SOURCES += src/create_k_unitigs_large_k_cmdline.hpp
+YAGGO_SOURCES += src/create_k_unitigs_large_k_cmdline.hpp
 bloom_query_SOURCES = src/bloom_query.cc src/mer_dna.cc	\
                       src/MurmurHash3.cpp
-BUILT_SOURCES += src/bloom_query_cmdline.hpp
+YAGGO_SOURCES += src/bloom_query_cmdline.hpp
 
 ##############################
 # src2 pipeline
@@ -118,19 +120,19 @@ findMatchesBetweenKUnitigsAndReads_SOURCES = src/read_parser.cc				\
                                              src2/findMatchesBetweenKUnitigsAndReads.cc	\
                                              src/mer_dna.cc				\
                                              src/gcc_builtins.cc
-BUILT_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
+YAGGO_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc src/mer_dna.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFile.cc	\
 src/fibonacci_coding.cc src/MurmurHash3.cpp
-BUILT_SOURCES += src2/getSuperReadInsertCountsFromReadPlacementFile_cmdline.hpp
+YAGGO_SOURCES += src2/getSuperReadInsertCountsFromReadPlacementFile_cmdline.hpp
 getSuperReadInsertCountsFromReadPlacementFileTwoPasses_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses.cc		\
 src/fibonacci_coding.cc src/MurmurHash3.cpp
-BUILT_SOURCES += src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses_cmdline.hpp
+YAGGO_SOURCES += src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses_cmdline.hpp
 joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc
-BUILT_SOURCES          += src2/joinKUnitigs_v3_cmdline.hpp
+YAGGO_SOURCES          += src2/joinKUnitigs_v3_cmdline.hpp
 outputRecordsNotOnList_SOURCES = src2/outputRecordsNotOnList.cc
 
 ##############################
@@ -154,7 +156,7 @@ SUFFIXES = _0 .fa
 ##############################
 # unittests
 ##############################
-TESTS = all_tests # tests/test_create_k_unitigs_large_k.sh
+TESTS = all_tests
 EXTRA_DIST += $(TESTS)
 check_PROGRAMS = all_tests
 
@@ -184,7 +186,7 @@ all_tests_CXXFLAGS = $(AM_CXXFLAGS)					\
 -I$(top_srcdir)/include -I$(top_srcdir)
 all_tests_LDFLAGS = $(AM_LDFLAGS)
 all_tests_LDADD = libutils.a libgtest.a
-BUILT_SOURCES += unittests/test_main_cmdline.hpp
+YAGGO_SOURCES += unittests/test_main_cmdline.hpp
 noinst_HEADERS += unittests/test_main_cmdline.hpp unittests/misc.hpp
 
 include gtest.mk
