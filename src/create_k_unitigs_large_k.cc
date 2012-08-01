@@ -216,21 +216,21 @@ private:
   // starting mer if it is branching forward, or backward, or dries
   // out, maybe after some number of low count mer to skip.
   bool starting_mer(direction dir, mer_dna m) {
-    int low_cont = args.cont_on_low_arg;
-    mer_dna continuation;
+    int     low_cont = args.cont_on_low_arg;
+    mer_dna tmp1, tmp2;
 
     while(true) {
-      unsigned int count       = 0;
-      if(!next_mer(dir, m, continuation, &count))
+      unsigned int count = 0;
+      if(!next_mer(dir, m, tmp1, &count))
         return true;
       if(count >= args.quality_threshold_arg) {
-        if(!next_mer(rev_direction(dir), continuation, m, &count))
+        if(!next_mer(rev_direction(dir), tmp1, tmp2, &count))
           return true;
         break;
       }
       if(--low_cont < 0)
         return true;
-      m = continuation;
+      m = tmp1;
     }
     return false;
   }
