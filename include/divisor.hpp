@@ -49,7 +49,8 @@ namespace divisor {
   class divisor64 {
     const uint64_t d_;
 #ifdef HAVE_INT128
-    const uint64_t p_, m_;
+    const uint16_t p_;
+    const unsigned __int128 m_;
 #endif
     
   public:
@@ -57,15 +58,19 @@ namespace divisor {
       d_(d)
 #ifdef HAVE_INT128
       , p_(ceilLog2(d_)),
-      m_(div_ceil((__int128)1 << (64 + p_), (__int128)d_))
+      m_((div_ceil((unsigned __int128)1 << (64 + p_), (unsigned __int128)d_)) & (uint64_t)-1)
 #endif
     { }
     
-    inline uint64_t divide(uint64_t n) const {
+    inline uint64_t divide(const uint64_t n) const {
 #ifdef HAVE_INT128
-      const __int128 n_ = (__int128)n;
-      const uint64_t q = (n_ * (__int128)m_) >> 64;
-      return ((n_ + q) >> p_) & (uint64_t)-1;
+      switch(m_) {
+      case 0:
+        return n >> p_;
+      default:
+        const unsigned __int128 n_ = (unsigned __int128)n;
+        return (n_ + ((n_ * m_) >> 64)) >> p_;
+      }
 #else
       return n / d_;
 #endif
@@ -73,16 +78,31 @@ namespace divisor {
 
     inline uint64_t remainder(uint64_t n) const {
 #ifdef HAVE_INT128
-      return n - divide(n) * d_;
+      switch(m_) {
+      case 0:
+        return n & (((uint64_t)1 << p_) - 1);
+      default:
+        return n - divide(n) * d_;
+      }
 #else
       return n % d_;
 #endif
     }
-    
+
+    // Euclidian division: d.division(n, q, r) sets q <- n / d and r
+    // <- n % d. This is faster than doing each independently.
     inline void division(uint64_t n, uint64_t &q, uint64_t &r) const {
 #ifdef HAVE_INT128
-      q = divide(n);
-      r = n - q * d_;
+      switch(m_) {
+      case 0:
+        q = n >> p_;
+        r = n & (((uint64_t)1 << p_) - 1);
+        break;
+      default:
+        q = divide(n);
+        r = n - q * d_;
+        break;
+      }
 #else
       q = n / d_;
       r = n % d_;
@@ -105,6 +125,13 @@ namespace divisor {
 #endif
     }
   };
+
+  inline uint64_t operator/(uint64_t n, const divisor64& d) {
+    return d.divide(n);
+  }
+  inline uint64_t operator%(uint64_t n, const divisor64& d) {
+    return d.remainder(n);
+  }
 }
 
 typedef divisor::divisor64 divisor64;

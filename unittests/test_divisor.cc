@@ -13,7 +13,9 @@ namespace {
       uint64_t r = a % b;
 
       EXPECT_EQ(q, d.divide(a));
+      EXPECT_EQ(q, a / d);
       EXPECT_EQ(r, d.remainder(a));
+      EXPECT_EQ(r, a % d);
       uint64_t qd, rd;
       d.division(a, qd, rd);
       EXPECT_EQ(q, qd);
@@ -21,9 +23,15 @@ namespace {
   }
 
   TEST(Divisor, Random) {
-    for(int i = 0; i < 100000; ++i) {
+    static int mi = 10000000;
+    for(int i = 0; i < mi; ++i) {
       uint64_t a = large_random();
-      uint64_t b = large_random() & (((uint64_t)1 << 62) - 1);
+      uint64_t b = large_random();
+      test_div(a, b);
+    }
+    for(int i = 0; i < mi; ++i) {
+      uint64_t a = large_random();
+      uint64_t b = large_random() / (i + 1);
       test_div(a, b);
     }
   }
@@ -32,14 +40,13 @@ namespace {
     struct pair_test {
       uint64_t dividend, divisor;
     };
-    pair_test tests[2] = {
+    pair_test tests[3] = {
       { 11529215046068486072UL, 20480UL },
-      { 16563367944624636593UL, 20480UL }
+      { 16563367944624636593UL, 20480UL },
+      { 5UL, 2UL }
     };
     for(size_t i = 0; i < sizeof(tests) / sizeof(pair_test); ++i) {
-      std::ostringstream scope;
-      scope << tests[i].dividend << " / " << tests[i].divisor;
-      SCOPED_TRACE(scope.str().c_str());
+      SCOPED_TRACE(::testing::Message() << tests[i].dividend << " / " << tests[i].divisor);
       test_div(tests[i].dividend, tests[i].divisor);
     }
   }
