@@ -3,7 +3,7 @@
 # This program is used to close gaps in our assembly.
 #
 # Example invocation:
-# closeGaps.perl --min-kmer-len 15 --max-ker-len 31 --Celera-terminator-directory .../CA/9-terminator --jellyfish-hash-size 2000000000 --num-threads 16 --output-directory outputDir --reads-file pe.cor.fa --reads-file sj.cor.fa
+# closeGaps.perl --min-kmer-len 17 --max-ker-len 31 --Celera-terminator-directory .../CA/9-terminator --jellyfish-hash-size 2000000000 --num-threads 16 --output-directory outputDir --reads-file pe.cor.fa --reads-file sj.cor.fa
 #
 # There are no args, only flags (mostly) with arguments. They are as follows:
 #
@@ -16,7 +16,7 @@
 # --jellyfish-hash-size # : specify the jellyfish hash size
 #
 # Flags for required values which have defaults (i.e. flag not necessary)
-# --min-kmer-len # : specify the min kmer len used (default: 15)
+# --min-kmer-len # : specify the min kmer len used (default: 17)
 # --max-kmer-len # : specify the max kmer len used (default: 31)
 # --num-threads # : specify the number of threads (default: 1)
 # -t # : same as --num-threads #
@@ -293,7 +293,7 @@ sub processArgs
     my ($arg, $tfile, $cmd, @kmerLens, $i);
     $kUnitigContinuationNumber = 2;
     $maxKMerLen = 31;
-    $minKMerLen = 15;
+    $minKMerLen = 17;
     $numThreads = 1;
     $maxFishingKMerCount = 5;
     $useAllKUnitigs = 0;

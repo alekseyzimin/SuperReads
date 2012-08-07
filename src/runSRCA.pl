@@ -438,7 +438,7 @@ if(not(-e "pe.cor.fa")||$rerun_pe==1){
     $rerun_pe=1;
 }
 #compute average PE read length -- we will need this for Astat later
-print FILE "PE_AVG_READ_LENGTH=`head -n 1000000 pe.cor.fa |tail -n 500000| grep -v '^>' | awk 'BEGIN{n=0;m=0;}{m+=length(\$0);n++;}END{print int(m/n)}'`\n";
+print FILE "PE_AVG_READ_LENGTH=`head -n 1000000 pe.cor.fa |tail -n 500000| grep -v '^>' | grep -v '^N' | awk 'BEGIN{n=0;m=0;}{m+=length(\$0);n++;}END{print int(m/n)}'`\n";
 print FILE "echo \"Average PE read length after error correction: \$PE_AVG_READ_LENGTH\"\n"; 
 
 ###done error correct PE###
@@ -623,6 +623,7 @@ if($rerun_sj==1||$rerun_pe==1){
 print FILE "rm -rf CA\n";
 }
 
+if(not(-e "CA/7-0-CGW/cgw.out")){
 #estimating mer threshold for overlapper to cover 90% of all distinct k-mers
 print FILE "ovlMerThreshold=`jellyfish histo -t $NUM_THREADS k_u_hash_0 | awk '{thresh=75;if(\$1>1) {dist+=\$2;if(dist>int(\"'\$ESTIMATED_GENOME_SIZE'\")*0.98&&flag==0){if(\$1>thresh) thresh=\$1;flag=1}}}END{print thresh}'`\n";
 print FILE "echo ovlMerThreshold=\$ovlMerThreshold\n\n";
@@ -633,9 +634,11 @@ $other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClear
 }else{
 $other_parameters="doFragmentCorrection=0 doOverlapBasedTrimming=0 doExtendClearRanges=0 ovlMerSize=30";
 }
+
 #filter out non-junction fragments
 
 if(scalar(@jump_info_array)>0){
+if(not(-e "CA/4-unitigger-filter/gkp.edits.msg")){
     print FILE "runCA  gkpFixInsertSizes=0 jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=\$ovlMerThreshold bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
 
 
@@ -651,23 +654,42 @@ if(scalar(@jump_info_array)>0){
     print FILE "cd ../\nrm -rf *.tigStore\ncd ../\n\n";
     print FILE "\n";
 }
+print FILE "if [[ -e \"CA/4-unitigger-filter/gkp.edits.msg\" ]];then\n";
+print FILE "echo \"Filter success\"\n";
+print FILE "else\n";
+print FILE "echo \"Filtering failed, check output under CA/4-unitigger-filter/ and runCA0.out\"\n";
+print FILE "exit\n";
+print FILE "fi\n";
+}
 
+if(not(-e "CA/5-consensus/consensus.success")){
 print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+
+print FILE "if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then\n";
+print FILE "echo \"Overlap/unitig success\"\n";
+print FILE "else\n";
+print FILE "echo \"Overlap/unitig failed, check output under CA/ and runCA1.out\"\n";
+print FILE "exit\n";
+print FILE "fi\n";
 
 #now we check if the unitig consensus which is sometimes problematic, failed, and fix the unitigs
 print FILE "if [[ -e \"CA/5-consensus/consensus.success\" ]];then\n";
-print FILE "echo \"unitig consensus OK\"\n";
+print FILE "echo \"Unitig consensus success\"\n";
 print FILE "else\n";
-print FILE "echo \"fixing unitig consensus...\"\n";
+print FILE "echo \"Fixing unitig consensus...\"\n";
 print FILE "mkdir CA/fix_unitig_consensus\n";
 print FILE "cd CA/fix_unitig_consensus\n";
 print FILE "cp `which fix_unitigs.sh` .\n";
 print FILE "./fix_unitigs.sh genome \n";
 print FILE "cd ../../\n";
 print FILE "fi\n";
+}
 
 #we now recompute the A-stat for the unitigs based on positions of PE reads in the super-reads
+if(not(-e "CA/7-0-CGW/cgw.out")){
 print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
+}
+}
 
 #and we continue into the scaffolder...
 print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=0 $other_parameters 1>runCA2.out 2>&1\n";
@@ -694,6 +716,14 @@ foreach $v(@f){
 }
 
 print FILE "closeGaps.perl $reads_argument --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS --reduce-read-set 21 --use-all-kunitigs 1>gapClose.err 2>&1\n";
+
+print FILE "if [[ -e \"CA/10-gapclose/genome.ctg.fasta\" ]];then\n";
+print FILE "echo \"Gap close success. Output sequence is in CA/10-gapclose/genome.\{ctg,scf\}.fasta\"\n";
+print FILE "else\n";
+print FILE "echo \"Gap close failed, you can still use pre-gap close files under CA/9-terminator/. Check gapClose.err for problems.\"\n";
+print FILE "exit\n";
+print FILE "fi\n";
+
 
 ###Done !!!! Hoorayyyy!!! :)###
 print FILE "echo -n 'All done ';date;\n";

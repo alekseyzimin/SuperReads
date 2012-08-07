@@ -40,10 +40,19 @@ while($line1=<STDIN>)
 chomp($line1);
 if($line1 =~ /^>/)
 {
-$readname1=substr($line1,1);
+$header=substr($line1,1);
+@f=split(/\s+/,$header);
+$readname1=$f[0];
 $line1=<STDIN>;
 chomp($line1);
 $sequence1=$line1;
+if(scalar(@f)==3){
+$clr1=$f[1];
+$clr2=$f[2];
+}else{
+$clr1=0;
+$clr2=length($sequence1);
+}
 next if(length($sequence1)<64);
 
         print STDOUT "{FRG\n";
@@ -56,10 +65,11 @@ next if(length($sequence1)<64);
         print STDOUT "loc:0\n";
         print STDOUT "src:\n.\n";
         print STDOUT "seq:\n$sequence1\n.\n";
-$sequence1 =~ tr/ACGTNacgtn/GGGGGGGGGG/;
+$sequence1 =~ tr/ACGTNacgtn/GGGGGGGGGG/;# create fake quality scores
         print STDOUT "qlt:\n$sequence1\n.\n";
         print STDOUT "hps:\n.\n";
-        print STDOUT "clr:0,",length($sequence1),"\n";
+        print STDOUT "clv:$clr1,$clr2\n";
+        print STDOUT "clr:$clr1,$clr2\n";
         print STDOUT "}\n";
 
 }
