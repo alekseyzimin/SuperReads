@@ -276,9 +276,24 @@ private:
       std::swap(current, cont);
     }
 
-    // Erase trailing low quality bases if any
-    if(low_run > 0)
+    // Erase trailing low quality bases if any and reset current to be
+    // the actual last k-mer (with only good quality bases). Needed
+    // for the test of already written k-unitigs to be accurate.
+    if(low_run > 0) {
       seq.erase(seq.size() - std::min((unsigned int)seq.size(), low_run));
+      if(seq.size() >= current->k()) {
+        *current = seq.substr(seq.size() - current->k());
+      } else {
+        // Sequence does not contain a full k-mer. Need to recreate it
+        // from the starting k-mer and seq by shifting.
+        *current = start;
+        for(auto it = seq.begin(); it != seq.end(); ++it)
+          if(dir == forward)
+            current->shift_left(*it);
+          else
+            current->shift_right(*it);
+      }
+    }
 
     // If the last k-mer has been used in a k-unitigs already, this
     // means two threads are working on the same unitigs, starting
