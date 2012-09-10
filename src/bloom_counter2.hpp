@@ -42,7 +42,6 @@ class bloom_counter2 {
   // know stored as d_.d()
   const divisor64       d_;
   const unsigned long   k_;
-  R                     realloc;
   unsigned char * const data_;
   HashPair              hash_fns_;
 
@@ -51,24 +50,30 @@ class bloom_counter2 {
     unsigned char* pos;
   };
 
+  static size_t nb_bytes(size_t l) {
+    return l / 5 + (l % 5 != 0);
+  }
+
 public:
   typedef Key key_type;
 
   bloom_counter2(double fp, size_t n) :
     d_(n * (size_t)lrint(-log(fp) / LOG2_SQ)),
     k_(lrint(-log(fp) / LOG2)),
-    realloc(),
-    data_(realloc(0, 0, d_.d() / 5 + (d_.d() % 5 != 0))),
+    data_(R::realloc(0, 0, nb_bytes(d_.d()))),
     hash_fns_() { }
 
   bloom_counter2(size_t m, unsigned long k) :
-    d_(m), k_(k), realloc(), 
-    data_(realloc(0, 0, d_.d() / 5 + (d_.d() % 5 != 0))),
+    d_(m), k_(k),
+    data_(R::realloc(0, 0, nb_bytes(d_.d()))),
     hash_fns_() { }
 
   bloom_counter2(size_t m, unsigned long k, unsigned char* ptr) :
     d_(m), k_(k), data_(ptr), hash_fns_() { }
 
+  ~bloom_counter2() {
+    R::realloc(data_, nb_bytes(d_.d()), 0);
+  }
 
   void write_bits(std::ostream& out) {
     out.write((char*)data_, m() / 5 + (m() % 5 != 0));

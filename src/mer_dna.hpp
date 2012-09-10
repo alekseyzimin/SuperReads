@@ -28,6 +28,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <reallocators.hpp>
 
 namespace mer_dna_ns {
   struct dna_codes {
@@ -84,7 +85,15 @@ namespace mer_dna_ns {
   }
 #endif
   
-  template<typename T, typename derived> class mer_base;
+  template<typename T, typename derived, typename allocator> class mer_base;
+
+  template<typename T>
+  struct reallocator {
+    typedef T element_type;
+    static T* realloc(T* ptr, size_t osize, size_t nsize) {
+      return (T*)::realloc((void*)ptr, nsize * sizeof(T));
+    }
+  };
 
   template<typename T>
   class base_proxy {
@@ -109,7 +118,7 @@ namespace mer_dna_ns {
   };
 
 
-  template<typename T, typename derived>
+  template<typename T, typename derived, typename allocator = reallocator<T>>
   class mer_base {
   public:
     typedef T base_type;
@@ -117,19 +126,38 @@ namespace mer_dna_ns {
            CODE_RESET = -1, CODE_IGNORE = -2, CODE_COMMENT = -3 };
     
     explicit mer_base(unsigned int k) : 
-      _data(new base_type[derived::nb_words(k)]) 
+      // _alloc(),
+      // _data(_alloc.allocate(derived::nb_words(k)))
+      //      _data(new base_type[derived::nb_words(k)])
+      _data(allocator::realloc(0, 0, derived::nb_words(k)))
     { 
       memset(_data, '\0', nb_words(k) * sizeof(base_type));
     }
 
     mer_base(const mer_base &m) : 
-      _data(new base_type[nb_words(static_cast<const derived*>(&m)->k())])
+      // _alloc(),
+      // _data(_alloc.allocate(nb_words(static_cast<const derived*>(&m)->k())))
+      // _data(new base_type[nb_words(static_cast<const derived*>(&m)->k())])
+      _data(allocator::realloc(0, 0, nb_words(static_cast<const derived*>(&m)->k())))
     {
       memcpy(_data, m._data, nb_words(static_cast<const derived*>(&m)->k()) * sizeof(base_type));
     }
 
+    // Raw representation (already encoded)
+    mer_base(unsigned int k, void* raw) :
+      // _alloc(),
+      // _data(_alloc.allocate(nb_words(k)))
+      // _data(new base_type[nb_words(k)])
+      _data(_alloc(nb_words(k)))
+    {
+      memcpy(_data, raw, nb_words(k) * sizeof(base_type));
+    }
+      
+
     ~mer_base() {
-      delete [] _data;
+      //      _alloc.deallocate(_data, nb_words());
+      // delete [] _data;
+      allocator::realloc(_data, nb_words(), 0);
     }
 
     operator derived() { return *static_cast<derived*>(this); }
@@ -387,6 +415,8 @@ namespace mer_dna_ns {
     // Number of words in _data
     inline static unsigned int nb_words(unsigned int k) { return (k / wbases) + (k % wbases != 0); }
     inline unsigned int nb_words() const { return nb_words(static_cast<const derived*>(this)->k()); }
+    inline size_t nb_bytes() const { return nb_words() * sizeof(base_type); }
+    inline void* raw() const { return _data; }
 
     // Mask of highest word
     inline base_type msw() const { return ((base_type)1 << nb_msb()) - 1; }
@@ -466,6 +496,8 @@ namespace mer_dna_ns {
     mer_base_dynamic(const std::string& s) : super(s.size()), k_(s.size()) {
       super::from_chars(s.begin());
     }
+    // Raw representation
+    mer_base_dynamic(unsigned int k, void* raw) : super(k, raw), k_(k) { }
     
     ~mer_base_dynamic() { }
 

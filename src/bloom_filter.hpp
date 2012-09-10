@@ -67,7 +67,6 @@ class bloom_filter {
   // know stored as d_.d()
   const divisor64     d_;
   const unsigned long k_;       // Number of hashes
-  R                   realloc_;
   element_pointer     data_;
   const HashPair      hash_fns_;
   M                   mem_access_;
@@ -88,15 +87,18 @@ public:
   bloom_filter(double fp, size_t n) : 
     d_(n * (size_t)lrint(-log(fp) / LOG2_SQ)),
     k_(lrint(-log(fp) / LOG2)),
-    realloc_(),
-    data_(realloc_(0, 0, nb_elements(d_.d()))),
+    data_(R::realloc(0, 0, nb_elements(d_.d()))),
     hash_fns_(), mem_access_()
   { }
 
   bloom_filter(size_t m, unsigned long k) :
-    d_(m), k_(k), realloc_(),
-    data_(realloc_(0, 0, nb_elements(d_.d()))),
+    d_(m), k_(k),
+    data_(R::realloc(0, 0, nb_elements(d_.d()))),
     hash_fns_(), mem_access_() { }
+
+  ~bloom_filter() {
+    R::realloc(data_, nb_elements(d_.d()), 0);
+  }
 
   // Number of hash functions
   unsigned long k() const { return k_; }

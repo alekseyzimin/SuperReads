@@ -39,6 +39,8 @@ TYPED_TEST_CASE(ExpandingBufferInit, ExpBufferInitTypes);
 TYPED_TEST(ExpandingBufferDefault, Initialization) {
   TypeParam b;
 
+  std::cerr << sizeof(TypeParam) << "\n";
+
   EXPECT_EQ((size_t)0, b.capacity());
   EXPECT_EQ((size_t)0, b.size());
 

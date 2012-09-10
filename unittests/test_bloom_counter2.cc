@@ -100,4 +100,5 @@ TEST_P(BloomCounter, FalsePositive) {
 
 INSTANTIATE_TEST_CASE_P(BloomCounterTest, BloomCounter,
                         ::testing::Values(parameter({    1024,    2048, 0.01 }),
-                                          parameter({ 1000000, 3000000, 0.01 })));
+                                          //                                          parameter({ 1000000, 3000000, 0.01 })));
+                                          parameter({   10000,   30000, 0.01 })));

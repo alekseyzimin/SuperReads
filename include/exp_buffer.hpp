@@ -53,7 +53,6 @@ protected:
   T * base_;
   T * end_;
   T * ptr_;
-  R realloc;
 
 public:
   typedef T&        reference;
@@ -88,7 +87,7 @@ public:
   }
   virtual ~ExpBuffer() {
     if(base_)
-      realloc(base_, 0, 0);
+      R::realloc(base_, 0, 0);
   }
 
   void check() const { CHECK; }
@@ -159,7 +158,7 @@ public:
       return;
     if(s <= 2 * clen)
       s = 2 * clen;
-    T* nbase = (T*)realloc(base_, clen, s);
+    T* nbase = (T*)R::realloc(base_, clen, s);
     if(!nbase)
       throw std::runtime_error("Error allocating memory");
     ptr_  = nbase + (ptr_ - base_);
