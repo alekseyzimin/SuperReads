@@ -39,7 +39,7 @@
 #
 
 #parsing config file
-my $KMER=31;
+my $KMER="auto";
 my $JELLYFISH_PATH="";
 my $SR_PATH="";
 my $CA_PATH="";
@@ -150,8 +150,8 @@ while($line=<FILE>){
             @f=split(/=/,$line);
             $f[1]=~s/^\s+//;
             $f[1]=~s/\s+$//;
-            $KMER=int($f[1]);
-            die("bad value for GRAPH_KMER_SIZE") if($KMER<15 || $KMER>101);
+            $KMER=$f[1];
+            #die("bad value for GRAPH_KMER_SIZE") if($KMER<15 || $KMER>101);
             next;
         }
         elsif($line =~ /^USE_LINKING_MATES/){
@@ -401,6 +401,19 @@ if(scalar(@jump_info_array)>0){
 }
 ###done renaming reads###
 print FILE "\n";
+###compute minimum and average PE read length and gc content, and kmer size###
+print FILE "head -q -n 2  $list_pe_files | grep -v '^\@' > pe_data.tmp\n";
+print FILE "PE_AVG_READ_LENGTH=`awk '{n+=length(\$1);m++;}END{print int(n/m)}' pe_data.tmp`\n";
+print FILE "echo \"Average PE read length \$PE_AVG_READ_LENGTH\"\n";
+if(uc($KMER) eq "AUTO"){
+#here we have to estimate gc content and recompute kmer length for the graph
+print FILE "KMER=`head -q -n 4000  $list_pe_files | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); print \$kmer'`\n";
+print FILE "echo \"choosing kmer size of \$KMER for the graph\"\n";
+}else{
+print FILE "KMER=$KMER\n";
+} 
+###done###
+
 ###Jellyfish###
 
 print FILE "echo -n 'running Jellyfish ';date;\n";
@@ -437,9 +450,6 @@ if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > pe.cor.fa\n";
     $rerun_pe=1;
 }
-#compute average PE read length -- we will need this for Astat later
-print FILE "PE_AVG_READ_LENGTH=`head -n 1000000 pe.cor.fa |tail -n 500000| grep -v '^>' | grep -v '^N' | awk 'BEGIN{n=0;m=0;}{m+=length(\$0);n++;}END{print int(m/n)}'`\n";
-print FILE "echo \"Average PE read length after error correction: \$PE_AVG_READ_LENGTH\"\n"; 
 
 ###done error correct PE###
 print FILE "\n";
@@ -476,15 +486,14 @@ print FILE "\n";
 ###build k-unitigs###
 
 if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
-	if($KMER>31)
-	{
-	print FILE "create_k_unitigs_large_k -c ",int($KMER/2)," -t $NUM_THREADS -m $KMER -n \$ESTIMATED_GENOME_SIZE -l $KMER -f 0.000001 $k_u_arg | grep -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
-	}else{
-	print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l $KMER -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
-	print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
-        $rerun_pe=1;
-	$rerun_sj=1;
-}
+print FILE "if [[ \$KMER -ge 32 ]];then\n";
+print FILE "create_k_unitigs_large_k -c \$((\$KMER/2)) -t $NUM_THREADS -m \$KMER -n \$ESTIMATED_GENOME_SIZE -l \$KMER -f 0.000001 $k_u_arg  | grep -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+print FILE "else\n";
+print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l \$KMER -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
+print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+print FILE "fi\n";
+$rerun_pe=1;
+$rerun_sj=1;
 }
 
 ###done build k-unitigs###
@@ -499,7 +508,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "rm -rf work2\n";
     $rerun_sj=1;
     }
-    print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -l $KMER -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
+    print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -l \$KMER -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
     print FILE "if [[ ! -e work2/superReads.success ]];then\n";
@@ -565,7 +574,7 @@ if($rerun_pe==1|| not(-e "work1")){
     $rerun_pe=1;
 	}
 
-print FILE "createSuperReadsForDirectory.perl -l $KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+print FILE "createSuperReadsForDirectory.perl -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
 print FILE "if [[ ! -e work1/superReads.success ]];then\n";
