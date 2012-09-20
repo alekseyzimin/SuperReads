@@ -63,6 +63,11 @@ my $LIMIT_JUMP_COVERAGE=60;
 my $USE_LINKING_MATES=1;
 my $homo_trim_string=" | homo_trim  $TRIM_PARAM ";
 
+if(not(-e $ARGV[0])||$ARGV[0] eq ""|| $ARGV[0] eq "-h"){
+print "USAGE: runSRCA.pl <config_file>\n";
+exit;
+}
+
 open(FILE,$ARGV[0]);
 while($line=<FILE>){
     chomp($line);
