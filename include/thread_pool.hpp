@@ -15,6 +15,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef _THREAD_POOL_H_
+#define _THREAD_POOL_H_
+
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -166,7 +169,6 @@ public:
     pthread_cond_destroy(&cond_acq);
     pthread_cond_destroy(&cond_avl);
   }
-  
 
   int jobs_done(void){ return done; }
 
@@ -185,7 +187,7 @@ public:
 #endif
     /*wait until thread receives the data*/
     pthread_mutex_lock(&lock3);
-    while(data_available==1)
+    while(data_available)
       pthread_cond_wait(&cond_acq,&lock3);
     pthread_mutex_unlock(&lock3);
 #ifdef DEBUG
@@ -195,3 +197,4 @@ public:
   }
 };
 
+#endif /* _THREAD_POOL_H_ */
