@@ -43,7 +43,8 @@ noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/multi_thread_skip_list_set.hpp		\
                   $(UTILS_I)/multi_thread_skip_list_map.hpp		\
                   $(UTILS_I)/tmpstream.hpp $(UTILS_I)/exp_vector.hpp	\
-                  $(UTILS_I)/int128.hpp $(UTILS_I)/divisor.hpp
+                  $(UTILS_I)/int128.hpp $(UTILS_I)/divisor.hpp		\
+                  $(UTILS_I)/thread_pool.hpp
 
 noinst_LIBRARIES = libutils.a
 libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp lib/int128.cc
@@ -178,7 +179,8 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_exp_vector.cc			\
                     unittests/test_mer_stream.cc			\
                     unittests/test_int128.cc				\
-                    unittests/test_divisor.cc				
+                    unittests/test_divisor.cc				\
+                    unittests/test_thread_pool.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
                      src/gcc_builtins.cc src/mer_dna.cc			\
                      src/read_parser.cc unittests/misc.cc

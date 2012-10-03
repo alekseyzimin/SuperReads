@@ -30,7 +30,7 @@
 // - Moved the struct arguments inside the class, where it belongs
 // - Use work_finished and pthread_cond_broadcast to signal that there is no more work
 // - Keep track whether a thread was actually started
-// - Call release_worker from the destructor
+// - Call release_workers from the destructor
 // - deleted default copy constructor
 
 //#define DEBUG 1
@@ -110,21 +110,6 @@ class thread_pool {
     pthread_mutex_unlock(&lock1);
   }
 
-  void release_workers(void){
-    pthread_mutex_lock(&lock1);
-    work_finished = true;
-    pthread_cond_broadcast(&cond_avl);
-    pthread_mutex_unlock(&lock1);
-
-    for(int i=0;i<num_threads;i++) {
-      if(thread_id[i].started) {
-        pthread_join(thread_id[i].id, NULL);
-        thread_id[i].started = false;
-      }
-    }
-  }
-
-
 public:
 
   thread_pool(int num_threads_, function_ptr F_) :
@@ -171,6 +156,20 @@ public:
   }
 
   int jobs_done(void){ return done; }
+
+  void release_workers(void){
+    pthread_mutex_lock(&lock1);
+    work_finished = true;
+    pthread_cond_broadcast(&cond_avl);
+    pthread_mutex_unlock(&lock1);
+
+    for(int i=0;i<num_threads;i++) {
+      if(thread_id[i].started) {
+        pthread_join(thread_id[i].id, NULL);
+        thread_id[i].started = false;
+      }
+    }
+  }
 
   void submit_job(T* arg_, U* ret){
 #ifdef DEBUG
