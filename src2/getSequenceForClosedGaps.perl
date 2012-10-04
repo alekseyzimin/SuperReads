@@ -26,7 +26,7 @@ open (FILE, $contigEndPairsFile);
 while ($line = <FILE>) {
     chomp ($line);
     if ($line !~ /^>/) {
-	push (@readLengths, length ($line));
+	$readLengths{$readName} = length ($line);
 	next; }
     @flds = split (" ", $line);
     ($readName) = ($flds[0] =~ /^.(.+)$/);
@@ -190,12 +190,12 @@ for (@mergedContigIndices) {
 	$readName = $flds[$i];
 	$contig = $flds[$i+1];
 	$ori = $flds[$i+2];
-	substr ($newContigSeq{$newContigName}, - $readLengths[$readNum{$readName}]) = "";
+	substr ($newContigSeq{$newContigName}, - $readLengths{$readName}) = "";
 	$newContigSeq{$newContigName} .= $joiningSuperRead{$readName};
 	if ($ori =~ /[fF]/) {
-	    $tstr = substr ($contigSeqLine{$contig}, $readLengths[$readNum{getMateReadName($readName)}]); }
+	    $tstr = substr ($contigSeqLine{$contig}, $readLengths{getMateReadName($readName)}); }
 	else {
-	    $tstr = substr (revComp ($contigSeqLine{$contig}), $readLengths[$readNum{getMateReadName($readName)}]); }
+	    $tstr = substr (revComp ($contigSeqLine{$contig}), $readLengths{getMateReadName($readName)}); }
 	$newContigSeq{$newContigName} .= $tstr;
     }
     outputFasta ($newContigSeq{$newContigName}, $basesPerLine);
@@ -342,6 +342,10 @@ sub processArgs
 	if ($arg eq "-reads-file") {
 	    ++$i;
 	    $readsFile = $ARGV[$i];
+	    next; }
+	if ($arg eq "-contig-end-pairs-file") {
+	    ++$i;
+	    $contigEndPairsFile = $ARGV[$i];
 	    next; }
 	if ($arg =~ /^\d+$/) {
 	    push (@kmerLens, $arg); } }
