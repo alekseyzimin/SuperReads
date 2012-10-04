@@ -209,3 +209,4 @@ doxygen-doc: doxygen.cfg
 # Extra configuration for development tree
 ##############################
 -include $(top_srcdir)/development.mk
+-include $(top_srcdir)/personal.mk
