@@ -1,0 +1,35 @@
+purpose "Run the local directories for local gap closing and collect the results."
+description ""
+
+name "cmdline_parse"
+
+option("t", "num-threads") {
+  description "Number of threads"
+  int; default "1" }
+option("keep-directories") {
+  description "Keep the individual gap directories"
+  off }
+option("Celera-terminator-directory") {
+  description "The location of the terminator directory for the Celera run"
+  string; typestr "path" }
+option("max-nodes") {
+  description "Max nodes to use when closing gaps locally"
+  int; default "200000" }
+option("min-kmer-len") {
+  description "Minimum k-mer length used when closing gaps locally"
+  int; default "17" }
+option("max-kmer-len") {
+  description "Maximum k-mer length used when closing gaps locally"
+  int; default "65" }
+option("mean-for-faux-inserts") {
+  description "Mean specified when joining the ends of the contigs"
+  int; default "500" }
+option("stdev-for-faux-inserts") {
+  description "Standard deviation specified when joining the ends of the contigs"
+  int; default "200" }
+option("output-dir") {
+  description "The subdirectory to put the individual gaps into"
+  string; default "."; typestr "path" }
+option("contig-end-sequence-file") {
+  description "Name of the file containing the contig end sequences for joining"
+  string; typestr "path" }

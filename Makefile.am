@@ -145,6 +145,16 @@ dist_bin_SCRIPTS += src2/closeGaps.perl src2/getEndSequencesOfContigs.perl \
                     src2/getSequenceForClosedGaps.perl
 
 ##############################
+# local gap closing
+##############################
+dist_bin_SCRIPTS += src2/closeGapsLocally.perl \
+	            src2/closeGaps.oneDirectory.perl
+bin_PROGRAMS += collectReadSequencesForLocalGapClosing \
+	        runByDirectory
+collectReadSequencesForLocalGapClosing_SOURCES = src2/collectReadSequencesForLocalGapClosing.cc
+runByDirectory_SOURCES = src2/runByDirectory.cc
+
+##############################
 # data generation
 ##############################
 dist_data_DATA = data/adapter_0
