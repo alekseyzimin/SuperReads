@@ -6,22 +6,22 @@ name "cmdline_parse"
 
 option("faux-reads-file") {
   description "Name of the faux reads file"
-  string; typestr "path" }
+  c_string; required; typestr "path" }
 option("faux-read-matches-to-kunis-file") {
   description "Name of the file with matches from faux reads to k-unitigs"
-  string; typestr "path" }
+  c_string; required; typestr "path" }
 option("read-matches-to-kunis-file") {
   description "Name of the file with matches from reads to k-unitigs"
-  string; typestr "path" }
+  c_string; required; typestr "path" }
 option("reads-file") {
   description "Name of the reads file(s)"
-  string; typestr "path"; multiple }
+  c_string; typestr "path"; multiple ; at_least 1 }
 option("dir-for-gaps") {
   description "Directory to use for files we keep for local gap closing"
-  string; typestr "path"; default "." }
+  c_string; typestr "path"; default "." }
 option("max-reads-in-memory") {
   description "Maximum number of reads that can be kept in memory"
-  uint64; default "1000000000" }
+  uint64; default "200000000" }
 option("output-dir-progress") {
   description "Output information on how many gaps have been analyzed"
   off }

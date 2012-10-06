@@ -152,7 +152,9 @@ dist_bin_SCRIPTS += src2/closeGapsLocally.perl \
 bin_PROGRAMS += collectReadSequencesForLocalGapClosing \
 	        runByDirectory
 collectReadSequencesForLocalGapClosing_SOURCES = src2/collectReadSequencesForLocalGapClosing.cc
+YAGGO_SOURCES += src2/collectReadSequencesForLocalGapClosing_cmdline.hpp
 runByDirectory_SOURCES = src2/runByDirectory.cc
+YAGGO_SOURCES += src2/runByDirectory_cmdline.hpp
 
 ##############################
 # data generation

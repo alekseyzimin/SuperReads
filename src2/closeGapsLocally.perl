@@ -24,7 +24,7 @@
 # --contig-length-for-fishing # : The length of sequence at the ends of the contigs
 #                     to be used to find reads which might fit in the gaps (default: 100)
 # --maxnodes # : The maximum number of nodes allowed when trying to join the
-#                     faux reads (default: 2000)
+#                     faux reads (default: 200000)
 # --reduce-read-set-kmer-size # : The k-mer size for fishing reads into buckets.
 #                     (default: 21)
 # --keep-directories : Keep the local directories (default: false)
@@ -42,10 +42,7 @@
 use Cwd;
 use File::Basename;
 $exeDir = dirname ($0);
-$tempExeDir = $exeDir;
-$exeDir = "/home/tri/superReadPipeline/SuperReads/build/install_root/bin";
-# $tempExeDir = "/home/tri/superReadPipeline/SuperReads/build/install_root/bin";
-#Create absolute paths where necessary
+# Create absolute paths where necessary
 # Must allow one to specify the dir with the hash and input k-unitigs file
 # Must allow specification of the min k-unitig continuation values (default 2)
 $cwd = cwd;
@@ -63,6 +60,7 @@ if (! -e $outputDirectory) {
 chdir ($outputDirectory);
 $fishingEndPairs = "contig_end_pairs.${contigLengthForFishing}.fa";
 $joiningEndPairs = "contig_end_pairs.${contigLengthForJoining}.fa";
+$joiningEndPairs = returnAbsolutePath ($joiningEndPairs);
 $cmd = "$exeDir/getEndSequencesOfContigs.perl $CeleraTerminatorDirectory $contigLengthForJoining $contigLengthForFishing";
 runCommandAndExitIfBad ($cmd);
 
@@ -93,11 +91,15 @@ runCommandAndExitIfBad ($cmd);
 $cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile k_unitigs_${suffix}_faux_reads.fa -low-memory -l $reduceReadSetKMerSize --stopAfter joinKUnitigs -t $numThreads -mkudisr 0 workReadsVsFaux @readsFiles 1>>out.${suffix}_workReadsVsFaux 2>>out.${suffix}_workReadsVsFaux";
 runCommandAndExitIfBad ($cmd);
 # We're still in the output directory
-$cmd = "$tempExeDir/collectReadSequencesForLocalGapClosing --faux-reads-file $fishingEndPairs --faux-read-matches-to-kunis-file workFauxVsFaux/newTestOutput.nucmerLinesOnly --read-matches-to-kunis-file workReadsVsFaux/newTestOutput.nucmerLinesOnly";
+$cmd = "$exeDir/collectReadSequencesForLocalGapClosing --faux-reads-file $fishingEndPairs --faux-read-matches-to-kunis-file workFauxVsFaux/newTestOutput.nucmerLinesOnly --read-matches-to-kunis-file workReadsVsFaux/newTestOutput.nucmerLinesOnly";
 for (@readsFiles) {
     $readFile = $_;
     $cmd .= " --reads-file $readFile"; }
-$cmd .= " --max-reads-to-allow $maxReadsInMemory --dir-for-gaps .";
+$cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
+runCommandAndExitIfBad ($cmd);
+
+# Now run the directories
+$cmd = "$exeDir/runByDirectory -t $numThreads --keep-directories --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --output-dir subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences .";
 runCommandAndExitIfBad ($cmd);
 exit (0);  #################################################################
 
@@ -183,11 +185,11 @@ sub processArgs
     $maxKMerLen = 65;
     $minKMerLen = 17;
     $numThreads = 1;
-    $maxFishingKMerCount = 5;
+    $maxFishingKMerCount = 10000000;
     $maxReadsInMemory = 100000000;
     $noClean = 0;
     $contigLengthForJoining = $contigLengthForFishing = 100;
-    $maxNodes = 2000;
+    $maxNodes = 200000;
     $fauxInsertMean = 500;
     $fauxInsertStdev = 200;
     for ($i=0; $i<=$#ARGV; $i++) {

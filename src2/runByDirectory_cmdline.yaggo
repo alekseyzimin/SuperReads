@@ -11,7 +11,7 @@ option("keep-directories") {
   off }
 option("Celera-terminator-directory") {
   description "The location of the terminator directory for the Celera run"
-  string; typestr "path" }
+  c_string; required; typestr "path" }
 option("max-nodes") {
   description "Max nodes to use when closing gaps locally"
   int; default "200000" }
@@ -29,7 +29,10 @@ option("stdev-for-faux-inserts") {
   int; default "200" }
 option("output-dir") {
   description "The subdirectory to put the individual gaps into"
-  string; default "."; typestr "path" }
+  c_string; default "."; typestr "path" }
 option("contig-end-sequence-file") {
   description "Name of the file containing the contig end sequences for joining"
-  string; typestr "path" }
+  c_string; required; typestr "path" }
+option ("dir-for-read-sequences") {
+  description "Name of dir where readFile.### exist; should be absolute"
+  c_string; required; typestr "path" }
