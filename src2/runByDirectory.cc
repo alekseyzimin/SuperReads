@@ -30,6 +30,7 @@ int main (int argc, char **argv)
      std::vector <FILE *> readSeqFilesByDir;
      struct stat statbuf;
      charb tempBuffer(100);
+     args.parse (argc, argv);
      thread_pool<struct arguments, int> pool (args.num_threads_arg, analyzeGap);
 
      char *tempPtr = strrchr (argv[0], '/');
@@ -42,6 +43,9 @@ int main (int argc, char **argv)
 	  exeDir = std::string (tempBuffer); }
 
      contigEndSeqFile = fopen (args.contig_end_sequence_file_arg, "r");
+     if (contigEndSeqFile == NULL) {
+	  fprintf (stderr, "File '%s' doesn't exist! Bye!\n", args.contig_end_sequence_file_arg);
+	  exit (1); }
      charb fn(200), line(100);
 
      for (int fileNum=0; 1; fileNum++) {

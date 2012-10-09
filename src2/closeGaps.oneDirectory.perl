@@ -4,8 +4,6 @@ $exeDir = dirname ($0);
 $tempExeDir = $exeDir;
 $localReadsFile = "localReadsFile";
 $joiningEndPairs = "fauxReads.fasta";
-$meanForFauxInserts = 500;
-$stdevForFauxInserts = 200;
 &processArgs;
 
 if ($dirToChangeTo) {
@@ -167,16 +165,26 @@ sub processArgs
 {
     my ($arg, $cmd, @kmerLens, $i);
     $kUnitigContinuationNumber = 2;
-    $maxKMerLen = 31;
-    $minKMerLen = 15;
+    $maxKMerLen = 65;
+    $minKMerLen = 17;
     $numThreads = 1;
-    $useAllKUnitigs = 0;
+    $useAllKUnitigs = 1;
     $maxNodes = 2000;
+    $meanForFauxInserts = 500;
+    $stdevForFauxInserts = 200;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
 	if ($arg eq "--dir-for-kunitigs") {
 	    ++$i;
 	    $dirForKUnitigs = $ARGV[$i];
+	    next; }
+	if ($arg eq "--mean-for-faux-inserts") {
+	    ++$i;
+	    $meanForFauxInserts = $ARGV[$i];
+	    next; }
+	if ($arg eq "--stdev-for-faux-inserts") {
+	    ++$i;
+	    $stdevForFauxInserts = $ARGV[$i];
 	    next; }
 	if ($arg eq "--min-kmer-len") {
 	    ++$i;
@@ -201,9 +209,6 @@ sub processArgs
 	if ($arg eq "--dir-to-change-to") {
 	    ++$i;
 	    $dirToChangeTo = $ARGV[$i];
-	    next; }
-	if ($arg eq "--use-all-kunitigs") {
-	    $useAllKUnitigs = 1;
 	    next; }
 	if (-f $arg) {
 	    push (@readsFiles, $arg);
