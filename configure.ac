@@ -26,7 +26,8 @@ AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [Def
 # Checks for header files.
 
 # Checks for Jellyfish module
-PKG_CHECK_MODULES([JELLYFISH], [jellyfish-1.1])
+PKG_CHECK_MODULES([JELLYFISH1_1], [jellyfish-1.1])
+PKG_CHECK_MODULES([JELLYFISH2_0], [jellyfish-1.9])
 
 # Check for yaggo
 AC_ARG_VAR([YAGGO], [Yaggo switch parser generator])

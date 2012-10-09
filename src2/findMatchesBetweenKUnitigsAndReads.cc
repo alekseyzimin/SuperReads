@@ -33,29 +33,26 @@
 #define typeof __typeof__
 #endif
 
-#include <multi_thread_skip_list_map.hpp>
+#include <jellyfish/mer_dna.hpp>
 #include <jellyfish/err.hpp>
-#include <src/mer_dna.hpp>
 #include <src/read_parser.hpp>
 
-#include <jellyfish/mer_counting.hpp>
-#include <jellyfish/mapped_file.hpp>
-#include <jellyfish/invertible_hash_array.hpp>
-#include <jellyfish/allocators_mmap.hpp>
 #include <stdint.h>
 #include <cstdio>
 
 #include <iostream>
 #include <fstream>
+#include <stdexcept>
 
 #include <src/diskBasedUnitigger.h>
-#define KUNITIG_FILE "/genome8/raid/tri/kUnitigStudy/arg_ant/afterAlekseyAndMikeRedundentKill/guillaumeKUnitigsAtLeast32bases_all.fasta"
-#define READ_DATA_FILE "/genome8/raid/tri/testDirForReadPlacementRoutines/brucellaData/brucella.pass5reads.fasta"
 
 #include <charb.hpp>
 #include <gzip_stream.hpp>
 #include <jflib/multiplexed_io.hpp>
 
+#include <multi_thread_skip_list_map.hpp>
+#include <jellyfish/large_hash_array.hpp>
+#include <thread_exec.hpp>
 #include <src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp>
 
 struct kMerUnitigInfoStruct {
@@ -66,120 +63,66 @@ struct kMerUnitigInfoStruct {
 
 /* Our types.
  */
-//typedef jellyfish::invertible_hash::array<uint64_t,atomic::gcc<uint64_t>,allocators::mmap> inv_hash_storage_t;
-typedef inv_hash_storage_t::iterator iterator_t;
+using ::jellyfish::mer_dna;
 class header_output;
-class mer_unitig_info_base {
+
+class large_kmer_unitig_info {
+  typedef jellyfish::large_hash::array<mer_dna> mer_set_type;
+  mer_set_type          mer_set_;
+  kMerUnitigInfoStruct* unitig_info_;
+
 public:
-  virtual const kMerUnitigInfoStruct* find(const mer_dna& mer) = 0;
+  large_kmer_unitig_info(size_t size, uint32_t mer_len) : 
+    mer_set_(size, mer_len * 2, 0, 126),
+    unitig_info_(new kMerUnitigInfoStruct[mer_set_.size()])
+  { }
+
+  void set(const mer_dna& mer, uint32_t number, uint32_t offset, uint32_t ori) {
+    bool   is_new;
+    size_t id;
+    if(!mer_set_.set(mer, &is_new, &id))
+      throw std::runtime_error("Hash is full. Increase size");
+    if(!is_new)
+      throw std::runtime_error("kmer " + mer.to_str() + " already present in map");
+
+    // Don't need atomic operation here -> each kmer is guaranteed
+    // to be inserted once. The same id will never be used twice
+    // thanks to the hash set.
+    unitig_info_[id].kUnitigNumber    = number;
+    unitig_info_[id].kUnitigOffset    = offset;
+    unitig_info_[id].kmerOriInKunitig = ori;
+  }
+
+  const kMerUnitigInfoStruct* find(const mer_dna& mer) {
+    size_t id;
+    if(!mer_set_.get_key_id(mer, &id))
+      return 0;
+    return &unitig_info_[id];
+  }
 };
 
-void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd, 
-                        const char *readName, mer_unitig_info_base* mer_unitig_info,
+
+void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
+                        const char *readName, large_kmer_unitig_info& mer_unitig_info,
                         header_output& out);
-
-
-class jf_kmer_unitig_info : public mer_unitig_info_base {
-  typedef ExpBuffer<kMerUnitigInfoStruct, remaper<kMerUnitigInfoStruct>> kMerUnitigInfo_type;
-  mapped_file          dbf_;
-  raw_inv_hash_query_t qhash_;
-  inv_hash_storage_t*  hash_;
-  kMerUnitigInfo_type  kMerUnitigInfo_;
-
-public:
-  jf_kmer_unitig_info(const char* hash_path) :
-    dbf_(hash_path), qhash_(dbf_), hash_(qhash_.get_ary()), kMerUnitigInfo_(hash_->get_size())
-  { 
-    kMerUnitigInfo_.touch_all();
-    dbf_.random().load();
-  }
-
-  unsigned int mer_len() { return hash_->get_key_len() / 2; }
-
-  class thread_type {
-    inv_hash_storage_t* hash_;
-    kMerUnitigInfo_type& info_;
-    friend class jf_kmer_unitig_info;
-    thread_type(inv_hash_storage_t* hash, kMerUnitigInfo_type& info) : hash_(hash), info_(info) { }
-
-  public:
-    void set(const mer_dna& mer, uint32_t number, uint32_t offset, uint32_t ori) {
-      uint64_t id = 0, val;
-      if(!hash_->get_val(mer[0], id, val, false))
-        std::cerr << "Mer " << mer << " was not found in jf database\n";
-      
-      // There is no conflicts between threads because all k-mers are
-      // unique in k-unitigs.
-      auto unitig_info             = &info_[id];
-      unitig_info->kUnitigNumber    = number;
-      unitig_info->kUnitigOffset    = offset;
-      unitig_info->kmerOriInKunitig = ori;
-    }
-  };
-  thread_type thread() { return thread_type(hash_, kMerUnitigInfo_); }
-
-  virtual const kMerUnitigInfoStruct* find(const mer_dna& mer) {
-    uint64_t id, val;
-    if(!hash_->get_val(mer[0], id, val, false))
-      return 0;
-    kMerUnitigInfoStruct* ret = &kMerUnitigInfo_[id];
-    if(ret->kUnitigNumber == 0 && ret->kUnitigOffset == 0)
-      return 0;
-    return ret;
-  }
-};
-
-class large_kmer_unitig_info : public mer_unitig_info_base {
-  typedef multi_thread_skip_list_map<mer_dna, kMerUnitigInfoStruct> mer_info_map_type;
-  mer_info_map_type kMerUnitigInfo_;
-public:
-  large_kmer_unitig_info() { }
-
-  class thread_type {
-    mer_info_map_type::thread thread_;
-    friend class large_kmer_unitig_info;
-    thread_type(mer_info_map_type& map) : thread_(map) { }
-
-  public:
-    void set(const mer_dna& mer, uint32_t number, uint32_t offset, uint32_t ori) {
-      kMerUnitigInfoStruct info;
-      info.kUnitigNumber    = number;
-      info.kUnitigOffset    = offset;
-      info.kmerOriInKunitig = ori;
-      auto res = thread_.insert(std::make_pair(mer, info));
-      if(!res.second)
-        die << "kmer " << mer.to_str() << " already present in map";
-    }
-  };
-  thread_type thread() { return thread_type(kMerUnitigInfo_); }
-
-  virtual const kMerUnitigInfoStruct* find(const mer_dna& mer) {
-    auto it = kMerUnitigInfo_.find(mer);
-    if(it == kMerUnitigInfo_.end())
-      return 0;
-    return &it->second;
-  }
-};
 
 
 ExpBuffer<uint64_t> kUnitigLengths;
 int            readNumber; // TODO: Remove: it is not really used
 int            longOutput;
 
-template<typename mer_unitig_info_type>
 class ReadKunitigs : public thread_exec {
-  read_parser           unitig_parser;
-  mer_unitig_info_type& mer_unitig_info;
-  
+  read_parser            unitig_parser;
+  large_kmer_unitig_info& mer_unitig_info;
+
 public:
-  ReadKunitigs(const char* kUnitigFile, mer_unitig_info_type& info, int nb_threads) :
+  ReadKunitigs(const char* kUnitigFile,  large_kmer_unitig_info& info, int nb_threads) :
     unitig_parser(kUnitigFile, nb_threads), mer_unitig_info(info) { }
 
   virtual void start(int th_id) {
     read_parser::stream unitig_stream(unitig_parser);
     mer_dna             fwd_mer;
     mer_dna             rev_mer;
-    auto                thread_unitig_info = mer_unitig_info.thread();
 
     for( ; unitig_stream; ++unitig_stream) {
       // Parse header
@@ -201,15 +144,15 @@ public:
       for( ; cptr < unitig_stream->sequence.end(); ++cptr) {
         fwd_mer.shift_left(*cptr);
         rev_mer.shift_right(mer_dna::complement(*cptr));
-         
+
         const mer_dna* searchValue = &fwd_mer;
         unsigned char  ori         = 0;
         if(!(fwd_mer < rev_mer)) {
           searchValue = &rev_mer;
           ori         = 1;
         }
-        thread_unitig_info.set(*searchValue, kUnitigNumber, cptr - unitig_stream->sequence.begin() - (mer_dna::k() - 1),
-                               ori);
+        mer_unitig_info.set(*searchValue, kUnitigNumber, cptr - unitig_stream->sequence.begin() - (mer_dna::k() - 1),
+                            ori);
       }
     }
   }
@@ -251,15 +194,15 @@ public:
 };
 
 class ProcessReads : public thread_exec {
-  read_parser           parser;
-  mer_unitig_info_base* mer_unitig_info;
-  jflib::o_multiplexer  multiplexer;
+  read_parser             parser;
+  large_kmer_unitig_info& mer_unitig_info;
+  jflib::o_multiplexer    multiplexer;
 
 public:
   template<typename Iterator>
-  ProcessReads(Iterator file_start, Iterator file_end, 
-               mer_unitig_info_base* info, std::ostream& out_stream, int nb_threads) : 
-    parser(file_start, file_end, nb_threads), 
+  ProcessReads(Iterator file_start, Iterator file_end,
+               large_kmer_unitig_info& info, std::ostream& out_stream, int nb_threads) :
+    parser(file_start, file_end, nb_threads),
     mer_unitig_info(info),
     multiplexer(&out_stream, 3 * nb_threads, 4096)
   {}
@@ -271,17 +214,17 @@ public:
        char                read_prefix[3], prev_read_prefix[3];
        uint64_t            read_id = 0, prev_read_id = 0;
        memset(read_prefix, '\0', sizeof(read_prefix));
-       
+
        for( ; read_stream; ++read_stream) {
          memcpy(prev_read_prefix, read_prefix, sizeof(read_prefix));
          prev_read_id = read_id;
-         
+
          strtok(read_stream->header, " ");
 	 if ((read_stream->header)[0] == '>')
 	      sscanf(read_stream->header, ">%2s%ld", read_prefix, &read_id);
 	 else
 	      sscanf(read_stream->header, "@%2s%ld", read_prefix, &read_id);
-         
+
          // Start new line & print read header if new read
          bool is_new_read = strcmp(read_prefix, prev_read_prefix) || read_id != prev_read_id;
          if(is_new_read) {
@@ -333,40 +276,29 @@ int main(int argc, char *argv[])
      if(args.verbose_flag)
        std::cerr << "mer length: " << mer_dna::k() << "\n";
 
-     std::auto_ptr<mer_unitig_info_base> mer_unitig_info;
-     if(args.jellyfishdb_given) {
-       if(args.mer_arg > 31)
-         die << "Mer size of " << args.mer_arg << " is incompatible with jellyfishdb switch (must have m <= 31).";
-       auto jf_info = new jf_kmer_unitig_info(args.jellyfishdb_arg);
-       mer_unitig_info.reset(jf_info);
-       if(mer_dna::k() != jf_info->mer_len())
-         die << "Mer length '" << mer_dna::k() << "' does not match jellyfish's mer length '" << jf_info->mer_len() << "'";
-       ReadKunitigs<jf_kmer_unitig_info> KUnitigReader(args.kUnitigFile_arg, *jf_info, args.threads_arg);
-       KUnitigReader.exec_join(args.threads_arg);
-     } else {
-       auto large_info = new large_kmer_unitig_info();
-       mer_unitig_info.reset(large_info);
-       ReadKunitigs<large_kmer_unitig_info> KUnitigReader(args.kUnitigFile_arg, *large_info, args.threads_arg);
+     large_kmer_unitig_info mer_unitig_info(args.numKMers_arg, args.mer_arg);
+     {
+       ReadKunitigs KUnitigReader(args.kUnitigFile_arg, mer_unitig_info, args.threads_arg);
        KUnitigReader.exec_join(args.threads_arg);
      }
 
-     
+
      // Open output file and make sure it is deleted/closed on exit
      std::auto_ptr<std::ostream> out;
      if(args.gzip_flag)
        out.reset(new gzipstream(args.output_arg));
      else
        out.reset(new std::ofstream(args.output_arg));
-     
+
      ProcessReads process_reads(args.readFiles_arg.begin(), args.readFiles_arg.end(),
-                                mer_unitig_info.get(), *out, args.threads_arg);
+                                mer_unitig_info, *out, args.threads_arg);
      process_reads.exec_join(args.threads_arg);
-     
+
      return (0);
 }
 
-void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd, 
-                        const char *readName, mer_unitig_info_base* mer_unitig_info,
+void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
+                        const char *readName, large_kmer_unitig_info& mer_unitig_info,
                         header_output& out)
 {
      int readLength;
@@ -394,7 +326,7 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
        return;
 
      if (longOutput)
-         out << "readNumber = " << readNumber 
+         out << "readNumber = " << readNumber
              << " readLength = " << readLength << "\n";
        //fprintf (out, "readNumber = %d, readLength = %d\n", readNumber, readLength);
      //     readKmer = readRevCompKmer = 0;
@@ -430,7 +362,7 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	  if (!(readKmer < readRevCompKmer)) {
 	       searchValue = &readRevCompKmer;
 	       ori = 1; }
-          auto unitig_info = mer_unitig_info->find(*searchValue);
+          auto unitig_info = mer_unitig_info.find(*searchValue);
           if(!unitig_info)
             continue;
           kUnitigNumber = unitig_info->kUnitigNumber;
@@ -477,7 +409,7 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 	       kUnitigNumberHold = kUnitigNumber;
 	       netOriHold = netOri;
 #if 0
-	       intervalBegin = j; 
+	       intervalBegin = j;
 #endif
 	       isFirstRecord = 1; }
 	  intervalEnd = j + mer_dna::k();
@@ -561,13 +493,13 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
                  readKmerTmp.shift_left(readBasesBegin[jtmp+tempIndex]);
                  readRevCompKmerTmp.shift_right(mer_dna::complement(readBasesBegin[jtmp+tempIndex]));
                }
-	 
+
                searchValue = &readKmerTmp;
                ori = 0;
 	       if (!(readKmerTmp < readRevCompKmerTmp)) {
 		    searchValue = &readRevCompKmerTmp;
 		    ori = 1; }
-               auto unitig_info = mer_unitig_info->find(*searchValue);
+               auto unitig_info = mer_unitig_info.find(*searchValue);
                if(!unitig_info)
                  continue;
                kUnitigNumber = unitig_info->kUnitigNumber;
@@ -588,7 +520,7 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
 		   (kUnitigNumber == kUnitigNumberHold) &&
 		   (netOri == netOriHold)) {
 		    j = jtmp;
-		    k = ktmp; 
+		    k = ktmp;
 		    readKmer = readKmerTmp;
 		    readRevCompKmer = readRevCompKmerTmp;
 		    intervalEnd = j + mer_dna::k(); }
