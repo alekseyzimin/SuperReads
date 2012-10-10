@@ -99,7 +99,7 @@ $cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
 runCommandAndExitIfBad ($cmd);
 
 # Now run the directories
-$cmd = "$exeDir/runByDirectory -t $numThreads --keep-directories --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --output-dir subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences .";
+$cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --output-dir subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences .";
 runCommandAndExitIfBad ($cmd);
 exit (0);  #################################################################
 
@@ -254,7 +254,7 @@ sub processArgs
 	    $noClean = 1;
 	    next; }
 	if ($arg eq "--keep-directories") {
-	    $keepDirectories = 1;
+	    $keepDirectoriesFlag = $arg;
 	    next; }
 	if (-f $arg) {
 	    push (@readsFiles, $arg);

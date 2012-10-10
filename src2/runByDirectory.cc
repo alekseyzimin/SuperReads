@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <charbuf.hpp>
 #include <thread_pool.hpp>
+#include <misc.hpp>
 #include <pthread.h>
 #include <vector>
 #include <src2/runByDirectory_cmdline.hpp>
@@ -13,8 +14,11 @@ struct arguments {
      int dirNum;
      charb fauxReadFileDataStr;
      charb readFileDataStr;
+     charb *superReadFastaString;
+     charb *readPlacementString;
 };
 
+int reportNumGaps (const char *contigEndSeqFile);
 int analyzeGap(struct arguments threadArg); // Returns int for now
 
 // THE NEXT 2 LINES ARE COPIED FROM GUILLAUME
@@ -30,6 +34,7 @@ int main (int argc, char **argv)
      std::vector <FILE *> readSeqFilesByDir;
      struct stat statbuf;
      charb tempBuffer(100);
+     charb *superReadFastaStrings, *readPlacementStrings;
      args.parse (argc, argv);
      thread_pool<struct arguments, int> pool (args.num_threads_arg, analyzeGap);
 
@@ -46,6 +51,12 @@ int main (int argc, char **argv)
      if (contigEndSeqFile == NULL) {
 	  fprintf (stderr, "File '%s' doesn't exist! Bye!\n", args.contig_end_sequence_file_arg);
 	  exit (1); }
+     fclose (contigEndSeqFile);
+     int numGaps = reportNumGaps (args.contig_end_sequence_file_arg);
+     superReadFastaStrings = new charb[numGaps];
+     readPlacementStrings = new charb[numGaps];
+
+     contigEndSeqFile = fopen (args.contig_end_sequence_file_arg, "r");
      charb fn(200), line(100);
 
      for (int fileNum=0; 1; fileNum++) {
@@ -85,6 +96,8 @@ int main (int argc, char **argv)
 	       }
 	  }
 	  threadArgs.dirNum=dirNum;
+          threadArgs.superReadFastaString = &superReadFastaStrings[dirNum];
+          threadArgs.readPlacementString = &readPlacementStrings[dirNum];
 	  // Get next available thread when available
 	  int tempInt;
 	  pool.submit_job (&threadArgs, &tempInt);
@@ -92,6 +105,24 @@ int main (int argc, char **argv)
      }
      
      pool.release_workers();
+
+     charb outfileName;
+     sprintf (outfileName, "%s/superReadSequences.fasta", args.output_dir_arg);
+     FILE *outfile = fopen ((char *)outfileName, "w");
+     for (int i=0; i<numGaps; i++) {
+	  if (superReadFastaStrings[i] == NULL)
+	       continue;
+	  fputs (superReadFastaStrings[i], outfile); }
+     fclose (outfile);
+
+     sprintf (outfileName, "%s/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt", args.output_dir_arg);
+     outfile = fopen ((char *)outfileName, "w");
+     for (int i=0; i<numGaps; i++) {
+	  if (readPlacementStrings[i] == NULL)
+	       continue;
+	  fputs (readPlacementStrings[i], outfile); }
+     fclose (outfile);
+
      return 0;
 }
 
@@ -125,17 +156,63 @@ int analyzeGap(struct arguments threadArg)
 	'outDirName'/work_localReadsFile_41_2 */
      charb passingKMerFilename(100);
      sprintf (passingKMerFilename, "%s/passingKMer.txt", (char *) outDirName);
-     if (stat (passingKMerFilename, &statbuf) == 0) { // It exists
+     if (stat (passingKMerFilename, &statbuf) != 0) // It doesn't exist
+          return (0);
+     // If we get here we have found a join and passingKMer.txt exists
 	  charb goodWorkDirectory(100);
 	  int passingKMerValue;
+	  charb line(100);
 	  infile = fopen (passingKMerFilename, "r");
 	  fscanf (infile, "%d", &passingKMerValue);
 	  fclose (infile);
-	  sprintf (cmd, "cp %s/work_localReadsFile_%d_2/superReadSequences.fasta %s/superReadSequences.%09d.fasta", (char *) outDirName, passingKMerValue, args.output_dir_arg, threadArg.dirNum);
-	  system (cmd);
-	  sprintf (cmd, "cp %s/work_localReadsFile_%d_2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt %s/readPlacementsInSuperReads.final.read.superRead.offset.ori.%09d.txt", (char *) outDirName, passingKMerValue, args.output_dir_arg, threadArg.dirNum);
-	  system (cmd);
+     charb tempFileName;
+     sprintf (tempFileName, "%s/work_localReadsFile_%d_2/superReadSequences.fasta", (char *) outDirName, passingKMerValue);
+     infile = fopen (tempFileName, "r");
+     fgets (line, 100, infile);
+     sprintf (*(threadArg.superReadFastaString), ">%d\n", threadArg.dirNum);
+     while (fgets (line, 100, infile))
+	  strcat (*(threadArg.superReadFastaString), line);
+//     while (fgets_append (*(threadArg.superReadFastaString), infile))
+//          ;
+     fclose (infile);
+     sprintf (tempFileName, "%s/work_localReadsFile_%d_2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt", (char *) outDirName, passingKMerValue);
+     infile = fopen (tempFileName, "r");
+     ExpBuffer<char *>flds;
+     charb readPlacementLine;
+     while (fgets (line, 100, infile)) {
+	  getFldsFromLine (line, flds);
+          sprintf (readPlacementLine, "%s %d %s %s\n", flds[0], threadArg.dirNum, flds[2], flds[3]);
+          strcat (*(threadArg.readPlacementString), readPlacementLine);
+     }
+     fclose (infile);
+#if 0
+     sprintf (cmd, "cp %s/work_localReadsFile_%d_2/superReadSequences.fasta %s/superReadSequences.%09d.fasta", (char *) outDirName, passingKMerValue, args.output_dir_arg, threadArg.dirNum);
+     system (cmd);
+     sprintf (cmd, "cp %s/work_localReadsFile_%d_2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt %s/readPlacementsInSuperReads.final.read.superRead.offset.ori.%09d.txt", (char *) outDirName, passingKMerValue, args.output_dir_arg, threadArg.dirNum);
+     system (cmd);
+#endif
+     if (! args.keep_directories_flag) {
+	  sprintf (cmd, "\\rm -r %s", (char *) outDirName);
+	  fprintf (stderr, "%s\n", (char *) cmd);
+	  system ((char *) cmd);
      }
 
      return (0);
 }
+
+int reportNumGaps (const char *fn)
+{
+     charb cmd(100), line(100);
+     FILE *infile;
+
+     sprintf (cmd, "tail -2 %s | head -1", fn);
+     infile = popen (cmd, "r");
+     fgets (line, 100, infile);
+     char *cptr = line;
+     while (! isdigit(*cptr))
+          cptr++;
+     int lastFauxContig = atoi (cptr);
+     int numGaps = (lastFauxContig+1)/2;
+     return (numGaps);
+}
+
