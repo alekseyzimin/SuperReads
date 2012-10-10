@@ -126,7 +126,7 @@ findMatchesBetweenKUnitigsAndReads_SOURCES = src/read_parser.cc				\
                                              src/gcc_builtins.cc
 YAGGO_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
 findMatchesBetweenKUnitigsAndReads_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
-findMatchesBetweenKUnitigsAndReads_LIBS = $(LDFLAGS_ALL) $(JELLYFISH2_0_LDFLAGS)
+findMatchesBetweenKUnitigsAndReads_LDFLAGS = $(LDFLAGS_ALL) $(JELLYFISH2_0_LIBS)
 
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc src/mer_dna.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc

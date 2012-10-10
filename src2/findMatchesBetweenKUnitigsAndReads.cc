@@ -94,7 +94,7 @@ public:
   }
 
   const kMerUnitigInfoStruct* find(const mer_dna& mer) {
-    size_t id;
+    size_t id = 0;
     if(!mer_set_.get_key_id(mer, &id))
       return 0;
     return &unitig_info_[id];
