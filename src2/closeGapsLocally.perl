@@ -47,6 +47,12 @@ $exeDir = dirname ($0);
 # Must allow specification of the min k-unitig continuation values (default 2)
 $cwd = cwd;
 &processArgs;
+$shm = "/dev/shm";
+if ((! -d $shm) || $keepDirectoriesFlag) {
+    $subdir2 = "subdir2"; }
+else {
+    $tempTime = time;
+    $subdir2 = "$shm/$tempTime"; }
 print "";
 $CeleraTerminatorDirectory = returnAbsolutePath ($CeleraTerminatorDirectory);
 for ($i=0; $i<=$#readsFiles; $i++) {
@@ -57,10 +63,10 @@ for ($i=0; $i<=$#readsFiles; $i++) {
 $localReadsFile = "localReadsFile";
 if (! -e $outputDirectory) {
     $cmd = "mkdir $outputDirectory"; runCommandAndExitIfBad($cmd); }
-chdir ($outputDirectory);
 $fishingEndPairs = "contig_end_pairs.${contigLengthForFishing}.fa";
-$joiningEndPairs = "contig_end_pairs.${contigLengthForJoining}.fa";
+$joiningEndPairs = "$outputDirectory/contig_end_pairs.${contigLengthForJoining}.fa";
 $joiningEndPairs = returnAbsolutePath ($joiningEndPairs);
+chdir ($outputDirectory);
 $cmd = "$exeDir/getEndSequencesOfContigs.perl $CeleraTerminatorDirectory $contigLengthForJoining $contigLengthForFishing";
 runCommandAndExitIfBad ($cmd);
 
@@ -99,18 +105,18 @@ $cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
 runCommandAndExitIfBad ($cmd);
 
 # Now run the directories
-$cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --output-dir subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences .";
+$cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences .";
 runCommandAndExitIfBad ($cmd);
-exit (0);  #################################################################
 
-# &runMainLoop;
+if (! $keepDirectoriesFlag) {
+    $cmd = "\\rm -r $subdir2"; print "$cmd\n"; system ($cmd); }
 
-$cmd = "$exeDir/getSequenceForClosedGaps.perl $CeleraTerminatorDirectory $joiningEndPairs -reads-file $localReadsFile $minKMerLen $maxKMerLen";
+$cmd = "$exeDir/getSequenceForLocallyClosedGaps.perl $CeleraTerminatorDirectory -contig-end-pairs-file $joiningEndPairs -working-directory .";
 runCommandAndExitIfBad ($cmd);
 
 &createMergedJoinFile;
 
-if (! $noClean) { &cleanUp; }
+# if (! $noClean) { &cleanUp; }
 
 sub cleanUp
 {

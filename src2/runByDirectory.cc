@@ -107,7 +107,7 @@ int main (int argc, char **argv)
      pool.release_workers();
 
      charb outfileName;
-     sprintf (outfileName, "%s/superReadSequences.fasta", args.output_dir_arg);
+     sprintf (outfileName, "./superReadSequences.fasta"); // , args.output_dir_arg);
      FILE *outfile = fopen ((char *)outfileName, "w");
      for (int i=0; i<numGaps; i++) {
 	  if (superReadFastaStrings[i] == NULL)
@@ -115,7 +115,7 @@ int main (int argc, char **argv)
 	  fputs (superReadFastaStrings[i], outfile); }
      fclose (outfile);
 
-     sprintf (outfileName, "%s/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt", args.output_dir_arg);
+     sprintf (outfileName, "./readPlacementsInSuperReads.final.read.superRead.offset.ori.txt"); // , args.output_dir_arg);
      outfile = fopen ((char *)outfileName, "w");
      for (int i=0; i<numGaps; i++) {
 	  if (readPlacementStrings[i] == NULL)
@@ -156,8 +156,13 @@ int analyzeGap(struct arguments threadArg)
 	'outDirName'/work_localReadsFile_41_2 */
      charb passingKMerFilename(100);
      sprintf (passingKMerFilename, "%s/passingKMer.txt", (char *) outDirName);
-     if (stat (passingKMerFilename, &statbuf) != 0) // It doesn't exist
-          return (0);
+     if (stat (passingKMerFilename, &statbuf) != 0) { // It doesn't exist
+	  if (! args.keep_directories_flag)
+	       sprintf (cmd, "rm -rf %s", (char *) outDirName);
+	  system ((char *) cmd);
+	  return (0);
+     }
+
      // If we get here we have found a join and passingKMer.txt exists
 	  charb goodWorkDirectory(100);
 	  int passingKMerValue;
@@ -192,8 +197,7 @@ int analyzeGap(struct arguments threadArg)
      system (cmd);
 #endif
      if (! args.keep_directories_flag) {
-	  sprintf (cmd, "\\rm -r %s", (char *) outDirName);
-	  fprintf (stderr, "%s\n", (char *) cmd);
+	  sprintf (cmd, "rm -rf %s", (char *) outDirName);
 	  system ((char *) cmd);
      }
 
