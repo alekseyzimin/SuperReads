@@ -1,6 +1,8 @@
 ACLOCAL_AMFLAGS = -I m4
-AM_CXXFLAGS = -I$(top_srcdir)/include -I$(top_srcdir) -Wall $(JELLYFISH_CFLAGS) -std=c++0x
-AM_LDFLAGS = -lpthread $(JELLYFISH_LIBS)
+CXXFLAGS_ALL = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -std=c++0x
+AM_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH1_1_CFLAGS)
+LDFLAGS_ALL = -lpthread
+AM_LDFLAGS = $(LDFLAGS_ALL) $(JELLYFISH1_1_LIBS)
 AM_DEV_CXXFLAGS = $(DEV_CXXFLAGS)
 
 noinst_HEADERS = $(YAGGO_SOURCES)
@@ -118,11 +120,14 @@ dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
 
 killBadKUnitigs_SOURCES = src2/killBadKUnitigs.cc
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
+
 findMatchesBetweenKUnitigsAndReads_SOURCES = src/read_parser.cc				\
                                              src2/findMatchesBetweenKUnitigsAndReads.cc	\
-                                             src/mer_dna.cc				\
                                              src/gcc_builtins.cc
 YAGGO_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
+findMatchesBetweenKUnitigsAndReads_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
+findMatchesBetweenKUnitigsAndReads_LDFLAGS = $(LDFLAGS_ALL) $(JELLYFISH2_0_LIBS)
+
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc src/mer_dna.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\

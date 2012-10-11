@@ -30,6 +30,9 @@ arg("kUnitigFile") {
 arg("numKUnitigsFile") {
   description "File with number of k-unitigs"
   c_string; typestr "path" }
+arg("numKMers") {
+  description "Estimation of number of mers in the k-unitigs"
+  uint64 }
 arg("readFiles") {
   description "Read fasta files"
   c_string; multiple; typestr "path" }
