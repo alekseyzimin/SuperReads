@@ -151,6 +151,12 @@ TEST_F(CharbStd, Strcat) {
   res = strcat(b, s2);
   EXPECT_STREQ(sres.c_str(), b);
   EXPECT_EQ(sres.size(), b.len());
+
+  charb b1(s1);
+  sres += s1;
+  strcat(b, b1);
+  EXPECT_EQ(sres.size(),  b.len());
+  EXPECT_STREQ(sres.c_str(), b);
 }
 
 TEST_F(CharbStd, Strcpy) {

@@ -48,6 +48,7 @@ template<typename R> class basic_charb;
 template<typename R> char *fgets(basic_charb<R>& b, FILE* stream, char* cptr);
 template<typename R> int vsprintf(basic_charb<R>& b, char*, const char* format, va_list ap);
 template<typename R> char *strcat(basic_charb<R>& b, const char* src);
+template<typename R> char *strcat(basic_charb<R>& b, const basic_charb<R>& src);
 template<typename R> std::istream& getline(std::istream& is, basic_charb<R>& b, char delim, char *cptr);
 
 /** Basic base charb class. This implement a 0 terminated
@@ -119,6 +120,7 @@ public:
   friend char *fgets <> (basic_charb<R> &b, FILE *stream, char *cptr);
   friend int vsprintf <> (basic_charb<R> &b, char* start, const char *format, va_list ap);
   friend char *strcat <> (basic_charb<R> &b, const char *src);
+  friend char *strcat <> (basic_charb<R> &b, const basic_charb<R>& src);
   friend std::istream& getline <> (std::istream& is, basic_charb<R> &b, char delim, char *cptr);
 };
 
@@ -490,6 +492,24 @@ char *strcat(basic_charb<R> &b, const char *src) {
   b.reserve(b_len + src_len + 1);
   strncpy((char*)b + b_len, src, src_len + 1);
   b.ptr_ = b.base_ + b_len + src_len;
+  return b;
+}
+
+/** Concatenate two charb strings. The first charb grows as needed.
+
+    @param b The charb to append to
+    @param src The string to append
+    @return A pointer to the beginning of b
+ */
+template<typename R>
+char *strcat(basic_charb<R> &b, const basic_charb<R>& src) {
+  size_t b_len = (char*)b ? b.len() : 0;
+  size_t src_len = (char*)src ? src.len() : 0;
+  if(src_len != 0) {
+    b.reserve(b_len + src_len + 1);
+    strncpy((char*)b + b_len, src, src_len + 1);
+    b.ptr_ = b.base_ + b_len + src_len;
+  }
   return b;
 }
 
