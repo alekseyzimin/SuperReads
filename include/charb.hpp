@@ -171,7 +171,7 @@ char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
     cptr  = b.base_ + off;
     start = b.base_ + soff;
   }
-  
+
   if(cptr == b.base_)
     return 0;
   assert(cptr != NULL);
@@ -478,14 +478,14 @@ int vsprintf(basic_charb<R> &b, char* start, const char* format, va_list _ap) {
 }
 
 /** Concatenate two strings. The charb grows as needed.
-    
+
     @param b The charb to append to
     @param src The string to append
     @return A pointer to the beginning of b
  */
 template<typename R>
 char *strcat(basic_charb<R> &b, const char *src) {
-  size_t b_len = (char*)b ? strlen((char*)b) : 0;
+  size_t b_len = (char*)b ? b.len() : 0;
   size_t src_len = strlen(src);
   b.reserve(b_len + src_len + 1);
   strncpy((char*)b + b_len, src, src_len + 1);
