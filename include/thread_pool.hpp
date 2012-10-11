@@ -25,17 +25,34 @@
 
 #include <stdexcept>
 
-// Modifications
-// - Changed data_available to a bool, because it really is a boolean
-// - Moved the struct arguments inside the class, where it belongs
-// - Use work_finished and pthread_cond_broadcast to signal that there is no more work
-// - Keep track whether a thread was actually started
-// - Call release_workers from the destructor
-// - deleted default copy constructor
 
 //#define DEBUG 1
 #undef DEBUG
 
+/// Manage a pool of threads. The pool of threads is templatized on
+/// two types: the input type `T` and the output type `U` of the
+/// function that the threads in the pool execute. The function takes
+/// type `T` as argument and return type `U`. The types `T` and `U`
+/// must be copyable.
+///
+/// Here is an example, using a thread pool to compute the squares of
+/// numbers. The square of the number `i` will be written in the array
+/// cell `res[i]`.
+///
+/// ~~~~{.cc}
+/// static const int nb_threads = 10;
+/// static const int nb_jobs = 100 * nb_threads;
+///
+/// long square(int x) { return (long)x * (long)x; }
+/// long res[nb_jobs];
+///
+/// thread_pool<int, long> tp(nb_threads, square);
+/// for(int i = 0; i < nb_jobs; ++i)
+///   tp.submit_job(&i, &res[i]);
+/// tp.release_workers(); // Wait for computation to be done
+/// ~~~~
+///
+/// @see thread_pool().
 template <typename T, typename U>
 class thread_pool {
   typedef U (*function_ptr)(T);
@@ -111,7 +128,14 @@ class thread_pool {
   }
 
 public:
-
+  /// Create a thread pool with the given number of threads. The
+  /// threads will execute the function F_.
+  ///
+  /// @param num_threads_ Number of threads to run
+  ///
+  /// @param F_ Function to run in each thread. The prototype should
+  /// be U f_(T). I.e. the return type is T and the parameter is type
+  /// U.
   thread_pool(int num_threads_, function_ptr F_) :
     num_threads(num_threads_),
     thread_id(new thread_info[num_threads]),
@@ -141,9 +165,15 @@ public:
     }
   }
 
+  /// Deleted.
+  /// A thread pool is not copyable.
   thread_pool(const thread_pool& rhs) = delete;
+  /// Deleted.
+  /// A thread pool is not copyable.
   thread_pool& operator=(const thread_pool& rhs) = delete;
 
+  /// Delete the thread pool. It first waits for all the jobs to be done.
+  /// @see release_workers
   ~thread_pool(void){
     release_workers();
 
@@ -155,8 +185,14 @@ public:
     pthread_cond_destroy(&cond_avl);
   }
 
+  /// The number of jobs completed so far.
+  ///
+  /// @return Number of jobs done
   int jobs_done(void){ return done; }
 
+  /// Notify the workers than no more jobs will be submitted. Every
+  /// thread will return after it is done its current processing. The
+  /// method returns when all threads are done and have returned.
   void release_workers(void){
     pthread_mutex_lock(&lock1);
     work_finished = true;
@@ -171,6 +207,18 @@ public:
     }
   }
 
+  /// Submit a job to a thread in the pool.  If no thread is available
+  /// at the time of call, the method will block until a thread
+  /// finishes its current job and makes itself available.
+  /// 
+  /// The `*arg` will be copied internally for the thread to work
+  /// on. I.e. it does not need to be kept around after the submit_job
+  /// method returns. The result of the computation will eventually be
+  /// written into `*ret`. Hence `ret` must point to a memory location that is
+  /// valid for as long as the worker thread is running.
+  ///
+  /// @param arg_ Argument to thread
+  /// @param ret  Pointer to location for copying result
   void submit_job(T* arg_, U* ret){
 #ifdef DEBUG
     printf("Waking worker %d\n",data_available);
