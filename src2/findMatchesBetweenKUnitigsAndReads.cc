@@ -16,12 +16,7 @@
  */
 
 
-/* Arguments are as follows:
-   1) The name of the database output by jellyfish (using raw data)
-   2) The name of the file with the k-unitigs
-   3) The name of the file which reports how many k-unitigs there are
-   4) The name of the file containing the reads
-
+/* Arguments are as follows: see findMatchesBetweenKUnitigsAndReads_cmdline.yaggo
    4/12/11: The output has now been reduced; to get the longer (former output),
    use the '-l' flag.
    5/11/11: Made parallel
@@ -76,6 +71,8 @@ public:
     mer_set_(size, mer_len * 2, 0, 126),
     unitig_info_(new kMerUnitigInfoStruct[mer_set_.size()])
   { }
+
+  ~large_kmer_unitig_info() { delete [] unitig_info_; }
 
   void set(const mer_dna& mer, uint32_t number, uint32_t offset, uint32_t ori) {
     bool   is_new;
