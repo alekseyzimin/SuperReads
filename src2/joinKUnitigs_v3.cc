@@ -22,7 +22,7 @@
 #define NEW_STUFF // Put in to get node-to-node connections
 // #define KILLED111115
 // #define KILL120102
-#define DEBUG120911
+// #define DEBUG120911
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
