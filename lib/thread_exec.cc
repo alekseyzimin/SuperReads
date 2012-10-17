@@ -23,10 +23,10 @@ void thread_exec::exec(int nb_threads) {
   for(int i = 0; i < nb_threads; i++) {
     info.id   = i;
     info.self = this;
-    int err = pthread_create(&info.thid, NULL, start_routine, &infos[i]);
+    infos.push_back(info);
+    int err = pthread_create(&infos[i].thid, NULL, start_routine, &infos[i]);
     if(err)
       eraise(Error) << "Can't create thread " << i << err::str(i);
-    infos.push_back(info);
   }
 }
 
