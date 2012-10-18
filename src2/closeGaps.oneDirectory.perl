@@ -55,7 +55,7 @@ sub runMainLoop
 	else {
 	    $minKUniLengthForPass = $k+1; }
 	$minContinuation = int ($k/2);
-	$cmd = "$exeDir/create_k_unitigs_large_k -c $minContinuation -t $numThreads -m $k -n $totInputSize -l $k -f 0.000001 @readsFiles -o k_unitigs_${suffix}.fa";
+	$cmd = "$exeDir/create_k_unitigs_large_k -c $minContinuation -t 2 -m $k -n $totInputSize -l $k -f 0.000001 @readsFiles -o k_unitigs_${suffix}.fa";
 	if (runCommandAndReturnIfBad ($cmd)) {
 	    $maxKMerLenInLoop = $k-1;
 	    next; }
