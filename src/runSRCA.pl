@@ -62,6 +62,7 @@ my %used_library_ids;
 my $LIMIT_JUMP_COVERAGE=60;
 my $USE_LINKING_MATES=1;
 my $homo_trim_string=" | homo_trim  $TRIM_PARAM ";
+my $CLOSE_GAPS=1;
 
 if(not(-e $ARGV[0])||$ARGV[0] eq ""|| $ARGV[0] eq "-h"){
 print "USAGE: runSRCA.pl <config_file>\n";
@@ -125,6 +126,14 @@ while($line=<FILE>){
 	    die("bad value for EXTEND_JUMP_READS") if($EXTEND_JUMP_READS!=1 && $EXTEND_JUMP_READS!=0);
 	    next;
 	}
+        elsif($line =~ /^CLOSE_GAPS/){
+            @f=split(/=/,$line);
+            $f[1]=~s/^\s+//;
+            $f[1]=~s/\s+$//;
+            $CLOSE_GAPS=int($f[1]);
+            die("bad value for EXTEND_JUMP_READS") if($EXTEND_JUMP_READS!=1 && $EXTEND_JUMP_READS!=0);
+            next;
+        }
         elsif($line =~ /^DO_HOMOPOLYMER_TRIM/){
             @f=split(/=/,$line);
             $f[1]=~s/^\s+//;
@@ -554,7 +563,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "JUMP_BASES_COVERED=`awk 'BEGIN{b=0}{b+=\$1*\$2;}END{print b}' compute_jump_coverage.txt`\n";
 
 #here we reduce jump library coverage: we know the genome size (from k-unitigs) and JUMP_BASES_COVERED contains total jump library coverage :)
-    print FILE "perl -e '{srand(2);\$cov=int('\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'); print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=$LIMIT_JUMP_COVERAGE;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.cor.clean.fa\");while(\$line=<FILE>){next if(not(\$line =~ /^>/));chomp(\$line);if(int(substr(\$line,3))%2==0) {print STDERR substr(\$line,1),\"\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>mates_to_break.txt\n";
+    print FILE "perl -e '{srand(0);\$cov=int('\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'); print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=$LIMIT_JUMP_COVERAGE;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.cor.clean.fa\");while(\$line=<FILE>){next if(not(\$line =~ /^>/));chomp(\$line);if(int(substr(\$line,3))%2==0) {print STDERR substr(\$line,1),\"\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>mates_to_break.txt\n";
     print FILE "extractreads_not.pl mates_to_break.txt sj.cor.ext.fa 1 >  sj.cor.ext.reduced.fa\n";
     for($i=0;$i<scalar(@jump_info_array);$i++){
 	@f=split(/\s+/,$jump_info_array[$i]);
@@ -717,6 +726,7 @@ print FILE "fi\n";
 }
 #here we close gaps in scaffolds:  we use create_k_unitigs allowing to continue on count 1 sequence and then generate fake reads from the 
 #end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps for k=17...31
+if($CLOSE_GAPS){
 
 print FILE "echo -n 'Gap closing ';date;\n";
 my $reads_argument="";
@@ -729,15 +739,16 @@ foreach $v(@f){
         $reads_argument.="--reads-file $v ";
 }
 
-print FILE "closeGaps.perl $reads_argument --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS --reduce-read-set 21 --use-all-kunitigs 1>gapClose.err 2>&1\n";
+#print FILE "closeGaps.perl $reads_argument --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS --reduce-read-set 21 --use-all-kunitigs 1>gapClose.err 2>&1\n";
 
+print FILE "closeGapsLocally.perl -s $JF_SIZE --Celera-terminator-directory CA/9-terminator $reads_argument --output-directory CA/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $NUM_THREADS --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --maxnodes 10000 --reduce-read-set-kmer-size 21 --max-reads-in-memory 100000000 --faux-insert-mean 600 --faux-insert-stdev 200 1>gapClose.err 2>&1\n";
 print FILE "if [[ -e \"CA/10-gapclose/genome.ctg.fasta\" ]];then\n";
 print FILE "echo \"Gap close success. Output sequence is in CA/10-gapclose/genome.\{ctg,scf\}.fasta\"\n";
 print FILE "else\n";
 print FILE "echo \"Gap close failed, you can still use pre-gap close files under CA/9-terminator/. Check gapClose.err for problems.\"\n";
 print FILE "exit\n";
 print FILE "fi\n";
-
+}
 
 ###Done !!!! Hoorayyyy!!! :)###
 print FILE "echo -n 'All done ';date;\n";
