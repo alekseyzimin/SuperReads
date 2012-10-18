@@ -13,7 +13,7 @@
 struct arguments {
      int dirNum;
      charb fauxReadFileDataStr;
-     charb readFileDataStr;
+     basic_charb<remaper<char> > readFileDataStr;
      charb *superReadFastaString;
      charb *readPlacementString;
 };
@@ -57,7 +57,7 @@ int main (int argc, char **argv)
      readPlacementStrings = new charb[numGaps];
 
      contigEndSeqFile = fopen (args.contig_end_sequence_file_arg, "r");
-     charb fn(200), line(100);
+     charb fn(200), line(100), tempLine(1000);
 
      for (int fileNum=0; 1; fileNum++) {
 	  sprintf (fn, "%s/readFile.%03d", args.dir_for_read_sequences_arg, fileNum);
@@ -79,9 +79,12 @@ int main (int argc, char **argv)
      for (dirNum=0; ! atEnd; dirNum++) {
 	  threadArgs.fauxReadFileDataStr.clear();
 	  for (int j=0; j<4; j++) {
-	       fgets_append (threadArgs.fauxReadFileDataStr, contigEndSeqFile); }
+	       fgets (tempLine, 1000, contigEndSeqFile);
+	       strcat (threadArgs.fauxReadFileDataStr, tempLine); }
+//	       fgets_append (threadArgs.fauxReadFileDataStr, contigEndSeqFile); }
 	  atEnd = true;
 	  threadArgs.readFileDataStr.clear();
+	 
 	  for (unsigned int i=0; i<readSeqFilesByDir.size(); i++) {
 	       int lineNum=0;
 	       while (fgets (line, 100, readSeqFilesByDir[i])) {
@@ -147,7 +150,7 @@ int analyzeGap(struct arguments threadArg)
      fputs (threadArg.readFileDataStr, outfile);
      fclose (outfile);
      sprintf (cmd, "%s/closeGaps.oneDirectory.perl --dir-to-change-to %s --Celera-terminator-directory %s --reads-file reads.fasta --output-directory outputDir --max-kmer-len %d --min-kmer-len %d --maxnodes %d --mean-for-faux-inserts %d --stdev-for-faux-inserts %d --use-all-kunitigs --noclean >%s/out.err 2>%s/out.err", exeDir.c_str(), (char *) outDirName, args.Celera_terminator_directory_arg, args.max_kmer_len_arg, args.min_kmer_len_arg, args.max_nodes_arg, args.mean_for_faux_inserts_arg, args.stdev_for_faux_inserts_arg, (char *) outDirName, (char *) outDirName);
-     printf ("Working on dir %s\n", (char *) outDirName);
+     printf ("Working on dir %s on thread %ld\n", (char *) outDirName, pthread_self());
      system (cmd);
      /* Now, if "passingKMer.txt" exists in outDirName, copy the files
 	superReadSequences.fasta and

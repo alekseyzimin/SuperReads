@@ -237,7 +237,7 @@ int main(int argc, char **argv)
 			 continue;
 		    stdString mateRead = getReadMateName (readName);
 		    outfile << readName << " O\n" << readSeq[readName] << '\n'
-			    << mateRead << " N\n" << "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\n";
+			    << mateRead << " N\n" << "N\n";
 	       }
 	  }
 	  outfile.close();

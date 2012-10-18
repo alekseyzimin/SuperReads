@@ -13,6 +13,7 @@
 # --reads-file filename : specify a read file to use (multiple files allowed,
 #                            so long as the flag is repeated)
 # --output-directory dir : specify the output directory
+# -s # : the jellyfish hash size
 #
 # Flags for required values which have defaults (i.e. flag not necessary)
 # --min-kmer-len # : specify the min kmer len used (default: 17)
@@ -34,9 +35,6 @@
 #                      a gap (default: 500)
 # --faux-insert-stdev : The stdev of the insert size used for the faux reads around
 #                      a gap (default: 200)
-#
-# Flags for optional aspects
-# --noclean : Don't clean up after the run
 #
 # The flags may be in any order.
 use Cwd;
@@ -61,6 +59,7 @@ for ($i=0; $i<=$#readsFiles; $i++) {
     $readsFiles[$i] = $readsFile; }
 
 $localReadsFile = "localReadsFile";
+print "outputDirectory = $outputDirectory\n";
 if (! -e $outputDirectory) {
     $cmd = "mkdir $outputDirectory"; runCommandAndExitIfBad($cmd); }
 $fishingEndPairs = "contig_end_pairs.${contigLengthForFishing}.fa";
@@ -80,6 +79,51 @@ if ($contigLengthForJoining != $contigLengthForFishing) {
 $cmd = "echo \"cc $fauxInsertMean $fauxInsertStdev\" > meanAndStdevByPrefix.cc.txt";
 runCommandAndExitIfBad ($cmd);
 
+# Doing the section to avoid fishing using k-mers that occur (too) many times in the reads
+$cmd = "jellyfish count -s $jellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -L 100 -o restrictKmers @readsFiles";
+runCommandAndExitIfBad ($cmd);
+
+# Must put in the merge command here
+$localOutfile = "restrictKmers";
+$testFile = "${localOutfile}_1";
+if (-e $testFile) {
+    $cmd = "jellyfish merge -o $localOutfile ${localOutfile}_*"; }
+else {
+    $cmd = "ln -s ${localOutfile}_0 $localOutfile"; }
+runCommandAndExitIfBad ($cmd);
+
+$cmd = "jellyfish dump -L $maxFishingKMerCount restrictKmers_0 -c > highCountKmers.txt";
+runCommandAndExitIfBad ($cmd);
+
+$localJellyfishHashSize = -s $fishingEndPairs;
+$localJellyfishHashSize = int ($localJellyfishHashSize / .79) + 1;
+$cmd = "jellyfish count -s $localJellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -o fishingAll $fishingEndPairs";
+runCommandAndExitIfBad ($cmd);
+
+open (FILE, "highCountKmers.txt");
+while ($line = <FILE>) {
+    ($kmer) = ($line =~ /^(\S+)\s/);
+    $isHighCountKmer{$kmer} = 1; }
+close (FILE);
+
+# The following outputs a file containing all the k-mers occurring in the contig ends used for fishing that
+# do not occur overly many times in the read database (as specified by our parameters)
+$localJellyfishHashSize = 10000000;
+$suffix = $localReadsFile . "_" . $reduceReadSetKMerSize . "_" . $kUnitigContinuationNumber;
+$cmd = "jellyfish dump fishingAll_0 -c |";
+open (FILE, $cmd);
+$outcmd = "| jellyfish count -s $localJellyfishHashSize -C -r -t $numThreads -m $reduceReadSetKMerSize -o k_u_hash_${suffix}_faux_reads /dev/fd/0";
+open (OUTFILE, $outcmd);
+print OUTFILE ">strangeFishingOutfile\n";
+while ($line = <FILE>) {
+    ($kmer) = ($line =~ /^(\S+)\s/);
+    next if ($isHighCountKmer{$kmer});
+    print OUTFILE $kmer,"N\n"; }
+# print OUTFILE "\n";
+close (FILE); close (OUTFILE);
+# End section that eliminates k-mers that occur too often
+
+if (0) {
 $suffix = $localReadsFile . "_" . $reduceReadSetKMerSize . "_" . $kUnitigContinuationNumber;
 $localJellyfishHashSize = -s $fishingEndPairs;
 $localJellyfishHashSize = int ($localJellyfishHashSize / .79) + 1;
@@ -89,12 +133,16 @@ $tfile = "k_u_hash_${suffix}_faux_reads_1";
 if (-e $tfile) {
     print STDERR "The jellyfish hash size must be made larger. Bye!\n";
     exit (1); }
+} # End of 'if (0)' section
+
 $cmd = "$exeDir/create_k_unitigs -C -t $numThreads -l $reduceReadSetKMerSize -o k_unitigs_${suffix}_faux_reads -m 1 -M 1 k_u_hash_${suffix}_faux_reads_0";
 runCommandAndExitIfBad ($cmd);
 
-$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile k_unitigs_${suffix}_faux_reads.fa -low-memory -l $reduceReadSetKMerSize --stopAfter joinKUnitigs -t $numThreads -mkudisr 0 workFauxVsFaux $fishingEndPairs 1>>out.${suffix}_workFauxVsFaux 2>>out.${suffix}_workFauxVsFaux";
+$kUnitigFilename = "k_unitigs_${suffix}_faux_reads.fa";
+$kUnitigFilesize = -s $kUnitigFilename;
+$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $kUnitigFilename -s $kUnitigFilesize -low-memory -l $reduceReadSetKMerSize --stopAfter joinKUnitigs -t $numThreads -mkudisr 0 workFauxVsFaux $fishingEndPairs 1>>out.${suffix}_workFauxVsFaux 2>>out.${suffix}_workFauxVsFaux";
 runCommandAndExitIfBad ($cmd);
-$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile k_unitigs_${suffix}_faux_reads.fa -low-memory -l $reduceReadSetKMerSize --stopAfter joinKUnitigs -t $numThreads -mkudisr 0 workReadsVsFaux @readsFiles 1>>out.${suffix}_workReadsVsFaux 2>>out.${suffix}_workReadsVsFaux";
+$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $kUnitigFilename -s $kUnitigFilesize -low-memory -l $reduceReadSetKMerSize --stopAfter joinKUnitigs -t $numThreads -mkudisr 0 workReadsVsFaux @readsFiles 1>>out.${suffix}_workReadsVsFaux 2>>out.${suffix}_workReadsVsFaux";
 runCommandAndExitIfBad ($cmd);
 # We're still in the output directory
 $cmd = "$exeDir/collectReadSequencesForLocalGapClosing --faux-reads-file $fishingEndPairs --faux-read-matches-to-kunis-file workFauxVsFaux/newTestOutput.nucmerLinesOnly --read-matches-to-kunis-file workReadsVsFaux/newTestOutput.nucmerLinesOnly";
@@ -115,21 +163,6 @@ $cmd = "$exeDir/getSequenceForLocallyClosedGaps.perl $CeleraTerminatorDirectory 
 runCommandAndExitIfBad ($cmd);
 
 &createMergedJoinFile;
-
-# if (! $noClean) { &cleanUp; }
-
-sub cleanUp
-{
-    my ($k, $suffix, $cmd);
-    for ($k=$maxKMerLen; $k>=$minKMerLen; $k--) {
-	$suffix = $localReadsFile . "_" . $k . "_" . $kUnitigContinuationNumber;
-	$cmd = "\\rm -rf work_$suffix"; system ($cmd);
-	$cmd = "\\rm k_u_hash_${suffix}_0"; system ($cmd);
-	$cmd = "\\rm k_u_hash_${suffix}_all_faux_reads"; system ($cmd);
-	$cmd = "\\rm  out.$suffix"; system ($cmd);
-	$cmd = "\\rm joined.$suffix"; system ($cmd);
-    }
-}
 
 sub createMergedJoinFile
 {
@@ -191,9 +224,8 @@ sub processArgs
     $maxKMerLen = 65;
     $minKMerLen = 17;
     $numThreads = 1;
-    $maxFishingKMerCount = 10000000;
+    $maxFishingKMerCount = 1000;
     $maxReadsInMemory = 100000000;
-    $noClean = 0;
     $contigLengthForJoining = $contigLengthForFishing = 100;
     $maxNodes = 200000;
     $fauxInsertMean = 500;
@@ -256,9 +288,10 @@ sub processArgs
             ++$i;
             $fauxInsertStdev = $ARGV[$i];
             next; }
-	if ($arg eq "--noclean") {
-	    $noClean = 1;
-	    next; }
+        if ($arg eq "-s") {
+            ++$i;
+            $jellyfishHashSize = $ARGV[$i];
+            next; }
 	if ($arg eq "--keep-directories") {
 	    $keepDirectoriesFlag = $arg;
 	    next; }
@@ -284,6 +317,9 @@ sub processArgs
 	$maxKMerLen = $kmerLens[0]; }
     if ($#kmerLens >= 1) {
 	$minKMerLen = $kmerLens[1]; }
+    if (! $jellyfishHashSize) {
+	print STDERR "You must enter a jellyfish hash size. Bye!\n";
+	&reportUsage; }
     if (! $CeleraTerminatorDirectory) {
 	print STDERR "You must enter a 9-terminator directory from a Celera run. Bye!\n";
 	&reportUsage; }
