@@ -331,7 +331,7 @@ private:
 public:
   KUnitigsJoinerThread() :
     mateUnitig1ori('F'), mateUnitig2ori('R'),
-    numPairsInOneUnitig(0), numSimplyJoinable(0), numJoinableAfterBothReadAnalysis(0),
+    numPairsInOneUnitig(0), numSimplyJoinable(0), numJoinableAfterRead1Analysis(0), numJoinableAfterBothReadAnalysis(0),
     numJoinableUnresolvedAtEnd(0), numUnjoinableMissingSequence(0), numUnjoinableOverMaxNodes(0)
   {
     rdPrefix[2] = rdPrefixHold[2] = '\0';
@@ -2311,10 +2311,10 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 #endif
                if (nodeIntArray.size() > 1) {
 		    //AZ
-		    if(args.join_aggressive_arg==0){
-                    lastGoodNodeNumber = localLoopNodeNumber;
-		    ++numJoinableUnresolvedAtEnd;
-		    wasDeclaredUnresolvedJoinable = true;
+		    if(args.join_aggressive_arg==0) {
+			 lastGoodNodeNumber = localLoopNodeNumber;
+			 ++numJoinableUnresolvedAtEnd;
+			 wasDeclaredUnresolvedJoinable = true;
 		    }
                     while (! nodeIntArray.empty())
                          nodeIntArray.pop();
