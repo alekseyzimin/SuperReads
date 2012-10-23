@@ -86,7 +86,6 @@ sub runMainLoop
 	$kmerWasRun[$k] = 1;
 	# Initial check to see if the faux mates were joinable
         $lineForMatchHold="";
-        $lines=0;
         open(FILE,"work_$suffix/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt");
         while ($line = <FILE>) {
             chomp ($line);
@@ -98,11 +97,9 @@ sub runMainLoop
                 $directoryPassed = 1;
 	    }
             $lineForMatchHold = $lineForMatch;
-	    $lines++;
         }
         close(FILE);
-        if($lines<2){ $maxKMerLenInLoop = $k-1;} 
-	#elsif ($localLine =~ /same unitig/){ $directoryPassed = 0; $minKMerLenInLoop = $k+1; } with 100 bp reads unlikely they are bot the in the same unitig
+	if ($localLine =~ /same unitig/){ $directoryPassed = 0; $minKMerLenInLoop = $k+1; } 
 	elsif ($directoryPassed == 1) { last; }
 	elsif ($localLine =~ /not uniquely joinable/ || $localLine =~ /too many nodes/) {$minKMerLenInLoop = $k+1; }
 	elsif ($localLine =~ /missing sequence/) {$maxKMerLenInLoop = $k-1; }
