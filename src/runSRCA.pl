@@ -421,12 +421,21 @@ print FILE "PE_AVG_READ_LENGTH=`awk '{n+=length(\$1);m++;}END{print int(n/m)}' p
 print FILE "echo \"Average PE read length \$PE_AVG_READ_LENGTH\"\n";
 if(uc($KMER) eq "AUTO"){
 #here we have to estimate gc content and recompute kmer length for the graph
-print FILE "KMER=`head -q -n 4000  $list_pe_files $list_jump_files | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); print \$kmer'`\n";
+print FILE "KMER=`head -q -n 4000  $list_pe_files | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); print \$kmer'`\n";
 print FILE "echo \"choosing kmer size of \$KMER for the graph\"\n";
 }else{
 print FILE "KMER=$KMER\n";
 } 
+if(uc($KMER) eq "AUTO"){
+#here we have to estimate gc content and recompute kmer length for jumping library filtering for the graph
+print FILE "KMER_J=`head -q -n 4000  $list_jump_files | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); print \$kmer'`\n";
+print FILE "echo \"choosing kmer size of \$KMER_J for the jumping library filter\"\n";
+}else{
+print FILE "KMER_J=$KMER\n";
+}
 ###done###
+
+
 
 ###Jellyfish###
 
@@ -489,8 +498,14 @@ if(scalar(@jump_info_array)>0){
 }
 
 if(not(-e "k_u_hash_0")||$rerun_pe==1||$rerun_sj==1){
-print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -r -s \$JF_SIZE -o k_u_hash $k_u_arg\n";
+print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -s \$JF_SIZE -o k_u $k_u_arg\n";
+print FILE "if [[ -e k_u_1 ]];then\n";
+print FILE "jellyfish merge -o k_u_hash_0 k_u_*\n";
+print FILE "else\n";
+print FILE "ln -s k_u_0 k_u_hash_0\n";
+print FILE "fi\n";
 }
+
 
 print FILE "ESTIMATED_GENOME_SIZE=`jellyfish histo -t $NUM_THREADS -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
 print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
@@ -500,11 +515,11 @@ print FILE "\n";
 ###build k-unitigs###
 
 if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
-print FILE "if [[ \$KMER -ge 32 ]];then\n";
 print FILE "create_k_unitigs_large_k -c \$((\$KMER/2)) -t $NUM_THREADS -m \$KMER -n \$ESTIMATED_GENOME_SIZE -l \$KMER -f 0.000001 $k_u_arg  | grep -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+print FILE "if [[ \$KMER -eq \$KMER_J ]];then\n";
+print FILE "ln -s guillaumeKUnitigsAtLeast32bases_all.fasta guillaumeKUnitigsAtLeast32bases_all.jump.fasta\n";
 print FILE "else\n";
-print FILE "cat k_u_hash_0 > /dev/null;create_k_unitigs -C -t $NUM_THREADS  -m 2 -M 2 -l \$KMER -o k_unitigs k_u_hash_0 1> /dev/null 2>&1\n";
-print FILE "mv k_unitigs.fa guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+print FILE "create_k_unitigs_large_k -c \$((\$KMER_J/2)) -t $NUM_THREADS -m \$KMER_J -n \$ESTIMATED_GENOME_SIZE -l \$KMER_J -f 0.000001 $k_u_arg  | grep -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.jump.fasta\n";
 print FILE "fi\n";
 $rerun_pe=1;
 $rerun_sj=1;
@@ -514,6 +529,7 @@ $rerun_sj=1;
 print FILE "\n";
 ###super reads and filtering for jump###
 
+if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 if(scalar(@jump_info_array)>0){
     print FILE "echo -n 'filtering JUMP ';date;\n";
 
@@ -522,7 +538,7 @@ if(scalar(@jump_info_array)>0){
     print FILE "rm -rf work2\n";
     $rerun_sj=1;
     }
-    print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -l \$KMER -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
+    print FILE "createSuperReadsForDirectory.perl -minreadsinsuperread 1 -l \$KMER_J -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.jump.fasta -t $NUM_THREADS -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
     print FILE "if [[ ! -e work2/superReads.success ]];then\n";
@@ -631,26 +647,28 @@ foreach $v(@other_info_array){
 
 ###done processing other FRG###
 print FILE "\n";
-###figure out the optimal parameters for CA###
-print FILE "TOTAL_READS=`cat  superReadSequences_shr.frg $list_of_frg_files |grep '^{FRG'|wc -l`\n";
-print FILE "ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/8); if(\$s>100000){print \$s}else{print \"100000\"}'`\n";
-print FILE "ovlHashBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/80); if(\$s>10000){print \$s}else{print \"10000\"}'`\n";
-print FILE "ovlCorrBatchSize=\$ovlHashBlockSize\n";
-###done figuring out CA parameters###
-
+}
 
 ###Celera Assembler###
-if(not(-e "CA/9-terminator/genome.qc")){
+if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 print FILE "\necho -n 'Celera Assembler ';date;\n";
 if($rerun_sj==1||$rerun_pe==1){
 print FILE "rm -rf CA\n";
 }
 
-if(not(-e "CA/7-0-CGW/cgw.out")){
+if(not(-d "CA/7-0-CGW")|| $rerun_pe || $rerun_sj){
+###figure out the optimal parameters for CA###
+print FILE "TOTAL_READS=`cat  *.frg |grep '^{FRG'|wc -l`\n";
+print FILE "ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/8); if(\$s>100000){print \$s}else{print \"100000\"}'`\n";
+print FILE "ovlHashBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/80); if(\$s>10000){print \$s}else{print \"10000\"}'`\n";
+print FILE "ovlCorrBatchSize=\$ovlHashBlockSize\n";
+####done figuring out CA parameters###
+
 #estimating mer threshold for overlapper to cover 90% of all distinct k-mers
+if(not(-d "CA/genome.ovlStore")|| $rerun_pe || $rerun_sj){
 print FILE "ovlMerThreshold=`jellyfish histo -t $NUM_THREADS k_u_hash_0 | awk '{thresh=75;if(\$1>1) {dist+=\$2;if(dist>int(\"'\$ESTIMATED_GENOME_SIZE'\")*0.98&&flag==0){if(\$1>thresh) thresh=\$1;flag=1}}}END{print thresh}'`\n";
 print FILE "echo ovlMerThreshold=\$ovlMerThreshold\n\n";
-
+}
 #this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
 if(scalar(@other_info_array)>0){
 $other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClearRanges=2 ovlMerSize=22";
@@ -661,7 +679,7 @@ $other_parameters="doFragmentCorrection=0 doOverlapBasedTrimming=0 doExtendClear
 #filter out non-junction fragments
 
 if(scalar(@jump_info_array)>0){
-if(not(-e "CA/4-unitigger-filter/gkp.edits.msg")){
+if(not(-e "CA/4-unitigger-filter/gkp.edits.msg") || $rerun_pe || $rerun_sj){
     print FILE "runCA  gkpFixInsertSizes=0 jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=\$ovlMerThreshold bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
 
 
@@ -685,7 +703,7 @@ print FILE "exit\n";
 print FILE "fi\n";
 }
 
-if(not(-e "CA/5-consensus/consensus.success")){
+if(not(-e "CA/5-consensus/consensus.success")|| $rerun_pe || $rerun_sj){
 print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
 
 print FILE "if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then\n";
@@ -709,9 +727,7 @@ print FILE "fi\n";
 }
 
 #we now recompute the A-stat for the unitigs based on positions of PE reads in the super-reads
-if(not(-e "CA/7-0-CGW/cgw.out")){
 print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
-}
 }
 
 #and we continue into the scaffolder...

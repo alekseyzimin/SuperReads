@@ -62,7 +62,7 @@
 cmdline_parse args;
 
 // Global / Constant / parameter. Merge into switches parsing?
-static const int maxDiffInsertSizesForPrinting      = 5; // Const / Parameter
+static const int maxDiffInsertSizesForPrinting      = 10; // Const / Parameter
 static const int maxTotAllowableMissingOnEnds       = 2; // Const / Parameter
 static const int default_max_offset_considered_same = 5;
 // static const int max_offset_to_test                 = 10000;
@@ -2311,10 +2311,10 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 #endif
                if (nodeIntArray.size() > 1) {
 		    //AZ
-		    if(args.join_aggressive_arg==0) {
-			 lastGoodNodeNumber = localLoopNodeNumber;
-			 ++numJoinableUnresolvedAtEnd;
-			 wasDeclaredUnresolvedJoinable = true;
+		    if(args.join_aggressive_arg==0){
+                    lastGoodNodeNumber = localLoopNodeNumber;
+		    ++numJoinableUnresolvedAtEnd;
+		    wasDeclaredUnresolvedJoinable = true;
 		    }
                     while (! nodeIntArray.empty())
                          nodeIntArray.pop();
@@ -2370,10 +2370,12 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	       fputs (stderrOutputString, stderr);
 #endif
 	  if (approxNumPaths < 1) {
-	       if (tooManyPossibleInsertLengths) {
-		    ++numJoinableUnresolvedAtEnd;
-		    wasDeclaredUnresolvedJoinable = true; }
-	       else
+//AZ there is a bug here somewhere -- sometimes this reports multiple paths when there is no path
+//	       if (tooManyPossibleInsertLengths) {
+//		    ++numJoinableUnresolvedAtEnd;
+//		    wasDeclaredUnresolvedJoinable = true; 
+//		}
+//	       else
 		    ++numUnjoinableMissingSequence; // We take out the ones over the max nodes at the end
 	       goto outputTheReadsIndividually; }
 	  // Now we move up the unitig on read1 and try again

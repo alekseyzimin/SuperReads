@@ -9,15 +9,18 @@ if ($dirToChangeTo) {
     chdir ($dirToChangeTo); }
 
 &runMainLoop;
+#wait for childres to finish
+END{wait;}
 
 sub runMainLoop
 {
-    my ($k, $kMinus1, $suffix, $cmd, $minKUniLengthForPass, $directoryPassed);
+    my ($k, $suffix, $cmd, $directoryPassed);
     my (@kmerWasRun, $currentRunOfUntestedKmers, $maxRunOfUntestedKMers, $maxRunStart);
     my ($fn1, $fn2, $maxKMerLenInLoop, $minKMerLenInLoop, $isFirstLoop);
     my (@localLines, $localLine, $tempLine);
     my ($outFn, $sz, $sz2, $totInputSize, $minContinuation);
-    
+
+    $directoryPassed=0; 
     @kmerWasRun = ();
     $maxKMerLenInLoop = $maxKMerLen;
     $minKMerLenInLoop = $minKMerLen;
@@ -45,17 +48,12 @@ sub runMainLoop
 	}
 	last unless ($maxRunStart >= 0); # Only run if some k-mer len in the window hasn't been run
 	$k = $maxRunStart + int (($maxRunOfUntestedKMers-1)/2);
-	$kMinus1 = $k-1;
 	$suffix = $localReadsFile . "_" . $k . "_" . $kUnitigContinuationNumber;
 	if ($isFirstLoop) {
 	    $isFirstLoop = 0;
 	    $totInputSize = getReadFileSize (@readsFiles); }
-	if ($useAllKUnitigs == 1) {
-	    $minKUniLengthForPass = $k; }
-	else {
-	    $minKUniLengthForPass = $k+1; }
 	$minContinuation = int ($k/2);
-	$cmd = "$exeDir/create_k_unitigs_large_k -c $minContinuation -t 2 -m $k -n $totInputSize -l $k -f 0.000001 @readsFiles -o k_unitigs_${suffix}.fa";
+	$cmd = "$exeDir/create_k_unitigs_large_k -c $minContinuation -t $numThreads -m $k -n $totInputSize -l $k -f 0.000001 @readsFiles  |  grep -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' >> k_unitigs_${suffix}.fa";
 	if (runCommandAndReturnIfBad ($cmd)) {
 	    $maxKMerLenInLoop = $k-1;
 	    next; }
@@ -64,63 +62,60 @@ sub runMainLoop
 
 	$tempFilename = "meanAndStdevByPrefix.cc.txt";
 	if (! -e $tempFilename) {
-	    $cmd = "echo cc $meanForFauxInserts $stdevForFauxInserts > $tempFilename"; runCommandAndExitIfBad ($cmd);
+	    $cmd = "echo cc $meanForFauxInserts $stdevForFauxInserts > $tempFilename"; 
+	    runCommandAndExitIfBad ($cmd);
 	}
 	$tempKUnitigsFile = "k_unitigs_${suffix}.fa";
-	$tempKUnitigsFilesize = -s $tempKUnitigsFile;
-#	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -closegaps -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -s $tempKUnitigsFilesize -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
-	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -s $tempKUnitigsFilesize -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
+	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
 	if (runCommandAndReturnIfBad ($cmd)) {
 	    $maxKMerLenInLoop = $k-1;
 	    next; }
 	# Now looking for the report line from joinKUnitigs indicating what happened with the
 	# faux mate pair (joined, missing nodes, too many nodes, etc.)
-	$cmd = "grep '^Num ' out.$suffix |";
-	open (FILE, $cmd);
-	@localLines = <FILE>;
-	close (FILE);
-	print @localLines;
+	
+	open (FILE,"out.$suffix");
 	$localLine = "";
-	for (@localLines) {
-	    $tempLine = $_;
+        while($tempLine=<FILE>){
+	    next if (not($tempLine =~ /^Num/));
+            print $tempLine;
 	    next unless ($tempLine =~ / 1\s*$/);
 	    $localLine = $tempLine;
 	    last; }
-#	$cmd = "grep '^Num ' out.$suffix"; system ($cmd);
+        close(FILE);
 
 	$kmerWasRun[$k] = 1;
 	# Initial check to see if the faux mates were joinable
-	$outFn = "joined.$suffix";
-	$cmd = "cat work_$suffix/readPositionsInSuperReads | $exeDir/outputJoinedPairs.perl > $outFn";
-	if (runCommandAndReturnIfBad ($cmd)) {
-	    $maxKMerLenInLoop = $k-1;
-	    next; }
-	$directoryPassed = 0;
-	$sz = -s $outFn;
-	# Could have joinKUnitigs report the mates joinable, but differences in sequence
-	# generate errors when creating the fasta sequence, so check for these
-	if ($sz > 0) {
-	    $fn2 = "work_$suffix/createFastaSuperReadSequences.errors.txt";
-	    $sz2 = -s $fn2;
-	    if ($sz2 == 0) {
-		$directoryPassed = 1; }
-	}
-	last if ($directoryPassed);
-	# Not deciding if 'both reads in same unitig'
-	if ($localLine =~ /not uniquely joinable/) {
-	    $minKMerLenInLoop = $k+1; }
-	if ($localLine =~ /missing sequence/) {
-	    $maxKMerLenInLoop = $k-1; }
-	if ($localLine =~ /too many nodes/) {
-	    $minKMerLenInLoop = $k+1; }
-	if ($localLine !~ /\S/) {
-	    $maxKMerLenInLoop = $k-1; }
+        $lineForMatchHold="";
+        $lines=0;
+        open(FILE,"work_$suffix/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt");
+        while ($line = <FILE>) {
+            chomp ($line);
+            @flds = split (" ", $line);
+            ($val) = ($flds[0] =~ /^..(\d+)/);
+            $val = int ($val/2);
+            $lineForMatch = "$val $flds[1]";
+            if ($lineForMatch eq $lineForMatchHold) {
+                $directoryPassed = 1;
+	    }
+            $lineForMatchHold = $lineForMatch;
+	    $lines++;
+        }
+        close(FILE);
+        if($lines<2){ $maxKMerLenInLoop = $k-1;} 
+	#elsif ($localLine =~ /same unitig/){ $directoryPassed = 0; $minKMerLenInLoop = $k+1; } with 100 bp reads unlikely they are bot the in the same unitig
+	elsif ($directoryPassed == 1) { last; }
+	elsif ($localLine =~ /not uniquely joinable/ || $localLine =~ /too many nodes/) {$minKMerLenInLoop = $k+1; }
+	elsif ($localLine =~ /missing sequence/) {$maxKMerLenInLoop = $k-1; }
+	else { $maxKMerLenInLoop = $k-1; }
     }
-    if ($directoryPassed) {
-	open (FILE, ">passingKMer.txt"); # Needed to know the k-mer length of the successful run for later programs
-	print FILE "$k\n";
-	close (FILE);
+    
+    open(FILE,">passingKMer.txt");
+    if ($directoryPassed) { 
+        print FILE "$k\n";
+    }else{
+	print FILE "11\n";
     }
+    close(FILE);
 }
 
 sub getReadFileSize

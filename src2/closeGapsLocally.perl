@@ -135,7 +135,7 @@ if (-e $tfile) {
     exit (1); }
 } # End of 'if (0)' section
 
-$cmd = "$exeDir/create_k_unitigs -C -t $numThreads -l $reduceReadSetKMerSize -o k_unitigs_${suffix}_faux_reads -m 1 -M 1 k_u_hash_${suffix}_faux_reads_0";
+$cmd = "$exeDir/create_k_unitigs -C -t $numThreads -l $reduceReadSetKMerSize -m 1 -M 1 -o k_unitigs_${suffix}_faux_reads k_u_hash_${suffix}_faux_reads_0";
 runCommandAndExitIfBad ($cmd);
 
 $kUnitigFilename = "k_unitigs_${suffix}_faux_reads.fa";
