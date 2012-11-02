@@ -30,9 +30,8 @@
 
 #include <exp_buffer.hpp>
 
-/** @file charb.hpp 
-    @brief An almost drop in replacement for `char*`
-    with safe memory management.
+/** An almost drop in replacement for `char*` with safe memory
+    management.
 
     Many str* and IO function of the C standard library are overloaded
     to work with `charb`. A `charb` is cast automatically to a `char*`
@@ -51,11 +50,14 @@ template<typename R> char *strcat(basic_charb<R>& b, const char* src);
 template<typename R> char *strcat(basic_charb<R>& b, const basic_charb<R>& src);
 template<typename R> std::istream& getline(std::istream& is, basic_charb<R>& b, char delim, char *cptr);
 
-/** Basic base charb class. This implement a 0 terminated
- * growable array of char with overloaded functions for many/most of
- * the str* and IO function of the C standard library. It is intended
- * to replace string manipulation with minimal modification to a C
- * program.
+/** Basic base charb class. This implement a 0
+ * terminated growable array of char with overloaded functions for
+ * many/most of the str* and IO function of the C standard library. It
+ * is intended to replace string manipulation with minimal
+ * modification to a C program. A `charb` is cast automatically to a
+ * `char*` or `const char*` when necessary. Hence, the function
+ * `strlen(const char*)` can be called on a `charb`.
+
  *
  * The base position of a charb may change due to reallocation. Assume
  * that any call to a standard library function that write into a
