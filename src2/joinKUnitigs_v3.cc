@@ -250,17 +250,13 @@ class KUnitigsJoinerThread {
      unitigLocStruct                                 *unitigLocData1;
      unitigLocStruct                                 *unitigLocData2;
      int                                              mateUnitig1;
-     // Make mateUnitig2 a 'static thread local' instead of instance
-     // variable as it should be. It is a trick so that the operator< of
-     // unitigPathPrintStruct can find it. This is a major code smell.
-     static __thread int                              mateUnitig2;
+     int                                              mateUnitig2;
      unsigned char                                    mateUnitig1ori;
      unsigned char                                    mateUnitig2ori;
      int                                              beginUnitig;
      int                                              endUnitig;
      unsigned char                                    beginUnitigOri;
      unsigned char                                    endUnitigOri;
-     min_heap                                         forward_path_unitigs;
      max_heap                                         backward_path_unitigs;
      std::set<unitigLocStruct>                        startingNodes;
      std::set<unitigLocStruct>                        endingNodes;
@@ -275,7 +271,9 @@ class KUnitigsJoinerThread {
      int                                              curPathNum;
      int                                              treeSize;
      charb                                            outputString;
+#ifdef KILL120103
      charb                                            stderrOutputString;
+#endif
      char                                             rdPrefix[3];
      char                                             rdPrefixHold[3];
      long long                                        readNum;
@@ -299,7 +297,6 @@ class KUnitigsJoinerThread {
      int                                              numUnjoinableMissingSequence;
      int                                              numUnjoinableOverMaxNodes;
      int                                             *treeReinitList;
-     int                                              numTreesUsed;
      int                                              maxPathNumUsed;
      bool                                             tooManyPossibleInsertLengths;
 
@@ -313,8 +310,6 @@ public:
 	  char ori;
   
 	  bool operator<(const unitigPathPrintStruct& rhs) const {
-//	       if(unitig1 == mateUnitig2) return false;
-//	       if(rhs.unitig1 == mateUnitig2) return true;
 	       if(frontEdgeOffset != rhs.frontEdgeOffset) return frontEdgeOffset < rhs.frontEdgeOffset;
 	       if(unitig1 != rhs.unitig1) return unitig1 < rhs.unitig1;
 	       return ori < rhs.ori;
@@ -383,9 +378,6 @@ public:
 #endif
      }
 };
-
-// The static tread local variable trick...
-__thread int KUnitigsJoinerThread::mateUnitig2;
 
 bool firstNodeSort (struct nodePair val1, struct nodePair val2);
 bool secondNodeSort (struct nodePair val1, struct nodePair val2);
@@ -489,6 +481,7 @@ int main (int argc, char **argv)
      mallocOrDie (startOverlapByUnitig, numUnitigs + 1 + firstUnitigNum,long int);
      mallocOrDie (startOverlapIndexByUnitig2, numUnitigs + 1 + firstUnitigNum,long int);
 
+     // Getting the unitig lengths
      mallocOrDie (unitigLengths, numUnitigs + 1 + firstUnitigNum, int);
      // Here we read in the unitig lengths, allowing for either type of length
      // format
@@ -510,6 +503,7 @@ int main (int argc, char **argv)
 	  }
      }
      fclose (infile);
+     // End section getting unitig lengths
 
      if (args.kunitigs_translation_file_given)
 	  loadKUnitigTranslationTable(args.kunitigs_translation_file_arg);
@@ -540,6 +534,7 @@ int main (int argc, char **argv)
 
      overlapCount=(long int)((double)stat_buf.st_size/(double)sizeof(struct overlapDataStruct)+.01);
    
+     // Loading the overlap data (startOverlapByUnitig, overlapData)
      for(long int j=0;j<overlapCount;j++)
      {
 	  int unitig1=overlapData[j].unitig1;
@@ -573,6 +568,9 @@ int main (int argc, char **argv)
      }
 
      free(startOverlapIndexByUnitig2);
+     // Done loading the overlap data.
+     // overlapData for indices in [startOverlapByUnitig[uni],startOverlapByUnitig[uni+1])
+     // has the overlaps for unitig 'uni'
 
      KUnitigsJoiner joiners(args.input_file_arg, args.output_arg, args.threads_arg);
      joiners.exec_join(args.threads_arg);
@@ -604,6 +602,7 @@ void loadKUnitigTranslationTable(const char *fileName)
      return;
 }
 
+// This loads a line of matches of reads to k-unitigs (output of findMatchesBetweenKUnitigsAndReads)
 void KUnitigsJoinerThread::updateMatchRecords(int readNum, ExpBuffer<char*>& flds)
 {
      int readLength = atoi(flds[1]);
@@ -734,6 +733,7 @@ int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& o
 }
      
 // returns 1 if successful, 0 if too many nodes (so failure)
+// The only routine that sets treeArr
 int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int insertLengthStdev)
 {
      
@@ -748,6 +748,7 @@ int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int inser
      int overlapLength;
      int ahg, bhg;
      int forcedStop;
+     min_heap forward_path_unitigs;
 
      lastOffsetToTest = insertLengthMean+5*insertLengthStdev;
 //     if (lastOffsetToTest > max_offset_to_test)
@@ -762,11 +763,11 @@ int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int inser
      unitigLocVal.unitig2 = mateUnitig1;
      unitigLocVal.frontEdgeOffset = unitigLengths[mateUnitig1];
      unitigLocVal.ori = mateUnitig1ori;
-     numTreesUsed = 0;
      abbrevUnitigLocVal.frontEdgeOffset = unitigLocVal.frontEdgeOffset;
      abbrevUnitigLocVal.ori = unitigLocVal.ori;
      abbrevUnitigLocVal.pathNum = 0;
 
+     treeArr.clear();
      treeArr[mateUnitig1].insert(abbrevUnitigLocVal);
      assert(treeArr.find(mateUnitig1) != treeArr.end());
      unitig2 = mateUnitig1; // Initialized to make the compiler happy
@@ -1635,7 +1636,9 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
      
      
      // Output the stuff for the old pair
+#ifdef KILL120103
      stderrOutputString.clear();
+#endif
 #ifdef KILLED111115
      fprintf (stderr, "%s%lld %ld %ld\n", rdPrefixHold, readNumHold, evenReadMatchStructs.size(), oddReadMatchStructs.size());
 #endif
@@ -1747,17 +1750,22 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	       ++numSimplyJoinable; }
 	  if (approxNumPaths <= 1)
 	       goto afterSuperRead;
+	  // approxNumPaths > 1, joinable but not uniquely so
 #ifdef DEBUG
 	  fprintf (stderr, "Trying to advance the unitigs in the first read to join them uniquely\n");
 #endif
 #if 1
+	  // nodeArray has unitigNumber and frontEdgeOffset (the latter is binned)
+	  // This sorts them in frontEdgeOffset order.
 	  sort (nodeArray.begin(), nodeArray.end(), unitigLocStructCompare);
+	  // Create the reverse map
 	  for (unsigned int i=0; i<nodeArray.size(); i++) {
 	       unitigLocMap_iterator it;
 	       it = nodeToIndexMap.find (nodeArray[i]);
 	       int j = it->second;
 	       it->second = i;
 	       newNodeNumsFromOld[j] = i; }
+	  // replace the node names in edgeList with the new (reduced) node names from newNodeNumsFromOld
 	  sortedEdgeList.clear();
 	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
 	       sortedEdgeList.insert(std::pair<int, int> (newNodeNumsFromOld[it3141->first], newNodeNumsFromOld[it3141->second]));
@@ -1768,10 +1776,12 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	  for (unsigned int i=0; i<nodeArray.size(); i++)
 	       fprintf (stderr, "i = %u, uni = %d, frontEdgeOffset = %d, ori = %c\n", i, (int) nodeArray[i].unitig2, (int) nodeArray[i].frontEdgeOffset, nodeArray[i].ori);
 #endif
+#ifdef KILL120103
 	  sprintf (stderrOutputString, "%s%lld\n", rdPrefixHold, readNumHold);
 	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
 	       sprintf_append(stderrOutputString, "Node %d %d %c -> %d %d %c\n", (int) nodeArray[it3141->first].unitig2, (int) nodeArray[it3141->first].frontEdgeOffset, (char) nodeArray[it3141->first].ori, (int) nodeArray[it3141->second].unitig2, (int) nodeArray[it3141->second].frontEdgeOffset, (char) nodeArray[it3141->second].ori);
 	  }
+#endif
 #endif
 	  struct nodePair tNodePair;
 	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
@@ -2295,7 +2305,7 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
           
      afterSuperRead:
 	  // Cleaning up the data structures
-          treeArr.clear();
+          // treeArr.clear(); // Not needed anymore (121101)
 	  
 #ifdef KILLED111115
 	  fprintf (stderr, "Approx num paths returned = %d\n", approxNumPaths);
