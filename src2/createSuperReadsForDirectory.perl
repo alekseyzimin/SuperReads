@@ -213,8 +213,17 @@ if ($noReduce==0) {
     $cmd = "$exeDir/reduce_sr $maxKUnitigNumber $mergedKUnitigLengthsFile $merLen $superReadNameAndLengthsFile -o $reduceFile";
     &runCommandAndExitIfBad ($cmd, $reduceFile, $normalFileSizeMinimum, "reduceSuperReads", $reduceFile, $fastaSuperReadErrorsFile);
 
+    $cmd="$exeDir/mergeSuperReadsUniquely.pl $workingDirectory";
+    &runCommandAndExitIfBad ($cmd, "$workingDirectory/reduce.merged.tmp", $normalFileSizeMinimum, "mergeSuperReads", "$workingDirectory/superReadNames.reduced.txt","$workingDirectory/superReadNames.newmerged.txt","$workingDirectory/reduce.merged.tmp");
+
+    $cmd="cat  $workingDirectory/superReadNames.newmerged.txt $goodSuperReadsNamesFile > $workingDirectory/superReadNames.withMerged.txt ";
+    &runCommandAndExitIfBad ($cmd, "$workingDirectory/superReadNames.withMerged.txt", $normalFileSizeMinimum, "addMergedSuperReads",$goodSuperReadsNamesFile);
+
+    $cmd = "awk '{print \"2 \"\$0}' $workingDirectory/superReadNames.withMerged.txt | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile -good-sequence-output-file $localGoodSequenceOutputFile -super-read-name-and-lengths-file $superReadNameAndLengthsFile $tflag 2> $sequenceCreationErrorFile";
+    &runCommandAndExitIfBad ($cmd, $superReadNameAndLengthsFile, $normalFileSizeMinimum, "createFastaSuperReadSequences", $localGoodSequenceOutputFile, $goodSuperReadsNamesFile, $superReadNameAndLengthsFile);
+
     if (! $keepKUnitigsInSuperreadNames) {
-	$cmd = "$exeDir/translateReduceFile.perl $goodSuperReadsNamesFile $reduceFile > $reduceFileTranslated";
+	$cmd = "$exeDir/translateReduceFile.perl $goodSuperReadsNamesFile $workingDirectory/reduce.merged.tmp > $reduceFileTranslated";
 	&runCommandAndExitIfBad ($cmd, $reduceFileTranslated, $normalFileSizeMinimum, "translateReduceFile", $reduceFileTranslated);
     }
 
