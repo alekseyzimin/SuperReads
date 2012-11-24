@@ -1672,12 +1672,21 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	  return;
      }
 //     puts ("Got to 2\n"); fflush (stdout);
+     // evenReadMatchStructs keeps track of the k-unitig matches with the even-numbered read of a mate pair
+     // oddReadMatchStructs keeps track of the k-unitig matches with the odd-numbered read of the pair
+     // We allow up to maxTotAllowableMissingOnEnds bases (total) to be uncovered at the ends of the insert
      if ((evenReadMatchStructs[0].readMatchBegin + oddReadMatchStructs[0].readMatchBegin <= maxTotAllowableMissingOnEnds)) {
 	  mateUnitig1ori = evenReadMatchStructs[0].ori;
+	  // Since we assume that the second read of the mate pair is reversed, we reverse the orientation
+	  // of the k-unitig matching the beginning of the second read when we determine the "goal" k-unitig
+	  // to match
 	  if (oddReadMatchStructs[0].ori == 'F')
 	       mateUnitig2ori = 'R';
 	  else
 	       mateUnitig2ori = 'F';
+	  // We have given distances between the ends of the reads; since we are connecting k-unitigs and are
+	  // using distances between k-unitigs, we must adjust the allowed distances between the ending k-unitigs
+	  // to account for the amount they extend beyond the ends of the reads
 	  if (mateUnitig1ori == 'F')
 	       lengthAdjustment1 = evenReadMatchStructs[0].ahg;
 	  else
@@ -1695,6 +1704,12 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	  insertLengthMeanBetweenKUnisForInsertGlobal = insertLengthMean;
 	  insertLengthStdevGlobal = stdev[(int)rdPrefixHold[0]][(int)rdPrefixHold[1]];
 //	  puts ("Entering joinKUnitigsFromMates from 3\n"); fflush (stdout);
+	  // joinKUnitigsFromMates starts from the first k-unitig and finds all k-unitigs (with offsets) that can obtained
+	  // by using overlaps between k-unitigs from a k-unitig and offset that have already been added to the list
+	  // and only considering overlaps which continue away from the starting k-unitig.
+	  // For each k-unitig it creates a tree of all the offsets where it has been observed (usually 1).
+	  // It returns 0 if the mate k-unitig is never encountered with the appropriate offset and within
+	  // the appropriate distance.
 	  successCode = joinKUnitigsFromMates (insertLengthMean, stdev[(int)rdPrefixHold[0]][(int)rdPrefixHold[1]]);
 #if DEBUG
 	  fprintf (stderr, "Leaving joinKUnitigsFromMates at A with successCode = %d\n", successCode);
@@ -1704,10 +1719,14 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	       goto afterSuperRead;
 	  // Now doing the back trace
 //	  puts ("Got to 5\n"); fflush (stdout);
+	  // We now start from the target k-unitig and work backwards, only using k-unitig
+	  // overlaps that join to nodes we saw on the outward path
 	  curPathNum = 0;
 	  approxNumPaths = 0;
 	  beginUnitig = mateUnitig1; beginUnitigOri = mateUnitig1ori;
 	  endUnitig = mateUnitig2; endUnitigOri = mateUnitig2ori;
+	  // If the target k-unitig was not found then don't try to join
+	  // (treeArr is the array of distances at which occur the k-unitig in question, in this case mateUnitig2)
           if(treeArr.find(mateUnitig2) == treeArr.end())
 	       goto afterSuperRead;
 	  treeSize = 0;
@@ -1724,11 +1743,15 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	  fprintf (stderr, "endUnitig = %d\n", endUnitig); // This prints
 #endif
 #endif
-	  // This is where the main print statement is
+	  // splitJoinWindownMin and Max are used to disambiguate when there are multiple paths
+	  // They are the offsets for the minimum offset for a split and the maximal offset of
+	  // a join when there are multiple paths. To be able to disambiguate multiple paths,
+	  // we must be able to select some k-unitigs over others in the region between the
+	  // splitJoinWindowMin and Max. Outside of this region we are dealing with a unique path.
 	  splitJoinWindowMin = INT_MAX;
 	  splitJoinWindowMax = INT_MIN;
 	  // Don't bother if treeSize > 1; we must disambiguate
-	  if (treeSize > 1) {
+	  if (treeSize > 1) { // treeSize indicates the number of possible offsets for the target unitig
 	       splitJoinWindowMin = INT_MIN;
 	       splitJoinWindowMax = INT_MAX; }
 	  
@@ -1737,12 +1760,18 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 #if DEBUG
 	  fprintf (stderr, "Got to end of simply joinable section\n");
 #endif
+	  // This does the back trace from the target k-unitig
 	  for(auto it = end_tree->second.begin(); it != end_tree->second.end(); ++it)
 	       completePathPrint(it);
 //	  minPathNumInForwardDirection = curPathNum;
 #if 0
 	  fprintf (stderr, "approxNumPaths = %d\n", (int) approxNumPaths);
 #endif
+	  // If the number of paths was 0, the mates were unjoinable (possibly due to too many nodes)
+	  // If the number of paths was 1, the mates were uniquely joinable
+	  // If the number of paths was > 1, the mates were joinable but not uniquely so, although the
+	  // actual correct number of paths should be similar to but not necessarily equal to the 
+	  // number of paths reported
 	  if (approxNumPaths >= 1)
 	       isJoinable = true;
 	  if (approxNumPaths == 1) {
@@ -1766,6 +1795,10 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	       it->second = i;
 	       newNodeNumsFromOld[j] = i; }
 	  // replace the node names in edgeList with the new (reduced) node names from newNodeNumsFromOld
+	  // with this we are working only with the nodes that appear on the reverse path instead of all k-unitigs
+	  // we have found in our searches. this helps us determine the min and max for the window as described above.
+	  // this will also allow us to output a restricted set of paths rather than one or nothing
+	  // which we may be able to use in the future, as well as allowing us to much more effectively debug the program.
 	  sortedEdgeList.clear();
 	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
 	       sortedEdgeList.insert(std::pair<int, int> (newNodeNumsFromOld[it3141->first], newNodeNumsFromOld[it3141->second]));
@@ -1783,6 +1816,7 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	  }
 #endif
 #endif
+	  // creating the joins between this restricted node set
 	  struct nodePair tNodePair;
 	  for (edge_iterator it3141=edgeList.begin(); it3141 != edgeList.end(); it3141++) {
 	       tNodePair.node1 = it3141->first;
@@ -1801,11 +1835,15 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	       fwdNumIndices[j] = revNumIndices[j] = 0;
 	       fwdStartIndices[j] = revStartIndices[j] = 0; }
 	  ++pathNum;
+	  // path num array keeps track of the maximal-numbered path on which a node is to be found
+	  // (a node is a (k-unitig, offset) pair
 #if DEBUG
 	  fprintf (stderr, "Reporting pathNumArray before overwriting all with %d:\n", (int) pathNum);
 	  for (unsigned int j=0; j<nodeArray.size(); j++)
 	       fprintf (stderr, "pathNumArray[%d] = %d\n", (int) j, (int) pathNumArray[j]);
 #endif
+	  // Re-setting pathNumArray since we will (hopefully) be killing off some possible paths
+	  // Loading the reduced set of joins, forward and reverse
 	  for (unsigned int j=0; j<nodeArray.size(); j++)
 	       pathNumArray[j] = pathNum;
 	  for (unsigned int j=0; j<fwdConnections.size(); j++) {
@@ -1841,7 +1879,10 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 #endif
 //     mustSplit1:
 //	  fprintf (stderr, "minPathNumInForwardDirection = %d\n", (int) minPathNumInForwardDirection);
+	  // if doMinimalWorkHere is set, it means that we were not able to eliminate paths by advancing
+	  // along the first read
 	  doMinimalWorkHere = 0;
+	  // The first read has only one match to a k-unitig, no advancement possible
 	  if (evenReadMatchStructs.size() == 1) {
 	       doMinimalWorkHere = 1; }
 	  if (evenReadMatchStructs[0].ori == 'F')
@@ -1857,13 +1898,20 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	  for (it1=endingNodes.begin(); it1!= endingNodes.end(); it1++)
 	       fprintf (stderr, "%d %d %c\n", it1->unitig2, it1->frontEdgeOffset, it1->ori);
 #endif
+	  // Starting from the last k-unitig matching to the first read and working backwards,
+	  // we find the k-unitig with the greatest offset into the first read which appears
+	  // on a path and whose offset is between splitJoinWindowMin and Max, and break out of
+	  // the loop at that k-unitig
 	  for (long int i=evenReadMatchStructs.size()-1; i>=0; i--) {
 	       abbULS1.ori = evenReadMatchStructs[i].ori;
+	       // Find the starting offset for the k-unitig
 	       if (evenReadMatchStructs[i].ori == 'F')
 		    abbULS1.frontEdgeOffset = startValue - evenReadMatchStructs[i].bhg;
 	       else
 		    abbULS1.frontEdgeOffset = startValue + evenReadMatchStructs[i].ahg;
+	       // Did we find this k-unitig on the forward path?
                auto match_tree = treeArr.find(evenReadMatchStructs[i].kUnitigNumber);
+	       // If not, don't continue with this k-unitig
                if(match_tree == treeArr.end())
 		    continue;
 	       // If we get here we have a unitig on the path
@@ -1873,12 +1921,15 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 #ifdef KILL120102
 	       fprintf (stderr, "%s %d %d %d SUCCESS %d %d %d\n", (char *) readNameSpace, treeSize, (int) i, abbULS1.frontEdgeOffset, splitJoinWindowMin, splitJoinWindowMax, pathNum);
 #endif
-	       if (pathNum == 0)
+	       if (pathNum == 0) // If this (k-unitig, offset) pair were not found on the reverse traversal, skip
 		    continue;
-	       if (abbULS1.frontEdgeOffset >= splitJoinWindowMax)
+	       if (abbULS1.frontEdgeOffset >= splitJoinWindowMax) // If the offset of the k-unitig puts it beyond the repeat region, skip
 		    continue;
 	       // Checking for useless result
-	       if (abbULS1.frontEdgeOffset <= splitJoinWindowMin) {
+	       // If the offset puts it before the repeat region, since all subsequent k-unitig matches with the first read will have
+	       // offsets less than this one, we indicate that we can get no information by tring to split using the k-unitigs matching
+	       // the first read.
+	       if (abbULS1.frontEdgeOffset <= splitJoinWindowMin) { 
 		    doMinimalWorkHere = 1;
 		    break; }
 	       // If we get here we've passed all the tests and we can use it
@@ -1886,31 +1937,39 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	       overlapMatchIndexHold = i;
 	       break;
 	  }
-
+	  
+	  // Nothing is gained by moving the first k-unitig forward, so we just the same first
+	  // k-unitig as before
 	  if (doMinimalWorkHere) {
 	       localUnitigNumber = evenReadMatchStructs[0].kUnitigNumber;
 	       abbULS1.frontEdgeOffset = unitigLengths[localUnitigNumber];
 	       abbULS1.ori = evenReadMatchStructs[0].ori; }
+	  // tempULS is the k-unitig from which we will now be trying to join
 	  tempULS.unitig2 = localUnitigNumber;
 	  tempULS.frontEdgeOffset = abbULS1.frontEdgeOffset;
 	  tempULS.ori = abbULS1.ori;
 #ifdef KILL120102
 	  fprintf (stderr, "unitig2 = %d, frontEdgeOffset = %d, ori = %c\n", tempULS.unitig2, tempULS.frontEdgeOffset, tempULS.ori);
 #endif
-	  localNodeNumber = localNodeNumberHold = nodeToIndexMap[tempULS];
+	  localNodeNumber = localNodeNumberHold = nodeToIndexMap[tempULS]; // local node number for the (new) starting k-unitig
 #ifdef KILL120102
 	  fprintf (stderr, "localNodeNumber = %d\n", (int) localNodeNumber);
 #endif
+	  // Change to a pathNum larger than what we have used before for this pair so we can keep track of both
+	  // (a) if the node was on a path before, and (b) if the node is on the new (restricted) path
 	  ++pathNum;
 #ifdef DEBUG120626
 	  fprintf (stderr, "Changing path numbers for nodes at 1\n");
 	  fprintf (stderr, "localNodeNumber = %d, pathNum = %d\n", (int) localNodeNumber, (int) pathNum);
 #endif
-	  pathNumArray[localNodeNumber] = pathNum;
+	  pathNumArray[localNodeNumber] = pathNum; // put the local node number as the starting k-unitig and mark all the k-unitigs on the
+	  // path from here to the ending k-unitig as having the new pathNum; in this way we know which nodes are achievable from the new starting node
 	  nodeIntArray.push(localNodeNumber);
 	  while (! nodeIntArray.empty()) {
 	       int localLoopNodeNumber = nodeIntArray.top();
 	       nodeIntArray.pop();
+	       // for each forward overlap with the current node, add the new node to the possible nodes, since if we could join this node to
+	       // target node before we certainly still can
 	       for (int j=fwdStartIndices[localLoopNodeNumber]; j<fwdStartIndices[localLoopNodeNumber]+fwdNumIndices[localLoopNodeNumber]; j++) {
 		    localNodeNumber = fwdConnections[j].node2;
 		    if (pathNumArray[localNodeNumber] < pathNum) {
@@ -1921,23 +1980,26 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 			 pathNumArray[localNodeNumber] = pathNum; }
 	       }
 	  }
-	  if (doMinimalWorkHere)
+	  if (doMinimalWorkHere)  // Nothing more to do for this section; none of the changes has disambiguated anything, so we go on to trying to split using the second read's k-unitigs
 	       goto mustSplit2;
 #ifdef DEBUG120626
 	  fprintf (stderr, "overlapMatchIndexHold = %d\n", (int) overlapMatchIndexHold);
 #endif
 
+	  // Now collecting the prefix to the path generated immediately above
+	  // For the overlaps involving k-unitigs before the one with which we started
 	  for (int i=overlapMatchIndexHold-1; i>=0; i--) {
 	       unitigLocMap_iterator it;
 	       int isGood = 0;
 	       tempULS.ori = evenReadMatchStructs[i].ori;
+	       // startValue = offset of k-unitig to which we had advanced in the first read
 	       if (evenReadMatchStructs[i].ori == 'F')
 		    tempULS.frontEdgeOffset = startValue - evenReadMatchStructs[i].bhg;
 	       else
 		    tempULS.frontEdgeOffset = startValue + evenReadMatchStructs[i].ahg;
 	       tempULS.unitig2 = evenReadMatchStructs[i].kUnitigNumber;
 	       it = nodeToIndexMap.find (tempULS);
-	       if (it == nodeToIndexMap.end())
+	       if (it == nodeToIndexMap.end()) // If the k-unitig not found at the offset
 		    break;
 	       int nodeNum = it->second;
 	       if (pathNumArray[nodeNum] == 0)
@@ -2304,8 +2366,6 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 #endif
           
      afterSuperRead:
-	  // Cleaning up the data structures
-          // treeArr.clear(); // Not needed anymore (121101)
 	  
 #ifdef KILLED111115
 	  fprintf (stderr, "Approx num paths returned = %d\n", approxNumPaths);
