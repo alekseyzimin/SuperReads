@@ -74,6 +74,7 @@ $joinAggressive = 0;
 $lowMemory = 0;
 $maxNodes = 2000;
 $noReduce = 0;
+$doSimpleMerge=0;
 &processArgs;
 if ($jumpLibraryReads) {
     $maxNodes = 0; }
@@ -213,20 +214,27 @@ if ($noReduce==0) {
     $cmd = "$exeDir/reduce_sr $maxKUnitigNumber $mergedKUnitigLengthsFile $merLen $superReadNameAndLengthsFile -o $reduceFile";
     &runCommandAndExitIfBad ($cmd, $reduceFile, $normalFileSizeMinimum, "reduceSuperReads", $reduceFile, $fastaSuperReadErrorsFile);
 
-    $cmd="$exeDir/mergeSuperReadsUniquely.pl $workingDirectory";
-    &runCommandAndExitIfBad ($cmd, "$workingDirectory/reduce.merged.tmp", $normalFileSizeMinimum, "mergeSuperReads", "$workingDirectory/superReadNames.reduced.txt","$workingDirectory/superReadNames.newmerged.txt","$workingDirectory/reduce.merged.tmp");
+    if($doSimpleMerge){
+    	$cmd="$exeDir/mergeSuperReadsUniquely.pl $workingDirectory";
+    	&runCommandAndExitIfBad ($cmd, "$workingDirectory/reduce.merged.tmp", $normalFileSizeMinimum, "mergeSuperReads", "$workingDirectory/superReadNames.reduced.txt","$workingDirectory/superReadNames.newmerged.txt","$workingDirectory/reduce.merged.tmp");
 
-    $cmd="cat  $workingDirectory/superReadNames.newmerged.txt $goodSuperReadsNamesFile > $workingDirectory/superReadNames.withMerged.txt ";
-    &runCommandAndExitIfBad ($cmd, "$workingDirectory/superReadNames.withMerged.txt", $normalFileSizeMinimum, "addMergedSuperReads",$goodSuperReadsNamesFile);
+    	$cmd="cat  $workingDirectory/superReadNames.newmerged.txt $goodSuperReadsNamesFile > $workingDirectory/superReadNames.withMerged.txt ";
+    	&runCommandAndExitIfBad ($cmd, "$workingDirectory/superReadNames.withMerged.txt", $normalFileSizeMinimum, "addMergedSuperReads",$goodSuperReadsNamesFile);
 
-    $cmd = "awk '{print \"2 \"\$0}' $workingDirectory/superReadNames.withMerged.txt | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile -good-sequence-output-file $localGoodSequenceOutputFile -super-read-name-and-lengths-file $superReadNameAndLengthsFile $tflag 2> $sequenceCreationErrorFile";
-    &runCommandAndExitIfBad ($cmd, $superReadNameAndLengthsFile, $normalFileSizeMinimum, "createFastaSuperReadSequences", $localGoodSequenceOutputFile, $goodSuperReadsNamesFile, $superReadNameAndLengthsFile);
+    	$cmd = "awk '{print \"2 \"\$0}' $workingDirectory/superReadNames.withMerged.txt | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile -good-sequence-output-file $localGoodSequenceOutputFile -super-read-name-and-lengths-file $superReadNameAndLengthsFile $tflag 2> $sequenceCreationErrorFile";
+    	&runCommandAndExitIfBad ($cmd, $superReadNameAndLengthsFile, $normalFileSizeMinimum, "createFastaSuperReadSequences", $localGoodSequenceOutputFile, $goodSuperReadsNamesFile, $superReadNameAndLengthsFile);
 
-    if (! $keepKUnitigsInSuperreadNames) {
-	$cmd = "$exeDir/translateReduceFile.perl $goodSuperReadsNamesFile $workingDirectory/reduce.merged.tmp > $reduceFileTranslated";
-	&runCommandAndExitIfBad ($cmd, $reduceFileTranslated, $normalFileSizeMinimum, "translateReduceFile", $reduceFileTranslated);
+    	if (! $keepKUnitigsInSuperreadNames) {
+		$cmd = "$exeDir/translateReduceFile.perl $goodSuperReadsNamesFile $workingDirectory/reduce.merged.tmp > $reduceFileTranslated";
+		&runCommandAndExitIfBad ($cmd, $reduceFileTranslated, $normalFileSizeMinimum, "translateReduceFile", $reduceFileTranslated);
+    	}
+    } else {
+	        if (! $keepKUnitigsInSuperreadNames) {
+                $cmd = "$exeDir/translateReduceFile.perl $goodSuperReadsNamesFile $workingDirectory/reduce.tmp > $reduceFileTranslated";
+                &runCommandAndExitIfBad ($cmd, $reduceFileTranslated, $normalFileSizeMinimum, "translateReduceFile", $reduceFileTranslated);
+        }
     }
-
+	
     $tflag = "--translate-super-read-names";
     if ($keepKUnitigsInSuperreadNames) {
 	$reduceFileTranslated = $reduceFile;
@@ -292,6 +300,9 @@ sub processArgs
 	    ++$i;
 	    $kUnitigsFile = $ARGV[$i];
 	    next; }
+        elsif ($ARGV[$i] eq "-doSimpleMerge") {
+            $doSimpleMerge=1;
+            next; }
         elsif ($ARGV[$i] eq "-join-aggressive") {
             ++$i;
             $joinAggressive = $ARGV[$i];
