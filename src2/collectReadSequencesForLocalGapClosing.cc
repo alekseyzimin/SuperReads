@@ -19,12 +19,22 @@
 #include <misc.hpp>
 #include <src2/collectReadSequencesForLocalGapClosing_cmdline.hpp>
 
+typedef std::string stdString;
+typedef std::vector<stdString> vectorOfStrings;
+typedef std::set<stdString> setOfStrings;
+typedef std::unordered_map<stdString, stdString> readNameToReadSequence;
+typedef std::unordered_map<stdString, int> stringToIntMap;
+typedef std::unordered_map<stdString, stdString> stringToStringMap;
+
 struct arguments {
      int dirNum;
      charb fauxReadFileDataStr;
-     basic_charb<remaper<char> > readFileDataStr;
+//     basic_charb<remaper<char> > readFileDataStr;
      charb *superReadFastaString;
      charb *readPlacementString;
+     std::vector<vectorOfStrings> *readsInGroup;
+     std::vector<vectorOfStrings> *mateReadsInGroup;
+     readNameToReadSequence *readSeq; // Read name to read sequence     
 };
 
 FILE *fopen_wait(int timeout_, char *filename){
@@ -55,13 +65,6 @@ struct numAndOriStruct {
      int groupNum;
      int ori;
 };
-
-typedef std::string stdString;
-typedef std::vector<stdString> vectorOfStrings;
-typedef std::set<stdString> setOfStrings;
-typedef std::unordered_map<stdString, stdString> readNameToReadSequence;
-typedef std::unordered_map<stdString, int> stringToIntMap;
-typedef std::unordered_map<stdString, stdString> stringToStringMap;
 
 stdString getReadMateName (stdString readName);
 void loadNeededReads (setOfStrings &readIsNeeded, readNameToReadSequence &readSeq);
@@ -208,101 +211,23 @@ int main(int argc, char **argv)
 	  system (cmd); }
 
 //     int outputGroupNum = 0;
-#define AFTER
-#ifdef AFTER
      charb tempLine(1000);
 
      loadNeededReads (readIsNeeded, readSeq);
      for (unsigned int dirNum=0; dirNum<readsInGroup.size(); dirNum++) {
-	  charb istr2(20), newDir(20);
 	  threadArgs.fauxReadFileDataStr.clear();
-	  threadArgs.readFileDataStr.clear();
+//	  threadArgs.readFileDataStr.clear();
 	  for (int j=0; j<4; j++) {
 	       fgets (tempLine, 1000, contigEndSeqFile);
 	       strcat (threadArgs.fauxReadFileDataStr, tempLine); }
-	  stringToIntMap willBeOutput;
-	  willBeOutput.clear();
-	  vectorOfStrings readsToOutput;
-	  readsToOutput.clear();
-	  for (unsigned int readNum=0; readNum<readsInGroup[dirNum].size(); readNum++) {
-	       stdString readName = readsInGroup[dirNum][readNum];
-	       stringToIntMap::iterator it = willBeOutput.find (readName);
-	       if (it != willBeOutput.end())
-		    continue;
-	       readsToOutput.push_back (readName);
-	       willBeOutput[readName] = 2; }
-	  for (unsigned int readNum=0; readNum<mateReadsInGroup[dirNum].size(); readNum++) {
-	       stdString readName = mateReadsInGroup[dirNum][readNum];
-	       stringToIntMap::iterator it = willBeOutput.find (readName);
-	       if (it != willBeOutput.end())
-		    continue;
-	       willBeOutput[readName] = 1; }
-	  setOfStrings alreadyOutput;
-	  alreadyOutput.clear();
-	  vectorOfStrings bothMatesHaveMatches, mateBroughtInViaMatePair, readOnlys;
-	  bothMatesHaveMatches.clear();
-	  mateBroughtInViaMatePair.clear();
-	  readOnlys.clear();
-	  for (unsigned int readNum=0; readNum<readsToOutput.size(); readNum++) {
-	       stdString readName = readsToOutput[readNum];
-	       if (alreadyOutput.find(readName) != alreadyOutput.end())
-		    continue;
-	       stdString readMate = getReadMateName (readName);
-	       alreadyOutput.insert (readName);
-	       stringToIntMap::iterator it2 = willBeOutput.find (readMate);
-	       if (it2 != willBeOutput.end()) {
-		    alreadyOutput.insert(readMate);
-		    if (it2->second == 2) {
-			 bothMatesHaveMatches.push_back (readName);
-			 bothMatesHaveMatches.push_back (readMate); }
-		    else {
-			 mateBroughtInViaMatePair.push_back (readName);
-			 mateBroughtInViaMatePair.push_back (readMate); }
-	       }
-	       else
-		    readOnlys.push_back (readName);
-	  }
-	  for (unsigned int readNum=0; readNum<bothMatesHaveMatches.size(); readNum++) {
-	       stringToStringMap::iterator readSeqIt =
-		    readSeq.find (bothMatesHaveMatches[readNum]);
-	       if (readSeqIt == readSeq.end())
-		    continue;
-	       sprintf (line, ">%s B\n%s\n", bothMatesHaveMatches[readNum].c_str(), (readSeqIt->second).c_str());
-	       strcat (threadArgs.readFileDataStr, line);
-	  }
-
-	  int outCount = 0;
-	  for (unsigned int readNum=0; readNum<mateBroughtInViaMatePair.size(); readNum++) {
-	       ++outCount;
-	       stdString extraStr;
-	       stdString readName = mateBroughtInViaMatePair[readNum];
-	       stringToStringMap::iterator readSeqIt =
-		    readSeq.find (readName);
-	       if (readSeqIt == readSeq.end())
-		    continue;
-	       if (outCount % 2 == 1)
-		    extraStr = stdString ("match");
-	       else
-		    extraStr = stdString ("mate");
-	       sprintf (line, ">%s %s M\n%s\n", readName.c_str(), extraStr.c_str(), (readSeq[readName]).c_str());
-	       strcat (threadArgs.readFileDataStr, line);
-	  }
-
-	  int tempInt;
-	  for (unsigned int readNum=0; readNum<readOnlys.size(); readNum++) {
-	       stdString readName = readOnlys[readNum];
-	       stringToStringMap::iterator readSeqIt =
-		    readSeq.find (readName);
-	       if (readSeqIt == readSeq.end())
-		    continue;
-	       stdString mateRead = getReadMateName (readName);
-	       sprintf (line, ">%s O\n%s\n>%s N\nN\n", readName.c_str(), (readSeq[readName]).c_str(), mateRead.c_str());
-	       strcat (threadArgs.readFileDataStr, line);
-	  }
+	  threadArgs.readsInGroup = &readsInGroup;
+	  threadArgs.mateReadsInGroup = &mateReadsInGroup;
+	  threadArgs.readSeq = &readSeq;
 	  threadArgs.dirNum = dirNum;
 	  threadArgs.superReadFastaString = &superReadFastaStrings[dirNum];
           threadArgs.readPlacementString = &readPlacementStrings[dirNum];
 	  // Get next available thread when available
+	  int tempInt;
 	  pool.submit_job (&threadArgs, &tempInt);
 	  
      }
@@ -328,115 +253,6 @@ int main(int argc, char **argv)
      
      return 0;
 }
-
-
-
-
-#else
-     while (1) {
-//	  bool isAtEnd = loadNeededReads();
-	  loadNeededReads (readIsNeeded, readSeq);
-	  if (readSeq.empty())
-	       break;
-	  charb outfileName(100);
-//	  sprintf (outfileName, "%s/readFile.%03d", args.dir_for_gaps_arg, outputGroupNum);
-	  outfile.open (outfileName);
-	  if (args.output_dir_progress_flag)
-	       fprintf (stderr, "Outputting file %s\n", (char *) outfileName);
-	  
-	  for (unsigned int grp=0; grp<readsInGroup.size(); grp++) {
-	       charb istr2(20), newDir(20);
-	       outfile << '>' << grp << "\n";
-	       
-	       stringToIntMap willBeOutput;
-	       willBeOutput.clear();
-	       vectorOfStrings readsToOutput;
-	       readsToOutput.clear();
-	       for (unsigned int readNum=0; readNum<readsInGroup[grp].size(); readNum++) {
-		    stdString readName = readsInGroup[grp][readNum];
-		    stringToIntMap::iterator it = willBeOutput.find (readName);
-		    if (it != willBeOutput.end())
-			 continue;
-		    readsToOutput.push_back (readName);
-		    willBeOutput[readName] = 2; }
-	       for (unsigned int readNum=0; readNum<mateReadsInGroup[grp].size(); readNum++) {
-		    stdString readName = mateReadsInGroup[grp][readNum];
-		    stringToIntMap::iterator it = willBeOutput.find (readName);
-		    if (it != willBeOutput.end())
-			 continue;
-		    willBeOutput[readName] = 1; }
-	       setOfStrings alreadyOutput;
-	       alreadyOutput.clear();
-	       vectorOfStrings bothMatesHaveMatches, mateBroughtInViaMatePair, readOnlys;
-	       bothMatesHaveMatches.clear();
-	       mateBroughtInViaMatePair.clear();
-	       readOnlys.clear();
-	       for (unsigned int readNum=0; readNum<readsToOutput.size(); readNum++) {
-		    stdString readName = readsToOutput[readNum];
-		    if (alreadyOutput.find(readName) != alreadyOutput.end())
-			 continue;
-		    stdString readMate = getReadMateName (readName);
-		    alreadyOutput.insert (readName);
-		    stringToIntMap::iterator it2 = willBeOutput.find (readMate);
-		    if (it2 != willBeOutput.end()) {
-			 alreadyOutput.insert(readMate);
-			 if (it2->second == 2) {
-			      bothMatesHaveMatches.push_back (readName);
-			      bothMatesHaveMatches.push_back (readMate); }
-			 else {
-			      mateBroughtInViaMatePair.push_back (readName);
-			      mateBroughtInViaMatePair.push_back (readMate); }
-		    }
-		    else
-			 readOnlys.push_back (readName);
-	       }
-	       for (unsigned int readNum=0; readNum<bothMatesHaveMatches.size(); readNum++) {
-		    stringToStringMap::iterator readSeqIt =
-			 readSeq.find (bothMatesHaveMatches[readNum]);
-		    if (readSeqIt == readSeq.end())
-			 continue;
-		    outfile << bothMatesHaveMatches[readNum] << " B\n" <<
-			 readSeqIt->second << "\n";
-	       }
-
-
-	       int outCount = 0;
-	       for (unsigned int readNum=0; readNum<mateBroughtInViaMatePair.size(); readNum++) {
-		    ++outCount;
-		    stdString extraStr;
-		    stdString readName = mateBroughtInViaMatePair[readNum];
-		    stringToStringMap::iterator readSeqIt =
-			 readSeq.find (readName);
-		    if (readSeqIt == readSeq.end())
-			 continue;
-		    if (outCount % 2 == 1)
-			 extraStr = stdString ("match");
-		    else
-			 extraStr = stdString ("mate");
-		    outfile << readName << ' ' << extraStr << " M\n" <<
-			 readSeq[readName] << "\n";
-	       }
-	       for (unsigned int readNum=0; readNum<readOnlys.size(); readNum++) {
-		    stdString readName = readOnlys[readNum];
-		    stringToStringMap::iterator readSeqIt =
-			 readSeq.find (readName);
-		    if (readSeqIt == readSeq.end())
-			 continue;
-		    stdString mateRead = getReadMateName (readName);
-		    outfile << readName << " O\n" << readSeq[readName] << '\n'
-			    << mateRead << " N\n" << "N\n";
-	       }
-	  }
-	  outfile.close();
-//	  ++outputGroupNum;
-	       
-	  if (isAtEnd)
-	       break;
-     }
-
-     return (0);
-}
-#endif
 
 void loadNeededReads (setOfStrings &readIsNeeded, readNameToReadSequence &readSeq)
 {
@@ -560,11 +376,15 @@ int analyzeGap(struct arguments threadArg)
 {
      struct stat statbuf;
      FILE *infile, * outfile;
+     std::vector<vectorOfStrings> *readsInGroup = threadArg.readsInGroup;
+     std::vector<vectorOfStrings> *mateReadsInGroup = threadArg.mateReadsInGroup;
+     readNameToReadSequence *readSeq = threadArg.readSeq; // Read name to read sequence     
 
      // Doing the actual work of the worker thread
      charb outDirName(100), tempFileName(10), cmd(100), line(100);
+     unsigned int dirNum = threadArg.dirNum;
 
-     sprintf (outDirName, "%s/gap%09ddir", args.output_dir_arg, threadArg.dirNum);
+     sprintf (outDirName, "%s/gap%09ddir", args.output_dir_arg, dirNum);
     
      if (stat (outDirName, &statbuf) != 0) {
 	  sprintf (cmd, "mkdir %s", (char *)outDirName);
@@ -575,7 +395,83 @@ int analyzeGap(struct arguments threadArg)
      fclose (outfile);
      sprintf (tempFileName, "%s/reads.fasta", (char *) outDirName);
      outfile = fopen (tempFileName, "w");
-     fputs (threadArg.readFileDataStr, outfile);
+
+     stringToIntMap willBeOutput;
+     willBeOutput.clear();
+     vectorOfStrings readsToOutput;
+     readsToOutput.clear();
+     for (unsigned int readNum=0; readNum<(*readsInGroup)[dirNum].size(); readNum++) {
+	  stdString readName = (*readsInGroup)[dirNum][readNum];
+	  stringToIntMap::iterator it = willBeOutput.find (readName);
+	  if (it != willBeOutput.end())
+	       continue;
+	  readsToOutput.push_back (readName);
+	  willBeOutput[readName] = 2; }
+     for (unsigned int readNum=0; readNum<(*mateReadsInGroup)[dirNum].size(); readNum++) {
+	  stdString readName = (*mateReadsInGroup)[dirNum][readNum];
+	  stringToIntMap::iterator it = willBeOutput.find (readName);
+	  if (it != willBeOutput.end())
+	       continue;
+	  willBeOutput[readName] = 1; }
+     setOfStrings alreadyOutput;
+     alreadyOutput.clear();
+     vectorOfStrings bothMatesHaveMatches, mateBroughtInViaMatePair, readOnlys;
+     bothMatesHaveMatches.clear();
+     mateBroughtInViaMatePair.clear();
+     readOnlys.clear();
+     for (unsigned int readNum=0; readNum<readsToOutput.size(); readNum++) {
+	  stdString readName = readsToOutput[readNum];
+	  if (alreadyOutput.find(readName) != alreadyOutput.end())
+	       continue;
+	  stdString readMate = getReadMateName (readName);
+	  alreadyOutput.insert (readName);
+	  stringToIntMap::iterator it2 = willBeOutput.find (readMate);
+	  if (it2 != willBeOutput.end()) {
+	       alreadyOutput.insert(readMate);
+	       if (it2->second == 2) {
+		    bothMatesHaveMatches.push_back (readName);
+		    bothMatesHaveMatches.push_back (readMate); }
+	       else {
+		    mateBroughtInViaMatePair.push_back (readName);
+		    mateBroughtInViaMatePair.push_back (readMate); }
+	  }
+	  else
+	       readOnlys.push_back (readName);
+     }
+     for (unsigned int readNum=0; readNum<bothMatesHaveMatches.size(); readNum++) {
+	  stringToStringMap::iterator readSeqIt =
+	       readSeq->find (bothMatesHaveMatches[readNum]);
+	  if (readSeqIt == readSeq->end())
+	       continue;
+	  fprintf (outfile, ">%s B\n%s\n", bothMatesHaveMatches[readNum].c_str(), (readSeqIt->second).c_str());
+     }
+     
+     int outCount = 0;
+     for (unsigned int readNum=0; readNum<mateBroughtInViaMatePair.size(); readNum++) {
+	  ++outCount;
+	  stdString extraStr;
+	  stdString readName = mateBroughtInViaMatePair[readNum];
+	  stringToStringMap::iterator readSeqIt =
+	       readSeq->find (readName);
+	  if (readSeqIt == readSeq->end())
+	       continue;
+	  if (outCount % 2 == 1)
+	       extraStr = stdString ("match");
+	  else
+	       extraStr = stdString ("mate");
+	  fprintf (outfile, ">%s %s M\n%s\n", readName.c_str(), extraStr.c_str(), ((*readSeq)[readName]).c_str());
+     }
+     
+     for (unsigned int readNum=0; readNum<readOnlys.size(); readNum++) {
+	  stdString readName = readOnlys[readNum];
+	  stringToStringMap::iterator readSeqIt =
+	       readSeq->find (readName);
+	  if (readSeqIt == readSeq->end())
+	       continue;
+	  stdString mateRead = getReadMateName (readName);
+	  fprintf (outfile, ">%s O\n%s\n>%s N\nN\n", readName.c_str(), ((*readSeq)[readName]).c_str(), mateRead.c_str());
+     }
+     
      fclose (outfile);
      sprintf (cmd, "%s/closeGaps.oneDirectory.perl --dir-to-change-to %s --Celera-terminator-directory %s --reads-file reads.fasta --output-directory outputDir --max-kmer-len %d --min-kmer-len %d --maxnodes %d --mean-for-faux-inserts %d --stdev-for-faux-inserts %d --use-all-kunitigs --noclean 1>%s/out.err 2>&1", exeDir.c_str(), (char *) outDirName, args.Celera_terminator_directory_arg, args.max_kmer_len_arg, args.min_kmer_len_arg, args.max_nodes_arg, args.mean_for_faux_inserts_arg, args.stdev_for_faux_inserts_arg, (char *) outDirName, (char *) outDirName);
      printf ("Working on dir %s on thread %ld\n", (char *) outDirName, pthread_self());
