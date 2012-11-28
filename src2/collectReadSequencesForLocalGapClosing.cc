@@ -282,11 +282,9 @@ void loadNeededReads (setOfStrings &readIsNeeded, readNameToReadSequence &readSe
 	       goto fastQ;
 	  // If we get here it's a fasta file
 	  while (fgets (line, 100, infile)) {
-	       int lineLen;
 	       cptr = line+1;
 	       if (line[0] == '>') {
 		    char *saveptr;
-		    lineLen = strlen(line);
 		    readNameStr = strtok_r(cptr, " \t\n", &saveptr);
 		    readName = stdString (readNameStr);
 		    if (readIsNeeded.find(readName) != readIsNeeded.end())
@@ -305,8 +303,6 @@ void loadNeededReads (setOfStrings &readIsNeeded, readNameToReadSequence &readSe
 	  goto endProcessingReads;
      fastQ:
 	  while (fgets (line, 100, infile)) {
-	       int lineLen;
-	       lineLen = strlen (line);
 	       cptr = line+1;
 	       char *saveptr;
 	       isNeeded = false;
