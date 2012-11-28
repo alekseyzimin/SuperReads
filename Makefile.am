@@ -116,7 +116,7 @@ bin_PROGRAMS += createFastaSuperReadSequences				\
 dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
                     src2/createSuperReadsForDirectory.perl src2/add_missing_mates.pl \
                     src2/outputAlekseysJellyfishReductionFile.perl \
-                    src2/translateReduceFile.perl
+                    src2/translateReduceFile.perl src2/mergeSuperReadsUniquely.pl
 
 killBadKUnitigs_SOURCES = src2/killBadKUnitigs.cc
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
