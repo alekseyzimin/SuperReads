@@ -19,9 +19,6 @@ option("reads-file") {
 option("dir-for-gaps") {
   description "Directory to use for files we keep for local gap closing"
   c_string; typestr "path"; default "." }
-option("max-reads-in-memory") {
-  description "Maximum number of reads that can be kept in memory"
-  uint64; default "200000000" }
 option("output-dir-progress") {
   description "Output information on how many gaps have been analyzed"
   off }

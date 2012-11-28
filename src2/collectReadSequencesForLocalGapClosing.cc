@@ -37,19 +37,19 @@ struct arguments {
      readNameToReadSequence *readSeq; // Read name to read sequence     
 };
 
-FILE *fopen_wait(int timeout_, char *filename){
-int timeout=0;
-FILE *infile;
-do {
-        infile = fopen (filename, "r");
-        if(infile != NULL) break;
-        sleep(1);
-        timeout++;
-        }
-while(timeout < timeout_);
+FILE *fopen_wait(int timeout_, char *filename) {
+     int timeout=0;
+     FILE *infile;
+     do {
+	  infile = fopen (filename, "r");
+	  if(infile != NULL) break;
+	  sleep(1);
+	  timeout++;
+     }
+     while(timeout < timeout_);
      if(infile == NULL)
           printf("Timed out on file %s\n", filename);
-return(infile);
+     return(infile);
 }
 
 int reportNumGaps (const char *contigEndSeqFile);
@@ -250,6 +250,9 @@ int main(int argc, char **argv)
 	       continue;
 	  fputs (readPlacementStrings[i], outfile); }
      fclose (outfile);
+
+     delete[] superReadFastaStrings;
+     delete[] readPlacementStrings;
      
      return 0;
 }
@@ -413,9 +416,30 @@ int analyzeGap(struct arguments threadArg)
 	  if (it != willBeOutput.end())
 	       continue;
 	  willBeOutput[readName] = 1; }
+
+
+     // Variables used only if we keep the directories; put here for the compiler
+     int outCount = 0;
      setOfStrings alreadyOutput;
-     alreadyOutput.clear();
      vectorOfStrings bothMatesHaveMatches, mateBroughtInViaMatePair, readOnlys;
+
+     if (! args.keep_directories_flag) {
+	  fputs (">Roeroeroeyourboat\n", outfile);
+	  stringToIntMap::iterator it;
+	  for (it = willBeOutput.begin(); it != willBeOutput.end(); it++) {
+	       stdString readName = (*it).first;
+	       stringToStringMap::iterator readSeqIt =
+		    readSeq->find (readName);
+	       if (readSeqIt == readSeq->end())
+		    continue;
+	       fputs ((*readSeq)[readName].c_str(), outfile);
+	       fputc ('N', outfile); }
+	  fputc ('\n', outfile);
+	  goto closeTheReadsFileAndGoOn; }
+
+     // If we get here we are keeping the directories and doing a better reads file
+     // We used the goto above to keep this large section from being overly indented
+     alreadyOutput.clear();
      bothMatesHaveMatches.clear();
      mateBroughtInViaMatePair.clear();
      readOnlys.clear();
@@ -446,7 +470,6 @@ int analyzeGap(struct arguments threadArg)
 	  fprintf (outfile, ">%s B\n%s\n", bothMatesHaveMatches[readNum].c_str(), (readSeqIt->second).c_str());
      }
      
-     int outCount = 0;
      for (unsigned int readNum=0; readNum<mateBroughtInViaMatePair.size(); readNum++) {
 	  ++outCount;
 	  stdString extraStr;
@@ -472,6 +495,7 @@ int analyzeGap(struct arguments threadArg)
 	  fprintf (outfile, ">%s O\n%s\n>%s N\nN\n", readName.c_str(), ((*readSeq)[readName]).c_str(), mateRead.c_str());
      }
      
+closeTheReadsFileAndGoOn:
      fclose (outfile);
      sprintf (cmd, "%s/closeGaps.oneDirectory.perl --dir-to-change-to %s --Celera-terminator-directory %s --reads-file reads.fasta --output-directory outputDir --max-kmer-len %d --min-kmer-len %d --maxnodes %d --mean-for-faux-inserts %d --stdev-for-faux-inserts %d --use-all-kunitigs --noclean 1>%s/out.err 2>&1", exeDir.c_str(), (char *) outDirName, args.Celera_terminator_directory_arg, args.max_kmer_len_arg, args.min_kmer_len_arg, args.max_nodes_arg, args.mean_for_faux_inserts_arg, args.stdev_for_faux_inserts_arg, (char *) outDirName, (char *) outDirName);
      printf ("Working on dir %s on thread %ld\n", (char *) outDirName, pthread_self());
@@ -486,6 +510,9 @@ int analyzeGap(struct arguments threadArg)
 
      while(passingKMerValue <11){
      	infile = fopen_wait (60,tempFileName);
+	if (infile == NULL) {
+	     passingKMerValue = 11;
+	     break; }
 	fgets(line,100,infile);
 	passingKMerValue=atoi(line);
      	fclose (infile);

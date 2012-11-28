@@ -149,7 +149,8 @@ $cmd = "$exeDir/collectReadSequencesForLocalGapClosing --faux-reads-file $fishin
 for (@readsFiles) {
     $readFile = $_;
     $cmd .= " --reads-file $readFile"; }
-$cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
+# $cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
+$cmd .= " --dir-for-gaps .";
 runCommandAndExitIfBad ($cmd);
 
 # Now run the directories
@@ -225,7 +226,7 @@ sub processArgs
     $minKMerLen = 17;
     $numThreads = 1;
     $maxFishingKMerCount = 1000;
-    $maxReadsInMemory = 100000000;
+#    $maxReadsInMemory = 100000000;
     $contigLengthForJoining = $contigLengthForFishing = 100;
     $maxNodes = 200000;
     $fauxInsertMean = 500;
@@ -278,7 +279,7 @@ sub processArgs
 	    next; }
 	if ($arg eq "--max-reads-in-memory") {
 	    ++$i;
-	    $maxReadsInMemory = $ARGV[$i];
+#	    $maxReadsInMemory = $ARGV[$i];
 	    next; }
         if ($arg eq "--faux-insert-mean") {
             ++$i;
