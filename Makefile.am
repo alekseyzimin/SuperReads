@@ -32,10 +32,9 @@ noinst_HEADERS += $(JFLIB_I)/circular_buffer.hpp			\
 UTILS_I = include
 noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/charb.hpp $(UTILS_I)/charbuf.hpp		\
-                  $(UTILS_I)/exp_buffer.hpp				\
-                  $(UTILS_I)/gzip_stream.hpp $(UTILS_I)/yaggo.hpp	\
-                  $(UTILS_I)/misc.hpp $(UTILS_I)/heap.hpp		\
-                  $(UTILS_I)/reallocators.hpp				\
+                  $(UTILS_I)/exp_buffer.hpp $(UTILS_I)/gzip_stream.hpp	\
+                  $(UTILS_I)/yaggo.hpp $(UTILS_I)/misc.hpp		\
+                  $(UTILS_I)/heap.hpp $(UTILS_I)/reallocators.hpp	\
                   $(UTILS_I)/skip_list_set.hpp				\
                   $(UTILS_I)/skip_list_map.hpp				\
                   $(UTILS_I)/gcc_builtins.hpp $(UTILS_I)/rb_tree.hpp	\
@@ -46,10 +45,11 @@ noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/multi_thread_skip_list_map.hpp		\
                   $(UTILS_I)/tmpstream.hpp $(UTILS_I)/exp_vector.hpp	\
                   $(UTILS_I)/int128.hpp $(UTILS_I)/divisor.hpp		\
-                  $(UTILS_I)/thread_pool.hpp
+                  $(UTILS_I)/thread_pool.hpp $(UTILS_I)/fork_exec.hpp
 
 noinst_LIBRARIES = libutils.a
-libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp lib/int128.cc
+libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp	\
+                     lib/int128.cc lib/fork_exec.cpp
 LDADD = libutils.a
 
 # Yaggo automatic rules with silencing
@@ -196,9 +196,9 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_hash.cc				\
                     unittests/test_exp_vector.cc			\
                     unittests/test_mer_stream.cc			\
-                    unittests/test_int128.cc				\
-                    unittests/test_divisor.cc				\
-                    unittests/test_thread_pool.cc
+                    unittests/test_int128.cc unittests/test_divisor.cc	\
+                    unittests/test_thread_pool.cc			\
+                    unittests/test_fork_exec.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
                      src/gcc_builtins.cc src/mer_dna.cc			\
                      src/read_parser.cc unittests/misc.cc
