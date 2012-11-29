@@ -150,15 +150,12 @@ for (@readsFiles) {
     $readFile = $_;
     $cmd .= " --reads-file $readFile"; }
 # $cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
-$cmd .= " --dir-for-gaps .";
+$cmd .= " --dir-for-gaps . 2> out.err ;sort -gk1,1 out.err |perl -e '{open(OUTFILE1,\">superReadSequences.fasta\");open(OUTFILE2,\">readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\");while(\$line=<STDIN>){chomp(\$line);\@f=split(/\\s+/,\$line);print OUTFILE1 \">\$f[0]\\n\$f[1]\\n\";print OUTFILE2 \"\$f[2] \$f[3] \$f[4] \$f[5]\\n\$f[6] \$f[7] \$f[8] \$f[9]\\n\";}}'";
 runCommandAndExitIfBad ($cmd);
 
 # Now run the directories
 # $cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences .";
 # runCommandAndExitIfBad ($cmd);
-
-if (! $keepDirectoriesFlag) {
-    $cmd = "\\rm -r $subdir2"; print "$cmd\n"; system ($cmd); }
 
 $cmd = "$exeDir/getSequenceForLocallyClosedGaps.perl $CeleraTerminatorDirectory -contig-end-pairs-file $joiningEndPairs -working-directory .";
 runCommandAndExitIfBad ($cmd);
