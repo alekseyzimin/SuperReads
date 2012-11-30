@@ -89,7 +89,7 @@ $testFile = "${localOutfile}_1";
 if (-e $testFile) {
     $cmd = "jellyfish merge -o $localOutfile ${localOutfile}_*"; }
 else {
-    $cmd = "ln -s ${localOutfile}_0 $localOutfile"; }
+    $cmd = "ln -sf ${localOutfile}_0 $localOutfile"; }
 runCommandAndExitIfBad ($cmd);
 
 $cmd = "jellyfish dump -L $maxFishingKMerCount restrictKmers_0 -c > highCountKmers.txt";
@@ -145,17 +145,19 @@ runCommandAndExitIfBad ($cmd);
 $cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $kUnitigFilename -s $kUnitigFilesize -low-memory -l $reduceReadSetKMerSize --stopAfter findReadKUnitigMatches -t $numThreads -mkudisr 0 workReadsVsFaux @readsFiles 1>>out.${suffix}_workReadsVsFaux 2>>out.${suffix}_workReadsVsFaux";
 runCommandAndExitIfBad ($cmd);
 # We're still in the output directory
-$cmd = "$exeDir/collectReadSequencesForLocalGapClosing --faux-reads-file $fishingEndPairs --faux-read-matches-to-kunis-file workFauxVsFaux/newTestOutput.nucmerLinesOnly --read-matches-to-kunis-file workReadsVsFaux/newTestOutput.nucmerLinesOnly  -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs ";
+$cmd = "$exeDir/collectReadSequencesForLocalGapClosing --faux-reads-file $fishingEndPairs --faux-read-matches-to-kunis-file workFauxVsFaux/newTestOutput.nucmerLinesOnly --read-matches-to-kunis-file workReadsVsFaux/newTestOutput.nucmerLinesOnly";
 for (@readsFiles) {
     $readFile = $_;
     $cmd .= " --reads-file $readFile"; }
-# $cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
-$cmd .= " --dir-for-gaps . 2> out.err ;sort -gk1,1 out.err |perl -e '{open(OUTFILE1,\">superReadSequences.fasta\");open(OUTFILE2,\">readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\");while(\$line=<STDIN>){chomp(\$line);\@f=split(/\\s+/,\$line);print OUTFILE1 \">\$f[0]\\n\$f[1]\\n\";print OUTFILE2 \"\$f[2] \$f[3] \$f[4] \$f[5]\\n\$f[6] \$f[7] \$f[8] \$f[9]\\n\";}}'";
+$cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
 runCommandAndExitIfBad ($cmd);
 
 # Now run the directories
-# $cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences .";
-# runCommandAndExitIfBad ($cmd);
+$cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . 2> out.err ;sort -gk1,1 out.err |perl -e '{open(OUTFILE1,\">superReadSequences.fasta\");open(OUTFILE2,\">readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\");while(\$line=<STDIN>){chomp(\$line);\@f=split(/\\s+/,\$line);print OUTFILE1 \">\$f[0]\\n\$f[1]\\n\";print OUTFILE2 \"\$f[2] \$f[3] \$f[4] \$f[5]\\n\$f[6] \$f[7] \$f[8] \$f[9]\\n\";}}'";
+runCommandAndExitIfBad ($cmd);
+
+if (! $keepDirectoriesFlag) {
+    $cmd = "\\rm -rf $subdir2"; print "$cmd\n"; system ($cmd); }
 
 $cmd = "$exeDir/getSequenceForLocallyClosedGaps.perl $CeleraTerminatorDirectory -contig-end-pairs-file $joiningEndPairs -working-directory .";
 runCommandAndExitIfBad ($cmd);
@@ -223,7 +225,7 @@ sub processArgs
     $minKMerLen = 17;
     $numThreads = 1;
     $maxFishingKMerCount = 1000;
-#    $maxReadsInMemory = 100000000;
+    $maxReadsInMemory = 100000000;
     $contigLengthForJoining = $contigLengthForFishing = 100;
     $maxNodes = 200000;
     $fauxInsertMean = 500;
@@ -276,7 +278,7 @@ sub processArgs
 	    next; }
 	if ($arg eq "--max-reads-in-memory") {
 	    ++$i;
-#	    $maxReadsInMemory = $ARGV[$i];
+	    $maxReadsInMemory = $ARGV[$i];
 	    next; }
         if ($arg eq "--faux-insert-mean") {
             ++$i;
