@@ -156,8 +156,6 @@ int main(int argc, char **argv)
 	  charb outfileName(100);
 	  sprintf (outfileName, "%s/readFile.%03d", args.dir_for_gaps_arg, outputGroupNum);
 	  outfile.open (outfileName);
-	  if (args.output_dir_progress_flag)
-	       fprintf (stderr, "Outputting file %s\n", (char *) outfileName);
 	  
 	  for (unsigned int grp=0; grp<readsInGroup.size(); grp++) {
 	       charb istr2(20), newDir(20);

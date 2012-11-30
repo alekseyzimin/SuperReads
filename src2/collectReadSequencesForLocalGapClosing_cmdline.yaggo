@@ -19,36 +19,6 @@ option("reads-file") {
 option("dir-for-gaps") {
   description "Directory to use for files we keep for local gap closing"
   c_string; typestr "path"; default "." }
-option("output-dir-progress") {
-  description "Output information on how many gaps have been analyzed"
-  off }
-option("t", "num-threads") {
-  description "Number of threads"
-  int; default "1" }
-option("contig-end-sequence-file") {
-  description "Name of the file containing the contig end sequences for joining"
-  c_string; required; typestr "path" }
-option("output-dir") {
-  description "The subdirectory to put the individual gaps into"
-  c_string; default "."; typestr "path" }
-option("Celera-terminator-directory") {
-  description "The location of the terminator directory for the Celera run"
-  c_string; required; typestr "path" }
-option("keep-directories") {
-  description "Keep the individual gap directories"
-  off }
-option("max-nodes") {
-  description "Max nodes to use when closing gaps locally"
-  int; default "200000" }
-option("min-kmer-len") {
-  description "Minimum k-mer length used when closing gaps locally"
-  int; default "17" }
-option("max-kmer-len") {
-  description "Maximum k-mer length used when closing gaps locally"
-  int; default "65" }
-option("mean-for-faux-inserts") {
-  description "Mean specified when joining the ends of the contigs"
-  int; default "500" }
-option("stdev-for-faux-inserts") {
-  description "Standard deviation specified when joining the ends of the contigs"
-  int; default "200" }
+option("max-reads-in-memory") {
+  description "Number of reads to hold in memory for gap closing bins"
+  int; default "100000000" }
