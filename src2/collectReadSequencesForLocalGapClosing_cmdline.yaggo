@@ -21,4 +21,4 @@ option("dir-for-gaps") {
   c_string; typestr "path"; default "." }
 option("max-reads-in-memory") {
   description "Number of reads to hold in memory for gap closing bins"
-  int; default "100000000" }
+  uint64; default "100000000" }
