@@ -606,7 +606,7 @@ if($rerun_pe==1|| not(-e "work1")){
     $rerun_pe=1;
 	}
 
-print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+print FILE "createSuperReadsForDirectory.perl -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
 print FILE "if [[ ! -e work1/superReads.success ]];then\n";
@@ -756,8 +756,6 @@ foreach $v(@f){
 foreach $v(@f){
         $reads_argument.="--reads-file $v ";
 }
-
-#print FILE "closeGaps.perl $reads_argument --Celera-terminator-directory CA/9-terminator --output-directory CA/10-gapclose --jellyfish-hash-size ",$JF_SIZE*2," -t $NUM_THREADS --reduce-read-set 21 --use-all-kunitigs 1>gapClose.err 2>&1\n";
 
 print FILE "closeGapsLocally.perl -s $JF_SIZE --Celera-terminator-directory CA/9-terminator $reads_argument --output-directory CA/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $NUM_THREADS --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --maxnodes 10000 --reduce-read-set-kmer-size 21 --max-reads-in-memory 100000000 --faux-insert-mean 600 --faux-insert-stdev 200 1>gapClose.err 2>&1\n";
 print FILE "if [[ -e \"CA/10-gapclose/genome.ctg.fasta\" ]];then\n";
