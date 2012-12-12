@@ -33,8 +33,8 @@ noinst_HEADERS += $(JFLIB_I)/circular_buffer.hpp			\
 UTILS_I = include
 noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/charb.hpp $(UTILS_I)/charbuf.hpp		\
-                  $(UTILS_I)/exp_buffer.hpp $(UTILS_I)/gzip_stream.hpp	\
-                  $(UTILS_I)/yaggo.hpp $(UTILS_I)/misc.hpp		\
+                  $(UTILS_I)/exp_buffer.hpp				\
+                  $(UTILS_I)/gzip_stream.hpp $(UTILS_I)/misc.hpp	\
                   $(UTILS_I)/heap.hpp $(UTILS_I)/reallocators.hpp	\
                   $(UTILS_I)/skip_list_set.hpp				\
                   $(UTILS_I)/skip_list_map.hpp				\
@@ -49,8 +49,8 @@ noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/thread_pool.hpp $(UTILS_I)/fork_exec.hpp
 
 noinst_LIBRARIES = libutils.a
-libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp	\
-                     lib/int128.cc lib/fork_exec.cpp
+libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/int128.cc	\
+                     lib/fork_exec.cpp
 # Yaggo automatic rules with silencing
 V_YAGGO = $(V_YAGGO_$(V))
 V_YAGGO_ = $(V_YAGGO_$(AM_DEFAULT_VERBOSITY))
