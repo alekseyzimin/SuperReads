@@ -3,6 +3,7 @@ CXXFLAGS_ALL = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -std=c++0x
 AM_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH1_1_CFLAGS)
 LDADD_ALL = -lrt -lpthread libutils.a
 LDADD = $(LDADD_ALL) $(JELLYFISH1_1_LIBS)
+AM_LDFLAGS = $(STATIC_FLAGS)
 AM_DEV_CXXFLAGS = $(DEV_CXXFLAGS)
 
 noinst_HEADERS = $(YAGGO_SOURCES)
@@ -124,7 +125,7 @@ findMatchesBetweenKUnitigsAndReads_SOURCES = src/read_parser.cc				\
                                              src/gcc_builtins.cc
 YAGGO_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
 findMatchesBetweenKUnitigsAndReads_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
-#findMatchesBetweenKUnitigsAndReads_LDFLAGS = $(LDFLAGS_ALL) $(JELLYFISH2_0_LIBS)
+findMatchesBetweenKUnitigsAndReads_LDFLAGS = $(AM_LDFLAGS)
 findMatchesBetweenKUnitigsAndReads_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc src/mer_dna.cc
