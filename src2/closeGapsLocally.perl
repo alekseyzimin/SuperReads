@@ -76,6 +76,12 @@ if ($contigLengthForJoining != $contigLengthForFishing) {
     $cmd = "$exeDir/create_end_pairs.perl $CeleraTerminatorDirectory $contigLengthForFishing > $fishingEndPairs";
     runCommandAndExitIfBad ($cmd);
 }
+
+$meanAndStdevJoinSeqLenByGapFile = "gap.insertMeanAndStdev.txt";
+$cmd = "$exeDir/getMeanAndStdevForGapsByGapNumUsingCeleraTerminatorDirectory.perl $CeleraTerminatorDirectory --contig-end-seq-file $joiningEndPairs --reduced-column-output > $meanAndStdevJoinSeqLenByGapFile";
+runCommandAndExitIfBad ($cmd);
+
+# Do we need this now?
 $cmd = "echo \"cc $fauxInsertMean $fauxInsertStdev\" > meanAndStdevByPrefix.cc.txt";
 runCommandAndExitIfBad ($cmd);
 
