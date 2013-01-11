@@ -15,12 +15,33 @@ while ($line = <FILE>) {
     $gapNum = $flds[0];
     $sequence[$gapNum] = $flds[1];
     $placementInfo[$gapNum] = "@flds[2..5]\n@flds[6..9]\n";
+    $gapSeqLen[$gapNum] = $flds[8] - $flds[4];
+    if ($gapSeqLen[$gapNum] < 0) {
+	$gapSeqLen[$gapNum] *= -1; }
 }
 close (FILE);
+
+if ($meanAndStdevFile) {
+    open (FILE, $meanAndStdevFile);
+    while ($line = <FILE>) {
+	chomp ($line);
+	@flds = split (" ", $line);
+	$gapNum = $flds[0];
+	$gapMean = $flds[1];
+	$gapStdev = $flds[2];
+	if ($gapSeqLen[$gapNum] < $gapMean - $gapStdev * $numStdevsAllowed) {
+	    $fail[$gapNum] = 1; }
+	if ($gapSeqLen[$gapNum] > $gapMean + $gapStdev * $numStdevsAllowed) {
+	    $fail[$gapNum] = 1; }
+    }
+    close (FILE);
+}
+
 open (OUTFILE1, ">$outputSequenceFile");
 open (OUTFILE2, ">$outputPlacementFile");
 for ($gapNum=0; $gapNum<=$#sequence; $gapNum++) {
     next unless ($sequence[$gapNum]);
+    next if ($fail[$gapNum]);
     print OUTFILE1 ">$gapNum\n$sequence[$gapNum]\n";
     print OUTFILE2 $placementInfo[$gapNum]; }
 close (OUTFILE1);
@@ -50,7 +71,7 @@ sub processArgs
 	    ++$i;
 	    $meanAndStdevFile = $ARGV[$i];
 	    next; }
-	if ($ARGV[$i] eq "-num-stdevs-allowed") {
+	if ($ARGV[$i] eq "--num-stdevs-allowed") {
 	    ++$i;
 	    $numStdevsAllowed = $ARGV[$i];
 	    next; }
