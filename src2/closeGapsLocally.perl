@@ -102,7 +102,7 @@ else {
     $cmd = "ln -sf ${localOutfile}_0 $localOutfile"; }
 runCommandAndExitIfBad ($cmd);
 
-$cmd = "jellyfish dump -L $maxFishingKMerCount restrictKmers_0 -c > highCountKmers.txt";
+$cmd = "jellyfish dump -L $maxFishingKMerCount $localOutfile -c > highCountKmers.txt";
 runCommandAndExitIfBad ($cmd);
 
 $localJellyfishHashSize = -s $fishingEndPairs;
@@ -118,7 +118,6 @@ close (FILE);
 
 # The following outputs a file containing all the k-mers occurring in the contig ends used for fishing that
 # do not occur overly many times in the read database (as specified by our parameters)
-$localJellyfishHashSize = 10000000;
 $suffix = $localReadsFile . "_" . $reduceReadSetKMerSize . "_" . $kUnitigContinuationNumber;
 $cmd = "jellyfish dump fishingAll_0 -c |";
 open (FILE, $cmd);
