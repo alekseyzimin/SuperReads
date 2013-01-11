@@ -157,13 +157,15 @@ void reportKUnitigEndMatches (void)
      uint64_t numOvlsOutput=0;
      char netOri;
      char filename[500];
-     FILE *coordsFile=NULL, *overlapsFile;
+     FILE *coordsFile=NULL, *overlapsFile, *selfOverlapsFile;
 
      if (createCoordsFile) {
 	  sprintf (filename, "%s.coords", outputPrefix);
 	  coordsFile = Fopen (filename, "w"); }
      sprintf (filename, "%s.overlaps", outputPrefix);
      overlapsFile = Fopen (filename, "wb");
+     sprintf (filename, "%s.selfOverlaps.txt", outputPrefix);
+     selfOverlapsFile = Fopen (filename, "w");
 
      beginIndex=0;
      while (beginIndex<4*(largestKUnitigNumber+1)) {
@@ -239,14 +241,16 @@ void reportKUnitigEndMatches (void)
 		    if (createCoordsFile)
 			 fprintf (coordsFile, "%d %d %d %d 100.00 %d %d %d %d\n", begin1, end1, begin2, end2, kUnitigLengths[kUni1], kUnitigLengths[kUni2], kUni1, kUni2);
 		    if (isGoodOverlap) {
-			 if(kUni1 !=kUni2){//temporary dirty fix by Aleksey
+			 if(kUni1 != kUni2){   //temporary dirty fix by Aleksey
 			      overlapData[numOvlsOutput].kUni1 = kUni1;
 			      overlapData[numOvlsOutput].kUni2 = kUni2;
 			      overlapData[numOvlsOutput].ahg = ahg;
 			      overlapData[numOvlsOutput].bhg = bhg;
 			      overlapData[numOvlsOutput].netOri = netOri;
-			      ++numOvlsOutput;
-//			 fprintf (overlapsFile, "%d %d %c %d %d 0.0 0.0\n", kUni1, kUni2, netOri, ahg, bhg);
+			      ++numOvlsOutput; }
+			 else {
+			      fprintf (selfOverlapsFile, "%d %d %c %d %d 0.0 0.0\n", kUni1, kUni2, netOri, ahg, bhg);
+//			      fprintf (overlapsFile, "%d %d %c %d %d 0.0 0.0\n", kUni1, kUni2, netOri, ahg, bhg);
 			 }
 		    }
 	       }
@@ -324,6 +328,7 @@ void reportKUnitigEndMatches (void)
      if (createCoordsFile)
 	  fclose (coordsFile);
      fclose (overlapsFile);
+     fclose (selfOverlapsFile);
 }
 	  
 int kmerStructCompare (const endKUnitigKmerStruct **ptr1, const endKUnitigKmerStruct **ptr2)
