@@ -5,8 +5,8 @@ AM_INIT_AUTOMAKE([subdir-objects])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([config.h])
-AC_PROG_LIBTOOL
 AC_LANG(C++)
+LT_INIT
 
 # Checks for programs.
 AC_PROG_AWK
@@ -36,6 +36,13 @@ AS_IF([test "x$YAGGO" = "x"], [AC_PATH_PROG([YAGGO], [yaggo], [false])])
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_TYPE(__int128,
               [AC_DEFINE([HAVE_INT128], [1], [Define if type __int128 is supported])])
+
+# --enable-all-static
+AC_ARG_ENABLE([all-static],
+              [AC_HELP_STRING([--enable-all-static], [create statically linked executable])])
+STATIC_FLAGS=
+AS_IF([test "x$enable_all_static" = xyes],
+      [AC_SUBST([STATIC_FLAGS], [-all-static])])
 
 # Extra compiler debugging
 AC_ARG_VAR([DEV_CXXFLAGS], [Extra compiler flags for development])

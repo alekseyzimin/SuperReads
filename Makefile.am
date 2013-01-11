@@ -1,8 +1,9 @@
 ACLOCAL_AMFLAGS = -I m4
 CXXFLAGS_ALL = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -std=c++0x
 AM_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH1_1_CFLAGS)
-LDFLAGS_ALL = -lpthread
-AM_LDFLAGS = $(LDFLAGS_ALL) $(JELLYFISH1_1_LIBS)
+LDADD_ALL = -lrt -lpthread libutils.a
+LDADD = $(LDADD_ALL) $(JELLYFISH1_1_LIBS)
+AM_LDFLAGS = $(STATIC_FLAGS)
 AM_DEV_CXXFLAGS = $(DEV_CXXFLAGS)
 
 noinst_HEADERS = $(YAGGO_SOURCES)
@@ -50,8 +51,6 @@ noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
 noinst_LIBRARIES = libutils.a
 libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/yaggo.cpp	\
                      lib/int128.cc lib/fork_exec.cpp
-LDADD = libutils.a
-
 # Yaggo automatic rules with silencing
 V_YAGGO = $(V_YAGGO_$(V))
 V_YAGGO_ = $(V_YAGGO_$(AM_DEFAULT_VERBOSITY))
@@ -126,7 +125,8 @@ findMatchesBetweenKUnitigsAndReads_SOURCES = src/read_parser.cc				\
                                              src/gcc_builtins.cc
 YAGGO_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
 findMatchesBetweenKUnitigsAndReads_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
-findMatchesBetweenKUnitigsAndReads_LDFLAGS = $(LDFLAGS_ALL) $(JELLYFISH2_0_LIBS)
+findMatchesBetweenKUnitigsAndReads_LDFLAGS = $(AM_LDFLAGS)
+findMatchesBetweenKUnitigsAndReads_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc src/mer_dna.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
@@ -154,7 +154,9 @@ dist_bin_SCRIPTS += src2/closeGaps.perl src2/getEndSequencesOfContigs.perl \
 ##############################
 dist_bin_SCRIPTS += src2/closeGapsLocally.perl \
 	            src2/closeGaps.oneDirectory.perl \
-	            src2/getSequenceForLocallyClosedGaps.perl
+	            src2/getSequenceForLocallyClosedGaps.perl \
+                    src2/getMeanAndStdevForGapsByGapNumUsingCeleraTerminatorDirectory.perl \
+                    src2/createSuperReadSequenceAndPlacementFileFromCombined.perl
 bin_PROGRAMS += collectReadSequencesForLocalGapClosing \
 	        runByDirectory
 collectReadSequencesForLocalGapClosing_SOURCES = src2/collectReadSequencesForLocalGapClosing.cc
