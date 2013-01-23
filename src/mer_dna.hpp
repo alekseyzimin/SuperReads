@@ -167,7 +167,6 @@ namespace mer_dna_ns {
     //  base_type operator[](unsigned int i) { return _data[i]; }
     base_type word(unsigned int i) const { return _data[i]; }
     base_type operator[](unsigned int i) const { return _data[i]; }
-    const base_type* data() const { return _data; }
 
     bool operator==(const mer_base& rhs) const {
       unsigned int i = nb_words() - 1;
@@ -226,14 +225,6 @@ namespace mer_dna_ns {
     // Make current k-mer all As.
     void polyA() {
       memset(_data, '\0', sizeof(base_type) * nb_words());
-    }
-
-    // Copy from raw already encoded data. No check that the right
-    // hand side contains enough data
-    derived& operator=(const base_type* raw) {
-      memcpy(_data, raw, nb_words * sizeof(base_type));
-      _data[nb_words() - 1] &= msw();
-      return *static_cast<derived*>(this);
     }
 
     derived& operator=(const mer_base& rhs) {

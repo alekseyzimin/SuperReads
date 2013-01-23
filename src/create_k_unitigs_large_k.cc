@@ -1,6 +1,6 @@
 /* SuperRead pipeline
  * Copyright (C) 2012  Genome group at University of Maryland.
- *
+ * 
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -39,54 +39,34 @@
 // GLOBAL: command line switches
 cmdline_parse args;
 
-typedef mer_dna_ns::mer_base_dynamic<uint64_t> mer_type;
-
 struct mer_dna_hash {
-  void operator()(const mer_type& m, uint64_t *hashes) const {
+  void operator()(const mer_dna& m, uint64_t *hashes) const {
     MurmurHash3_T_128(m, (m.k() / 4) + (m.k() % 4 != 0), 0, hashes);
   }
 };
-typedef bloom_counter2<mer_type, mer_dna_hash> mer_bloom_counter2;
+typedef bloom_counter2<mer_dna, mer_dna_hash> mer_bloom_counter2;
 
 
 /* Read k-mers and store them in a map. The map_type must have the
    operator[]. The content returned must have the prefix ++. All this
    needs to be multi-thread safe.
-
-   It populates two database of k-mers. The first one is for long
-   k-mers. The second one is for small k-mers which are the prefix and
-   suffix of the longer k-mers. For every long mer m which is seen for
-   the first time, add 1 to the count of the prefix and suffix short
-   mers.
  */
 template<typename map_type, typename parser_type>
 class populate_mer_set : public thread_exec {
   int          mer_len_;
-  int          short_len_;
   parser_type& parser_;
   map_type&    set_;
-  map_type&    set_short_;
 
 public:
-  populate_mer_set(int mer_len, int short_len, map_type& set, map_type& set_short, parser_type& parser) :
-    mer_len_(mer_len), short_len_(short_len), parser_(parser), set_(set), set_short_(set_short)
+  populate_mer_set(int mer_len, map_type& set, parser_type& parser) :
+    mer_len_(mer_len), parser_(parser), set_(set)
   { }
 
   void start(int thid) {
-    mer_stream<mer_type, parser_type> stream(mer_len_, parser_);
-    mer_type m(short_len_);
+    mer_stream<mer_dna, parser_type> stream(mer_len_, parser_);
 
-    for( ; stream; ++stream) {
-      unsigned int count = ++set_[stream.canonical()];
-      if(count == 1) {
-        m = stream.fmer();
-        m.canonicalize();
-        ++set_short_[m];
-        m = stream.rmer();
-        m.canonicalize();
-        ++set_short_[m];
-      }
-    }
+    for( ; stream; ++stream)
+      ++set_[stream.canonical()];
   }
 };
 typedef populate_mer_set<mer_bloom_counter2, read_parser> mer_populate;
@@ -94,9 +74,9 @@ typedef populate_mer_set<mer_bloom_counter2, read_parser> mer_populate;
 // Insert a mer in a set and return true if the k-mer is new in the
 // set.
 template<typename set_type>
-bool insert_canonical(set_type& set, const mer_type& mer) {
+bool insert_canonical(set_type& set, const mer_dna& mer) {
   return set.insert(mer.get_canonical()).second;
-  // mer_type rc(mer);
+  // mer_dna rc(mer);
   // rc.reverse_complement();
   // bool res = set.insert(rc < mer ? rc : mer).second;
   // return res;
@@ -104,7 +84,7 @@ bool insert_canonical(set_type& set, const mer_type& mer) {
 
 /* - mer_counts_type maps k-mer to counts. Has operator[] returning
      the count.
-
+     
    - used_type is a set type with operator insert.
 
    - end_points_type is a set type with operator insert.
@@ -134,11 +114,11 @@ public:
   { }
 
   virtual void start(int thid) {
-    mer_stream<mer_type, read_parser> stream(args.mer_arg, parser_);
+    mer_stream<mer_dna, read_parser> stream(mer_dna::k(), parser_);
     jflib::omstream                  output(output_multiplexer_);
-    mer_type                          current(args.mer_arg);
-    mer_type                          continuation(args.mer_arg);
-    mer_type                          tmp(args.mer_arg);
+    mer_dna                          current;
+    mer_dna                          continuation;
+    mer_dna                          tmp;
 
     for( ; stream; ++stream) {
       auto is_new = used_mers_.insert(stream.canonical());
@@ -148,7 +128,7 @@ public:
       if(counts_[stream.canonical()] < args.quality_threshold_arg)
         continue;
       current = *stream;
-
+      
       // Grow unitig if a starting (branching) mer
       if(starting_mer(forward, current)) {
         grow_unitig(backward, current, output);
@@ -179,10 +159,10 @@ private:
   // Otherwise return false and the value of cont is undetermined. If
   // true is returned and count is not NULL, the count of the unique
   // continuation mer is stored in the pointer.
-  bool next_mer(const direction dir, const mer_type& start, mer_type& cont,
+  bool next_mer(const direction dir, const mer_dna& start, mer_dna& cont,
                 unsigned int* count = 0) {
     int     index;
-    mer_type cont_comp(start);
+    mer_dna cont_comp(start);
     cont_comp.reverse_complement();
     cont = start;
 
@@ -203,8 +183,8 @@ private:
     unsigned int cont_count = 0, low_cont_count = 0;
     for(int i = 0; i < 4; ++i) {
       base      = i;
-      base_comp = mer_type::complement(i);
-
+      base_comp = mer_dna::complement(i);
+      
       unsigned int cont_count_ = counts_[cont < cont_comp ? cont : cont_comp];
       if(cont_count_ >= args.quality_threshold_arg) {
         if(++nb_cont > 1)
@@ -235,9 +215,9 @@ private:
   // Return true if m is a starting mer in the given dir: a mer is a
   // starting mer if it is branching forward, or backward, or dries
   // out, maybe after some number of low count mer to skip.
-  bool starting_mer(direction dir, mer_type m) {
+  bool starting_mer(direction dir, mer_dna m) {
     int     low_cont = args.cont_on_low_arg;
-    mer_type tmp1(args.mer_arg), tmp2(args.mer_arg);
+    mer_dna tmp1, tmp2;
 
     while(true) {
       unsigned int count = 0;
@@ -255,21 +235,21 @@ private:
     return false;
   }
 
-  void grow_unitig(const direction dir, const mer_type& start, jflib::omstream& output) {
+  void grow_unitig(const direction dir, const mer_dna& start, jflib::omstream& output) {
     bool start_new = insert_canonical(end_points_, start);
     if(!start_new)
       return;
 
-    mer_type            mer1(start);
-    mer_type            mer2(args.mer_arg);
-    mer_type            mer3(args.mer_arg);
-    mer_type           *current = &mer1;
-    mer_type           *cont    = &mer2;
+    mer_dna            mer1(start);
+    mer_dna            mer2;
+    mer_dna            mer3;
+    mer_dna           *current = &mer1;
+    mer_dna           *cont    = &mer2;
     unsigned int       count   = 0;
     unsigned int       low_run = 0;
     unsigned int       index   = dir == forward ? 0 : start.k() - 1;
     std::string        seq;
-    std::set<mer_type>  set; // Set of used mers to avoid endless loop
+    std::set<mer_dna>  set; // Set of used mers to avoid endless loop
 
     while(true) {
       insert_canonical(used_mers_, *current);
@@ -346,7 +326,7 @@ private:
     output << jflib::endr;
   }
 };
-typedef bloom_filter<mer_type, mer_dna_hash, mt_access<unsigned int>> bloom_filter_type;
+typedef bloom_filter<mer_dna, mer_dna_hash, mt_access<unsigned int>> bloom_filter_type;
 typedef create_k_unitig<mer_bloom_counter2, bloom_filter_type, bloom_filter_type, read_parser> unitiger_type;
 
 std::ostream* open_output() {
@@ -361,7 +341,7 @@ int main(int argc, char *argv[])
 {
   args.parse(argc, argv);
 
-  //  mer_type::k(args.mer_arg);
+  mer_dna::k(args.mer_arg);
   if(!args.min_len_given)
     args.min_len_arg = args.mer_arg + 1;
 
@@ -381,7 +361,7 @@ int main(int argc, char *argv[])
       populate.exec_join(args.threads_arg);
     }
   }
-
+  
   if(args.save_given) {
     std::ofstream save_file(args.save_arg);
     if(!save_file) {
@@ -401,7 +381,7 @@ int main(int argc, char *argv[])
     bloom_filter_type used(args.false_positive_arg, args.nb_mers_arg);
     read_parser parser(args.input_arg.begin(), args.input_arg.end(),
                        args.threads_arg);
-    unitiger_type unitiger(*kmers, used, args.threads_arg, parser,
+    unitiger_type unitiger(*kmers, used, args.threads_arg, parser, 
                            *output_ostream);
     unitiger.exec_join(args.threads_arg);
   }
