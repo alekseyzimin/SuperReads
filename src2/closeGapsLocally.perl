@@ -82,7 +82,7 @@ if ($contigLengthForJoining != $contigLengthForFishing) {
 }
 
 $meanAndStdevJoinSeqLenByGapFile = "gap.insertMeanAndStdev.txt";
-$cmd = "$exeDir/getMeanAndStdevForGapsByGapNumUsingCeleraTerminatorDirectory.perl $CeleraTerminatorDirectory --contig-end-seq-file $joiningEndPairs --reduced-column-output > $meanAndStdevJoinSeqLenByGapFile";
+$cmd = "$exeDir/getMeanAndStdevForGapsByGapNumUsingCeleraAsmFile.perl $CeleraTerminatorDirectory --contig-end-seq-file $joiningEndPairs > $meanAndStdevJoinSeqLenByGapFile";
 runCommandAndExitIfBad ($cmd);
 
 # Do we need this now?
@@ -162,7 +162,7 @@ $cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
 runCommandAndExitIfBad ($cmd);
 
 # Now run the directories
-$cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . 2> out.err";
+$cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . 2> out.err";
 runCommandAndExitIfBad ($cmd);
 
 $cmd = "$exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl out.err superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --num-stdevs-allowed $maxStdevsAllowed";
