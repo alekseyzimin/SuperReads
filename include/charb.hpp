@@ -366,6 +366,8 @@ std::istream& getline_append(std::istream& is, basic_charb<R>& b, char delim) { 
     @return The number of characters written or a negative number on error
  */
 template<typename R>
+int sprintf(basic_charb<R> &b, const char* format, ...) __attribute__ ((format (printf, 2, 3)));
+template<typename R>
 int sprintf(basic_charb<R> &b, const char *format, ...) {
   va_list ap;
 
@@ -384,6 +386,8 @@ int sprintf(basic_charb<R> &b, const char *format, ...) {
     @param format The format string
     @return The number of characters written or a negative number on error
  */
+template<typename T, typename R>
+int snprintf(basic_charb<R> &b, T size, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
 template<typename T, typename R>
 int snprintf(basic_charb<R> &b, T size, const char *format, ...) {
   va_list ap;
@@ -404,6 +408,8 @@ int snprintf(basic_charb<R> &b, T size, const char *format, ...) {
     @return The number of characters written or a negative number on error
  */
 template<typename T, typename R>
+inline int vsnprintf(basic_charb<R> &b, T size, const char *format, va_list ap) __attribute__ ((format (printf, 3, 0)));
+template<typename T, typename R>
 inline int vsnprintf(basic_charb<R> &b, T size, const char *format, va_list ap) {
   return vsprintf(b, (char*)b, format, ap);
 }
@@ -416,6 +422,8 @@ inline int vsnprintf(basic_charb<R> &b, T size, const char *format, va_list ap) 
     @return The number of characters written or a negative number on error
  */
 template<typename R>
+inline int vsprintf(basic_charb<R>& b, const char* format, va_list _ap) __attribute__ ((format (printf, 2, 0)));
+template<typename R>
 inline int vsprintf(basic_charb<R>& b, const char* format, va_list _ap) {
   return vsprintf(b, (char*)b, format, _ap);
 }
@@ -427,6 +435,8 @@ inline int vsprintf(basic_charb<R>& b, const char* format, va_list _ap) {
     @param format The format string
     @return The number of characters written or a negative number on error
  */
+template<typename R>
+int sprintf_append(basic_charb<R>& b, const char* format, ...) __attribute__ ((format (printf, 2, 3)));
 template<typename R>
 int sprintf_append(basic_charb<R>& b, const char* format, ...) {
   va_list ap;
@@ -447,6 +457,8 @@ int sprintf_append(basic_charb<R>& b, const char* format, ...) {
     @return The number of characters written or a negative number on error
  */
 template<typename R>
+inline int vsprintf_append(basic_charb<R>& b, const char* format, va_list _ap) __attribute__ ((format (printf, 2, 0)));
+template<typename R>
 inline int vsprintf_append(basic_charb<R>& b, const char* format, va_list _ap) {
   return vsprintf(b, b.ptr(), format, _ap);
 }
@@ -459,7 +471,8 @@ inline int vsprintf_append(basic_charb<R>& b, const char* format, va_list _ap) {
     @param ap The variable argument list    
     @return The number of characters written or a negative number on error
  */
-
+template<typename R>
+int vsprintf(basic_charb<R> &b, char* start, const char* format, va_list _ap) __attribute__ ((format (printf, 3, 0)));
 template<typename R>
 int vsprintf(basic_charb<R> &b, char* start, const char* format, va_list _ap) {
   int res = 0;
