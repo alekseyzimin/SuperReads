@@ -177,7 +177,7 @@ int analyzeGap(struct arguments threadArg)
      outfile = fopen (tempFileName, "w");
      fputs (threadArg.readFileDataStr, outfile);
      fclose (outfile);
-     sprintf (cmd, "%s/closeGaps.oneDirectory.perl --dir-to-change-to %s --Celera-terminator-directory %s --reads-file reads.fasta --output-directory outputDir --max-kmer-len %d --min-kmer-len %d --maxnodes %d --mean-for-faux-inserts %d --stdev-for-faux-inserts %d --use-all-kunitigs --noclean 1>%s/out.err 2>&1", exeDir.c_str(), (char *) outDirName, args.Celera_terminator_directory_arg, args.max_kmer_len_arg, args.min_kmer_len_arg, args.max_nodes_arg, threadArg.mean, threadArg.stdev, (char *) outDirName, (char *) outDirName);
+     sprintf (cmd, "%s/closeGaps.oneDirectory.perl --dir-to-change-to %s --Celera-terminator-directory %s --reads-file reads.fasta --output-directory outputDir --max-kmer-len %d --min-kmer-len %d --maxnodes %d --mean-for-faux-inserts %f --stdev-for-faux-inserts %f --num-stdevs-allowed %d --use-all-kunitigs --noclean 1>%s/out.err 2>&1", exeDir.c_str(), (char *) outDirName, args.Celera_terminator_directory_arg, args.max_kmer_len_arg, args.min_kmer_len_arg, args.max_nodes_arg, threadArg.mean, threadArg.stdev, args.num_stdevs_allowed_arg, (char *) outDirName);
      printf ("Working on dir %s on thread %ld\n", (char *) outDirName, pthread_self());
      sprintf (tempFileName, "%s/passingKMer.txt", (char *) outDirName);
      int passingKMerValue = 0;

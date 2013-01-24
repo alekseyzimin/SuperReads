@@ -9,7 +9,7 @@ if ($dirToChangeTo) {
     chdir ($dirToChangeTo); }
 
 &runMainLoop;
-#wait for childres to finish
+#wait for children to finish
 END{wait;}
 
 sub runMainLoop
@@ -52,6 +52,7 @@ sub runMainLoop
 	if ($isFirstLoop) {
 	    $isFirstLoop = 0;
 	    $totInputSize = getReadFileSize (@readsFiles); }
+#	$minContinuation = int ($k/2);
 	$minContinuation = $k-1;
 	$cmd = "$exeDir/create_k_unitigs_large_k -c $minContinuation -t $numThreads -m $k -n $totInputSize -l $k -f 0.000001 @readsFiles  |  grep -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' >> k_unitigs_${suffix}.fa";
 	if (runCommandAndReturnIfBad ($cmd)) {
@@ -66,7 +67,8 @@ sub runMainLoop
 	    runCommandAndExitIfBad ($cmd);
 	}
 	$tempKUnitigsFile = "k_unitigs_${suffix}.fa";
-	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
+#	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -num-stdevs-allowed $numStdevsAllowed -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
+	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -num-stdevs-allowed $numStdevsAllowed -closegaps -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
 	if (runCommandAndReturnIfBad ($cmd)) {
 	    $maxKMerLenInLoop = $k-1;
 	    next; }
@@ -153,7 +155,7 @@ sub runCommandAndExitIfBad
         }
     }
   successfulRun:
-    return;
+    return (0);
     
   failingRun:
     exit ($retCode);
@@ -166,6 +168,7 @@ sub runCommandAndReturnIfBad
     
     if ($localCmd =~ /\S/) {
         print "$localCmd\n";
+	$localCmd = "time $localCmd"; # For debugging 11/23/12
 	system ($localCmd);
         $retCode = $?;
         if ($retCode == -1) {
@@ -203,6 +206,7 @@ sub processArgs
     $maxNodes = 2000;
     $meanForFauxInserts = 500;
     $stdevForFauxInserts = 200;
+    $numStdevsAllowed = 5;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
 	if ($arg eq "--dir-for-kunitigs") {
@@ -216,6 +220,10 @@ sub processArgs
 	if ($arg eq "--stdev-for-faux-inserts") {
 	    ++$i;
 	    $stdevForFauxInserts = $ARGV[$i];
+	    next; }
+	if ($arg eq "--num-stdevs-allowed") {
+	    ++$i;
+	    $numStdevsAllowed = $ARGV[$i];
 	    next; }
 	if ($arg eq "--min-kmer-len") {
 	    ++$i;

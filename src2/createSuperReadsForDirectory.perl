@@ -17,6 +17,7 @@
 #                      library. Each line is the 2-letter prefix for the reads
 #                      in the library followed by its mean and stdev. This
 #                      file is mandatory unless -jumplibraryreads is specified
+# -num-stdevs-allowed maxStdevsAllowedForJoining : max stdevs allowed for joinKUnitigs (5)
 # -mkudisr numBaseDiffs : max base diffs between overlapping k-unitigs in super-reads (0)
 # -minreadsinsuperread minReads : super-reads containing fewer than numReads
 #                                reads will be eliminated (2)
@@ -166,7 +167,7 @@ $normalFileSizeMinimum = 1;
 if ($closeGaps) { $normalFileSizeMinimum = 0; }
 if ($lowMemory==0) {
     # Find the matches of k-unitigs to reads and pipe to the shooting method
-    $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads -m $merLen -t $numProcessors -o /dev/fd/1 $kUnitigsFile $maxKUnitigNumberFile $minSizeNeededForTable @fastaFiles | $exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors --join-aggressive $joinAggressive /dev/fd/0";
+    $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads -m $merLen -t $numProcessors -o /dev/fd/1 $kUnitigsFile $maxKUnitigNumberFile $minSizeNeededForTable @fastaFiles | $exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --num-stdevs-allowed $numStdevsAllowed --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors --join-aggressive $joinAggressive /dev/fd/0";
     &runCommandAndExitIfBad ($cmd, $joinerOutput, $normalFileSizeMinimum, "joinKUnitigs", $joinerOutput); }
 else {
     # Find the matches of k-unitigs to reads, save to disk
@@ -175,7 +176,7 @@ else {
     if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile); }
 
     # Do the shooting method here
-    $cmd = "$exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors --join-aggressive $joinAggressive $readKUnitigMatchOutput";
+    $cmd = "$exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --num-stdevs-allowed $numStdevsAllowed --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors --join-aggressive $joinAggressive $readKUnitigMatchOutput";
     &runCommandAndExitIfBad ($cmd, $joinerOutput, $normalFileSizeMinimum, "joinKUnitigs", $joinerOutput); }
 
 if ($jumpLibraryReads) {
@@ -279,6 +280,7 @@ sub processArgs
     $numProcessors = 16;
     $minReadsInSuperRead = 2;
     $seqDiffMax = 0;
+    $numStdevsAllowed = 5;
     $help = 0;
     $timeIt = 0;
     if ($#ARGV < 0) {
@@ -326,6 +328,10 @@ sub processArgs
 	elsif ($ARGV[$i] eq "-mean-and-stdev-by-prefix-file") {
 	    ++$i;
 	    $meanAndStdevByPrefixFile = $ARGV[$i];
+	    next; }
+	elsif ($ARGV[$i] eq "-num-stdevs-allowed") {
+	    ++$i;
+	    $numStdevsAllowed = $ARGV[$i];
 	    next; }
 	elsif ($ARGV[$i] eq "--stopAfter") {
 	    ++$i;

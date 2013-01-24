@@ -63,7 +63,7 @@ sub processArgs
 {
     my ($currentArgNum, $i);
     $currentArgNum = 0;
-    $numStdevsAllowed = 5;
+    $numStdevsAllowed = 3;
     for ($i=0; $i<=$#ARGV; $i++) {
 	if (($ARGV[$i] =~ /^\-\-h/i) || ($ARGV[$i] =~ /^\-h/i)) {
 	    &reportUsage; }

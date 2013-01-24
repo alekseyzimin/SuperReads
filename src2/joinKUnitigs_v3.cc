@@ -64,7 +64,7 @@ cmdline_parse args;
 // Global / Constant / parameter. Merge into switches parsing?
 static const int maxDiffInsertSizesForPrinting      = 10; // Const / Parameter
 static const int maxTotAllowableMissingOnEnds       = 2; // Const / Parameter
-static const int default_max_offset_considered_same = 5;
+static const int default_max_offset_considered_same = 5; // Changed from 5
 // static const int max_offset_to_test                 = 10000;
 
 
@@ -750,7 +750,7 @@ int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int inser
      int forcedStop;
      min_heap forward_path_unitigs;
 
-     lastOffsetToTest = insertLengthMean+5*insertLengthStdev;
+     lastOffsetToTest = insertLengthMean+args.num_stdevs_allowed_arg*insertLengthStdev;
 //     if (lastOffsetToTest > max_offset_to_test)
 //	  lastOffsetToTest = max_offset_to_test;
      // The following assumes that all the overlaps are of length
