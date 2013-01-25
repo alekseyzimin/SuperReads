@@ -9,6 +9,9 @@ option("min-overlap-length") {
 option("mean-and-stdev-by-prefix-file", "m") {
   description "File containing the mean and stdev for each prefix library."
   c_string; typestr "path"; required }
+option("num-stdevs-allowed") {
+  description "Number of standard deviations the join length can be from the mean when trying to join a mate pair."
+  int; default "5" }
 option("unitig-lengths-file", "u") {
   description "File containing the length of the unitigs."
   c_string; typestr "path"; required }

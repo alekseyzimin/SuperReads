@@ -282,16 +282,23 @@ private:
     if(low_run > 0) {
       seq.erase(seq.size() - std::min((unsigned int)seq.size(), low_run));
       if(seq.size() >= current->k()) {
-        *current = seq.substr(seq.size() - current->k());
+        if(dir == forward) {
+          *current = seq.substr(seq.size() - current->k());
+        } else {
+          std::string end = seq.substr(seq.size() - current->k());
+          std::string rev(end.rbegin(), end.rend());
+          *current = rev;
+        }
       } else {
         // Sequence does not contain a full k-mer. Need to recreate it
         // from the starting k-mer and seq by shifting.
         *current = start;
         for(auto it = seq.begin(); it != seq.end(); ++it)
-          if(dir == forward)
+          if(dir == forward) {
             current->shift_left(*it);
-          else
+          } else {
             current->shift_right(*it);
+          }
       }
     }
 
@@ -304,7 +311,7 @@ private:
       if(start.get_canonical() < current->get_canonical())
         return;
     }
-    
+
     // Output results
     if(start.k() + seq.length() < args.min_len_arg)
       return;

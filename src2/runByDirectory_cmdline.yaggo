@@ -27,6 +27,12 @@ option("mean-for-faux-inserts") {
 option("stdev-for-faux-inserts") {
   description "Standard deviation specified when joining the ends of the contigs"
   int; default "200" }
+option("num-stdevs-allowed") {
+  description "Number of standard deviations the join length can be from the mean when trying to join a mate pair."
+  int; default "5" }
+option ("mean-and-stdev-file") {
+  description "File with means and standard deviations for each gap"
+  c_string; typestr "path" }
 option("output-dir") {
   description "The subdirectory to put the individual gaps into"
   c_string; default "."; typestr "path" }

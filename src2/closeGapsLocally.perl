@@ -35,7 +35,7 @@
 #                      a gap (default: 500)
 # --faux-insert-stdev : The stdev of the insert size used for the faux reads around
 #                      a gap (default: 200)
-# --max-stdevs-allowed # : The maximum number of standard deviations that the
+# --num-stdevs-allowed # : The maximum number of standard deviations that the
 #                      length of the join can deviate from the estimate output
 #                      by the Celera assembler. The standard deviation generated
 #                      by the Celera assembler is used. (default: 3)
@@ -82,7 +82,7 @@ if ($contigLengthForJoining != $contigLengthForFishing) {
 }
 
 $meanAndStdevJoinSeqLenByGapFile = "gap.insertMeanAndStdev.txt";
-$cmd = "$exeDir/getMeanAndStdevForGapsByGapNumUsingCeleraTerminatorDirectory.perl $CeleraTerminatorDirectory --contig-end-seq-file $joiningEndPairs --reduced-column-output > $meanAndStdevJoinSeqLenByGapFile";
+$cmd = "$exeDir/getMeanAndStdevForGapsByGapNumUsingCeleraAsmFile.perl $CeleraTerminatorDirectory --contig-end-seq-file $joiningEndPairs > $meanAndStdevJoinSeqLenByGapFile";
 runCommandAndExitIfBad ($cmd);
 
 # Do we need this now?
@@ -162,10 +162,11 @@ $cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
 runCommandAndExitIfBad ($cmd);
 
 # Now run the directories
-$cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . 2> out.err";
+$cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --num-stdevs-allowed $numStdevsAllowed --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . 2> out.err";
 runCommandAndExitIfBad ($cmd);
 
-$cmd = "$exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl out.err superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --num-stdevs-allowed $maxStdevsAllowed";
+# $cmd = "$exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl out.err superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --num-stdevs-allowed $numStdevsAllowed";
+$cmd = "$exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl out.err superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt";
 runCommandAndExitIfBad ($cmd);
 
 if (! $keepDirectoriesFlag) {
@@ -242,7 +243,7 @@ sub processArgs
     $maxNodes = 200000;
     $fauxInsertMean = 500;
     $fauxInsertStdev = 200;
-    $maxStdevsAllowed = 3;
+    $numStdevsAllowed = 3;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
         if ($arg eq "--max-fishing-mer-count") {
@@ -296,9 +297,9 @@ sub processArgs
 	# The following is the max number of (Celera assembler) standard
 	# deviations the joining sequence length can be from the length
 	# predicted by the Celera assembler
-	if ($arg eq "--max-stdevs-allowed") {
+	if ($arg eq "--num-stdevs-allowed") {
 	    ++$i;
-	    $maxStdevsAllowed = $ARGV[$i];
+	    $numStdevsAllowed = $ARGV[$i];
 	    next; }
         if ($arg eq "--faux-insert-mean") {
             ++$i;
