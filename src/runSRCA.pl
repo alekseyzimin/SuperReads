@@ -426,7 +426,7 @@ print FILE "echo \"choosing kmer size of \$KMER for the graph\"\n";
 }else{
 print FILE "KMER=$KMER\n";
 }
-print FILE "KMER_J=$KMER\n";
+print FILE "KMER_J=\$KMER\n";
 if(scalar(@jump_info_array)>0){ 
 if(uc($KMER) eq "AUTO"){
 #here we have to estimate gc content and recompute kmer length for jumping library filtering for the graph
@@ -714,7 +714,27 @@ print FILE "echo \"Overlap/unitig failed, check output under CA/ and runCA1.out\
 print FILE "exit\n";
 print FILE "fi\n";
 
+#we now recompute the A-stat for the unitigs based on positions of PE reads in the super-reads
+print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
+
+#here we filter for repetitive kmers in the unique unitigs
+print FILE "cd CA\n";
+print FILE "tigStore -g genome.gkpStore -t genome.tigStore 2 -d layout -U | tr -d '-' | awk 'BEGIN{print \">unique unitigs\"}{if(\$1 == \"cns\"){seq=\$2}else if(\$1 == \"data.unitig_coverage_stat\" && \$2>=5){print seq\"N\"}}' | jellyfish count -r -C -m 30 -s \$ESTIMATED_GENOME_SIZE -t $NUM_THREADS -o unitig_mers /dev/fd/0\n";
+print FILE "jellyfish dump -L 2 unitig_mers_0 >> 0-mercounts/genome.nmers.ovl.fasta\n";
+print FILE "rm -rf 1-* 3-* 4-unitigger 5-consensus genome.tigStore genome.ovlStore\n";
+print FILE "cd ..\n";
+ 
+#and now we rerun the assembler
+print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+
+print FILE "if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then\n";
+print FILE "echo \"Overlap/unitig success\"\n";
+print FILE "else\n";
+print FILE "echo \"Overlap/unitig failed, check output under CA/ and runCA1.out\"\n";
+print FILE "exit\n";
+print FILE "fi\n";
 #now we check if the unitig consensus which is sometimes problematic, failed, and fix the unitigs
+
 print FILE "if [[ -e \"CA/5-consensus/consensus.success\" ]];then\n";
 print FILE "echo \"Unitig consensus success\"\n";
 print FILE "else\n";
@@ -725,10 +745,10 @@ print FILE "cp `which fix_unitigs.sh` .\n";
 print FILE "./fix_unitigs.sh genome \n";
 print FILE "cd ../../\n";
 print FILE "fi\n";
-}
 
 #we now recompute the A-stat for the unitigs based on positions of PE reads in the super-reads
 print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
+}
 }
 
 #and we continue into the scaffolder...
