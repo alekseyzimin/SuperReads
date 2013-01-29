@@ -22,7 +22,7 @@
 #include <memory>
 #include <vector>
 
-template <class T, class Allocator = std::allocator<T> >
+template <typename T, T def_val = T(), class Allocator = std::allocator<T> >
 class exp_vector : public std::vector<T, Allocator> {
   typedef std::vector<T, Allocator> super;
 public:
@@ -52,12 +52,12 @@ public:
 
   reference operator[] ( size_type n ) {
     if(n >= super::size())
-      super::resize(n + 1);
+      super::resize(n + 1, def_val);
     return super::operator[](n);
   }
   const_reference operator[] ( size_type n ) const {
     if(n >= super::size())
-      super::resize(n + 1);
+      super::resize(n + 1, def_val);
     return super::operator[](n);
   }
 };
