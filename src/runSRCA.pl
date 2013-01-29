@@ -725,7 +725,7 @@ print FILE "tigStore -g genome.gkpStore -t genome.tigStore 2 -d layout -U | tr -
 print FILE "jellyfish dump -L 2 unitig_mers_0 > genome.nmers.ovl.fasta\n";
 print FILE "overlapStore -d genome.ovlStore | filter_overlap_file.pl genome.gkpStore genome.nmers.ovl.fasta $ovlMerSize |convertOverlap -b -ovl > overlaps.ovb\n";
 print FILE "rm -rf 4-unitigger 5-consensus genome.tigStore genome.ovlStore\n";
-print FILE "overlapStore -c genome.ovlStore -M 4096 -t $NUM_THREADS -g genome.gkpStore overlaps.ovb\n";
+print FILE "overlapStore -c genome.ovlStore -M 4096 -t $NUM_THREADS -g genome.gkpStore overlaps.ovb 1>overlapstore.err 2>&1\n";
 print FILE "cd ..\n";
  
 #and now we rerun the assembler
