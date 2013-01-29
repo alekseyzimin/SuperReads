@@ -672,8 +672,10 @@ print FILE "echo ovlMerThreshold=\$ovlMerThreshold\n\n";
 }
 #this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
 if(scalar(@other_info_array)>0){
+$ovlMerSize=22;
 $other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClearRanges=2 ovlMerSize=22";
 }else{
+$ovlMerSize=30;
 $other_parameters="doFragmentCorrection=0 doOverlapBasedTrimming=0 doExtendClearRanges=0 ovlMerSize=30";
 }
 
@@ -719,9 +721,11 @@ print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/r
 
 #here we filter for repetitive kmers in the unique unitigs
 print FILE "cd CA\n";
-print FILE "tigStore -g genome.gkpStore -t genome.tigStore 2 -d layout -U | tr -d '-' | awk 'BEGIN{print \">unique unitigs\"}{if(\$1 == \"cns\"){seq=\$2}else if(\$1 == \"data.unitig_coverage_stat\" && \$2>=5){print seq\"N\"}}' | jellyfish count -r -C -m 30 -s \$ESTIMATED_GENOME_SIZE -t $NUM_THREADS -o unitig_mers /dev/fd/0\n";
-print FILE "jellyfish dump -L 2 unitig_mers_0 >> 0-mercounts/genome.nmers.ovl.fasta\n";
-print FILE "rm -rf 1-* 3-* 4-unitigger 5-consensus genome.tigStore genome.ovlStore\n";
+print FILE "tigStore -g genome.gkpStore -t genome.tigStore 2 -d layout -U | tr -d '-' | awk 'BEGIN{print \">unique unitigs\"}{if(\$1 == \"cns\"){seq=\$2}else if(\$1 == \"data.unitig_coverage_stat\" && \$2>=1){print seq\"N\"}}' | jellyfish count -r -C -m 30 -s \$ESTIMATED_GENOME_SIZE -t $NUM_THREADS -o unitig_mers /dev/fd/0\n";
+print FILE "jellyfish dump -L 2 unitig_mers_0 > genome.nmers.ovl.fasta\n";
+print FILE "overlapStore -d genome.ovlStore | filter_overlap_file.pl genome.gkpStore genome.nmers.ovl.fasta $ovlMerSize |convertOverlap -b -ovl > overlaps.ovb\n";
+print FILE "rm -rf 4-unitigger 5-consensus genome.tigStore genome.ovlStore\n";
+print FILE "overlapStore -c genome.ovlStore -M 4096 -t $NUM_THREADS -g genome.gkpStore overlaps.ovb\n";
 print FILE "cd ..\n";
  
 #and now we rerun the assembler
