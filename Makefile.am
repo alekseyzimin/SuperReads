@@ -64,7 +64,8 @@ YAGGO_SOURCES = # Append all file to be built by yaggo
 ##############################
 bin_PROGRAMS += create_k_unitigs error_corrected2frg		\
                 reverse_complement reduce_sr sorted_merge	\
-                create_k_unitigs_large_k homo_trim bloom_query
+                create_k_unitigs_large_k homo_trim bloom_query	\
+                filter_overlap_file
 
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl src/close_gaps.sh		\
@@ -96,10 +97,19 @@ YAGGO_SOURCES       += src/sorted_merge_cmdline.hpp
 create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
                                    src/read_parser.cc src/mer_dna.cc	\
                                    src/MurmurHash3.cpp src/mer_stream.hpp
+create_k_unitigs_large_k_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
+create_k_unitigs_large_k_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 YAGGO_SOURCES += src/create_k_unitigs_large_k_cmdline.hpp
 bloom_query_SOURCES = src/bloom_query.cc src/mer_dna.cc	\
                       src/MurmurHash3.cpp
+bloom_query_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
+bloom_query_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 YAGGO_SOURCES += src/bloom_query_cmdline.hpp
+filter_overlap_file_SOURCES = src/filter_overlap_file.cc	\
+                              src/mer_dna.cc
+filter_overlap_file_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
+filter_overlap_file_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
+YAGGO_SOURCES += src/filter_overlap_file_cmdline.hpp
 
 ##############################
 # src2 pipeline
@@ -129,6 +139,8 @@ findMatchesBetweenKUnitigsAndReads_LDFLAGS = $(AM_LDFLAGS)
 findMatchesBetweenKUnitigsAndReads_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc src/mer_dna.cc
+createKUnitigMaxOverlaps_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
+createKUnitigMaxOverlaps_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFile.cc	\
@@ -168,20 +180,20 @@ YAGGO_SOURCES += src2/runByDirectory_cmdline.hpp
 ##############################
 # data generation
 ##############################
-dist_data_DATA = data/adapter_0
-CLEANFILES += data/adapter_0
-SUFFIXES = _0 .fa
+# dist_data_DATA = data/adapter_0
+# CLEANFILES += data/adapter_0
+# SUFFIXES = _0 .fa
 
-.fa_0:
-	$(AM_V_GEN)mkdir -p $(@D); jellyfish count -m 24 -s 5k -C -t 10 -r -o $$(dirname $@)/$$(basename $@ _0) $<
+# .fa_0:
+# 	$(AM_V_GEN)mkdir -p $(@D); jellyfish count -m 24 -s 5k -C -t 10 -r -o $$(dirname $@)/$$(basename $@ _0) $<
 
 
 ##############################
 # unittests
 ##############################
-TESTS = all_tests
+TESTS = all_tests tests2
 EXTRA_DIST += $(TESTS)
-check_PROGRAMS = all_tests
+check_PROGRAMS = all_tests tests2
 
 all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_exp_buffer.cc			\
@@ -199,7 +211,8 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_hash.cc				\
                     unittests/test_exp_vector.cc			\
                     unittests/test_mer_stream.cc			\
-                    unittests/test_int128.cc unittests/test_divisor.cc	\
+                    unittests/test_int128.cc				\
+                    unittests/test_divisor.cc				\
                     unittests/test_thread_pool.cc			\
                     unittests/test_fork_exec.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
@@ -212,6 +225,13 @@ all_tests_LDFLAGS = $(AM_LDFLAGS)
 all_tests_LDADD = libutils.a libgtest.a
 YAGGO_SOURCES += unittests/test_main_cmdline.hpp
 noinst_HEADERS += unittests/test_main_cmdline.hpp unittests/misc.hpp
+
+tests2_SOURCES = unittests/test_dna_fragment.cc
+tests2_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)	\
+-I$(top_srcdir)/unittests/gtest/include				\
+-I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include		\
+-I$(top_srcdir)
+tests2_LDADD = libutils.a libgtest.a libgtest_main.a $(JELLYFISH2_0_LIBS)
 
 include gtest.mk
 
