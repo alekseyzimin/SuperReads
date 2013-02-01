@@ -21,9 +21,14 @@
 
 TEST(ExpVector, Subscript) {
   exp_vector<int> ev;
+  exp_vector<int, 5> evd;
 
-  ev[10] = 5;
-  for(int i = 0; i < 10; ++i)
+  ev[10]  = 5;
+  evd[10] = 10;
+  for(int i = 0; i < 10; ++i) {
     EXPECT_EQ(0, ev[i]);
+    EXPECT_EQ(5, evd[i]);
+  }
   EXPECT_EQ(5, ev[10]);
+  EXPECT_EQ(10, evd[10]);
 }

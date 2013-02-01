@@ -231,3 +231,9 @@ doxygen-doc: doxygen.cfg
 ##############################
 -include $(top_srcdir)/development.mk
 -include $(top_srcdir)/personal.mk
+
+##############################
+# Info
+##############################
+print-%:
+	@echo $($*)
