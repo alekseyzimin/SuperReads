@@ -721,7 +721,7 @@ print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/r
 
 #here we filter for repetitive kmers in the unique unitigs
 print FILE "cd CA\n";
-print FILE "tigStore -g genome.gkpStore -t genome.tigStore 2 -d layout -U | tr -d '-' | awk 'BEGIN{print \">unique unitigs\"}{if(\$1 == \"cns\"){seq=\$2}else if(\$1 == \"data.unitig_coverage_stat\" && \$2>=1){print seq\"N\"}}' | jellyfish count -r -C -m 30 -s \$ESTIMATED_GENOME_SIZE -t $NUM_THREADS -o unitig_mers /dev/fd/0\n";
+print FILE "tigStore -g genome.gkpStore -t genome.tigStore 2 -d layout -U | tr -d '-' | awk 'BEGIN{print \">unique unitigs\"}{if(\$1 == \"cns\"){seq=\$2}else if(\$1 == \"data.unitig_coverage_stat\" && \$2>=1){print seq\"N\"}}' | jellyfish count -r -C -m $ovlMerSize -s \$ESTIMATED_GENOME_SIZE -t $NUM_THREADS -o unitig_mers /dev/fd/0\n";
 print FILE "jellyfish dump -L 2 unitig_mers_0 > genome.nmers.ovl.fasta\n";
 print FILE "overlapStore -d genome.ovlStore | filter_overlap_file.pl genome.gkpStore genome.nmers.ovl.fasta $ovlMerSize |convertOverlap -b -ovl > overlaps.ovb\n";
 print FILE "rm -rf 4-unitigger 5-consensus genome.tigStore genome.ovlStore\n";
