@@ -24,6 +24,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <algorithm>
+#include <iostream>
 
 // IO manipulator for substrings
 class substr {
