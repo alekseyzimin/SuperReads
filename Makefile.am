@@ -106,7 +106,7 @@ bloom_query_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
 bloom_query_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 YAGGO_SOURCES += src/bloom_query_cmdline.hpp
 filter_overlap_file_SOURCES = src/filter_overlap_file.cc	\
-                              src/mer_dna.cc
+                              src/mer_dna.cc src/dna_fragment.hpp
 filter_overlap_file_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
 filter_overlap_file_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 YAGGO_SOURCES += src/filter_overlap_file_cmdline.hpp
