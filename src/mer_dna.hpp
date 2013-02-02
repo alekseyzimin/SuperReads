@@ -1,6 +1,6 @@
 /* SuperRead pipeline
  * Copyright (C) 2012  Genome group at University of Maryland.
- * 
+ *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -16,8 +16,8 @@
  */
 
 
-#ifndef __JELLYFISH_MER_DNA_HPP__
-#define __JELLYFISH_MER_DNA_HPP__
+#ifndef __MER_DNA_HPP__
+#define __MER_DNA_HPP__
 
 #include <iostream>
 #include <string>
@@ -28,117 +28,118 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <misc.hpp>
 #include <reallocators.hpp>
 
 namespace mer_dna_ns {
-  struct dna_codes {
-    static const int  codes[256];
-    static const char rev_codes[4];
-  };
-  
-  extern const char* const error_different_k;
-  extern const char* const error_short_string;
+struct dna_codes {
+  static const int  codes[256];
+  static const char rev_codes[4];
+};
+
+extern const char* const error_different_k;
+extern const char* const error_short_string;
 
 
-  // Checkered mask. cmask<uint16_t, 1> is every other bit on
-  // (0x55). cmask<uint16_t,2> is two bits one, two bits off (0x33). Etc.
-  template<typename U, int len, int l = sizeof(U) * 8 / (2 * len)>
-  struct cmask {
-    static const U v =
-      (cmask<U, len, l - 1>::v << (2 * len)) | (((U)1 << len) - 1);
-  };
-  template<typename U, int len>
-  struct cmask<U, len, 0> {
-    static const U v = 0;
-  };
+// Checkered mask. cmask<uint16_t, 1> is every other bit on
+// (0x55). cmask<uint16_t,2> is two bits one, two bits off (0x33). Etc.
+template<typename U, int len, int l = sizeof(U) * 8 / (2 * len)>
+struct cmask {
+  static const U v =
+    (cmask<U, len, l - 1>::v << (2 * len)) | (((U)1 << len) - 1);
+};
+template<typename U, int len>
+struct cmask<U, len, 0> {
+  static const U v = 0;
+};
 
-  // Fast reverse complement of one word through bit tweedling.
-  inline uint64_t word_reverse_complement(uint32_t w) {
-    typedef uint64_t U;
-    w = ((w >> 2)  & cmask<U, 2 >::v) | ((w & cmask<U, 2 >::v) << 2);
-    w = ((w >> 4)  & cmask<U, 4 >::v) | ((w & cmask<U, 4 >::v) << 4);
-    w = ((w >> 8)  & cmask<U, 8 >::v) | ((w & cmask<U, 8 >::v) << 8);
-    w = ( w >> 16                   ) | ( w                    << 16);
-    return ((U)-1) - w;
-  }
+// Fast reverse complement of one word through bit tweedling.
+inline uint32_t word_reverse_complement(uint32_t w) {
+  typedef uint64_t U;
+  w = ((w >> 2)  & cmask<U, 2 >::v) | ((w & cmask<U, 2 >::v) << 2);
+  w = ((w >> 4)  & cmask<U, 4 >::v) | ((w & cmask<U, 4 >::v) << 4);
+  w = ((w >> 8)  & cmask<U, 8 >::v) | ((w & cmask<U, 8 >::v) << 8);
+  w = ( w >> 16                   ) | ( w                    << 16);
+  return ((U)-1) - w;
+}
 
-  inline uint64_t word_reverse_complement(uint64_t w) {
-    typedef uint64_t U;
-    w = ((w >> 2)  & cmask<U, 2 >::v) | ((w & cmask<U, 2 >::v) << 2);
-    w = ((w >> 4)  & cmask<U, 4 >::v) | ((w & cmask<U, 4 >::v) << 4);
-    w = ((w >> 8)  & cmask<U, 8 >::v) | ((w & cmask<U, 8 >::v) << 8);
-    w = ((w >> 16) & cmask<U, 16>::v) | ((w & cmask<U, 16>::v) << 16);
-    w = ( w >> 32                   ) | ( w                    << 32);
-    return ((U)-1) - w;
-  }
+inline uint64_t word_reverse_complement(uint64_t w) {
+  typedef uint64_t U;
+  w = ((w >> 2)  & cmask<U, 2 >::v) | ((w & cmask<U, 2 >::v) << 2);
+  w = ((w >> 4)  & cmask<U, 4 >::v) | ((w & cmask<U, 4 >::v) << 4);
+  w = ((w >> 8)  & cmask<U, 8 >::v) | ((w & cmask<U, 8 >::v) << 8);
+  w = ((w >> 16) & cmask<U, 16>::v) | ((w & cmask<U, 16>::v) << 16);
+  w = ( w >> 32                   ) | ( w                    << 32);
+  return ((U)-1) - w;
+}
 
 #ifdef HAVE_INT128
-  inline unsigned __int128 word_reverse_complement(unsigned __int128 w) {
-    typedef unsigned __int128 U;
-    w = ((w >> 2)  & cmask<U, 2 >::v) | ((w & cmask<U, 2 >::v) << 2);
-    w = ((w >> 4)  & cmask<U, 4 >::v) | ((w & cmask<U, 4 >::v) << 4);
-    w = ((w >> 8)  & cmask<U, 8 >::v) | ((w & cmask<U, 8 >::v) << 8);
-    w = ((w >> 16) & cmask<U, 16>::v) | ((w & cmask<U, 16>::v) << 16);
-    w = ((w >> 32) & cmask<U, 32>::v) | ((w & cmask<U, 32>::v) << 32);
-    w = ( w >> 64                   ) | ( w                    << 64);
-    return ((U)-1) - w;
-  }
+inline unsigned __int128 word_reverse_complement(unsigned __int128 w) {
+  typedef unsigned __int128 U;
+  w = ((w >> 2)  & cmask<U, 2 >::v) | ((w & cmask<U, 2 >::v) << 2);
+  w = ((w >> 4)  & cmask<U, 4 >::v) | ((w & cmask<U, 4 >::v) << 4);
+  w = ((w >> 8)  & cmask<U, 8 >::v) | ((w & cmask<U, 8 >::v) << 8);
+  w = ((w >> 16) & cmask<U, 16>::v) | ((w & cmask<U, 16>::v) << 16);
+  w = ((w >> 32) & cmask<U, 32>::v) | ((w & cmask<U, 32>::v) << 32);
+  w = ( w >> 64                   ) | ( w                    << 64);
+  return ((U)-1) - w;
+}
 #endif
-  
-  template<typename T, typename derived, typename allocator> class mer_base;
 
-  template<typename T>
-  struct reallocator {
-    typedef T element_type;
-    static T* realloc(T* ptr, size_t osize, size_t nsize) {
-      return (T*)::realloc((void*)ptr, nsize * sizeof(T));
-    }
-  };
+template<typename T, typename derived, typename allocator> class mer_base;
 
-  template<typename T>
-  class base_proxy {
-  public:
-    typedef T base_type;
+template<typename T>
+struct reallocator {
+  typedef T element_type;
+  static T* realloc(T* ptr, size_t osize, size_t nsize) {
+    return (T*)::realloc((void*)ptr, nsize * sizeof(T));
+  }
+};
 
-    base_proxy(base_type* w, unsigned int i) :
-      word_(w), i_(i) { }
+template<typename T>
+class base_proxy {
+public:
+  typedef T base_type;
 
-    base_proxy& operator=(char base) { return this->operator=(dna_codes::codes[(int)(unsigned char)base]); }
-    base_proxy& operator=(int code) {
-      base_type mask = (base_type)0x3 << i_;
-      *word_ = (*word_ & ~mask) | ((base_type)code << i_);
-      return *this;
-    }
-    int code() const { return (*word_ >> i_) & (base_type)0x3; }
-    operator char() const { return dna_codes::rev_codes[code()]; }
+  base_proxy(base_type* w, unsigned int i) :
+    word_(w), i_(i) { }
 
-  private:
-    base_type* const word_;
-    unsigned int     i_;
-  };
+  base_proxy& operator=(char base) { return this->operator=(dna_codes::codes[(int)(unsigned char)base]); }
+  base_proxy& operator=(int code) {
+    base_type mask = (base_type)0x3 << i_;
+    *word_ = (*word_ & ~mask) | ((base_type)code << i_);
+    return *this;
+  }
+  int code() const { return (*word_ >> i_) & (base_type)0x3; }
+  operator char() const { return dna_codes::rev_codes[code()]; }
+
+private:
+  base_type* const word_;
+  unsigned int     i_;
+};
 
 
-  template<typename T, typename derived, typename allocator = reallocator<T>>
+template<typename T, typename derived, typename allocator = reallocator<T>>
   class mer_base {
   public:
     typedef T base_type;
     enum { CODE_A, CODE_C, CODE_G, CODE_T,
            CODE_RESET = -1, CODE_IGNORE = -2, CODE_COMMENT = -3 };
-    
-    explicit mer_base(unsigned int k) : 
-      // _alloc(),
-      // _data(_alloc.allocate(derived::nb_words(k)))
-      //      _data(new base_type[derived::nb_words(k)])
-      _data(allocator::realloc(0, 0, derived::nb_words(k)))
-    { 
+
+    explicit mer_base(unsigned int k) :
+    // _alloc(),
+    // _data(_alloc.allocate(derived::nb_words(k)))
+    //      _data(new base_type[derived::nb_words(k)])
+    _data(allocator::realloc(0, 0, derived::nb_words(k)))
+    {
       memset(_data, '\0', nb_words(k) * sizeof(base_type));
     }
 
-    mer_base(const mer_base &m) : 
-      // _alloc(),
-      // _data(_alloc.allocate(nb_words(static_cast<const derived*>(&m)->k())))
-      // _data(new base_type[nb_words(static_cast<const derived*>(&m)->k())])
-      _data(allocator::realloc(0, 0, nb_words(static_cast<const derived*>(&m)->k())))
+    mer_base(const mer_base &m) :
+    // _alloc(),
+    // _data(_alloc.allocate(nb_words(static_cast<const derived*>(&m)->k())))
+    // _data(new base_type[nb_words(static_cast<const derived*>(&m)->k())])
+    _data(allocator::realloc(0, 0, nb_words(static_cast<const derived*>(&m)->k())))
     {
       memcpy(_data, m._data, nb_words(static_cast<const derived*>(&m)->k()) * sizeof(base_type));
     }
@@ -152,7 +153,7 @@ namespace mer_dna_ns {
     {
       memcpy(_data, raw, nb_words(k) * sizeof(base_type));
     }
-      
+
 
     ~mer_base() {
       //      _alloc.deallocate(_data, nb_words());
@@ -162,22 +163,31 @@ namespace mer_dna_ns {
 
     operator derived() { return *static_cast<derived*>(this); }
     operator const derived() const { return *static_cast<const derived*>(this); }
-    
+    unsigned int k() const { return static_cast<const derived*>(this)->k(); }
+
     // Direct access to data. No bound or consistency check. Use with caution!
     //  base_type operator[](unsigned int i) { return _data[i]; }
     base_type word(unsigned int i) const { return _data[i]; }
     base_type operator[](unsigned int i) const { return _data[i]; }
+    const base_type* data() const { return _data; }
+
+    template<unsigned int alignment>
+    void read(std::istream& is) {
+      const unsigned int k = static_cast<const derived*>(this)->k();
+      const unsigned int l = k / (4 * alignment) + (k % (4 * alignment) != 0);
+      is.read((char*)_data, l);
+    }
 
     bool operator==(const mer_base& rhs) const {
       unsigned int i = nb_words() - 1;
       bool res = (_data[i] & msw()) == (rhs._data[i] & msw());
       while(res && i > 7) {
         i -= 8;
-        res &= _data[i+7] == rhs._data[i+7]; 
-        res &= _data[i+6] == rhs._data[i+6]; 
-        res &= _data[i+5] == rhs._data[i+5]; 
-        res &= _data[i+4] == rhs._data[i+4]; 
-        res &= _data[i+3] == rhs._data[i+3]; 
+        res &= _data[i+7] == rhs._data[i+7];
+        res &= _data[i+6] == rhs._data[i+6];
+        res &= _data[i+5] == rhs._data[i+5];
+        res &= _data[i+4] == rhs._data[i+4];
+        res &= _data[i+3] == rhs._data[i+3];
         res &= _data[i+2] == rhs._data[i+2];
         res &= _data[i+1] == rhs._data[i+1];
         res &= _data[i]   == rhs._data[i];
@@ -219,13 +229,28 @@ namespace mer_dna_ns {
       }
       return false;
     }
+    bool operator<=(const mer_base& rhs) const {
+      return *this < rhs || *this == rhs;
+    }
+    bool operator>(const mer_base& rhs) const {
+      return !(*this <= rhs);
+    }
+    bool operator>=(const mer_base& rhs) const {
+      return !(*this < rhs);
+    }
 
     base_proxy<base_type> base(unsigned int i) { return base_proxy<base_type>(_data + i / wbases, 2 * (i % wbases)); }
 
     // Make current k-mer all As.
-    void polyA() {
-      memset(_data, '\0', sizeof(base_type) * nb_words());
-    }
+    void polyA() { memset(_data, 0x00, sizeof(base_type) * nb_words()); _data[nb_words() - 1] &= msw(); }
+    void polyC() { memset(_data, 0x55, sizeof(base_type) * nb_words()); _data[nb_words() - 1] &= msw(); }
+    void polyG() { memset(_data, 0xaa, sizeof(base_type) * nb_words()); _data[nb_words() - 1] &= msw(); }
+    void polyT() { memset(_data, 0xff, sizeof(base_type) * nb_words()); _data[nb_words() - 1] &= msw(); }
+    void randomize() {
+      for(unsigned int i = 0; i < nb_words(); ++i)
+        _data[i] = random_bits(wbits);
+      _data[nb_words() - 1] &= msw();
+      }
 
     derived& operator=(const mer_base& rhs) {
       memcpy(_data, rhs._data, nb_words() * sizeof(base_type));
@@ -257,7 +282,7 @@ namespace mer_dna_ns {
       base_type          c2;    // c2 and c1: carries
       base_type          c1      = (base_type)c & c3;
       unsigned int       i       = 0;
-  
+
       for( ; i < barrier; i += 4) {
         c2 = _data[i]   >> wshift;   _data[i]   = (_data[i]   << 2) | c1;
         c1 = _data[i+1] >> wshift;   _data[i+1] = (_data[i+1] << 2) | c2;
@@ -276,12 +301,12 @@ namespace mer_dna_ns {
       return r;
     }
 
-    base_type shift_right(int c) { 
+    base_type shift_right(int c) {
       const base_type r = _data[0] & c3;
-      if(nb_words() > 1){ 
+      if(nb_words() > 1){
         const unsigned int barrier = (nb_words() - 1) & (~c3);
         unsigned int i = 0;
-  
+
         for( ; i < barrier; i += 4) {
           _data[i]   = (_data[i]   >> 2) | (_data[i+1] << wshift);
           _data[i+1] = (_data[i+1] >> 2) | (_data[i+2] << wshift);
@@ -295,8 +320,8 @@ namespace mer_dna_ns {
         }
       }
 
-      _data[nb_words() - 1] = 
-        ((_data[nb_words() - 1] & msw()) >> 2) | (((base_type)c & c3) << lshift()); 
+      _data[nb_words() - 1] =
+        ((_data[nb_words() - 1] & msw()) >> 2) | (((base_type)c & c3) << lshift());
 
       return r;
     }
@@ -306,9 +331,9 @@ namespace mer_dna_ns {
     inline static int code(char c) { return dna_codes::codes[(int)(unsigned char)c]; }
     inline static char rev_code(int x) { return dna_codes::rev_codes[x]; }
     static int complement(int x) { return (base_type)3 - x; }
-    static char complement(char c) { 
+    static char complement(char c) {
       switch(c) {
-      case 'A': case 'a': return 'T'; 
+      case 'A': case 'a': return 'T';
       case 'C': case 'c': return 'G';
       case 'G': case 'g': return 'C';
       case 'T': case 't': return 'A';
@@ -316,7 +341,7 @@ namespace mer_dna_ns {
       return 'N';
     }
 
-    char shift_left(char c) { 
+    char shift_left(char c) {
       int x = code(c);
       if(x == -1)
         return 'N';
@@ -359,10 +384,7 @@ namespace mer_dna_ns {
 
     derived get_canonical() const {
       derived rc = this->get_reverse_complement();
-      if(rc < *this)
-        return rc;
-      else
-        return *this;
+      return rc < *this ? rc : *this;
     }
 
     // Transfomr the k-mer into a C++ string.
@@ -386,7 +408,7 @@ namespace mer_dna_ns {
     template<typename OutputIterator>
     OutputIterator to_chars(OutputIterator it) const {
       int shift  = lshift(); // Number of bits to shift to get base
-      
+
       for(int j = nb_words() - 1; j >= 0; --j) {
         base_type w = _data[j];
         for( ; shift >= 0; shift -= 2, ++it)
@@ -409,6 +431,23 @@ namespace mer_dna_ns {
       return res & (((base_type)1 << len) - 1);
     }
 
+    // Set bits [start, start+len). Same restriction as get_bits.
+    void set_bits(unsigned int start, unsigned int len, base_type v) {
+      unsigned int q    = start / wbits;
+      unsigned int r    = start % wbits;
+      unsigned int left = wbits - r;
+      base_type    mask;
+      if(len > left) {
+        mask       = ((base_type)1 << r) - 1;
+        _data[q]   = (_data[q] & mask) | (v << r);
+        mask = ((base_type)1 << (len - left)) - 1;
+        _data[q + 1] = (_data[q + 1] & ~mask) | (v >> (left));
+      } else {
+        mask = (((base_type)1 << len) - 1) << r;
+        _data[q] = (_data[q] & ~mask) | (v << r);
+      }
+    }
+
 
     // Internal stuff
 
@@ -428,13 +467,6 @@ namespace mer_dna_ns {
     // How much to shift last base in last word of _data
     inline unsigned int lshift() const { return nb_msb() - 2; }
 
-  protected:
-    static const base_type c3     = (base_type)0x3;
-    static const int       wshift = sizeof(base_type) * 8 - 2; // left shift in 1 word
-    static const int       wbases = 4 * sizeof(base_type); // bases in a word
-    static const int       wbits  = 8 * sizeof(base_type); // bits in a word
-    base_type * const      _data;
-    
     template<typename InputIterator>
     bool from_chars(InputIterator it) {
       int shift = lshift();
@@ -452,6 +484,13 @@ namespace mer_dna_ns {
       }
       return true;
     }
+
+  protected:
+    static const base_type c3     = (base_type)0x3;
+    static const int       wshift = sizeof(base_type) * 8 - 2; // left shift in 1 word
+    static const int       wbases = 4 * sizeof(base_type); // bases in a word
+    static const int       wbits  = 8 * sizeof(base_type); // bits in a word
+    base_type *            _data;
 
     // Shift to the right by rs bits (Note bits, not bases)
     void large_shift_right(unsigned int rs) {
@@ -477,79 +516,99 @@ namespace mer_dna_ns {
     }
   };
 
-  // Mer type where the length is kept in each mer object: allows to
-  // manipulate mers of different size within the same application.
-  template<typename T = uint64_t>
-  class mer_base_dynamic : public mer_base<T, mer_base_dynamic<T> > {
-  public:
-    typedef mer_base<T, mer_base_dynamic<T> > super;
-    typedef T base_type;
+// Mer type where the length is kept in each mer object: allows to
+// manipulate mers of different size within the same application.
+template<typename T = uint64_t>
+class mer_base_dynamic : public mer_base<T, mer_base_dynamic<T> > {
+public:
+  typedef mer_base<T, mer_base_dynamic<T> > super;
+  typedef T base_type;
 
-    explicit mer_base_dynamic(unsigned int k) : super(k), k_(k) { }
-    mer_base_dynamic(const mer_base_dynamic& rhs) : super(rhs), k_(rhs.k()) { }
-    mer_base_dynamic(unsigned int k, const char* s) : super(k), k_(k) {
-      super::from_chars(s);
-    }
-    mer_base_dynamic(const char* s) : super(strlen(s)), k_(strlen(s)) {
-      super::from_chars(s);
-    }
-    mer_base_dynamic(const std::string& s) : super(s.size()), k_(s.size()) {
-      super::from_chars(s.begin());
-    }
-    // Raw representation
-    mer_base_dynamic(unsigned int k, void* raw) : super(k, raw), k_(k) { }
-    
-    ~mer_base_dynamic() { }
+  explicit mer_base_dynamic(unsigned int k) : super(k), k_(k) { }
+  mer_base_dynamic(const mer_base_dynamic& rhs) : super(rhs), k_(rhs.k()) { }
+  mer_base_dynamic(mer_base_dynamic&& rhs) : super(0), k_(rhs.k()) {
+    std::swap(super::_data, rhs._data);
+  }
+  mer_base_dynamic(unsigned int k, const char* s) : super(k), k_(k) {
+    super::from_chars(s);
+  }
+  explicit mer_base_dynamic(const char* s) : super(strlen(s)), k_(strlen(s)) {
+    super::from_chars(s);
+  }
+  explicit mer_base_dynamic(const std::string& s) : super(s.size()), k_(s.size()) {
+    super::from_chars(s.begin());
+  }
+  // Raw representation
+  mer_base_dynamic(unsigned int k, void* raw) : super(k, raw), k_(k) { }
 
-    mer_base_dynamic& operator=(const mer_base_dynamic rhs) {
-      if(k_ != rhs.k_)
-        throw std::length_error(error_different_k);
-      super::operator=(rhs);
-      return *this;
-    }
+  ~mer_base_dynamic() { }
 
-    unsigned int k() const { return k_; }
-    static unsigned int k(unsigned int k) { return k; }
+  mer_base_dynamic& operator=(const mer_base_dynamic& rhs) {
+    if(k_ != rhs.k_)
+      throw std::length_error(error_different_k);
+    super::operator=(rhs);
+    return *this;
+  }
+  mer_base_dynamic& operator=(mer_base_dynamic&& rhs) {
+    if(k_ != rhs.k_)
+      throw std::length_error(error_different_k);
+    std::swap(super::_data, rhs._data);
+    return *this;
+  }
 
-  private:
-    const unsigned int k_;
-  };
+  unsigned int k() const { return k_; }
+  static unsigned int k(unsigned int k) { return k; }
 
-  // Mer type where the length is a static variable: the mer size is
-  // fixed for all k-mers in the application.
-  template<typename T = uint64_t>
-  class mer_base_static : public mer_base<T, mer_base_static<T> > {
-  public:
-    typedef mer_base<T, mer_base_static<T> > super;
-    typedef T base_type;
-    
-    explicit mer_base_static() : super(k_) { }
-    explicit mer_base_static(unsigned int k) : super(k_) {
-      if(k != k_)
-        throw std::length_error(error_different_k);
-    }
-    mer_base_static(const mer_base_static& rhs) : super(rhs) { }
-    
-    mer_base_static(unsigned int k, const char* s) : super(k_) {
-      super::from_chars(s);
-    }
-    mer_base_static(const char* s) : super(k_) {
-      super::from_chars(s);
-    }
-    mer_base_static(const std::string& s) : super(k_) {
-      super::from_chars(s.begin());
-    }
-    
-    ~mer_base_static() { }
+private:
+  const unsigned int k_;
+};
 
-    static unsigned int k() { return k_; }
-    static unsigned int k(unsigned int k) { std::swap(k, k_); return k; }
-  private:
-    static unsigned int k_;
-  };
-  template<typename T>
-  unsigned int mer_base_static<T>::k_ = 22;
-}
+// Mer type where the length is a static variable: the mer size is
+// fixed for all k-mers in the application.
+template<typename T = uint64_t>
+class mer_base_static : public mer_base<T, mer_base_static<T> > {
+public:
+  typedef mer_base<T, mer_base_static<T> > super;
+  typedef T base_type;
+
+  mer_base_static() : super(k_) { }
+  explicit mer_base_static(unsigned int k) : super(k_) {
+    if(k != k_)
+      throw std::length_error(error_different_k);
+  }
+  mer_base_static(const mer_base_static& rhs) : super(rhs) { }
+
+  mer_base_static(mer_base_static&& rhs) : super(0) {
+    std::swap(super::_data, rhs._data);
+  }
+
+  mer_base_static(unsigned int k, const char* s) : super(k_) {
+    super::from_chars(s);
+  }
+  explicit mer_base_static(const char* s) : super(k_) {
+    super::from_chars(s);
+  }
+  explicit mer_base_static(const std::string& s) : super(k_) {
+    super::from_chars(s.begin());
+  }
+  mer_base_static& operator=(const char* s) { return super::operator=(s); }
+  mer_base_static& operator=(const std::string& s) { return super::operator=(s); }
+  mer_base_static& operator=(const mer_base_static& m) { return super::operator=(m); }
+  mer_base_static& operator=(mer_base_static&& m) {
+    std::swap(super::_data, m._data);
+    return *this;
+  }
+
+  ~mer_base_static() { }
+
+  static unsigned int k() { return k_; }
+  static unsigned int k(unsigned int k) { std::swap(k, k_); return k; }
+private:
+  static unsigned int k_;
+};
+template<typename T>
+unsigned int mer_base_static<T>::k_ = 22;
+
 
 template<typename T, typename derived>
 std::ostream& operator<<(std::ostream& os, const mer_dna_ns::mer_base<T, derived>& mer) {
@@ -558,6 +617,27 @@ std::ostream& operator<<(std::ostream& os, const mer_dna_ns::mer_base<T, derived
   return os << s;
 }
 
+template<typename T, typename derived>
+std::istream& operator>>(std::istream& is, mer_dna_ns::mer_base<T, derived>& mer) {
+  if(is.flags() & std::ios::skipws) {
+    while(isspace(is.peek())) { is.ignore(1); }
+  }
+
+  char buffer[mer.k() + 1];
+  is.read(buffer, mer.k());
+  if(is.gcount() != mer.k())
+    goto error;
+  buffer[mer.k()] = '\0';
+  if(!mer.from_chars(buffer))
+    goto error;
+  return is;
+
+ error:
+  is.setstate(std::ios::failbit);
+  return is;
+}
+
+} // namespace mer_dna_ns
 typedef mer_dna_ns::mer_base_static<uint32_t> mer_dna32;
 typedef mer_dna_ns::mer_base_static<uint64_t> mer_dna64;
 #ifdef HAVE_INT128
@@ -567,4 +647,4 @@ typedef mer_dna_ns::mer_base_static<unsigned __int128> mer_dna128;
 typedef mer_dna64 mer_dna;
 
 
-#endif
+#endif // __MER_DNA_HPP__

@@ -64,11 +64,12 @@
 
 #include <err.hpp>
 #include <charb.hpp>
-#include <src/mer_dna.hpp>
+#include <jellyfish/mer_dna.hpp>
 
 #define KMER_LENGTH 31
 #define EST_OVLS_PER_KUNITIG 5
 
+using jellyfish::mer_dna;
 class endKUnitigKmerStruct {
 public:
      mer_dna kMerValue;  // (kmerLen as an arg?)

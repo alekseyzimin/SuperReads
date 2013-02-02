@@ -17,7 +17,10 @@
 
 
 #include <stdio.h>
+#include <map>
+
 #include <gtest/gtest.h>
+
 #include <misc.hpp>
 #include <src/mer_dna.hpp>
 
@@ -118,6 +121,114 @@ namespace {
     }
   }
 
+TEST(MerDNASimple, SetBits) {
+  mer_dna::k(100);
+  static const int pattern_len = 10;
+  uint64_t pattern = ::random_bits(pattern_len); // Create a random pattern
+  mer_dna even_pattern, odd_pattern;             // And the corresponding mers
+  for(int i = pattern_len - 2; i >= 0; i -= 2) {
+    even_pattern.shift_left((int)((pattern >> i) & 0x3));
+    odd_pattern.shift_left((int)((pattern >> (i + 1)) & 0x3));
+  }
+  odd_pattern.shift_left((int)((pattern << 1) & 0x3));
+
+  mer_dna mer;
+  for(int i = 0; i <= (int)(mer_dna::k() - pattern_len / 2); ++i, even_pattern.shift_left('A'), odd_pattern.shift_left('A')) {
+    // Even
+    mer.polyA();
+    EXPECT_EQ(std::string(mer_dna::k(), 'A'), mer.to_str());
+    mer.set_bits(2 * i, pattern_len, pattern);
+    EXPECT_EQ(pattern, mer.get_bits(2 * i, pattern_len));
+    EXPECT_EQ(even_pattern, mer);
+    EXPECT_EQ(even_pattern.to_str(), mer.to_str());
+    // Odd
+    mer.polyA();
+    mer.set_bits(2 * i + 1, pattern_len, pattern);
+    EXPECT_EQ(pattern, mer.get_bits(2 * i + 1, pattern_len));
+    EXPECT_EQ(odd_pattern, mer);
+    EXPECT_EQ(odd_pattern.to_str(), mer.to_str());
+  }
+}
+
+TEST(MerDNASimple, Comparators) {
+  mer_dna::k(151);
+  mer_dna ma, mc, mg, mt;
+  ma.polyA();
+  mc.polyC();
+  mg.polyG();
+  mt.polyT();
+
+  mer_dna cma(ma), cmc(mc), cmg(mg), cmt(mt);
+
+  ASSERT_TRUE(ma < mc); ASSERT_FALSE(mc < ma);
+  ASSERT_TRUE(ma < mg); ASSERT_FALSE(mg < ma);
+  ASSERT_TRUE(ma < mt); ASSERT_FALSE(mt < ma);
+  ASSERT_TRUE(mc < mg); ASSERT_FALSE(mg < mc);
+  ASSERT_TRUE(mc < mt); ASSERT_FALSE(mt < mc);
+  ASSERT_TRUE(mg < mt); ASSERT_FALSE(mt < mg);
+
+  ASSERT_FALSE(ma < ma);
+  ASSERT_FALSE(mc < mc);
+  ASSERT_FALSE(mg < mg);
+  ASSERT_FALSE(mt < mt);
+
+  std::map<mer_dna, int> map;
+  EXPECT_EQ(1, ++map[ma]);
+  EXPECT_EQ(1, ++map[mc]);
+  EXPECT_EQ(1, ++map[mg]);
+  EXPECT_EQ(1, ++map[mt]);
+  EXPECT_EQ(2, ++map[cma]);
+  EXPECT_EQ(2, ++map[cmc]);
+  EXPECT_EQ(2, ++map[cmg]);
+  EXPECT_EQ(2, ++map[cmt]);
+
+  mer_dna m1, m2;
+  for(int i = 0; i < 1000; ++i) {
+    m1.randomize();
+    m2.randomize();
+    SCOPED_TRACE(::testing::Message() << "m1:" << m1 << " m2:" << m2);
+    ASSERT_FALSE(m1 == m2); // Very small probability to fail (k == 151)
+
+    EXPECT_TRUE(m1 == m1);
+    EXPECT_FALSE(m1 < m1);
+    EXPECT_FALSE(m1 > m1);
+    EXPECT_TRUE(m1 <= m1);
+    EXPECT_TRUE(m1 >= m1);
+
+    EXPECT_TRUE(m2 == m2);
+    EXPECT_FALSE(m2 < m2);
+    EXPECT_FALSE(m2 > m2);
+    EXPECT_TRUE(m2 <= m2);
+    EXPECT_TRUE(m2 >= m2);
+
+    EXPECT_EQ(m1.to_str().compare(m2.to_str()) < 0, m1 < m2); // Comparison is lexicographic
+
+    EXPECT_TRUE(m1 < m2 || m2 < m1);
+    EXPECT_TRUE(m1 <= m2 || m2 <= m1);
+    EXPECT_FALSE(m1 <= m2 && m2 <= m1);
+    EXPECT_TRUE(m1 > m2 || m2 > m1);
+    EXPECT_TRUE(m1 >= m2 || m2 >= m1);
+    EXPECT_FALSE(m1 >= m2 && m2 >= m1);
+
+    EXPECT_NE(m1 < m2, m1 >= m2);
+    EXPECT_NE(m1 < m2, m1 > m2);
+  }
+}
+
+TEST(MerDNASimple, IO) {
+  std::stringstream buffer;
+
+  for(int i = 0; i < 10000; ++i) {
+    buffer.clear();
+    SCOPED_TRACE(::testing::Message() << "i:" << i);
+    mer_dna::k(::random_bits(9) + 1);
+    mer_dna m1, m2;
+    m1.randomize();
+    buffer << m1;
+    buffer >> m2;
+    EXPECT_EQ(m1, m2);
+  }
+}
 
   // Value Type Container class
   template <typename T, int N>
@@ -242,6 +353,11 @@ namespace {
     EXPECT_TRUE(m1 == m2);
     EXPECT_TRUE(m2 == m3);
     EXPECT_TRUE(m3 == m1);
+
+    typename TypeParam::Type om(m1);
+    typename TypeParam::Type mm(std::move(om));
+    EXPECT_TRUE(m1 == mm);
+
     m1.shift_left('A');
     EXPECT_TRUE(!(m1 == m2));
     EXPECT_TRUE(!(m1 == m3));

@@ -1,0 +1,20 @@
+purpose "Filter out the overlap containing bad k-mers"
+description <<EOS
+
+EOS
+
+option("t", "threads") {
+  description "Number of threads"
+  int; default 1 }
+option("o", "output") {
+  description "Output file"
+  c_string; typestr "path"; default "/dev/fd/1" }
+arg("fragments") {
+  description "Fragments in fasta format with gkpStore header"
+  c_string; typestr "path" }
+arg("kmer") {
+  description "k-mer counts on the U-unitigs"
+  c_string; typestr "path" }
+arg("overlaps") {
+  description "Overlap file to filter"
+  c_string; typestr "path" }
