@@ -62,7 +62,7 @@ YAGGO_SOURCES = # Append all file to be built by yaggo
 ##############################
 # src pipeline
 ##############################
-bin_PROGRAMS += create_k_unitigs error_corrected2frg		\
+bin_PROGRAMS += error_corrected2frg		\
                 reverse_complement reduce_sr sorted_merge	\
                 create_k_unitigs_large_k homo_trim bloom_query	\
                 filter_overlap_file
@@ -88,8 +88,8 @@ homo_trim_SOURCES = src/homo_trim.cc
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 YAGGO_SOURCES              += src/error_corrected2frg_cmdline.hpp
 reverse_complement_SOURCES = src/reverse_complement.cc
-create_k_unitigs_SOURCES = src/create_k_unitigs.cpp
-YAGGO_SOURCES           += src/create_k_unitigs_cmdline.hpp
+#create_k_unitigs_SOURCES = src/create_k_unitigs.cpp
+#YAGGO_SOURCES           += src/create_k_unitigs_cmdline.hpp
 reduce_sr_SOURCES = src/reduce_sr.cc
 YAGGO_SOURCES    += src/reduce_sr_cmdline.hpp
 sorted_merge_SOURCES = src/sorted_merge.cc
@@ -180,12 +180,12 @@ YAGGO_SOURCES += src2/runByDirectory_cmdline.hpp
 ##############################
 # data generation
 ##############################
-# dist_data_DATA = data/adapter_0
-# CLEANFILES += data/adapter_0
-# SUFFIXES = _0 .fa
+dist_data_DATA = data/adapter_0
+CLEANFILES += data/adapter_0
+SUFFIXES = _0 .fa
 
-# .fa_0:
-# 	$(AM_V_GEN)mkdir -p $(@D); jellyfish count -m 24 -s 5k -C -t 10 -r -o $$(dirname $@)/$$(basename $@ _0) $<
+.fa_0:
+	$(AM_V_GEN)mkdir -p $(@D); jellyfish count -m 24 -s 5k -C -t 10 -r -o $$(dirname $@)/$$(basename $@ _0) $<
 
 
 ##############################
