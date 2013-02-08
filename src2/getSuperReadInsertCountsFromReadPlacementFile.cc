@@ -24,7 +24,7 @@
 #include <map>
 #include <exp_buffer.hpp>
 #include <charb.hpp>
-#include <err.hpp>
+#include <jellyfish/err.hpp>
 #include <misc.hpp> // for getFldsFromLine
 #include <src/sr_names.hpp>
 #include <src2/getSuperReadInsertCountsFromReadPlacementFile_cmdline.hpp>
@@ -85,10 +85,10 @@ int main (int argc, char **argv)
   ExpBuffer<char *> flds;
   std::ifstream input(args.input_arg);
   if(!input.good())
-    die << "Can't open input file '" << args.input_arg << "'" << err::no;
+    die << "Can't open input file '" << args.input_arg << "'" << jellyfish::err::no;
   std::ofstream output(args.output_arg);
   if(!output.good())
-    die << "Can't open output file '" << args.output_arg << "'" << err::no;
+    die << "Can't open output file '" << args.output_arg << "'" << jellyfish::err::no;
 
   encode_fn encode;
   decode_fn decode;

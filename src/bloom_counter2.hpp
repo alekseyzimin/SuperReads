@@ -22,10 +22,12 @@
 #include <math.h>
 #include <limits.h>
 #include <reallocators.hpp>
-#include <divisor.hpp>
-#include <jflib/atomic_field.hpp>
-#include <jflib/compare_and_swap.hpp>
+#include <jellyfish/divisor.hpp>
+#include <jellyfish/atomic_field.hpp>
+#include <jellyfish/compare_and_swap.hpp>
 #include <src/bloom_hash.hpp>
+
+using jflib::divisor64;
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>

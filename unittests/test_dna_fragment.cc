@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 #include <jellyfish/mer_dna.hpp>
 #include <src/dna_fragment.hpp>
+#include <misc.hpp>
 
 namespace {
 using jellyfish::mer_dna;
-using jellyfish::random_bits;
 
 TEST(DNAFragment, SubMers) {
   mer_dna::k(random_bits(5) + 20);

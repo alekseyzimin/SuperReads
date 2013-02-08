@@ -45,15 +45,17 @@
 #include <stack>
 #include <iterator>
 
-#include <err.hpp>
+#include <jellyfish/err.hpp>
 #include <misc.hpp>
 #include <heap.hpp>
 #include <exp_buffer.hpp>
-#include <thread_exec.hpp>
+#include <jellyfish/thread_exec.hpp>
 #include <jflib/multiplexed_parser.hpp>
 #include <jflib/multiplexed_io.hpp>
 #include <src2/joinKUnitigs_v3_cmdline.hpp>
 #include <rb_tree.hpp>
+
+using jellyfish::thread_exec;
 
 #define FRONT_END 1
 #define BACK_END 2
@@ -364,7 +366,7 @@ public:
 	  multiplexer(&out, 3 * nb_threads, 4096)
 	  { 
 	       if(!out.good())
-		    eraise(std::runtime_error) << "Failed to open '" << output_file << "'" << err::no;
+		    eraise(std::runtime_error) << "Failed to open '" << output_file << "'" << jellyfish::err::no;
 	  }
 
      virtual void start(int thid) {

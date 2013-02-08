@@ -47,8 +47,10 @@
 
 #include <multi_thread_skip_list_map.hpp>
 #include <jellyfish/large_hash_array.hpp>
-#include <thread_exec.hpp>
+#include <jellyfish/thread_exec.hpp>
 #include <src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp>
+
+using jellyfish::thread_exec;
 
 struct kMerUnitigInfoStruct {
   uint32_t kUnitigNumber;
@@ -243,11 +245,11 @@ int readLastKUnitigNumber(const char* path) {
      int ret;
      FILE* infile = fopen (path, "r");
      if(!infile)
-	  die << "Failed to open file '" << path << "'" << err::no;
+	  die << "Failed to open file '" << path << "'" << jellyfish::err::no;
      int fields_read = fscanf (infile, "%d", &ret);
      if(fields_read != 1)
 	  die << "Failed to read the last k-unitig number from file '"
-	      << path << "'" << err::no;
+	      << path << "'" << jellyfish::err::no;
      fclose (infile);
      return ret;
 }

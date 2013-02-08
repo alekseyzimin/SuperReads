@@ -23,12 +23,13 @@
 #include <jellyfish/jellyfish.hpp>
 #include <src/dna_fragment.hpp>
 #include <src/filter_overlap_file_cmdline.hpp>
-#include <thread_exec.hpp>
+#include <jellyfish/thread_exec.hpp>
 #include <jflib/multiplexed_parser.hpp>
 #include <jflib/multiplexed_io.hpp>
 #include <jellyfish/binary_dumper.hpp>
 #include <jellyfish/large_hash_array.hpp>
 
+using jellyfish::thread_exec;
 using jellyfish::mer_dna;
 using jflib::o_multiplexer;
 using jflib::omstream;

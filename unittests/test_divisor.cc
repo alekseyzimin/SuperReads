@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <gtest/gtest.h>
-#include <divisor.hpp>
+#include <jellyfish/divisor.hpp>
 
 namespace {
   uint64_t large_random() {

@@ -62,7 +62,7 @@
 #include <string>
 #include <vector>
 
-#include <err.hpp>
+#include <jellyfish/err.hpp>
 #include <charb.hpp>
 #include <jellyfish/mer_dna.hpp>
 
@@ -425,7 +425,7 @@ int getLargestKUnitigNumber (char *prefix, int numInputFiles)
 	  infile = Fopen (fname, "r");
 	  fseek (infile, fileOffset, SEEK_SET);
 	  if(!fgets (line, infile))
-            die << "Error reading file '" << fname << "'" << err::no;
+            die << "Error reading file '" << fname << "'" << jellyfish::err::no;
 	  while (fgets (line, 1000000, infile)) {
 	       if (line[0] != '>')
 		    continue;
@@ -469,7 +469,7 @@ void loadKUnitigSequences (char *prefix, int numInputFiles)
 	       strcpy (fname, prefix);
 	  infile = Fopen (fname, "r");
 	  if(!infile)
-	    die << "Can't open file '" << fname << "'" << err::no;
+	    die << "Can't open file '" << fname << "'" << jellyfish::err::no;
 	  
 	  int next_char = fgetc(infile);
 	  if(next_char != '>')

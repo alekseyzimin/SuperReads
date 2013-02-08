@@ -18,7 +18,7 @@
 
 #include <gtest/gtest.h>
 #include <unittests/misc.hpp>
-#include <jflib/atomic_field.hpp>
+#include <jellyfish/atomic_field.hpp>
 #include <multi_thread_skip_list_map.hpp>
 
 #include <string>

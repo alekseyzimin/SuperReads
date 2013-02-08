@@ -19,8 +19,8 @@
 #ifndef _JFLIB_POOL_H_
 #define _JFLIB_POOL_H_
 
-#include <jflib/circular_buffer.hpp>
-#include <jflib/locks_pthread.hpp>
+#include <jellyfish/circular_buffer.hpp>
+#include <jellyfish/locks_pthread.hpp>
 #include <vector>
 #include <stdexcept>
 
@@ -44,7 +44,7 @@ namespace jflib {
    * and is not thread-safe. It is designed to further
    * inspect/initialize the elements in serial mode.
    */
-  template<typename T, typename CV = locks::cond>
+  template<typename T, typename CV = jellyfish::locks::cond>
   class pool {
   public:
     class side;

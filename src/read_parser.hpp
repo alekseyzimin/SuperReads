@@ -23,7 +23,7 @@
 #include <memory>
 #include <jflib/multiplexed_parser.hpp>
 #include <charb.hpp>
-//#include <err.hpp>
+//#include <jellyfish/err.hpp>
 
 // Return reads from a fasta or fastq file. The parsing is done in a
 // dedicated thread.
@@ -50,7 +50,7 @@ class read_parser : public multiplexed_parser<read_parser_read> {
     err += path;
     if(!res->is_open())
       throw std::runtime_error(err);
-      //      eraise(std::runtime_error) << "Failed to open file '" << path << "'" << err::no;
+      //      eraise(std::runtime_error) << "Failed to open file '" << path << "'" << jellyfish::err::no;
     return res;
   }
 public:

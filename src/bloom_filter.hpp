@@ -22,10 +22,12 @@
 #include <math.h>
 #include <vector>
 #include <algorithm>
-#include <divisor.hpp>
+#include <jellyfish/divisor.hpp>
 #include <reallocators.hpp>
 #include <src/bloom_hash.hpp>
 #include <gcc_builtins.hpp>
+
+using jflib::divisor64;
 
 /* Bloom filter using Kirsh & Mitzenmacher double hashing. I.e., only
    two hash functions are computed and the k functions have values (0

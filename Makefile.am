@@ -1,8 +1,8 @@
 ACLOCAL_AMFLAGS = -I m4
 CXXFLAGS_ALL = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -std=c++0x
-AM_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH1_1_CFLAGS)
+AM_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
 LDADD_ALL = -lrt -lpthread libutils.a
-LDADD = $(LDADD_ALL) $(JELLYFISH1_1_LIBS)
+LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 AM_LDFLAGS = $(STATIC_FLAGS)
 AM_DEV_CXXFLAGS = $(DEV_CXXFLAGS)
 
@@ -20,22 +20,17 @@ EXTRA_DIST =
 # jflib
 ##############################
 JFLIB_I = include/jflib
-noinst_HEADERS += $(JFLIB_I)/circular_buffer.hpp			\
-                  $(JFLIB_I)/compare_and_swap.hpp			\
-                  $(JFLIB_I)/locks_pthread.hpp				\
-                  $(JFLIB_I)/multiplexed_io.hpp $(JFLIB_I)/pool.hpp	\
-                  $(JFLIB_I)/atomic_field.hpp				\
+noinst_HEADERS += $(JFLIB_I)/multiplexed_io.hpp $(JFLIB_I)/pool.hpp	\
                   $(JFLIB_I)/multiplexed_parser.hpp
 
 ##############################
 # utils lib
 ##############################
 UTILS_I = include
-noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
-                  $(UTILS_I)/charb.hpp $(UTILS_I)/charbuf.hpp		\
-                  $(UTILS_I)/exp_buffer.hpp				\
-                  $(UTILS_I)/gzip_stream.hpp $(UTILS_I)/misc.hpp	\
-                  $(UTILS_I)/heap.hpp $(UTILS_I)/reallocators.hpp	\
+noinst_HEADERS += $(UTILS_I)/charb.hpp $(UTILS_I)/charbuf.hpp		\
+                  $(UTILS_I)/exp_buffer.hpp $(UTILS_I)/gzip_stream.hpp	\
+                  $(UTILS_I)/misc.hpp $(UTILS_I)/heap.hpp		\
+                  $(UTILS_I)/reallocators.hpp				\
                   $(UTILS_I)/skip_list_set.hpp				\
                   $(UTILS_I)/skip_list_map.hpp				\
                   $(UTILS_I)/gcc_builtins.hpp $(UTILS_I)/rb_tree.hpp	\
@@ -45,12 +40,11 @@ noinst_HEADERS += $(UTILS_I)/err.hpp $(UTILS_I)/thread_exec.hpp		\
                   $(UTILS_I)/multi_thread_skip_list_set.hpp		\
                   $(UTILS_I)/multi_thread_skip_list_map.hpp		\
                   $(UTILS_I)/tmpstream.hpp $(UTILS_I)/exp_vector.hpp	\
-                  $(UTILS_I)/int128.hpp $(UTILS_I)/divisor.hpp		\
-                  $(UTILS_I)/thread_pool.hpp $(UTILS_I)/fork_exec.hpp
+                  $(UTILS_I)/thread_pool.hpp	\
+                  $(UTILS_I)/fork_exec.hpp
 
 noinst_LIBRARIES = libutils.a
-libutils_a_SOURCES = lib/thread_exec.cc lib/err.cc lib/int128.cc	\
-                     lib/fork_exec.cpp
+libutils_a_SOURCES = lib/fork_exec.cpp
 # Yaggo automatic rules with silencing
 V_YAGGO = $(V_YAGGO_$(V))
 V_YAGGO_ = $(V_YAGGO_$(AM_DEFAULT_VERBOSITY))
@@ -62,10 +56,9 @@ YAGGO_SOURCES = # Append all file to be built by yaggo
 ##############################
 # src pipeline
 ##############################
-bin_PROGRAMS += error_corrected2frg		\
-                reverse_complement reduce_sr sorted_merge	\
-                create_k_unitigs_large_k homo_trim bloom_query	\
-                filter_overlap_file
+bin_PROGRAMS += error_corrected2frg reverse_complement reduce_sr	\
+                sorted_merge create_k_unitigs_large_k homo_trim		\
+                bloom_query filter_overlap_file
 
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl src/close_gaps.sh		\
@@ -97,18 +90,12 @@ YAGGO_SOURCES       += src/sorted_merge_cmdline.hpp
 create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
                                    src/read_parser.cc src/mer_dna.cc	\
                                    src/MurmurHash3.cpp src/mer_stream.hpp
-create_k_unitigs_large_k_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
-create_k_unitigs_large_k_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 YAGGO_SOURCES += src/create_k_unitigs_large_k_cmdline.hpp
 bloom_query_SOURCES = src/bloom_query.cc src/mer_dna.cc	\
                       src/MurmurHash3.cpp
-bloom_query_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
-bloom_query_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 YAGGO_SOURCES += src/bloom_query_cmdline.hpp
 filter_overlap_file_SOURCES = src/filter_overlap_file.cc	\
                               src/mer_dna.cc src/dna_fragment.hpp
-filter_overlap_file_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
-filter_overlap_file_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 YAGGO_SOURCES += src/filter_overlap_file_cmdline.hpp
 
 ##############################
@@ -134,13 +121,8 @@ findMatchesBetweenKUnitigsAndReads_SOURCES = src/read_parser.cc				\
                                              src2/findMatchesBetweenKUnitigsAndReads.cc	\
                                              src/gcc_builtins.cc
 YAGGO_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
-findMatchesBetweenKUnitigsAndReads_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
-findMatchesBetweenKUnitigsAndReads_LDFLAGS = $(AM_LDFLAGS)
-findMatchesBetweenKUnitigsAndReads_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc src/mer_dna.cc
-createKUnitigMaxOverlaps_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
-createKUnitigMaxOverlaps_LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFile.cc	\
@@ -191,9 +173,9 @@ SUFFIXES = _0 .fa
 ##############################
 # unittests
 ##############################
-TESTS = all_tests tests2
+TESTS = all_tests
 EXTRA_DIST += $(TESTS)
-check_PROGRAMS = all_tests tests2
+check_PROGRAMS = all_tests
 
 all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_exp_buffer.cc			\
@@ -212,9 +194,9 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_exp_vector.cc			\
                     unittests/test_mer_stream.cc			\
                     unittests/test_int128.cc				\
-                    unittests/test_divisor.cc				\
                     unittests/test_thread_pool.cc			\
-                    unittests/test_fork_exec.cc
+                    unittests/test_fork_exec.cc				\
+                    unittests/test_dna_fragment.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
                      src/gcc_builtins.cc src/mer_dna.cc			\
                      src/read_parser.cc unittests/misc.cc
@@ -225,13 +207,6 @@ all_tests_LDFLAGS = $(AM_LDFLAGS)
 all_tests_LDADD = libutils.a libgtest.a
 YAGGO_SOURCES += unittests/test_main_cmdline.hpp
 noinst_HEADERS += unittests/test_main_cmdline.hpp unittests/misc.hpp
-
-tests2_SOURCES = unittests/test_dna_fragment.cc
-tests2_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)	\
--I$(top_srcdir)/unittests/gtest/include				\
--I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include		\
--I$(top_srcdir)
-tests2_LDADD = libutils.a libgtest.a libgtest_main.a $(JELLYFISH2_0_LIBS)
 
 include gtest.mk
 

@@ -24,7 +24,7 @@
 #include <algorithm>
 #include <set>
 #include <jellyfish/mapped_file.hpp>
-#include <thread_exec.hpp>
+#include <jellyfish/thread_exec.hpp>
 #include <gzip_stream.hpp>
 #include <src/bloom_counter2.hpp>
 #include <src/MurmurHash3.h>
@@ -33,12 +33,13 @@
 #include <src/mer_stream.hpp>
 #include <src/bloom_filter.hpp>
 #include <jflib/multiplexed_io.hpp>
-#include <jflib/atomic_field.hpp>
+#include <jellyfish/atomic_field.hpp>
 #include <src/create_k_unitigs_large_k_cmdline.hpp>
 
 // GLOBAL: command line switches
 cmdline_parse args;
 
+using jellyfish::thread_exec;
 using jellyfish::mer_dna;
 struct mer_dna_hash {
   void operator()(const mer_dna& m, uint64_t *hashes) const {

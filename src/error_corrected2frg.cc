@@ -21,8 +21,9 @@
 #include <string.h>
 #include <vector>
 #include <charb.hpp>
-#include <err.hpp>
+#include <jellyfish/err.hpp>
 #include <src/error_corrected2frg_cmdline.hpp>
+
 
 inline void print_sequence(FILE *out, const char *seq, uint64_t len) {
   fprintf(out, "%s\n", seq);
@@ -61,7 +62,7 @@ int main(int argc, char *argv[])
 
   FP = fopen(args.fasta_file_arg,"r");
   if(!FP)
-    die << "Can't open input file '" << args.fasta_file_arg << "'" << err::no;
+    die << "Can't open input file '" << args.fasta_file_arg << "'" << jellyfish::err::no;
 
   int first_char = fgetc(FP);
   if(first_char != '>')

@@ -12,7 +12,7 @@
 #include <exp_buffer.hpp>
 #include <charb.hpp>
 #include <charbuf.hpp>
-#include <err.hpp>
+#include <jellyfish/err.hpp>
 #include <misc.hpp>
 #include <src2/collectReadSequencesForLocalGapClosing_cmdline.hpp>
 

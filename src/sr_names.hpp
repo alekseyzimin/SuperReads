@@ -21,7 +21,7 @@
 #include <algorithm>
 #include <vector>
 #include <charb.hpp>
-#include <err.hpp>
+#include <jellyfish/err.hpp>
 #include <src/fibonacci_coding.hpp>
 
 // Return 1 plus the index of the first 1-bit in x.
