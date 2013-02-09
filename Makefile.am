@@ -75,7 +75,7 @@ noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/fibonacci_coding.hpp src/sr_names.hpp	\
                   src/bloom_filter.hpp src/MurmurHash3.h	\
                   src/bloom_hash.hpp src/bloom_counter2.hpp	\
-                  src/mer_dna.hpp src/read_parser.hpp
+                  src/read_parser.hpp
 
 homo_trim_SOURCES = src/homo_trim.cc
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
@@ -88,14 +88,14 @@ YAGGO_SOURCES    += src/reduce_sr_cmdline.hpp
 sorted_merge_SOURCES = src/sorted_merge.cc
 YAGGO_SOURCES       += src/sorted_merge_cmdline.hpp
 create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
-                                   src/read_parser.cc src/mer_dna.cc	\
-                                   src/MurmurHash3.cpp src/mer_stream.hpp
+                                   src/read_parser.cc			\
+                                   src/MurmurHash3.cpp			\
+                                   src/mer_stream.hpp
 YAGGO_SOURCES += src/create_k_unitigs_large_k_cmdline.hpp
-bloom_query_SOURCES = src/bloom_query.cc src/mer_dna.cc	\
-                      src/MurmurHash3.cpp
+bloom_query_SOURCES = src/bloom_query.cc src/MurmurHash3.cpp
 YAGGO_SOURCES += src/bloom_query_cmdline.hpp
 filter_overlap_file_SOURCES = src/filter_overlap_file.cc	\
-                              src/mer_dna.cc src/dna_fragment.hpp
+                              src/dna_fragment.hpp
 YAGGO_SOURCES += src/filter_overlap_file_cmdline.hpp
 
 ##############################
@@ -122,7 +122,7 @@ findMatchesBetweenKUnitigsAndReads_SOURCES = src/read_parser.cc				\
                                              src/gcc_builtins.cc
 YAGGO_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
 
-createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc src/mer_dna.cc
+createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc
 eliminateBadSuperReadsUsingList_SOURCES = src2/eliminateBadSuperReadsUsingList.cc
 getSuperReadInsertCountsFromReadPlacementFile_SOURCES =	\
 src2/getSuperReadInsertCountsFromReadPlacementFile.cc	\
@@ -188,22 +188,21 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_rbtree.cc				\
                     unittests/test_multi_thread_skip_list_set.cc	\
                     unittests/test_multi_thread_skip_list_map.cc	\
-                    unittests/test_mer_dna.cc				\
                     unittests/test_read_parser.cc			\
                     unittests/test_hash.cc				\
                     unittests/test_exp_vector.cc			\
                     unittests/test_mer_stream.cc			\
-                    unittests/test_int128.cc				\
                     unittests/test_thread_pool.cc			\
                     unittests/test_fork_exec.cc				\
                     unittests/test_dna_fragment.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
-                     src/gcc_builtins.cc src/mer_dna.cc			\
-                     src/read_parser.cc unittests/misc.cc
-all_tests_CXXFLAGS = $(AM_CXXFLAGS)					\
--I$(top_srcdir)/unittests/gtest/include -I$(top_srcdir)unittests/gtest	\
--I$(top_srcdir)/include -I$(top_srcdir)
-all_tests_LDFLAGS = $(AM_LDFLAGS)
+                     src/gcc_builtins.cc src/read_parser.cc		\
+                     unittests/misc.cc
+all_tests_CXXFLAGS = $(AM_CXXFLAGS) $(JELLYFISH2_0_CFLAGS)	\
+-I$(top_srcdir)/unittests/gtest/include				\
+-I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include		\
+-I$(top_srcdir)
+all_tests_LDFLAGS = $(AM_LDFLAGS) $(JELLYFISH2_0_LIBS)
 all_tests_LDADD = libutils.a libgtest.a
 YAGGO_SOURCES += unittests/test_main_cmdline.hpp
 noinst_HEADERS += unittests/test_main_cmdline.hpp unittests/misc.hpp

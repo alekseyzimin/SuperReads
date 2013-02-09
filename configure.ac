@@ -26,16 +26,11 @@ AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [Def
 # Checks for header files.
 
 # Checks for Jellyfish module
-#PKG_CHECK_MODULES([JELLYFISH1_1], [jellyfish-1.1])
 PKG_CHECK_MODULES([JELLYFISH2_0], [jellyfish-2.0])
 
 # Check for yaggo
 AC_ARG_VAR([YAGGO], [Yaggo switch parser generator])
 AS_IF([test "x$YAGGO" = "x"], [AC_PATH_PROG([YAGGO], [yaggo], [false])])
-
-# Checks for typedefs, structures, and compiler characteristics.
-AC_CHECK_TYPE(__int128,
-              [AC_DEFINE([HAVE_INT128], [1], [Define if type __int128 is supported])])
 
 # --enable-all-static
 AC_ARG_ENABLE([all-static],
