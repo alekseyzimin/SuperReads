@@ -1,6 +1,6 @@
 /* SuperRead pipeline
  * Copyright (C) 2012  Genome group at University of Maryland.
- * 
+ *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 #include <exp_buffer.hpp>
 #include <algorithm>
+#include <misc.hpp>
 
 template<typename T>
 class ExpandingBufferInit : public ::testing::Test { };
@@ -38,8 +39,6 @@ TYPED_TEST_CASE(ExpandingBufferInit, ExpBufferInitTypes);
 
 TYPED_TEST(ExpandingBufferDefault, Initialization) {
   TypeParam b;
-
-  std::cerr << sizeof(TypeParam) << "\n";
 
   EXPECT_EQ((size_t)0, b.capacity());
   EXPECT_EQ((size_t)0, b.size());
@@ -89,9 +88,9 @@ TYPED_TEST(ExpandingBufferDefault, Swap) {
 
   for(size_t i = 0; i < b.capacity(); ++i)
     b[i] = 2 * i;
-  
+
   EXPECT_EQ((size_t)10, b.size());
-  
+
   TypeParam bs;
   b.swap(bs);
   EXPECT_EQ((size_t)0, b.capacity());
@@ -100,7 +99,7 @@ TYPED_TEST(ExpandingBufferDefault, Swap) {
     EXPECT_EQ((int)(2 * i), bs[i]);
 
   std::swap(b, bs);
-  
+
   EXPECT_EQ((size_t)10, b.capacity());
   EXPECT_EQ((size_t)0, bs.capacity());
   for(size_t i = 0; i < b.capacity(); ++i)
@@ -110,6 +109,59 @@ TYPED_TEST(ExpandingBufferDefault, Swap) {
   std::swap(b1, b2);
   EXPECT_EQ((size_t)5, b1.capacity());
   EXPECT_EQ((size_t)0, b2.capacity());
+}
+
+template<typename T>
+T fill_buffer(bool& parity) {
+  T even(10);
+  T odd(10);
+
+  for(int i = 0; i < 10; ++i) {
+    even[i] = 2 * i;
+    odd[i] = 2 * i + 1;
+  }
+
+  parity = random_bits(1) == 1;
+  return parity ? even : odd;
+}
+template<typename T>
+bool test_parity(const T& b, const bool parity) {
+  int add = parity ? 0 : 1;
+  for(size_t i = 0; i < b.size(); ++i)
+    if(b[i] != 2 * (int)i + add)
+        return false;
+
+  return true;
+}
+template<typename T>
+bool test_deep_equal(const T& a, const T& b) {
+  if(a.size() != b.size())
+    return false;
+
+  for(size_t i = 0; i < a.size(); ++i)
+    if(a[i] != b[i])
+      return false;
+
+  return true;
+}
+TYPED_TEST(ExpandingBufferDefault, CopyMove) {
+  bool parity;
+  TypeParam b(fill_buffer<TypeParam>(parity)); // Call move constructor, or RVO
+
+  EXPECT_TRUE(test_parity(b, parity));
+
+  b = fill_buffer<TypeParam>(parity); // Call move assignment operator
+  EXPECT_TRUE(test_parity(b, parity));
+
+  TypeParam b1(b); // Call copy constructor
+  EXPECT_TRUE(test_deep_equal(b, b1));
+
+  TypeParam b2(fill_buffer<TypeParam>(parity));
+  b1 = b2; // Call copy assignment operator
+  EXPECT_TRUE(test_deep_equal(b2, b1));
+
+  TypeParam b3(std::move(b1)); // Call move constructor b1 not valid anymore (but b2 == former b1)
+  EXPECT_TRUE(test_deep_equal(b2, b3));
 }
 
 

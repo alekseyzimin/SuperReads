@@ -1,6 +1,6 @@
 /* SuperRead pipeline
  * Copyright (C) 2012  Genome group at University of Maryland.
- * 
+ *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -76,6 +76,7 @@ public:
   basic_charb(const basic_charb &rhs) : super(rhs.base_, rhs.len() + 1) {
     *--super::ptr_ = '\0';
   }
+  basic_charb(basic_charb&& rhs) : super(std::move(rhs)) { }
   basic_charb(const char *str) : super(str, strlen(str) + 1) {
     *--super::ptr_ = '\0';
   }
@@ -95,8 +96,16 @@ public:
     return *this;
   }
 
-  basic_charb& operator=(basic_charb rhs) {
+  basic_charb& operator=(basic_charb&& rhs) {
     this->swap(rhs);
+    return *this;
+  }
+
+  basic_charb& operator=(const basic_charb& rhs) {
+    size_t rhs_len = rhs.len();
+    super::reserve(rhs_len + 1);
+    strcpy(super::base_, rhs.base_);
+    super::ptr_ = super::base_ + rhs_len;
     return *this;
   }
   /** Length of string. The length of the string is updated by the
@@ -137,7 +146,7 @@ typedef basic_charb<reallocator<char> > charb;
 
 /** Input of line for char buffer. Expand the size
     of the buffer if the line does not fit.
- 
+
     @param b The charb to write to.
     @param stream The input stream.
     @param cptr The pointer inside the charb (not checked) to write to.
@@ -193,14 +202,14 @@ template<typename R>
 char *fgets(basic_charb<R> &b, FILE *stream) { return fgets(b, stream, b.base()); }
 
 /** Input of line from stdin. Equivalent to `fgets(b, stdin)`.
- 
+
     @param b The charb to write to
 */
 template<typename R>
 char *gets(basic_charb<R> &b) { return fgets(b, stdin); }
 
 /** Similar to `fgets`, but append to the `charb`. I.e. write starts
-    after `length()` characters. 
+    after `length()` characters.
 
     @param b The charb to append to
     @param stream The input stream
@@ -213,7 +222,7 @@ char *fgets_append(basic_charb<R> &b, FILE *stream) { return fgets(b, stream, b.
     @param b The charb to write to
     @param size Ignored. Present for backward compatibility
     @param stream The input stream
-    @return 
+    @return
  */
 template<typename T, typename R>
 char *fgets(basic_charb<R> &b, T size, FILE *stream) { return fgets(b, stream); }
@@ -260,7 +269,7 @@ ssize_t getline(basic_charb<R> &b, FILE *stream) {
     @return On success, the number of characters read, including the newline character, but not includeing the terminating null byte. On failure, return -1 (including end-of-file condition).
  */
 template<typename R>
-ssize_t getline_append(basic_charb<R> &b, FILE* stream) { 
+ssize_t getline_append(basic_charb<R> &b, FILE* stream) {
   size_t  osize = b.size();
   ssize_t ret   = getline(b, stream, b.ptr());
   if(ret < 0)
@@ -418,7 +427,7 @@ inline int vsnprintf(basic_charb<R> &b, T size, const char *format, va_list ap) 
 
     @param b The charb to write to
     @param format The format string
-    @param ap The variable argument list    
+    @param ap The variable argument list
     @return The number of characters written or a negative number on error
  */
 template<typename R>
@@ -440,7 +449,7 @@ int sprintf_append(basic_charb<R>& b, const char* format, ...) __attribute__ ((f
 template<typename R>
 int sprintf_append(basic_charb<R>& b, const char* format, ...) {
   va_list ap;
-  
+
   va_start(ap, format);
   int res = vsprintf(b, b.ptr(), format, ap);
   va_end(ap);
@@ -468,7 +477,7 @@ inline int vsprintf_append(basic_charb<R>& b, const char* format, va_list _ap) {
     @param b The charb to write to
     @param start Where to write into the charb (Caution: no check made)
     @param format The format string
-    @param ap The variable argument list    
+    @param ap The variable argument list
     @return The number of characters written or a negative number on error
  */
 template<typename R>
@@ -530,7 +539,7 @@ char *strcat(basic_charb<R> &b, const basic_charb<R>& src) {
 
 /** Concatenate two strings. For backward compatibility (the size is
     ignored). The charb grows as needed.
-    
+
     @param b The charb to append to
     @param size Ignored
     @param src The string to append
@@ -573,7 +582,7 @@ char *strncpy(basic_charb<R> &b, const char *src, T n) {
   message. In the GNU-specific version, the message is always copied
   into the charb and (char*)b is returned (i.e. it never returns a
   pointer to an immutable static string). See man strerror_r(3).
- 
+
   @param errnum Error number
   @param b Charb to write to
   @return Always return 0
@@ -593,7 +602,7 @@ int strerror_r(int errnum, basic_charb<R> &b) {
 }
 /** Return string describing error number. Identical to the two
  argument version (the buflen is ignored).
- 
+
   @param errnum Error number
   @param b Charb to write to
   @param buflen Ignored
@@ -610,7 +619,7 @@ int strerror_r(int errnum, basic_charb<R> &b, T buflen) {
   message. In the GNU-specific version, the message is always copied
   into the charb and (char*)b is returned (i.e. it never returns a
   pointer to an immutable static string). See man strerror_r(3).
- 
+
   @param errnum Error number
   @param b Charb to write to
   @return A pointer to the beginning of b
@@ -625,7 +634,7 @@ char *strerror_r(int errnum, basic_charb<R> &b) {
 
 /** Return string describing error number. Identical to the two
  argument version (the buflen is ignored).
- 
+
   @param errnum Error number
   @param b Charb to write to
   @param buflen Ignored
