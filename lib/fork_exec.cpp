@@ -30,8 +30,9 @@ int parent_read(int fd_to_close, int fd) {
 }
 
 pid_t fork_execvp(const char* file, char* const argv[]) {
-  int   err[2];
-  pid_t pid;
+  int     err[2];
+  pid_t   pid;
+  ssize_t werr = 0;
 
   if(pipe(err) == -1)
     goto error_none_close;
@@ -44,7 +45,11 @@ pid_t fork_execvp(const char* file, char* const argv[]) {
     child_exec(err[0], file, argv);
     /* Get here only if failure. If write failes, then we are SOL: no
        way to return error to parent! */
-    write(err[1], &errno, sizeof(errno));
+    do {
+      werr = write(err[1], &errno, sizeof(errno));
+      if(werr == -1 && errno == EINTR)
+        continue;
+    } while(0);
     close(err[1]);
     exit(0);
 

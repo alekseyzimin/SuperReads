@@ -128,7 +128,11 @@ int main (int argc, char **argv)
 	  }
 	  if (args.mean_and_stdev_file_given) {
 	       int dirNumTemp;
-	       fscanf (meanAndStdevFile, "%d %f %f\n", &dirNumTemp, &(threadArgs.mean), &(threadArgs.stdev)); }
+	       int scanned = fscanf (meanAndStdevFile, "%d %f %f\n", &dirNumTemp, &(threadArgs.mean), &(threadArgs.stdev));
+               if(scanned != 3) {
+                 fprintf(stderr, "Failed to parse file '%s'\n", args.mean_and_stdev_file_arg);
+                 exit(1); }
+          }
 	  else {
 	       threadArgs.mean = args.mean_for_faux_inserts_arg;
 	       threadArgs.stdev = args.stdev_for_faux_inserts_arg; }
@@ -181,7 +185,20 @@ int analyzeGap(struct arguments threadArg)
      printf ("Working on dir %s on thread %ld\n", (char *) outDirName, pthread_self());
      sprintf (tempFileName, "%s/passingKMer.txt", (char *) outDirName);
      int passingKMerValue = 0;
-     system (cmd);
+     int system_err = system (cmd);
+     if(system_err != 0) {
+       if(system_err == -1) {
+         fprintf(stderr, "system failed\n");
+         return 0;
+       }
+       if(WIFEXITED(system_err)) {
+         fprintf(stderr, "command exited with error code %d\n", WEXITSTATUS(system_err));
+       } else if(WIFSIGNALED(system_err)) {
+         fprintf(stderr, "command killed by signal %d %s\n", WTERMSIG(system_err),
+                 strsignal(WTERMSIG(system_err)));
+       }
+     }
+
      /* Now, if "passingKMer.txt" exists in outDirName, copy the files
 	superReadSequences.fasta and
 	readPlacementsInSuperReads.final.read.superRead.offset.ori.txt (after appropriate

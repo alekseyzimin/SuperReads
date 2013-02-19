@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <cstdlib>
 #include <cstring>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <string>
 #include <unordered_map>
@@ -142,10 +143,16 @@ int main(int argc, char **argv)
      }
 
      if (stat (args.dir_for_gaps_arg, &statbuf) != 0) {
-	  charb cmd(100);
-	  sprintf (cmd, "mkdir %s", args.dir_for_gaps_arg);
-	  fprintf (stderr, "%s\n", (char *) cmd);
-	  system (cmd);
+	  // charb cmd(100);
+	  // sprintf (cmd, "mkdir %s", args.dir_for_gaps_arg);
+	  // fprintf (stderr, "%s\n", (char *) cmd);
+	  // system (cmd);
+       int mkdir_err = mkdir(args.dir_for_gaps_arg,
+                             S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
+       if(mkdir_err != 0 && errno != EEXIST) {
+         fprintf(stderr, "Failed to create directory for gaps '%s'\n", args.dir_for_gaps_arg);
+         exit(1);
+       }
      }
      int outputGroupNum = 0;
      while (1) {
