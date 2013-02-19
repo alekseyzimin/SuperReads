@@ -42,7 +42,7 @@ AS_IF([test "x$enable_all_static" = xyes],
 # Extra compiler debugging
 AC_ARG_VAR([DEV_CXXFLAGS], [Extra compiler flags for development])
 if test "x$DEV_CXXFLAGS" = "x"; then
-DEV_CXXFLAGS=-Werror
+DEV_CXXFLAGS=-Werror -D_FORTIFY_SOURCE=2
 # Check for -Wunused-but-set-variable
 my_save_cxxflags="$CXXFLAGS"
 CXXFLAGS=-Wunused-but-set-variable
