@@ -9,8 +9,6 @@ if ($dirToChangeTo) {
     chdir ($dirToChangeTo); }
 
 &runMainLoop;
-#wait for children to finish
-END{wait;}
 
 sub runMainLoop
 {

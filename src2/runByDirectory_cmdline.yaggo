@@ -6,6 +6,9 @@ name "cmdline_parse"
 option("t", "num-threads") {
   description "Number of threads"
   int; default "1" }
+option("o", "output") {
+  description "Output file with sequence and read placement (stdout)"
+  c_string; typestr "path" }
 option("keep-directories") {
   description "Keep the individual gap directories"
   off }

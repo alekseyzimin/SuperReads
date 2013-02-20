@@ -8,7 +8,6 @@
 #include <signal.h>
 #include <string>
 #include <sys/stat.h>
-#include <pthread.h>
 
 #include <vector>
 #include <iostream>
@@ -78,20 +77,6 @@ void system_throw(const char* command, const char* msg = "") {
                              << "' terminated for an unknown reason";
 }
 
-// FILE *fopen_wait(int timeout_, char *filename) {
-//   int   timeout  = 0;
-//   FILE *infile;
-//   do {
-//     infile = fopen (filename, "r");
-//     if(infile != NULL) break;
-//     sleep(1);
-//     timeout++;
-//   } while(timeout < timeout_);
-//   if(infile == NULL)
-//     printf("Timed out on file %s\n", filename);
-//   return(infile);
-// }
-
 int remove_function(const char *fpath, const struct stat *sb,
                     int typeflag, struct FTW *ftwbuf) {
   return remove(fpath);
@@ -108,23 +93,19 @@ void close_on_exec(FILE* file) {
     return;
   int fd = fileno(file);
   if(fd == -1)
-    die << "fileno" << jellyfish::err::no;
+    return;
   int flags = fcntl(fd, F_GETFD);
   if(flags == -1)
-    die << "fcntl F_GETFD" << jellyfish::err::no;
+    return;
   flags = fcntl(fd, F_SETFD, flags|FD_CLOEXEC);
   if(flags == -1)
-    die << "fcntl F_SETFD" << jellyfish::err::no;
+    return;
 }
 
-int reportNumGaps (const char *contigEndSeqFile);
-int analyzeGap(struct arguments threadArg); // Returns int for now
+int analyzeGap(struct arguments threadArg, FILE* resultFile);
 
-// THE NEXT 2 LINES ARE COPIED FROM GUILLAUME
-// GLOBAL: command line switches
-cmdline_parse args;
-
-std::string exeDir;
+cmdline_parse args; // GLOBAL: command line switches
+std::string exeDir; // Location of executable
 
 int main (int argc, char **argv)
 {
@@ -133,6 +114,7 @@ int main (int argc, char **argv)
   struct arguments    threadArgs;
   FILE               *contigEndSeqFile;
   FILE               *meanAndStdevFile;
+  FILE               *resultFile = stdout;
   std::vector<FILE*>  readSeqFilesByDir;
   charb               tempBuffer(100);
 
@@ -141,6 +123,14 @@ int main (int argc, char **argv)
     exeDir = std::string(".");
   } else {
     exeDir = std::string(argv[0], tempPtr - argv[0]);
+  }
+
+  if(args.output_given) {
+    resultFile = fopen(args.output_arg, "w");
+    if(!resultFile)
+      die << "Can't open output file '" << args.output_arg << "'"
+          << jellyfish::err::no;
+    close_on_exec(resultFile);
   }
 
   contigEndSeqFile = fopen(args.contig_end_sequence_file_arg, "r");
@@ -155,7 +145,7 @@ int main (int argc, char **argv)
     sprintf (fn, "%s/readFile.%03d", args.dir_for_read_sequences_arg, fileNum);
     FILE *filetemp = fopen(fn, "r");
     if(!filetemp)
-      continue;
+      break;
     close_on_exec(filetemp);
     readSeqFilesByDir.push_back (filetemp);
     fgets(line, 100, filetemp); // Gets past the first line ('>0')
@@ -227,7 +217,7 @@ int main (int argc, char **argv)
     case -1:
       die << "Fork failed" << jellyfish::err::no;
     case 0:
-      analyzeGap(threadArgs);
+      analyzeGap(threadArgs, resultFile);
       exit(0);
     default:
       break;
@@ -244,17 +234,23 @@ int main (int argc, char **argv)
 }
 
 // Doing the actual work of the worker thread
-void do_analyzeGap(struct arguments& threadArg, const char* outDirName);
-int analyzeGap(struct arguments threadArg) {
+void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
+                   FILE* resultFile);
+int analyzeGap(struct arguments threadArg, FILE* resultFile) {
   charb outDirName(100);
 
   sprintf (outDirName, "%s/gap%09ddir", args.output_dir_arg, threadArg.dirNum);
   int res = mkdir((char *)outDirName, S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH);
-  if(res == -1 && errno != EEXIST) // OK if directory already exists
-    return -1;
+  if(res == -1) {
+    if(errno != EEXIST) { // OK if directory already exists
+      fprintf(stderr, "Failed to create subdirectory '%s'\n", (const char*)outDirName);
+      return -1;
+    }
+  }
+
 
   try {
-    do_analyzeGap(threadArg, outDirName);
+    do_analyzeGap(threadArg, outDirName, resultFile);
   } catch(std::runtime_error e) {
     fprintf(stderr, "Analyze gap failed for dir '%s': %s\n",
             (const char*)outDirName, e.what());
@@ -265,7 +261,8 @@ int analyzeGap(struct arguments threadArg) {
   return 0;
 }
 
-void do_analyzeGap(struct arguments& threadArg, const char* outDirName) {
+void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
+                   FILE* resultFile) {
   FILE *infile, * outfile;
 
   charb tempFileName(10), line(100);
@@ -294,7 +291,6 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName) {
       << " --num-stdevs-allowed " << args.num_stdevs_allowed_arg
       << " --use-all-kunitigs --noclean";
 
-  printf ("Working on dir %s on thread %ld\n", outDirName, pthread_self());
   sprintf (tempFileName, "%s/passingKMer.txt", outDirName);
   system_throw(cmd.str().c_str());
 
@@ -305,29 +301,21 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName) {
      'outDirName'/work_localReadsFile_41_2 */
   int passingKMerValue = 0;
 
-  // while(passingKMerValue <11){
-  //   infile = fopen_wait (60,tempFileName);
-  //   if (infile == NULL) {
-  //     passingKMerValue = 11;
-  //     break; }
-  //   fgets(line,100,infile);
-  //   passingKMerValue=atoi(line);
-  //   fclose (infile);
-  // }
-
-  // if(passingKMerValue == 11)
-  //   return;
-
   infile = fopen_throw(tempFileName, "r", "Reading passing k-mer size");
+  if(!infile)
+    eraise(std::runtime_error) << "Can't read passing k-mer value file";
   int scanned = fscanf(infile, "%d", &passingKMerValue);
+  fclose(infile);
   if(scanned != 1)
     eraise(std::runtime_error) << "Failed to read passing k-mer size"
                                << jellyfish::err::no;
+  if(passingKMerValue <= args.min_kmer_len_arg)
+    eraise(std::runtime_error) << "Gap closing failed";
 
   charb superReadFastaString(1000);
   sprintf (tempFileName, "%s/work_localReadsFile_%d_2/superReadSequences.fasta",
            outDirName, passingKMerValue);
-  infile = fopen_throw (tempFileName, "r", "Reading SuperRead sequences");
+ infile = fopen_throw (tempFileName, "r", "Reading SuperRead sequences");
   fgets (line, 100, infile);
   sprintf (superReadFastaString, "%d ", threadArg.dirNum);
   while (fgets (line, 100, infile)){
@@ -348,7 +336,7 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName) {
   }
   fclose (infile);
 
-  fprintf(stderr,"%s%s\n",(char*)superReadFastaString,(char*)readPlacementLines);
+  fprintf(resultFile,"%s%s\n",(char*)superReadFastaString, (char*)readPlacementLines);
 
 // #if 0
 //   sprintf (cmd, "cp %s/work_localReadsFile_%d_2/superReadSequences.fasta %s/superReadSequences.%09d.fasta", outDirName, passingKMerValue, args.output_dir_arg, threadArg.dirNum);
@@ -359,21 +347,3 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName) {
 
   return;
 }
-
-int reportNumGaps (const char *fn)
-{
-     charb cmd(100), line(100);
-     FILE *infile;
-
-     sprintf (cmd, "tail -2 %s | head -1", fn);
-     infile = popen (cmd, "r");
-     fgets (line, 100, infile);
-     char *cptr = line;
-     while (! isdigit(*cptr))
-          cptr++;
-
-     int lastFauxContig = atoi (cptr);
-     int numGaps = (lastFauxContig+1)/2;
-     return (numGaps);
-}
-
