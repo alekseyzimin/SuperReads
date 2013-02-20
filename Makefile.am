@@ -160,6 +160,15 @@ runByDirectory_SOURCES = src2/runByDirectory.cc
 YAGGO_SOURCES += src2/runByDirectory_cmdline.hpp
 
 ##############################
+# Celera post-processing
+##############################
+bin_PROGRAMS += addSurrogatesToFrgCtgFile
+
+dist_bin_SCRIPTS += src2/addSurrogatesToFrgctg.perl src2/getUnitigTypeFromAsmFile.perl
+
+addSurrogatesToFrgCtgFile_SOURCES = src2/addSurrogatesToFrgCtgFile.cc
+
+##############################
 # unittests
 ##############################
 TESTS = all_tests
