@@ -7,3 +7,7 @@ cloc:
 	  --exclude-dir="gtest" --ignored=cloc_ignored_src_files \
 	  $(top_srcdir)/src $(top_srcdir)/src2 $(top_srcdir)/lib $(top_srcdir)/include $(top_srcdir)/unittests \
 	  $(top_srcdir)/Makefile.am $(top_srcdir)/*.mk
+
+
+# Make a dependency on yaggo the software
+$(YAGGO_SOURCES): $(YAGGO)
