@@ -39,6 +39,7 @@ int main (int argc, char **argv)
      std::map<std::string, readPlacementList> readPlacementsPerUnitig, unitigPlacementsPerContig,
 	  readPlacementsPerContig;
      readPlacementStruct rPSRecord;
+     std::map<std::string, std::string> surrogateUnitigToContigPlacement;
 
      infile = Fopen (argv[1], "r");
      while (fgets (line, 100, infile)) {
@@ -64,6 +65,7 @@ int main (int argc, char **argv)
 	  rPSRecord.endOffset = atoi(flds[3]);
 	  rPSRecord.ori = flds[4][0];
 	  readPlacementsPerUnitig[std::string(flds[1])].push_back (rPSRecord);
+	  surrogateUnitigToContigPlacement[rPSRecord.readName] = std::string("S");
      }
      fclose (infile);
 
@@ -88,22 +90,35 @@ int main (int argc, char **argv)
 	  rPSRecord.endOffset = atoi(flds[3]);
 	  rPSRecord.ori = flds[4][0];
 	  readPlacementsPerContig[std::string(flds[1])].push_back (rPSRecord);
+	  std::map<std::string, std::string>::iterator it =
+	       surrogateUnitigToContigPlacement.find (rPSRecord.readName);
+	  if (it != surrogateUnitigToContigPlacement.end())
+	       surrogateUnitigToContigPlacement[rPSRecord.readName] =
+		    std::string(flds[1]);
      }
      fclose (infile);
 
      // Now add the surrogates
-     for (std::map<std::string, readPlacementList>::iterator it=unitigPlacementsPerContig.begin(); it!=unitigPlacementsPerContig.end(); it++) {
+     for (std::map<std::string, readPlacementList>::iterator it=unitigPlacementsPerContig.begin(); it!=unitigPlacementsPerContig.end(); ++it) {
 	  std::string contigName = it->first;
 	  // The following does one iteration per unitig in the contig
-	  for (readPlacementList::iterator it2=(it->second).begin(); it2 != (it->second).end(); it2++) {
+	  for (readPlacementList::iterator it2=(it->second).begin(); it2 != (it->second).end(); ++it2) {
 	       readPlacementStruct unitigPlacementInContig = *it2;
 	       std::string unitigName = unitigPlacementInContig.readName;
 	       int unitigBegin = unitigPlacementInContig.beginOffset;
 	       int unitigEnd = unitigPlacementInContig.endOffset;
 	       char unitigOri = unitigPlacementInContig.ori;
 	       // The following does one iteration per read in the unitig
-	       for (readPlacementList::iterator it3=(readPlacementsPerUnitig[unitigName]).begin(); it3 != (readPlacementsPerUnitig[unitigName]).end(); it3++) {
+	       for (readPlacementList::iterator it3=(readPlacementsPerUnitig[unitigName]).begin(); it3 != (readPlacementsPerUnitig[unitigName]).end(); ++it3) {
 		    rPSRecord.readName = it3->readName;
+		    if (surrogateUnitigToContigPlacement[rPSRecord.readName] == contigName)
+			 continue;
+#if 0
+		    // This following is to not place if the read has already
+		    // been placed in the frgctg file
+		    if (surrogateUnitigToContigPlacement[rPSRecord.readName] != std::string("S"))
+			 continue;
+#endif
 		    if (unitigOri == 'f') {
 			 rPSRecord.beginOffset = unitigBegin + it3->beginOffset;
 			 rPSRecord.endOffset = unitigBegin + it3->endOffset;
@@ -125,17 +140,17 @@ int main (int argc, char **argv)
      // When we get here we've added all the records needed for all contigs
 	  
      std::vector<std::string> contigList;
-     for (std::map<std::string, readPlacementList>::iterator it=readPlacementsPerContig.begin(); it!=readPlacementsPerContig.end(); it++)
+     for (std::map<std::string, readPlacementList>::iterator it=readPlacementsPerContig.begin(); it!=readPlacementsPerContig.end(); ++it)
 	  contigList.push_back (it->first);
      // Now we sort the contigs in numerical order
      sort (contigList.begin(), contigList.end());
-     //     for (int i=0; i<contigList.size(); i++) {
+//     for (int i=0; i<contigList.size(); i++) {
      for(auto contigName = contigList.cbegin(); contigName != contigList.cend(); ++contigName) {
-       //	  std::string contigName = contigList[i];
+//	  std::string contigName = contigList[i];
 	  // Now sort the reads in placement order
 	  std::sort (readPlacementsPerContig[*contigName].begin(), readPlacementsPerContig[*contigName].end(), readPlacementCompare);
 	  
-	  for (readPlacementList::iterator it=readPlacementsPerContig[*contigName].begin(); it!=readPlacementsPerContig[*contigName].end(); it++) {
+	  for (readPlacementList::iterator it=readPlacementsPerContig[*contigName].begin(); it!=readPlacementsPerContig[*contigName].end(); ++it) {
 	       printf ("%s %s %d %d %c\n", it->readName.c_str(), contigName->c_str(), it->beginOffset, it->endOffset, it->ori);
 	  }
      }
