@@ -324,7 +324,15 @@ void reportKUnitigEndMatches (void)
 	  }
      }
 
-     fwrite (overlapDataToSave, sizeof (struct overlapDataStruct), numOvlsOutput, overlapsFile);
+     size_t written = 0;
+     while(written < numOvlsOutput) {
+       size_t res = fwrite (overlapDataToSave + written, sizeof (struct overlapDataStruct),
+                            numOvlsOutput - written, overlapsFile);
+       if(res == 0)
+         eraise(std::runtime_error) << "Failed to write overlaps to file"
+                                    << jellyfish::err::no;
+       written += res;
+     }
      
      if (createCoordsFile)
 	  fclose (coordsFile);

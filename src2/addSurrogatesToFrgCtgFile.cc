@@ -129,13 +129,14 @@ int main (int argc, char **argv)
 	  contigList.push_back (it->first);
      // Now we sort the contigs in numerical order
      sort (contigList.begin(), contigList.end());
-     for (int i=0; i<contigList.size(); i++) {
-	  std::string contigName = contigList[i];
+     //     for (int i=0; i<contigList.size(); i++) {
+     for(auto contigName = contigList.cbegin(); contigName != contigList.cend(); ++contigName) {
+       //	  std::string contigName = contigList[i];
 	  // Now sort the reads in placement order
-	  std::sort (readPlacementsPerContig[contigName].begin(), readPlacementsPerContig[contigName].end(), readPlacementCompare);
+	  std::sort (readPlacementsPerContig[*contigName].begin(), readPlacementsPerContig[*contigName].end(), readPlacementCompare);
 	  
-	  for (readPlacementList::iterator it=readPlacementsPerContig[contigName].begin(); it!=readPlacementsPerContig[contigName].end(); it++) {
-	       printf ("%s %s %d %d %c\n", it->readName.c_str(), contigName.c_str(), it->beginOffset, it->endOffset, it->ori);
+	  for (readPlacementList::iterator it=readPlacementsPerContig[*contigName].begin(); it!=readPlacementsPerContig[*contigName].end(); it++) {
+	       printf ("%s %s %d %d %c\n", it->readName.c_str(), contigName->c_str(), it->beginOffset, it->endOffset, it->ori);
 	  }
      }
      
