@@ -22,7 +22,10 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <string.h>
+
+#ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif
 
 /** Allocators. The interface does not match that of
  * std::allocators. It is composed of only 1 operator which should
