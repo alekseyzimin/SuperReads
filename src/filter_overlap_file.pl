@@ -16,17 +16,16 @@ while($line=<FILE>){
 close(FILE);
 
 my @frags=();
-open(FILE,"gatekeeper -dumpfragments -withsequence $gkpStore  | ");
+open(FILE,"gatekeeper -dumpfastaseq $gkpStore  | ");
 while($line=<FILE>){
-    if($line =~ /^fragmentIdent/){
+    if($line =~ /^>/){
         chomp($line);
         my @f=split(' ',$line);
-	my @ff=split(/,/,$f[2]);
+	my @ff=split(/,/,$f[0]);
         $iid=$ff[1];
-    } elsif($line =~ /^fragmentSequence/){
+    }else{
         chomp($line);
-        my @f=split(' ',$line);
-        $frags[$iid]=$f[2];
+        $frags[$iid].=$line;
     }
 }
 close(FILE);
