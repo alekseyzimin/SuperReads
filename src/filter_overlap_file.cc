@@ -44,9 +44,8 @@ fragment_map read_fragments(const char* path) {
     if(!getline(fd, header)) break;
     if(header[0] != '>') break;
     if(!getline(fd, sequence)) break;
-//    size_t        comma = header.find(',');
-//    unsigned long id    = std::stoul(header.substr(comma + 1));
-    unsigned long id    = std::stoul(header.substr(1));
+    size_t        comma = header.find(',');
+    unsigned long id    = std::stoul(header.substr(comma + 1));
     res[id]             = dna_fragment(sequence);
   }
 
