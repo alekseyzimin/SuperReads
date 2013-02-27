@@ -9,8 +9,11 @@ option("t", "threads") {
 option("o", "output") {
   description "Output file"
   c_string; typestr "path"; default "/dev/fd/1" }
+option("dump") {
+  description "Fragment in raw -dumpfragment format"
+  off }
 arg("fragments") {
-  description "Fragments in fasta format with gkpStore header"
+  description "Fragments from gkpStore, by default as fasta"
   c_string; typestr "path" }
 arg("kmer") {
   description "k-mer counts on the U-unitigs"

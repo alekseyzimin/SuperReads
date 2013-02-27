@@ -21,7 +21,6 @@
 #include <unordered_map>
 
 #include <jellyfish/jellyfish.hpp>
-#include <src/dna_fragment.hpp>
 #include <src/filter_overlap_file_cmdline.hpp>
 #include <jellyfish/thread_exec.hpp>
 #include <jflib/multiplexed_parser.hpp>
@@ -33,9 +32,31 @@ using jellyfish::thread_exec;
 using jellyfish::mer_dna;
 using jflib::o_multiplexer;
 using jflib::omstream;
-typedef std::unordered_map<unsigned long, dna_fragment> fragment_map;
+typedef std::unordered_map<unsigned long, std::string> fragment_map;
 
-fragment_map read_fragments(const char* path) {
+fragment_map read_fragments_dump(const char* path) {
+  std::ifstream fd(path);
+  std::string line;
+  const std::string ident("fragmentIdent");
+  const std::string seq("fragmentSequence");
+  unsigned long id;
+  fragment_map res;
+
+  while(true) {
+    if(!getline(fd, line)) break;
+    if(line.substr(0, ident.size()) == ident) {
+      size_t comma = line.find(',');
+      id           = std::stoul(line.substr(comma + 1));
+    } else if(line.substr(0, seq.size()) == seq) {
+      size_t equal = line.find('=');
+      res[id]      = line.substr(equal + 2);
+    }
+  }
+  return res;
+}
+
+
+fragment_map read_fragments_fasta(const char* path) {
   std::ifstream fd(path);
   std::string   header, sequence;
   fragment_map  res;
@@ -46,7 +67,7 @@ fragment_map read_fragments(const char* path) {
     if(!getline(fd, sequence)) break;
     size_t        comma = header.find(',');
     unsigned long id    = std::stoul(header.substr(comma + 1));
-    res[id]             = dna_fragment(sequence);
+    res[id]             = sequence;
   }
 
   return res;
@@ -126,6 +147,39 @@ public:
     lines_.start_parsing();
   }
 
+  void fill_mers(mer_array& mers, const std::string& fragment,
+                 const long start, const long end, const char ori,
+                 const mer_array* intersect) {
+    mers.clear();
+
+    mer_dna m;
+    unsigned int len = 0;
+    if(ori == 'N') { // Forward orientation
+      for(long i = start; i < end; ++i) {
+        int code = jellyfish::mer_dna::code(fragment[i]);
+        if(code >= 0) {
+          m.shift_left(code);
+          if(++len >= mer_dna::k() && (!intersect || intersect->has_key(m)))
+            mers.set(m);
+        } else {
+          len = 0;
+        }
+      }
+    } else { // Reverse orientation
+      long flast = fragment.size() - 1;
+      for(long i = flast - start; i > flast - end; --i) {
+        int code = jellyfish::mer_dna::code(fragment[i]);
+        if(code >= 0) {
+          m.shift_left(jellyfish::mer_dna::complement(code));
+          if(++len >= mer_dna::k() && (!intersect || intersect->has_key(m)))
+            mers.set(m);
+        } else {
+          len = 0;
+        }
+      }
+    }
+  }
+
   virtual void start(int id) {
     // hashes to store k-mers from each reads
     mer_array mers1(4096, // fragment at most 2047 long
@@ -141,7 +195,7 @@ public:
       // Parse line: id1 id2 ori ahang bhang ....
       unsigned long id1 = strtol(line, &endptr, 10);
       unsigned long id2 = strtol(endptr, &endptr, 10);
-      if(id1 >= id2)
+      if(id1 > id2)
         continue;
       while(*endptr && isspace(*endptr)) ++endptr;
       if(*endptr == '\0')
@@ -149,7 +203,6 @@ public:
       char ori = *endptr++;
       long ahang = strtol(endptr, &endptr, 10);
       long bhang = strtol(endptr, &endptr, 10);
-      //      std::cerr << id1 << " " << id2 << " " << ori << " " << ahang << " " << bhang << "\n";
 
       // Get sequences and range of matches
       auto frag1_it = fragments_.find(id1);
@@ -157,16 +210,14 @@ public:
         std::cerr << "Unknown fragment id " << id1 << "\n";
         continue;
       }
-      const dna_fragment& frag1 = frag1_it->second;
+      const std::string& frag1 = frag1_it->second;
 
       auto frag2_it = fragments_.find(id2);
       if(frag2_it == fragments_.end()) {
         std::cerr << "Unknown fragment id " << id2 << "\n";
         continue;
       }
-      dna_fragment frag2 = frag2_it->second;
-      if(ori == 'I')
-        frag2.reverse_complement();
+      const std::string& frag2 = frag2_it->second;
 
       long start1 = 0, start2 = 0;
       if(ahang >= 0) {
@@ -180,28 +231,13 @@ public:
       } else {
         end1 += bhang;
       }
-      //      std::cerr << "(" << start1 << ", " << end1 << ") ("
-      //                << start2 << ", " << end2 << ") " << ori << "\n";
 
       // Find k-mers in common in the overlap region
-      mers1.clear();
-      for( ; start1 <= end1 - mer_dna::k(); ++start1) {
-        mer_dna m1 = frag1.sub_mer(start1);
-        //        std::cerr << "mer1 " << m1 << "\n";
-        mers1.set(m1);
-      }
-
-      mers2.clear();
-      for( ; start2 <= end2 - mer_dna::k(); ++start2) {
-        mer_dna m2 = frag2.sub_mer(start2);
-        //        std::cerr << "mer2 " << m2 << " in 1 " << mers1.has_key(m2) << "\n";
-        if(mers1.has_key(m2))
-          mers2.set(m2);
-      }
+      fill_mers(mers1, frag1, start1, end1, 'N', 0);
+      fill_mers(mers2, frag2, start2, end2, ori, &mers1);
 
       auto it = mers2.eager_slice(0, 1);
       while(it.next()) {
-        //        std::cerr << "test " << it.key() << (bad_mers_.has_key(it.key().get_canonical()) ? " bad" : " good") << "\n";
         if(!bad_mers_.has_key(it.key().get_canonical())) {
           out << id1 << " " << id2 << " " << ori << " " << ahang << " " << bhang << endptr << "\n";
           out << jflib::endr;
@@ -216,7 +252,8 @@ int main(int argc, char *argv[])
 {
   filter_overlap_file_cmdline args(argc, argv);
 
-  fragment_map fragments = read_fragments(args.fragments_arg);
+  fragment_map fragments = args.dump_flag ?
+    read_fragments_dump(args.fragments_arg) : read_fragments_fasta(args.fragments_arg);
   mer_array bad_mers = read_bad_mers(args.kmer_arg);
 
   filter overlap_filter(args.threads_arg, args.overlaps_arg, fragments, bad_mers, args.output_arg);
