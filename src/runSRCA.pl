@@ -477,6 +477,7 @@ if(not(-e "combined_0") || $rerun_pe==1){
         }
         }'`\n";
 
+    print FILE "echo \"Error correction Poisson cutoff = \$CUTOFF\"\n";
 #check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
     print FILE "if [[ -e pe_trim_1 || -e pe_all_1 ]];then\n";
     print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2\"\n";
