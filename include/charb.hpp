@@ -185,7 +185,7 @@ char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
     start = b.base_ + soff;
   }
 
-  if(cptr == b.base_)
+  if(cptr == start)
     return 0;
   assert(cptr != NULL);
   b.ptr_ = cptr;
