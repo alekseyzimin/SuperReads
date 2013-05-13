@@ -21,17 +21,7 @@ my $total_count=0;
 my $uidfile=$ARGV[0];
 my $countsfile=$ARGV[1];
 my $readlen=$ARGV[2];
-my $renamed_sr=$ARGV[3];
-
-my %r_sr;
-open(FILE,$renamed_sr);
-while($line=<FILE>){
-  chomp($line);
-  @f=split(/\s+/,$line);
-  $r_sr{$f[0]}=$f[1];
-}
-close(FILE);
-
+my $srFRGfile=$ARGV[3];
 
 my @uid;
 open(FILE,$uidfile);
@@ -41,18 +31,25 @@ while($line=<FILE>){
 }
 close(FILE);
 
-my %counts;
+my @counts;
 open(FILE,$countsfile);
 while($line=<FILE>){
   @f=split(/\s+/,$line);
-  if(defined($counts{$f[1]})){
-    $counts{$f[1]}++;
-  }
-  else{
-    $counts{$f[1]}=1;
+  $counts[$f[1]]++;
+}
+close(FILE);
+
+my @parts;
+open(FILE,$srFRGfile);
+while($line=<FILE>){
+  if($line=~ /^acc:/){
+  @f=split(/\:/,$line);
+  $parts[$f[1]]++;
   }
 }
 close(FILE);
+
+
 
 #now if we need to find out the count by iid, it is here $counts{$uid[$iid]}
 
@@ -98,22 +95,16 @@ while($line=<STDIN>){
     @l=split(/\s+/,$line);
     @f=split(/\:/,$uid[$l[4]]);
     
-    if(defined($counts{$f[0]})){
+    next if(not($f[1] =~ /^super-read/));
+    if($counts[$f[0]]>0 && $parts[$f[0]]>0){
       $r=$l[13] if($l[13]>$r);
       $r=$l[14] if($l[14]>$r);
       
-      $c+=$counts{$f[0]};
-      $counts{$f[0]}=0;
-    }
-    elsif(defined($counts{$r_sr{$f[0]}})){
-      $r=$l[13] if($l[13]>$r);
-      $r=$l[14] if($l[14]>$r);
-      
-      $c+=$counts{$r_sr{$f[0]}};
-      $counts{$r_sr{$f[0]}}=0;
+      $c+=$counts[$f[0]]/$parts[$f[0]];
     }
   }
 }
+
 if($c>0)
 {
   $count{$utg}=$c;
@@ -129,13 +120,6 @@ foreach $v(keys %count)
 {
   print STDERR "$v $cg_content{$v}\n";
   my $astat=($rho{$v}*$global_arrival_rate)-(0.6931471805599453094*$count{$v});
-#if($rho{$v}>2000&&$astat<0)
-#{
-#print "unitig_coverage_stat $v 10\n";
-#}
-#else
-#{
   print "unitig_coverage_stat $v $astat\n";
-#}
 }
 
