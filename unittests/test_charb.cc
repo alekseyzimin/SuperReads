@@ -1,6 +1,6 @@
 /* SuperRead pipeline
  * Copyright (C) 2012  Genome group at University of Maryland.
- * 
+ *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -25,7 +25,7 @@ TEST(CharbBasic, Init) {
   charb empty;
   EXPECT_EQ((size_t)0, empty.capacity());
   EXPECT_EQ((size_t)0, empty.len());
-  
+
   charb init_len(20);
   EXPECT_EQ((size_t)21, init_len.capacity());
   EXPECT_EQ((size_t)0, init_len.len());
@@ -96,7 +96,7 @@ TEST(CharbBasic, Copy) {
   EXPECT_STREQ(str, from_copy_str);
   EXPECT_EQ('H', from_copy_str.front());
   EXPECT_EQ('d', from_copy_str.back());
-  
+
 
   charb x("Hello");
   x[3] = '_';
@@ -107,7 +107,7 @@ TEST(CharbBasic, Cast) {
   static const char *str = "This is a char buffer";
   const size_t str_len = strlen(str);
   charb b(str);
-  
+
   char *s = b;
   EXPECT_EQ((void*)s, (void*)&b[0]);
   EXPECT_EQ(str_len, strlen(b));
@@ -117,7 +117,7 @@ TEST(CharbBasic, Cast) {
 TEST(CharbBasic, Strerror_r) {
   charb b;
   errno = EINVAL;
-#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE 
+#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
   int res = strerror_r(errno, b);
   EXPECT_EQ(0, res);
   EXPECT_LT(0, strlen(b));
@@ -145,7 +145,7 @@ TEST_F(CharbStd, Strcat) {
   EXPECT_STREQ(s1, b);
   EXPECT_STREQ(s1, res);
   EXPECT_EQ(strlen(s1), b.len());
-  
+
   std::string sres(s1);
   sres += s2;
   res = strcat(b, s2);
@@ -187,7 +187,7 @@ protected:
       throw std::runtime_error("Can't create tmp file");
     l1 = "Hello there\n";
     l2 = "A very long and meaningless sentence-line.";
-    fputs(l1, tf); 
+    fputs(l1, tf);
     fputs(l2, tf);
     rewind(tf);
   }
@@ -240,7 +240,7 @@ TEST_F(IOTest, getline) {
   EXPECT_EQ(strlen(l2), (size_t)res);
   EXPECT_STREQ(l2, b);
   EXPECT_LE(strlen(l2), b.len());
-  
+
   res = getline(b, tf);
   EXPECT_EQ(-1, res);
 }
@@ -254,7 +254,7 @@ TEST_F(IOTest, getline_append) {
   EXPECT_TRUE(is.good());
   std::string res(l1, strlen(l1) - 1); // Everything but "\n"
   EXPECT_STREQ(res.c_str(), b);
-  
+
   getline_append(is, b);
   EXPECT_EQ(strlen(l1) + strlen(l2) - 1, b.len());
   EXPECT_EQ(strlen(l1) + strlen(l2) - 1, strlen(b));
@@ -275,6 +275,8 @@ TEST_F(IOTest, fgets_append) {
   str_res += l2;
   EXPECT_STREQ(str_res.c_str(), b);
   EXPECT_EQ(strlen(l1) + strlen(l2), b.len());
+
+  EXPECT_STREQ((char*)0, fgets_append(b, tf));
 }
 
 TEST_F(IOTest, getline_cpp) {
@@ -289,7 +291,7 @@ TEST_F(IOTest, getline_cpp) {
   if(*(it = str.end() - 1) == '\n')
     str.erase(it);
   EXPECT_STREQ(str.c_str(), b);
-  
+
   EXPECT_TRUE((bool)getline(is, b));
   str.assign(l2);
   if(*(it = str.end() - 1) == '\n')

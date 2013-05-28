@@ -22,7 +22,9 @@
 //#define _GNU_SOURCE
 #include <string.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <algorithm>
+#include <iostream>
 
 // IO manipulator for substrings
 class substr {
@@ -81,5 +83,23 @@ int appendFldsFromLine(char *line, T &res, const char* sep = " \t\n") {
 #include <signal.h>
 
 #define BREAKPOINT raise(SIGINT);
+
+template<long int n>
+struct ConstFloorLog2 {
+  static const int val = ConstFloorLog2<n / 2>::val + 1;
+};
+template<>
+struct ConstFloorLog2<1> {
+  static const int val = 0;
+};
+// Return length random bits
+inline uint64_t random_bits(int length) {
+  uint64_t res = 0;
+  for(int i = 0; i < length; i += ConstFloorLog2<RAND_MAX>::val) {
+    res ^= (uint64_t)random() << i;
+  }
+  return res & ((uint64_t)-1 >> (8 * sizeof(uint64_t) - length));
+}
+
 
 #endif

@@ -4,9 +4,9 @@
 #include <algorithm>
 #include <utility>
 #include <functional>
-#include <jflib/atomic_field.hpp>
-#include <jflib/compare_and_swap.hpp>
-#include <jflib/locks_pthread.hpp>
+#include <jellyfish/atomic_field.hpp>
+#include <jellyfish/compare_and_swap.hpp>
+#include <jellyfish/locks_pthread.hpp>
 #include <skip_list_common.hpp>
 
 /** Multi-threaded lock free set based on skip list. In multi-threaded
@@ -35,11 +35,11 @@ protected:
     node*  val;
   };
 
-  node**                       heads_;
-  int                          max_height_;
-  Compare                      comp_;
-  Random                       rand_;
-  jflib::locks::pthread::mutex seed_mutex;
+  node**                           heads_;
+  int                              max_height_;
+  Compare                          comp_;
+  Random                           rand_;
+  jellyfish::locks::pthread::mutex seed_mutex;
 
 public:
   typedef Key                                   key_type;
@@ -349,7 +349,7 @@ private:
   }
 
   uint64_t new_seed() {
-    jflib::locks::pthread::mutex_lock ml(seed_mutex);
+    jellyfish::locks::pthread::mutex_lock ml(seed_mutex);
     return rand_();
   }
 };

@@ -1,5 +1,5 @@
 AC_PREREQ([2.63])
-AC_INIT([SuperReads], [0.0.1], [alekseyz@ipst.umd.edu], [SuperReads])
+AC_INIT([SuperReads], [0.2.0], [alekseyz@ipst.umd.edu], [SuperReads])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([subdir-objects])
 AM_SILENT_RULES([yes])
@@ -26,16 +26,11 @@ AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [Def
 # Checks for header files.
 
 # Checks for Jellyfish module
-PKG_CHECK_MODULES([JELLYFISH1_1], [jellyfish-1.1])
 PKG_CHECK_MODULES([JELLYFISH2_0], [jellyfish-2.0])
 
 # Check for yaggo
 AC_ARG_VAR([YAGGO], [Yaggo switch parser generator])
 AS_IF([test "x$YAGGO" = "x"], [AC_PATH_PROG([YAGGO], [yaggo], [false])])
-
-# Checks for typedefs, structures, and compiler characteristics.
-AC_CHECK_TYPE(__int128,
-              [AC_DEFINE([HAVE_INT128], [1], [Define if type __int128 is supported])])
 
 # --enable-all-static
 AC_ARG_ENABLE([all-static],
@@ -47,7 +42,7 @@ AS_IF([test "x$enable_all_static" = xyes],
 # Extra compiler debugging
 AC_ARG_VAR([DEV_CXXFLAGS], [Extra compiler flags for development])
 if test "x$DEV_CXXFLAGS" = "x"; then
-DEV_CXXFLAGS=-Werror
+DEV_CXXFLAGS="-Werror -D_FORTIFY_SOURCE=2"
 # Check for -Wunused-but-set-variable
 my_save_cxxflags="$CXXFLAGS"
 CXXFLAGS=-Wunused-but-set-variable

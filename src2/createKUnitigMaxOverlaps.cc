@@ -62,13 +62,14 @@
 #include <string>
 #include <vector>
 
-#include <err.hpp>
+#include <jellyfish/err.hpp>
 #include <charb.hpp>
-#include <src/mer_dna.hpp>
+#include <jellyfish/mer_dna.hpp>
 
 #define KMER_LENGTH 31
 #define EST_OVLS_PER_KUNITIG 5
 
+using jellyfish::mer_dna;
 class endKUnitigKmerStruct {
 public:
      mer_dna kMerValue;  // (kmerLen as an arg?)
@@ -323,7 +324,15 @@ void reportKUnitigEndMatches (void)
 	  }
      }
 
-     fwrite (overlapDataToSave, sizeof (struct overlapDataStruct), numOvlsOutput, overlapsFile);
+     size_t written = 0;
+     while(written < numOvlsOutput) {
+       size_t res = fwrite (overlapDataToSave + written, sizeof (struct overlapDataStruct),
+                            numOvlsOutput - written, overlapsFile);
+       if(res == 0)
+         eraise(std::runtime_error) << "Failed to write overlaps to file"
+                                    << jellyfish::err::no;
+       written += res;
+     }
      
      if (createCoordsFile)
 	  fclose (coordsFile);
@@ -424,7 +433,7 @@ int getLargestKUnitigNumber (char *prefix, int numInputFiles)
 	  infile = Fopen (fname, "r");
 	  fseek (infile, fileOffset, SEEK_SET);
 	  if(!fgets (line, infile))
-            die << "Error reading file '" << fname << "'" << err::no;
+            die << "Error reading file '" << fname << "'" << jellyfish::err::no;
 	  while (fgets (line, 1000000, infile)) {
 	       if (line[0] != '>')
 		    continue;
@@ -468,7 +477,7 @@ void loadKUnitigSequences (char *prefix, int numInputFiles)
 	       strcpy (fname, prefix);
 	  infile = Fopen (fname, "r");
 	  if(!infile)
-	    die << "Can't open file '" << fname << "'" << err::no;
+	    die << "Can't open file '" << fname << "'" << jellyfish::err::no;
 	  
 	  int next_char = fgetc(infile);
 	  if(next_char != '>')

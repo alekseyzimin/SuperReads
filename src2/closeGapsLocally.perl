@@ -121,7 +121,7 @@ close (FILE);
 $suffix = $localReadsFile . "_" . $reduceReadSetKMerSize . "_" . $kUnitigContinuationNumber;
 $cmd = "jellyfish dump fishingAll_0 -c |";
 open (FILE, $cmd);
-$outcmd = "| jellyfish count -s $localJellyfishHashSize -C -r -t $numThreads -m $reduceReadSetKMerSize -o k_u_hash_${suffix}_faux_reads /dev/fd/0";
+$outcmd = "| jellyfish count -s $localJellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -o k_u_hash_${suffix}_faux_reads /dev/fd/0";
 open (OUTFILE, $outcmd);
 print OUTFILE ">strangeFishingOutfile\n";
 while ($line = <FILE>) {
@@ -130,24 +130,13 @@ while ($line = <FILE>) {
     print OUTFILE $kmer,"N\n"; }
 # print OUTFILE "\n";
 close (FILE); close (OUTFILE);
-# End section that eliminates k-mers that occur too often
-
-if (0) {
-$suffix = $localReadsFile . "_" . $reduceReadSetKMerSize . "_" . $kUnitigContinuationNumber;
-$localJellyfishHashSize = -s $fishingEndPairs;
-$localJellyfishHashSize = int ($localJellyfishHashSize / .79) + 1;
-$cmd = "jellyfish count -m $reduceReadSetKMerSize -t $numThreads -C -r -s $localJellyfishHashSize -o k_u_hash_${suffix}_faux_reads $fishingEndPairs";
-runCommandAndExitIfBad ($cmd);
-$tfile = "k_u_hash_${suffix}_faux_reads_1";
-if (-e $tfile) {
-    print STDERR "The jellyfish hash size must be made larger. Bye!\n";
-    exit (1); }
-} # End of 'if (0)' section
-
-$cmd = "$exeDir/create_k_unitigs -C -t $numThreads -l $reduceReadSetKMerSize -m 1 -M 1 -o k_unitigs_${suffix}_faux_reads k_u_hash_${suffix}_faux_reads_0";
-runCommandAndExitIfBad ($cmd);
 
 $kUnitigFilename = "k_unitigs_${suffix}_faux_reads.fa";
+
+# End section that eliminates k-mers that occur too often
+$cmd = "jellyfish dump -c k_u_hash_${suffix}_faux_reads_0 | awk 'BEGIN{n=0}{n++;print \">\"n\"length:$reduceReadSetKMerSize\\n\"\$1}' > $kUnitigFilename";
+runCommandAndExitIfBad ($cmd);
+
 $kUnitigFilesize = -s $kUnitigFilename;
 $cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $kUnitigFilename -s $kUnitigFilesize -low-memory -l $reduceReadSetKMerSize --stopAfter findReadKUnitigMatches -t $numThreads -mkudisr 0 workFauxVsFaux $fishingEndPairs 1>>out.${suffix}_workFauxVsFaux 2>>out.${suffix}_workFauxVsFaux";
 runCommandAndExitIfBad ($cmd);
@@ -162,11 +151,11 @@ $cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
 runCommandAndExitIfBad ($cmd);
 
 # Now run the directories
-$cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --num-stdevs-allowed $numStdevsAllowed --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . 2> out.err";
+$cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --num-stdevs-allowed $numStdevsAllowed --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . -o output.txt";
 runCommandAndExitIfBad ($cmd);
 
 # $cmd = "$exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl out.err superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --num-stdevs-allowed $numStdevsAllowed";
-$cmd = "$exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl out.err superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt";
+$cmd = "$exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl output.txt superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt";
 runCommandAndExitIfBad ($cmd);
 
 if (! $keepDirectoriesFlag) {

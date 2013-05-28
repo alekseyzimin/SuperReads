@@ -24,7 +24,7 @@
 #include <map>
 #include <exp_buffer.hpp>
 #include <charb.hpp>
-#include <err.hpp>
+#include <jellyfish/err.hpp>
 #include <misc.hpp> // for getFldsFromLine
 #include <src/sr_names.hpp>
 #include <src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses_cmdline.hpp>
@@ -127,7 +127,7 @@ int main (int argc, char **argv)
 
   std::ofstream output(args.output_arg);
   if(!output.good())
-    die << "Can't open output file '" << args.output_arg << "'" << err::no;
+    die << "Can't open output file '" << args.output_arg << "'" << jellyfish::err::no;
 
   if(args.debug_flag)
     std::cerr << "First pass" << std::endl;

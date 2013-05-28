@@ -24,21 +24,23 @@
 #include <algorithm>
 #include <set>
 #include <jellyfish/mapped_file.hpp>
-#include <thread_exec.hpp>
+#include <jellyfish/thread_exec.hpp>
 #include <gzip_stream.hpp>
 #include <src/bloom_counter2.hpp>
 #include <src/MurmurHash3.h>
 #include <src/read_parser.hpp>
-#include <src/mer_dna.hpp>
+#include <jellyfish/mer_dna.hpp>
 #include <src/mer_stream.hpp>
 #include <src/bloom_filter.hpp>
 #include <jflib/multiplexed_io.hpp>
-#include <jflib/atomic_field.hpp>
+#include <jellyfish/atomic_field.hpp>
 #include <src/create_k_unitigs_large_k_cmdline.hpp>
 
 // GLOBAL: command line switches
 cmdline_parse args;
 
+using jellyfish::thread_exec;
+using jellyfish::mer_dna;
 struct mer_dna_hash {
   void operator()(const mer_dna& m, uint64_t *hashes) const {
     MurmurHash3_T_128(m, (m.k() / 4) + (m.k() % 4 != 0), 0, hashes);
@@ -347,11 +349,12 @@ int main(int argc, char *argv[])
 
   // Populate Bloom filter with k-mers
   std::auto_ptr<mer_bloom_counter2> kmers;
+  std::auto_ptr<jellyfish::mapped_file> dbf;
 
   {
     if(args.load_given) {
-      mapped_file dbf(args.load_arg);
-      uint64_t* base = (uint64_t*)dbf.base();
+      dbf.reset(new jellyfish::mapped_file(args.load_arg));
+      uint64_t* base = (uint64_t*)dbf->base();
       kmers.reset(new mer_bloom_counter2(base[0], base[1], (unsigned char*)(base + 2)));
     } else {
       kmers.reset(new mer_bloom_counter2(args.false_positive_arg, args.nb_mers_arg));
@@ -361,7 +364,7 @@ int main(int argc, char *argv[])
       populate.exec_join(args.threads_arg);
     }
   }
-  
+
   if(args.save_given) {
     std::ofstream save_file(args.save_arg);
     if(!save_file) {
@@ -381,7 +384,7 @@ int main(int argc, char *argv[])
     bloom_filter_type used(args.false_positive_arg, args.nb_mers_arg);
     read_parser parser(args.input_arg.begin(), args.input_arg.end(),
                        args.threads_arg);
-    unitiger_type unitiger(*kmers, used, args.threads_arg, parser, 
+    unitiger_type unitiger(*kmers, used, args.threads_arg, parser,
                            *output_ostream);
     unitiger.exec_join(args.threads_arg);
   }

@@ -16,7 +16,7 @@
  */
 
 
-#include <src/mer_dna.hpp>
+#include <jellyfish/mer_dna.hpp>
 #include <iostream>
 
 const char mer_dna_ns::dna_codes::rev_codes[4] = { 'A', 'C', 'G', 'T' };

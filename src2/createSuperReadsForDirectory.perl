@@ -157,8 +157,6 @@ else { # The following is so we stop here if we are using --stopAfter createLeng
     &runCommandAndExitIfBad ("", "", 0, "createLengthStatisticsForMergedKUnitigsFiles"); }
 
 open (FILE, $mergedMaxKUnitigNumberFile); $maxKUnitigNumber = <FILE>; chomp ($maxKUnitigNumber); close (FILE);
-$cmd = "$exeDir/createKUnitigMaxOverlaps $mergedUnitigInputKUnitigsFile -kmervalue $merLen -largest-kunitig-number ".(int($maxKUnitigNumber)+1)." $prefixForOverlapsBetweenKUnitigs";
-&runCommandAndExitIfBad($cmd, $kUnitigOverlapsFile, 1, "createKUnitigMaxOverlaps", $kUnitigOverlapsFile, "$workingDirectory/overlap.coords");
 
 if ($mergedUnitigDataPrefix) {
     $mergedUnitigDataFileStr = "--kunitigs-translation-file $mergedUnitigInputKUnitigMappingFile"; }
@@ -166,14 +164,19 @@ if ($mergedUnitigDataPrefix) {
 $normalFileSizeMinimum = 1;
 if ($closeGaps) { $normalFileSizeMinimum = 0; }
 if ($lowMemory==0) {
+    $cmd = "$exeDir/createKUnitigMaxOverlaps $mergedUnitigInputKUnitigsFile -kmervalue $merLen -largest-kunitig-number ".(int($maxKUnitigNumber)+1)." $prefixForOverlapsBetweenKUnitigs";
+    &runCommandAndExitIfBad($cmd, $kUnitigOverlapsFile, 0, "createKUnitigMaxOverlaps", $kUnitigOverlapsFile, "$workingDirectory/overlap.coords");
+
     # Find the matches of k-unitigs to reads and pipe to the shooting method
     $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads -m $merLen -t $numProcessors -o /dev/fd/1 $kUnitigsFile $maxKUnitigNumberFile $minSizeNeededForTable @fastaFiles | $exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --num-stdevs-allowed $numStdevsAllowed --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors --join-aggressive $joinAggressive /dev/fd/0";
     &runCommandAndExitIfBad ($cmd, $joinerOutput, $normalFileSizeMinimum, "joinKUnitigs", $joinerOutput); }
 else {
     # Find the matches of k-unitigs to reads, save to disk
     $cmd = "$exeDir/findMatchesBetweenKUnitigsAndReads -m $merLen -t $numProcessors -o $readKUnitigMatchOutput $kUnitigsFile $maxKUnitigNumberFile  $minSizeNeededForTable @fastaFiles";
-&runCommandAndExitIfBad ($cmd, $readKUnitigMatchOutput, 1, "findReadKUnitigMatches", $readKUnitigMatchOutput);
-    if (! $mikedebug) { &killFiles ($jellyfishKUnitigHashFile); }
+    &runCommandAndExitIfBad ($cmd, $readKUnitigMatchOutput, 1, "findReadKUnitigMatches", $readKUnitigMatchOutput);
+
+    $cmd = "$exeDir/createKUnitigMaxOverlaps $mergedUnitigInputKUnitigsFile -kmervalue $merLen -largest-kunitig-number ".(int($maxKUnitigNumber)+1)." $prefixForOverlapsBetweenKUnitigs";
+    &runCommandAndExitIfBad($cmd, $kUnitigOverlapsFile, 0, "createKUnitigMaxOverlaps", $kUnitigOverlapsFile, "$workingDirectory/overlap.coords");
 
     # Do the shooting method here
     $cmd = "$exeDir/joinKUnitigs_v3 --max-nodes-allowed $maxNodes --mean-and-stdev-by-prefix-file $meanAndStdevByPrefixFile --num-stdevs-allowed $numStdevsAllowed --unitig-lengths-file $mergedKUnitigLengthsFile --num-kunitigs-file $mergedMaxKUnitigNumberFile --overlaps-file $kUnitigOverlapsFile --min-overlap-length $merLenMinus1 -o $joinerOutput $mergedUnitigDataFileStr -t $numProcessors --join-aggressive $joinAggressive $readKUnitigMatchOutput";

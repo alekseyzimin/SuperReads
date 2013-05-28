@@ -26,7 +26,7 @@
 #include <memory>
 
 #include <charb.hpp>
-#include <err.hpp>
+#include <jellyfish/err.hpp>
 #include <src/sorted_merge_cmdline.hpp>
 
 /** Like 'sort -m', but more limited and much faster. Supports sorting
@@ -116,7 +116,7 @@ void merge_files(std::ofstream &os, uint32_t col, It begin, It end) {
   for(It it = begin; it != end; ++it) {
     heap_elt<T>* new_elt = new heap_elt<T>(*it);
     if(!new_elt->is.good())
-      die << "Failed to open input file '" << *it << "'" << err::no;
+      die << "Failed to open input file '" << *it << "'" << jellyfish::err::no;
     if(parse_line(new_elt, col))
       elts.push_back(new_elt);
     else
@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
   std::ofstream out(args.output_arg);
 
   if(!out.good())
-    die << "Failed to open output file '" << args.output_arg << "'" << err::no;
+    die << "Failed to open output file '" << args.output_arg << "'" << jellyfish::err::no;
   if(args.numerical_flag)
     merge_files<long, cmdline_parse::input_arg_it>
       (out, args.key_arg, args.input_arg.begin(), args.input_arg.end());

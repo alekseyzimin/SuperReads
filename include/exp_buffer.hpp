@@ -24,6 +24,7 @@
 #include <cstddef>
 #include <unistd.h>
 #include <stdexcept>
+#include <iostream>
 #include <reallocators.hpp>
 
 /* #define CHECK {                      \
@@ -93,6 +94,13 @@ public:
     ptr_ = base_ + rhs.size();
     CHECK;
   }
+  /// Move constructor
+  ExpBuffer(ExpBuffer&& rhs) : base_(rhs.base_), end_(rhs.end_), ptr_(rhs.ptr_) {
+    rhs.base_ = 0;
+    rhs.end_  = 0;
+    rhs.ptr_  = 0;
+  }
+
   virtual ~ExpBuffer() {
     if(base_)
       R::realloc(base_, 0, 0);
@@ -115,7 +123,13 @@ public:
     std::swap(end_, rhs.end_);
   }
   /// Assignment operator.
-  ExpBuffer &operator=(ExpBuffer rhs) {
+  ExpBuffer &operator=(const ExpBuffer& rhs) {
+    ExpBuffer tmp(rhs);
+    swap(tmp);
+    return *this;
+  }
+  /// Move operator
+  ExpBuffer& operator=(ExpBuffer&& rhs) {
     swap(rhs);
     return *this;
   }
@@ -252,10 +266,22 @@ public:
   typedef T value_type;
   ExpandingBuffer() : super() { }
   ExpandingBuffer(size_type s) : super(s) { }
+  ExpandingBuffer(ExpandingBuffer&& rhs) : super(std::move(rhs)) { }
   ExpandingBuffer(const ExpandingBuffer &rhs) : super(rhs) { }
   ExpandingBuffer(const_pointer in_ptr, size_type nb_elements) :
     super(in_ptr, nb_elements) { }
   virtual ~ExpandingBuffer() { }
+
+  ExpandingBuffer& operator=(const ExpandingBuffer& rhs) {
+    ExpandingBuffer tmp(rhs);
+    this->swap(tmp);
+    return *this;
+  }
+
+  ExpandingBuffer& operator=(ExpandingBuffer&& rhs) {
+    this->swap(rhs);
+    return *this;
+  }
 
   /// Subscript operator which grows the array as needed (similar to
   /// Perl's behavior). The new entries are not initialized beyond

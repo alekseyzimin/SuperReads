@@ -47,14 +47,19 @@
 
 #include <multi_thread_skip_list_map.hpp>
 #include <jellyfish/large_hash_array.hpp>
-#include <thread_exec.hpp>
+#include <jellyfish/thread_exec.hpp>
 #include <src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp>
 
+using jellyfish::thread_exec;
+
+// Pack this struct to save 2 bytes per k-mer.
+#pragma pack(push,2)
 struct kMerUnitigInfoStruct {
   uint32_t kUnitigNumber;
-  uint32_t kUnitigOffset:31;
-  uint32_t kmerOriInKunitig:1;
+  uint16_t kUnitigOffset:15;
+  uint16_t kmerOriInKunitig:1;
 };
+#pragma pack(pop)
 
 /* Our types.
  */
@@ -67,7 +72,7 @@ class large_kmer_unitig_info {
   kMerUnitigInfoStruct* unitig_info_;
 
 public:
-  large_kmer_unitig_info(size_t size, uint32_t mer_len) : 
+  large_kmer_unitig_info(size_t size, uint32_t mer_len) :
     mer_set_(size, mer_len * 2, 0, 126),
     unitig_info_(new kMerUnitigInfoStruct[mer_set_.size()])
   { }
@@ -104,7 +109,7 @@ void getMatchesForRead (const char *readBasesBegin, const char *readBasesEnd,
                         header_output& out);
 
 
-ExpBuffer<uint64_t> kUnitigLengths;
+ExpBuffer<uint32_t> kUnitigLengths;
 int            readNumber; // TODO: Remove: it is not really used
 int            longOutput;
 
@@ -125,6 +130,9 @@ public:
       // Parse header
       int kUnitigNumber, kUnitigLength;
       int fields_read = sscanf(unitig_stream->header, ">%d length:%d", &kUnitigNumber, &kUnitigLength);
+      if(kUnitigLength >= (1 << 15))
+        die << "Kunitig " << kUnitigNumber << " is too long: " << kUnitigLength
+            << " for a supported max of " << ((1 << 15) - 1) << "\n";
       kUnitigLengths[kUnitigNumber] = kUnitigLength;
       if(fields_read != 2)
         die << "Fasta header of file does not match pattern '>UnitigiNumber length:UnitigLength'\n"
@@ -243,11 +251,11 @@ int readLastKUnitigNumber(const char* path) {
      int ret;
      FILE* infile = fopen (path, "r");
      if(!infile)
-	  die << "Failed to open file '" << path << "'" << err::no;
+	  die << "Failed to open file '" << path << "'" << jellyfish::err::no;
      int fields_read = fscanf (infile, "%d", &ret);
      if(fields_read != 1)
 	  die << "Failed to read the last k-unitig number from file '"
-	      << path << "'" << err::no;
+	      << path << "'" << jellyfish::err::no;
      fclose (infile);
      return ret;
 }
@@ -261,6 +269,16 @@ int main(int argc, char *argv[])
      if(args.mer_arg == 0 || args.mer_arg > 10000)
        die << "Mer_len '" << args.mer_arg << "' is out of range";
      mer_dna::k(args.mer_arg);
+
+     // Open output file and make sure it is deleted/closed on exit
+     std::auto_ptr<std::ostream> out;
+     if(args.gzip_flag)
+       out.reset(new gzipstream(args.output_arg));
+     else
+       out.reset(new std::ofstream(args.output_arg));
+     if(!out->good())
+       die << "Failed to open output file '" << args.output_arg << "'";
+
 
      // Find out the last kUnitig number
      {
@@ -278,14 +296,6 @@ int main(int argc, char *argv[])
        ReadKunitigs KUnitigReader(args.kUnitigFile_arg, mer_unitig_info, args.threads_arg);
        KUnitigReader.exec_join(args.threads_arg);
      }
-
-
-     // Open output file and make sure it is deleted/closed on exit
-     std::auto_ptr<std::ostream> out;
-     if(args.gzip_flag)
-       out.reset(new gzipstream(args.output_arg));
-     else
-       out.reset(new std::ofstream(args.output_arg));
 
      ProcessReads process_reads(args.readFiles_arg.begin(), args.readFiles_arg.end(),
                                 mer_unitig_info, *out, args.threads_arg);
