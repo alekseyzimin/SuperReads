@@ -22,9 +22,10 @@
 #include <memory>
 #include <vector>
 
-template <typename T, T def_val = T(), class Allocator = std::allocator<T> >
+template <typename T, class Allocator = std::allocator<T> >
 class exp_vector : public std::vector<T, Allocator> {
   typedef std::vector<T, Allocator> super;
+  T def_val;
 public:
   typedef typename super::reference              reference;
   typedef typename super::const_reference        const_reference;
@@ -39,16 +40,36 @@ public:
   typedef typename super::reverse_iterator       reverse_iterator;
   typedef typename super::const_reverse_iterator const_reverse_iterator;
 
-  explicit exp_vector(const Allocator& a = Allocator()) : super(a) { }
+  explicit exp_vector(const Allocator& a = Allocator()) : super(a), def_val(T()) { }
   explicit exp_vector (size_type n, const T& value = T(), const Allocator& a = Allocator()) :
-    super(n, value, a) { }
+    super(n, value, a), def_val(value) { }
+  exp_vector(size_type n, T&& value, const Allocator& a = Allocator()) :
+    super(n, value, a), def_val(std::move(value)) { }
+  explicit exp_vector(const T& value, const Allocator& a = Allocator()) :
+    super(a), def_val(value) { }
   template <class InputIterator>
   exp_vector ( InputIterator first, InputIterator last, const Allocator& a = Allocator() ) :
-    super(first, last, a) { }
-  exp_vector ( const std::vector<T,Allocator>& x ) :
-    super(x) { }
+    super(first, last, a), def_val(T()) { }
+  exp_vector ( const std::vector<T,Allocator>& x ) : super(x) { }
+  exp_vector(const exp_vector& rhs) : super(rhs), def_val(rhs.def_val) { }
+  exp_vector(exp_vector&& rhs) : super(std::move(rhs)), def_val(std::move(rhs.dev_fal)) { }
 
   virtual ~exp_vector() { }
+
+  exp_vector& operator=(const exp_vector& rhs) {
+    super::operator=(rhs);
+    def_val = rhs.def_val;
+    return *this;
+  }
+  exp_vector& operator=(exp_vector&& rhs) {
+    super::operator=(std::move(rhs));
+    def_val = std::move(rhs.def_val);
+    return *this;
+  }
+
+  reference default_value() { return def_val; }
+  const_reverse_iterator default_value() const { return def_val; }
+  void default_value(const T& df) { def_val = df; }
 
   reference operator[] ( size_type n ) {
     if(n >= super::size())
