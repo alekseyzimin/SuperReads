@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-CXXFLAGS_ALL = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -std=c++0x
+CXXFLAGS_ALL = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -std=c++0x $(VALGRIND_CFLAGS)
 AM_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
 LDADD_ALL = -lrt -lpthread libutils.a
 LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)

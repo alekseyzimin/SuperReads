@@ -111,6 +111,12 @@ TYPED_TEST(ExpandingBufferDefault, Swap) {
   EXPECT_EQ((size_t)0, b2.capacity());
 }
 
+TYPED_TEST(ExpandingBufferDefault, ConsDes) {
+  TypeParam b(5);
+
+  EXPECT_EQ((size_t)5, b.capacity());
+}
+
 template<typename T>
 T fill_buffer(bool& parity) {
   T even(10);

@@ -102,8 +102,7 @@ public:
   }
 
   virtual ~ExpBuffer() {
-    if(base_)
-      R::realloc(base_, 0, 0);
+    R::realloc(base_, capacity(), 0);
   }
 
   void check() const { CHECK; }

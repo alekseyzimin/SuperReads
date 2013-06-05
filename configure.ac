@@ -28,6 +28,13 @@ AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [Def
 # Checks for Jellyfish module
 PKG_CHECK_MODULES([JELLYFISH2_0], [jellyfish-2.0])
 
+# Use valgrind to check memory allocation with mmap
+AC_ARG_ENABLE([valgrind],
+              [AS_HELP_STRING([--enable-valgrind], [Instrument mmap memory allocation with valgrind])])
+AS_IF([test "x$enable_valgrind" = xyes],
+      [AC_DEFINE([HAVE_VALGRIND], [1], [Define is using Valgrind])]
+      [PKG_CHECK_MODULES([VALGRIND], [valgrind >= 1.8.0])])
+
 # Check for yaggo
 AC_ARG_VAR([YAGGO], [Yaggo switch parser generator])
 AS_IF([test "x$YAGGO" = "x"], [AC_PATH_PROG([YAGGO], [yaggo], [false])])
