@@ -56,8 +56,8 @@ using jellyfish::thread_exec;
 #pragma pack(push,2)
 struct kMerUnitigInfoStruct {
   uint32_t kUnitigNumber;
-  uint16_t kUnitigOffset:15;
-  uint16_t kmerOriInKunitig:1;
+  uint32_t kUnitigOffset:31;
+  uint32_t kmerOriInKunitig:1;
 };
 #pragma pack(pop)
 
@@ -130,9 +130,9 @@ public:
       // Parse header
       int kUnitigNumber, kUnitigLength;
       int fields_read = sscanf(unitig_stream->header, ">%d length:%d", &kUnitigNumber, &kUnitigLength);
-      if(kUnitigLength >= (1 << 15))
-        die << "Kunitig " << kUnitigNumber << " is too long: " << kUnitigLength
-            << " for a supported max of " << ((1 << 15) - 1) << "\n";
+      //if(kUnitigLength >= (1 << 15))
+      //  die << "Kunitig " << kUnitigNumber << " is too long: " << kUnitigLength
+      //      << " for a supported max of " << ((1 << 15) - 1) << "\n";
       kUnitigLengths[kUnitigNumber] = kUnitigLength;
       if(fields_read != 2)
         die << "Fasta header of file does not match pattern '>UnitigiNumber length:UnitigLength'\n"

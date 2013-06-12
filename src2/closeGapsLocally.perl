@@ -66,7 +66,7 @@ $localReadsFile = "localReadsFile";
 print "outputDirectory = $outputDirectory\n";
 if (! -e $outputDirectory) {
     $cmd = "mkdir $outputDirectory"; runCommandAndExitIfBad($cmd); }
-$fishingEndPairs = "contig_end_pairs.${contigLengthForFishing}.fa";
+$fishingEndPairs = "$outputDirectory/contig_end_pairs.${contigLengthForFishing}.fa";
 $joiningEndPairs = "$outputDirectory/contig_end_pairs.${contigLengthForJoining}.fa";
 $joiningEndPairs = returnAbsolutePath ($joiningEndPairs);
 chdir ($outputDirectory);
