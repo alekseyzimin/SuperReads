@@ -69,6 +69,7 @@ if (! -e $outputDirectory) {
 $fishingEndPairs = "$outputDirectory/contig_end_pairs.${contigLengthForFishing}.fa";
 $joiningEndPairs = "$outputDirectory/contig_end_pairs.${contigLengthForJoining}.fa";
 $joiningEndPairs = returnAbsolutePath ($joiningEndPairs);
+$fishingEndPairs = returnAbsolutePath ($fishingEndPairs);
 chdir ($outputDirectory);
 $cmd = "$exeDir/getEndSequencesOfContigs.perl $CeleraTerminatorDirectory $contigLengthForJoining $contigLengthForFishing";
 runCommandAndExitIfBad ($cmd);
