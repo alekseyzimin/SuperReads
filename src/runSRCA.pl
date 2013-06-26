@@ -591,7 +591,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 
 #remove all chimeric and all redundant reads from sj.cor.fa
 	if(not(-e "sj.cor.clean.fa")||$rerun_pe==1||$rerun_sj==1){
-	    print FILE "extractreads.pl <(cat chimeric_sj.txt redundant_sj.txt | perl -e '{while(\$line=<STDIN>){chomp(\$line);\$h{\$line}=1}open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);print \$line,\"\\n\" if(not(defined(\$h{\$line})));}}' <(awk '{print \$1}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 |reverse_complement > sj.cor.clean.fa\n";
+	    print FILE "extractreads.pl <(cat chimeric_sj.txt redundant_sj.txt | perl -e '{while(\$line=<STDIN>){chomp(\$line);\$h{\$line}=1}open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);print \$line,\"\\n\" if(not(defined(\$h{\$line})));}}' <(awk '{prefix=substr(\$1,1,2); readnumber=int(substr(\$1,3);  if(readnumber\%2==0){last_readnumber=readnumber; last_prefix=prefix}else{if(last_readnumber==readnumber-1 && last_prefix==prefix){print prefix\"\"last_readnumber\"\\n\"prefix\"\"readnumber}}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 |reverse_complement > sj.cor.clean.fa\n";
 	    $rerun_sj=1;
 	}
 
