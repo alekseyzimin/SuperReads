@@ -309,7 +309,7 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
   if(scanned != 1)
     eraise(std::runtime_error) << "Failed to read passing k-mer size"
                                << jellyfish::err::no;
-  if(passingKMerValue <= args.min_kmer_len_arg)
+  if(passingKMerValue < args.min_kmer_len_arg)
     eraise(std::runtime_error) << "Gap closing failed";
 
   charb superReadFastaString(1000);
