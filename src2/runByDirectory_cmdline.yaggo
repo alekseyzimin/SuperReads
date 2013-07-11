@@ -7,10 +7,16 @@ option("t", "num-threads") {
   description "Number of threads"
   int; default "1" }
 option("o", "output") {
-  description "Output file with sequence and read placement (stdout)"
-  c_string; typestr "path" }
+  description "Output file with sequence and read placement"
+  c_string; typestr "path"; default "output.txt" }
+option("e", "error-out") {
+  description "Output file with directories that failed"
+  c_string; typestr "path"; default "err_dirs.txt" }
 option("keep-directories") {
   description "Keep the individual gap directories"
+  off }
+option("jumping-read-joining-run") {
+  description "This is a run to find short reversed jumping read inserts"
   off }
 option("Celera-terminator-directory") {
   description "The location of the terminator directory for the Celera run"
@@ -27,6 +33,9 @@ option("max-kmer-len") {
 option("mean-for-faux-inserts") {
   description "Mean specified when joining the ends of the contigs"
   int; default "500" }
+option("join-aggressive") {
+  description "If set to 1 calls the pair joined if there is any path (as opposed to a unique path)"
+  int; default "0" }
 option("stdev-for-faux-inserts") {
   description "Standard deviation specified when joining the ends of the contigs"
   int; default "200" }

@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/file.h>
 #include <ftw.h>
 #include <cstdlib>
 #include <cstdio>
@@ -77,6 +78,16 @@ void system_throw(const char* command, const char* msg = "") {
                              << "' terminated for an unknown reason";
 }
 
+void flock_throw(FILE* f, int op) {
+     while(true) {
+	  int res = flock(fileno(f), op);
+	  if(res == 0)
+	       return;
+	  if(res != EINTR)
+	       eraise(std::runtime_error) << "Failed to lock file: " << strerror(errno);
+     }
+}
+
 int remove_function(const char *fpath, const struct stat *sb,
                     int typeflag, struct FTW *ftwbuf) {
   return remove(fpath);
@@ -102,7 +113,7 @@ void close_on_exec(FILE* file) {
     return;
 }
 
-int analyzeGap(struct arguments threadArg, FILE* resultFile);
+int analyzeGap(struct arguments threadArg, FILE* resultFile, FILE* errFile);
 
 cmdline_parse args; // GLOBAL: command line switches
 std::string exeDir; // Location of executable
@@ -114,7 +125,8 @@ int main (int argc, char **argv)
   struct arguments    threadArgs;
   FILE               *contigEndSeqFile;
   FILE               *meanAndStdevFile;
-  FILE               *resultFile = stdout;
+  FILE               *resultFile;
+  FILE               *errFile;
   std::vector<FILE*>  readSeqFilesByDir;
   charb               tempBuffer(100);
 
@@ -125,13 +137,16 @@ int main (int argc, char **argv)
     exeDir = std::string(argv[0], tempPtr - argv[0]);
   }
 
-  if(args.output_given) {
-    resultFile = fopen(args.output_arg, "w");
-    if(!resultFile)
-      die << "Can't open output file '" << args.output_arg << "'"
-          << jellyfish::err::no;
-    close_on_exec(resultFile);
-  }
+  resultFile = fopen(args.output_arg, "w");
+  if(!resultFile)
+       die << "Can't open output file '" << args.output_arg << "'"
+	   << jellyfish::err::no;
+  close_on_exec(resultFile);
+
+  errFile = fopen(args.error_out_arg, "a");
+  if(!errFile)
+       die << "Can't open error file\n";
+  close_on_exec(errFile);
 
   contigEndSeqFile = fopen(args.contig_end_sequence_file_arg, "r");
   close_on_exec(contigEndSeqFile);
@@ -217,7 +232,7 @@ int main (int argc, char **argv)
     case -1:
       die << "Fork failed" << jellyfish::err::no;
     case 0:
-      analyzeGap(threadArgs, resultFile);
+	 analyzeGap(threadArgs, resultFile, errFile);
       exit(0);
     default:
       break;
@@ -236,7 +251,7 @@ int main (int argc, char **argv)
 // Doing the actual work of the worker thread
 void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
                    FILE* resultFile);
-int analyzeGap(struct arguments threadArg, FILE* resultFile) {
+int analyzeGap(struct arguments threadArg, FILE* resultFile, FILE* errFile) {
   charb outDirName(100);
 
   sprintf (outDirName, "%s/gap%09ddir", args.output_dir_arg, threadArg.dirNum);
@@ -248,17 +263,22 @@ int analyzeGap(struct arguments threadArg, FILE* resultFile) {
     }
   }
 
-
+  int ret_val = 0;
   try {
     do_analyzeGap(threadArg, outDirName, resultFile);
   } catch(std::runtime_error e) {
-    fprintf(stderr, "Analyze gap failed for dir '%s': %s\n",
-            (const char*)outDirName, e.what());
-    if(!args.keep_directories_flag)
-      rm_rf(outDirName);
-    return -1;
+       flock_throw(errFile, LOCK_EX);
+       fprintf(errFile, "Analyze gap failed for dir '%s': %s\n",
+	       (const char*)outDirName, e.what());
+       fflush(errFile);
+       flock_throw(errFile, LOCK_UN);
+       ret_val = -1;
   }
-  return 0;
+
+  if(!args.keep_directories_flag)
+       rm_rf(outDirName);
+
+  return ret_val;
 }
 
 void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
@@ -278,8 +298,13 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
   fclose (outfile);
 
   std::ostringstream cmd;
-  cmd << exeDir.c_str() << "/closeGaps.oneDirectory.perl"
-      << " 1>" << outDirName << "/out.err 2>&1"
+//  cmd << exeDir.c_str() << "/closeGaps.oneDirectory.perl"
+  cmd << exeDir.c_str();
+  if (args.jumping_read_joining_run_flag)
+       cmd << "/closeGaps.oneDirectory.fromMinKmerLen.perl";
+  else
+       cmd << "/closeGaps.oneDirectory.perl";
+  cmd << " 1>" << outDirName << "/out.err 2>&1"
       << " --dir-to-change-to " << outDirName
       << " --Celera-terminator-directory " << args.Celera_terminator_directory_arg
       << " --reads-file reads.fasta --output-directory outputDir"
@@ -289,6 +314,7 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
       << " --mean-for-faux-inserts " << threadArg.mean
       << " --stdev-for-faux-inserts " << threadArg.stdev
       << " --num-stdevs-allowed " << args.num_stdevs_allowed_arg
+      << " --join-aggressive " << args.join_aggressive_arg
       << " --use-all-kunitigs --noclean";
 
   sprintf (tempFileName, "%s/passingKMer.txt", outDirName);
@@ -309,8 +335,9 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
   if(scanned != 1)
     eraise(std::runtime_error) << "Failed to read passing k-mer size"
                                << jellyfish::err::no;
+
   if(passingKMerValue < args.min_kmer_len_arg)
-    eraise(std::runtime_error) << "Gap closing failed";
+       eraise(std::runtime_error) << "Gap closing failed";
 
   charb superReadFastaString(1000);
   sprintf (tempFileName, "%s/work_localReadsFile_%d_2/superReadSequences.fasta",
@@ -336,7 +363,10 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
   }
   fclose (infile);
 
+  flock_throw(resultFile, LOCK_EX);
   fprintf(resultFile,"%s%s\n",(char*)superReadFastaString, (char*)readPlacementLines);
+  fflush (resultFile);
+  flock_throw(resultFile, LOCK_UN);
 
 // #if 0
 //   sprintf (cmd, "cp %s/work_localReadsFile_%d_2/superReadSequences.fasta %s/superReadSequences.%09d.fasta", outDirName, passingKMerValue, args.output_dir_arg, threadArg.dirNum);
