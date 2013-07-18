@@ -21,14 +21,33 @@
 
 TEST(ExpVector, Subscript) {
   exp_vector<int> ev;
-  exp_vector<int, 5> evd;
+  exp_vector<int> evd(5);
+
+  EXPECT_EQ(int(), ev.default_value());
+  EXPECT_EQ(5, evd.default_value());
 
   ev[10]  = 5;
   evd[10] = 10;
   for(int i = 0; i < 10; ++i) {
-    EXPECT_EQ(0, ev[i]);
+    EXPECT_EQ(int(), ev[i]);
     EXPECT_EQ(5, evd[i]);
   }
   EXPECT_EQ(5, ev[10]);
   EXPECT_EQ(10, evd[10]);
+}
+
+TEST(ExpVector, Float) {
+  exp_vector<float> fv;
+  exp_vector<float> fvd(0, 5.0);
+
+  fv[10] = 10.0;
+  fvd[10] = 10.0;
+
+  for(int i = 0; i < 10; ++i) {
+    EXPECT_FLOAT_EQ(float(), fv[i]);
+    EXPECT_FLOAT_EQ((float)5.0, fvd[i]);
+  }
+
+  EXPECT_FLOAT_EQ((float)10.0, fv[10]);
+  EXPECT_FLOAT_EQ((float)10.0, fvd[10]);
 }

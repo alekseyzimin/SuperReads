@@ -15,8 +15,8 @@ TEST(DNAFragment, SubMers) {
   dna_fragment fragment(frag_seq);
   EXPECT_EQ(frag_seq, fragment.to_str());
 
-  for(size_t i = 0; i <= flength - mer_dna::k(); ++i) {
-    SCOPED_TRACE(::testing::Message() << "i:" << i << " flength:" << flength 
+  for(size_t i = 0; i < flength - mer_dna::k(); ++i) {
+    SCOPED_TRACE(::testing::Message() << "i:" << i << " flength:" << flength
                  << " k:" << mer_dna::k());
     mer_dna m = fragment.sub_mer<uint64_t>(i);
     EXPECT_EQ(frag_seq.substr(i, mer_dna::k()), m.to_str());

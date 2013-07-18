@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-CXXFLAGS_ALL = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -std=c++0x
+CXXFLAGS_ALL = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -std=c++0x $(VALGRIND_CFLAGS)
 AM_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
 LDADD_ALL = -lrt -lpthread libutils.a
 LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
@@ -233,9 +233,9 @@ print-%:
 ##############################
 # data generation
 ##############################
-# dist_data_DATA = data/adapter_0
-# CLEANFILES += data/adapter_0
-# SUFFIXES = _0 .fa
-# .fa_0:
-# 	$(AM_V_GEN)mkdir -p $(@D); jellyfish count -m 24 -s 5k -C -t 10 -r -o $$(dirname $@)/$$(basename $@ _0) $<
+#dist_data_DATA = data/adapter_0
+#CLEANFILES += data/adapter_0
+#SUFFIXES = _0 .fa
+#.fa_0:
+#	$(AM_V_GEN)mkdir -p $(@D); jellyfish count -m 24 -s 5k -C -t 10 -r -o $$(dirname $@)/$$(basename $@ _0) $<
 

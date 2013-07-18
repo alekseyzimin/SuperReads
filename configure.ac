@@ -1,5 +1,5 @@
 AC_PREREQ([2.63])
-AC_INIT([SuperReads], [0.2.0], [alekseyz@ipst.umd.edu], [SuperReads])
+AC_INIT([SuperReads], [0.3.0], [alekseyz@ipst.umd.edu], [SuperReads])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([subdir-objects])
 AM_SILENT_RULES([yes])
@@ -27,6 +27,13 @@ AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [Def
 
 # Checks for Jellyfish module
 PKG_CHECK_MODULES([JELLYFISH2_0], [jellyfish-2.0])
+
+# Use valgrind to check memory allocation with mmap
+AC_ARG_ENABLE([valgrind],
+              [AS_HELP_STRING([--enable-valgrind], [Instrument mmap memory allocation with valgrind])])
+AS_IF([test "x$enable_valgrind" = xyes],
+      [AC_DEFINE([HAVE_VALGRIND], [1], [Define is using Valgrind])]
+      [PKG_CHECK_MODULES([VALGRIND], [valgrind >= 1.8.0])])
 
 # Check for yaggo
 AC_ARG_VAR([YAGGO], [Yaggo switch parser generator])

@@ -478,6 +478,7 @@ if(not(-e "combined_0") || $rerun_pe==1){
         }'`\n";
 
     print FILE "echo \"Error correction Poisson cutoff = \$CUTOFF\"\n";
+    print FILE "echo \$CUTOFF > cutoff.txt\n";
 #check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
     print FILE "if [[ -e pe_trim_1 || -e pe_all_1 ]];then\n";
     print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2\"\n";
@@ -498,7 +499,7 @@ print FILE "\n";
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
     print FILE "cat combined_0 > /dev/null\n";
-    print FILE "\nquorum_error_correct_reads -p \$CUTOFF --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > pe.cor.fa\n";
+    print FILE "\nquorum_error_correct_reads -p `cat cutoff.txt` --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > pe.cor.fa\n";
     $rerun_pe=1;
 }
 
@@ -510,7 +511,7 @@ if(scalar(@jump_info_array)>0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
         print FILE "cat combined_0 > /dev/null\n";
-	print FILE "\nquorum_error_correct_reads -p \$CUTOFF --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > sj.cor.fa\n";
+	print FILE "\nquorum_error_correct_reads -p `cat cutoff.txt` --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > sj.cor.fa\n";
         $rerun_sj=1;
     }
 }
@@ -590,7 +591,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 
 #remove all chimeric and all redundant reads from sj.cor.fa
 	if(not(-e "sj.cor.clean.fa")||$rerun_pe==1||$rerun_sj==1){
-	    print FILE "extractreads.pl <(cat chimeric_sj.txt redundant_sj.txt | perl -e '{while(\$line=<STDIN>){chomp(\$line);\$h{\$line}=1}open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);print \$line,\"\\n\" if(not(defined(\$h{\$line})));}}' <(awk '{print \$1}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 |reverse_complement > sj.cor.clean.fa\n";
+	    print FILE "extractreads.pl <(cat chimeric_sj.txt redundant_sj.txt | perl -e '{while(\$line=<STDIN>){chomp(\$line);\$h{\$line}=1}open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);print \$line,\"\\n\" if(not(defined(\$h{\$line})));}}' <(awk '{prefix=substr(\$1,1,2); readnumber=int(substr(\$1,3);  if(readnumber\%2==0){last_readnumber=readnumber; last_prefix=prefix}else{if(last_readnumber==readnumber-1 && last_prefix==prefix){print prefix\"\"last_readnumber\"\\n\"prefix\"\"readnumber}}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 |reverse_complement > sj.cor.clean.fa\n";
 	    $rerun_sj=1;
 	}
 
