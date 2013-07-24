@@ -13,39 +13,14 @@ if ($dirToChangeTo) {
 sub runMainLoop
 {
     my ($k, $suffix, $cmd, $directoryPassed);
-    my (@kmerWasRun, $currentRunOfUntestedKmers, $maxRunOfUntestedKMers, $maxRunStart);
-    my ($fn1, $fn2, $maxKMerLenInLoop, $minKMerLenInLoop, $isFirstLoop);
+    my ($fn1, $fn2, $isFirstLoop);
     my (@localLines, $localLine, $tempLine);
     my ($outFn, $sz, $sz2, $totInputSize, $minContinuation);
 
     $directoryPassed=0; 
-    @kmerWasRun = ();
-    $maxKMerLenInLoop = $maxKMerLen;
-    $minKMerLenInLoop = $minKMerLen;
     $isFirstLoop = 1;
-    # The standard loop is standard for binary search
-    while ($maxKMerLenInLoop >= $minKMerLenInLoop) {
-	# Find the longest stretch of un-run k-mers within the window (just binary search if nothing done)
-	$currentRunOfUntestedKmers = $maxRunOfUntestedKMers = 0;
-	$maxRunStart = -1;
-	# If we had some condition in the prior passes that didn't allow us to
-	# reset either the maxKMerLenInLoop or minKMerLenInLoop we could have
-	# a problem. To avoid this, we find the
-	# longest set of consecutive k-mers in the window that were not run 
-	# (i.e. kmerWasRun[i] == 0), and take the k-mer size in the middle of it.
-	for ($k=$minKMerLenInLoop; $k<=$maxKMerLenInLoop; $k++) {
-	    if ($kmerWasRun[$k]) {
-		$currentRunOfUntestedKmers = 0; }
-	    else {
-		++$currentRunOfUntestedKmers;
-		if ($maxRunOfUntestedKMers < $currentRunOfUntestedKmers) {
-		    $maxRunOfUntestedKMers = $currentRunOfUntestedKmers; 
-		    $maxRunStart = $k - ($currentRunOfUntestedKmers-1);
-		}
-	    }
-	}
-	last unless ($maxRunStart >= 0); # Only run if some k-mer len in the window hasn't been run
-	$k = $maxRunStart + int (($maxRunOfUntestedKMers-1)/2);
+    # Here's the main loop (k-mer values going up)
+    for ($k = $minKMerLen; $k<=$maxKMerLen; ++$k) {
 	$suffix = $localReadsFile . "_" . $k . "_" . $kUnitigContinuationNumber;
 	if ($isFirstLoop) {
 	    $isFirstLoop = 0;
@@ -54,8 +29,7 @@ sub runMainLoop
 	$minContinuation = $k-1;
 	$cmd = "$exeDir/create_k_unitigs_large_k -c $minContinuation -t $numThreads -m $k -n $totInputSize -l $k -f 0.000001 @readsFiles  |  grep -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' >> k_unitigs_${suffix}.fa";
 	if (runCommandAndReturnIfBad ($cmd)) {
-	    $maxKMerLenInLoop = $k-1;
-	    next; }
+	    last; }
 	$cmd = "\\rm -rf out.$suffix"; system ($cmd);
 	$cmd = "\\rm -rf work_$suffix"; system ($cmd);
 
@@ -68,8 +42,7 @@ sub runMainLoop
 #	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -num-stdevs-allowed $numStdevsAllowed -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
 	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -num-stdevs-allowed $numStdevsAllowed -closegaps -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -join-aggressive $joinAggressive -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
 	if (runCommandAndReturnIfBad ($cmd)) {
-	    $maxKMerLenInLoop = $k-1;
-	    next; }
+	    last; }
 	# Now looking for the report line from joinKUnitigs indicating what happened with the
 	# faux mate pair (joined, missing nodes, too many nodes, etc.)
 	
@@ -83,7 +56,6 @@ sub runMainLoop
 	    last; }
         close(FILE);
 
-	$kmerWasRun[$k] = 1;
 	# Initial check to see if the faux mates were joinable
         $lineForMatchHold="";
         open(FILE,"work_$suffix/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt");
@@ -99,11 +71,11 @@ sub runMainLoop
             $lineForMatchHold = $lineForMatch;
         }
         close(FILE);
-	if ($localLine =~ /same unitig/){ $directoryPassed = 0; $minKMerLenInLoop = $k+1; } 
+	if ($localLine =~ /same unitig/){ $directoryPassed = 0; next; } 
 	elsif ($directoryPassed == 1) { last; }
-	elsif ($localLine =~ /not uniquely joinable/ || $localLine =~ /too many nodes/) {$minKMerLenInLoop = $k+1; }
-	elsif ($localLine =~ /missing sequence/) {$maxKMerLenInLoop = $k-1; }
-	else { $maxKMerLenInLoop = $k-1; }
+	elsif ($localLine =~ /not uniquely joinable/ || $localLine =~ /too many nodes/) { next; }
+	elsif ($localLine =~ /missing sequence/) { last; }
+	else { last; }
     }
     
     $passingKMerFile = "passingKMer.txt";

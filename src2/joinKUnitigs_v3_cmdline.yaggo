@@ -12,6 +12,9 @@ option("mean-and-stdev-by-prefix-file", "m") {
 option("num-stdevs-allowed") {
   description "Number of standard deviations the join length can be from the mean when trying to join a mate pair."
   int; default "5" }
+option("output-join-result-for-each-join") {
+  description "Output the results for each join attempt between mate pairs"
+  off }
 option("unitig-lengths-file", "u") {
   description "File containing the length of the unitigs."
   c_string; typestr "path"; required }

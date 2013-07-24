@@ -63,6 +63,7 @@ bin_PROGRAMS += error_corrected2frg reverse_complement reduce_sr	\
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl src/close_gaps.sh		\
                     src/compute_sr_cov.pl src/create_sr_frg.pl		\
+                    src2/compute_sr_cov.revisedForGCContig.pl           \
                     src/extractreads.pl src/extract_unjoined_pairs.pl	\
                     src/fasta2frg.pl src/filter_library.sh		\
                     src/fix_unitigs.sh					\
@@ -107,7 +108,8 @@ bin_PROGRAMS += createFastaSuperReadSequences				\
                 eliminateBadSuperReadsUsingList				\
                 getSuperReadInsertCountsFromReadPlacementFile		\
                 getSuperReadInsertCountsFromReadPlacementFileTwoPasses	\
-                joinKUnitigs_v3 outputRecordsNotOnList killBadKUnitigs
+                joinKUnitigs_v3 outputRecordsNotOnList killBadKUnitigs \
+                makeAdjustmentFactorsForNumReadsForAStatBasedOnGC
 
 dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
                     src2/createSuperReadsForDirectory.perl src2/add_missing_mates.pl \
@@ -135,6 +137,7 @@ YAGGO_SOURCES += src2/getSuperReadInsertCountsFromReadPlacementFileTwoPasses_cmd
 joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc
 YAGGO_SOURCES          += src2/joinKUnitigs_v3_cmdline.hpp
 outputRecordsNotOnList_SOURCES = src2/outputRecordsNotOnList.cc
+makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_SOURCES = src2/makeAdjustmentFactorsForNumReadsForAStatBasedOnGC.cc
 
 ##############################
 # gap closing
@@ -158,6 +161,12 @@ collectReadSequencesForLocalGapClosing_SOURCES = src2/collectReadSequencesForLoc
 YAGGO_SOURCES += src2/collectReadSequencesForLocalGapClosing_cmdline.hpp
 runByDirectory_SOURCES = src2/runByDirectory.cc
 YAGGO_SOURCES += src2/runByDirectory_cmdline.hpp
+
+##############################
+# reversed jumping read library elimination
+##############################
+dist_bin_SCRIPTS += src2/reportReadsToExclude.perl src2/outputMatedReadsAsReverseComplement.perl \
+	src2/findReversePointingJumpingReads.perl src2/closeGaps.oneDirectory.fromMinKmerLen.perl
 
 ##############################
 # Celera post-processing
