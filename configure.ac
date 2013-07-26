@@ -1,5 +1,5 @@
 AC_PREREQ([2.63])
-AC_INIT([SuperReads], [0.3.1], [alekseyz@ipst.umd.edu], [SuperReads])
+AC_INIT([SuperReads], [0.3.2], [alekseyz@ipst.umd.edu], [SuperReads])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([subdir-objects])
 AM_SILENT_RULES([yes])
@@ -65,6 +65,8 @@ AC_SUBST([DEV_CXXFLAGS])
 # Checks for library functions.
 AC_FUNC_MMAP
 AC_CHECK_FUNCS([mremap])
+# Check the version of strerror_r
+AC_FUNC_STRERROR_R      
 
 # Check for builtin functions
 AC_MSG_CHECKING([for __builtin_prefetch])
