@@ -123,24 +123,16 @@ while($line=<FILE>){
 	    $f[1]=~s/^\s+//;
 	    $f[1]=~s/\s+$//;
 	    $EXTEND_JUMP_READS=int($f[1]);
-	    die("bad value for EXTEND_JUMP_READS") if($EXTEND_JUMP_READS!=1 && $EXTEND_JUMP_READS!=0);
+	    die("bad value for EXTEND_JUMP_READS, enter 0 or 1") if($EXTEND_JUMP_READS!=1 && $EXTEND_JUMP_READS!=0);
 	    next;
 	}
-        elsif($line =~ /^CLOSE_GAPS/){
-            @f=split(/=/,$line);
-            $f[1]=~s/^\s+//;
-            $f[1]=~s/\s+$//;
-            $CLOSE_GAPS=int($f[1]);
-            die("bad value for EXTEND_JUMP_READS") if($EXTEND_JUMP_READS!=1 && $EXTEND_JUMP_READS!=0);
-            next;
-        }
         elsif($line =~ /^DO_HOMOPOLYMER_TRIM/){
             @f=split(/=/,$line);
             $f[1]=~s/^\s+//;
             $f[1]=~s/\s+$//;
             $DO_HOMOPOLYMER_TRIM=int($f[1]);
 	    $homo_trim_string="" if($DO_HOMOPOLYMER_TRIM==0);    
-            die("bad value for DO_HOMOPOLYMER_TRIM") if($DO_HOMOPOLYMER_TRIM!=1 && $DO_HOMOPOLYMER_TRIM!=0);
+            die("bad value for DO_HOMOPOLYMER_TRIM, enter 0 or 1") if($DO_HOMOPOLYMER_TRIM!=1 && $DO_HOMOPOLYMER_TRIM!=0);
             next;
         }
 	elsif($line =~ /^CA_PARAMETERS/){
@@ -157,7 +149,7 @@ while($line=<FILE>){
             $f[1]=~s/^\s+//;
             $f[1]=~s/\s+$//;
             $LIMIT_JUMP_COVERAGE=int($f[1]);
-            die("bad value for LIMIT_JUMP_COVERAGE") if($LIMIT_JUMP_COVERAGE<1);
+            die("bad value for LIMIT_JUMP_COVERAGE, enter int > 1") if($LIMIT_JUMP_COVERAGE<1);
             next;
         }
         elsif($line =~ /^GRAPH_KMER_SIZE/){
@@ -165,7 +157,7 @@ while($line=<FILE>){
             $f[1]=~s/^\s+//;
             $f[1]=~s/\s+$//;
             $KMER=$f[1];
-            #die("bad value for GRAPH_KMER_SIZE") if($KMER<15 || $KMER>101);
+            die("bad value for GRAPH_KMER_SIZE, enter auto or number > 15 and < 151") if(not($KMER eq "auto") && ($KMER<15 || $KMER>151));
             next;
         }
         elsif($line =~ /^USE_LINKING_MATES/){
@@ -173,18 +165,18 @@ while($line=<FILE>){
             $f[1]=~s/^\s+//;
             $f[1]=~s/\s+$//;
             $USE_LINKING_MATES=int($f[1]);
-            die("bad value for USE_LINKING_MATES") if($USE_LINKING_MATES!=1 && $USE_LINKING_MATES!=0);
+            die("bad value for USE_LINKING_MATES, enter 0 or 1") if($USE_LINKING_MATES!=1 && $USE_LINKING_MATES!=0);
             next;
         }
-	elsif($line =~ /^KMER_COUNT_THRESHOLD/){
-	    @f=split(/=/,$line);
-	    $f[1]=~s/^\s+//;
-	    $f[1]=~s/\s+$//;
-	    $KMER_COUNT_THRESHOLD=int($f[1]);
-	    $KMER_RELIABLE_THRESHOLD=3*$KMER_COUNT_THRESHOLD;
-	    die("bad value for KMER_COUNT_THRESHOLD") if($KMER_COUNT_THRESHOLD<1);
-	    next;
-	}
+#	elsif($line =~ /^KMER_COUNT_THRESHOLD/){
+#	    @f=split(/=/,$line);
+#	    $f[1]=~s/^\s+//;
+#	    $f[1]=~s/\s+$//;
+#	    $KMER_COUNT_THRESHOLD=int($f[1]);
+#	    $KMER_RELIABLE_THRESHOLD=3*$KMER_COUNT_THRESHOLD;
+#	    die("bad value for KMER_COUNT_THRESHOLD") if($KMER_COUNT_THRESHOLD<1);
+#	    next;
+#	}
 	elsif($line =~ /^NUM_THREADS/){
 	    @f=split(/=/,$line);
 	    $f[1]=~s/^\s+//;
@@ -198,7 +190,7 @@ while($line=<FILE>){
 	    $f[1]=~s/^\s+//;
 	    $f[1]=~s/\s+$//;
 	    $JF_SIZE=int($f[1]);
-	    die("bad value for JF_SIZE") if($JF_SIZE<100000);
+	    die("bad value for JF_SIZE, enter int > 100000") if($JF_SIZE<100000);
 	    next;
 	}
 	else{
@@ -590,9 +582,34 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	print FILE "echo 'Chimeric/Redundant jump reads:';wc -l  chimeric_sj.txt redundant_sj.txt;\n";
 
 #remove all chimeric and all redundant reads from sj.cor.fa
-	if(not(-e "sj.cor.clean.fa")||$rerun_pe==1||$rerun_sj==1){
-	    print FILE "extractreads.pl <(cat chimeric_sj.txt redundant_sj.txt | perl -e '{while(\$line=<STDIN>){chomp(\$line);\$h{\$line}=1}open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);print \$line,\"\\n\" if(not(defined(\$h{\$line})));}}' <(awk '{prefix=substr(\$1,1,2); readnumber=int(substr(\$1,3));  if(readnumber\%2==0){last_readnumber=readnumber; last_prefix=prefix}else{if(last_readnumber==readnumber-1 && last_prefix==prefix){print prefix\"\"last_readnumber\"\\n\"prefix\"\"readnumber}}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 |reverse_complement > sj.cor.clean.fa\n";
+	if(not(-e "sj.cor.clean.rev.fa")||$rerun_pe==1||$rerun_sj==1){
+	    print FILE "extractreads.pl <(cat chimeric_sj.txt redundant_sj.txt | perl -e '{while(\$line=<STDIN>){chomp(\$line);\$h{\$line}=1}open(FILE,\$ARGV[0]);while(\$line=<FILE>){chomp(\$line);print \$line,\"\\n\" if(not(defined(\$h{\$line})));}}' <(awk '{prefix=substr(\$1,1,2); readnumber=int(substr(\$1,3));  if(readnumber\%2==0){last_readnumber=readnumber; last_prefix=prefix}else{if(last_readnumber==readnumber-1 && last_prefix==prefix){print prefix\"\"last_readnumber\"\\n\"prefix\"\"readnumber}}}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 > sj.cor.clean.fa\n";
 	    $rerun_sj=1;
+		print FILE "rm -rf sj.cor.clean.rev.fa\n";
+	        for($i=0;$i<scalar(@jump_info_array);$i++){
+        		@f=split(/\s+/,$jump_info_array[$i]);
+	            	my $if_innie="";
+        	        $if_innie=" | reverse_complement " if($f[1]>0);
+            		print FILE "grep -A 1 '^>$f[0]' sj.cor.clean.fa | grep -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
+        		}
+	}
+
+#here we extend the jumping library reads if they are too short
+        if(not(-e "sj.cor.ext.fa")||$rerun_pe==1||$rerun_sj==1){      
+        $rerun_sj=1;
+	if($EXTEND_JUMP_READS==1){
+        print FILE "createSuperReadsForDirectory.perl -jumplibraryreads -minreadsinsuperread 1 -l \$KMER_J -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.jump.fasta -t $NUM_THREADS -mikedebug work3 sj.cor.clean.rev.fa 1> super2.err 2>&1\n";
+
+#check if the super reads pipeline finished successfully
+        print FILE "if [[ ! -e work3/superReads.success ]];then\n";
+        print FILE "echo \"Super reads failed, check super2.err and files in ./work2/\"\n";
+        print FILE "exit\n";
+        print FILE "fi\n";
+
+        print FILE "ln -sf work3/superReadSequences.jumpLibrary.fasta sj.cor.ext.fa\n";
+	}else{
+	print FILE "ln -sf sj.cor.clean.rev.fa sj.cor.ext.fa\n";
+	}
 	}
 
 #here we create the frg files for CA from the jump libraries: each jump library will contribute one jump frg file and one additional frg file of linking information from "chimers"
@@ -613,9 +630,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	for($i=0;$i<scalar(@jump_info_array);$i++){
 	    @f=split(/\s+/,$jump_info_array[$i]);
 	    $list_of_frg_files.="$f[0].cor.clean.frg ";
-	    my $if_innie="";
-	    $if_innie=" | reverse_complement " if($f[1]<0);
-	    print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep -v '^\\-\\-' $if_innie > $f[0].tmp\n";
+	    print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep -v '^\\-\\-' > $f[0].tmp\n";
 	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp > $f[0].cor.clean.frg\n";
 	    print FILE "rm -f $f[0].tmp\n";
 	}
