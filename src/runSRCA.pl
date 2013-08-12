@@ -615,7 +615,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 #here we create the frg files for CA from the jump libraries: each jump library will contribute one jump frg file and one additional frg file of linking information from "chimers"
 	print FILE "echo -n 'creating FRG files ';date;\n";
 	print FILE "rm -rf compute_jump_coverage.txt\n";
-	print FILE "ln -sf sj.cor.clean.fa sj.cor.ext.fa\n";
+	
 	for($i=0;$i<scalar(@jump_info_array);$i++){
 	    @f=split(/\s+/,$jump_info_array[$i]);
 	    print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
@@ -692,6 +692,15 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 	print FILE "rm -rf CA\n";
     }
 
+#this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
+        if(scalar(@other_info_array)>0){
+            $ovlMerSize=22;
+            $other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClearRanges=2 ovlMerSize=22";
+        }else{
+            $ovlMerSize=30;
+            $other_parameters="doFragmentCorrection=0 doOverlapBasedTrimming=0 doExtendClearRanges=0 ovlMerSize=30";
+        }
+
     if(not(-d "CA/7-0-CGW")|| $rerun_pe || $rerun_sj){
 ###figure out the optimal parameters for CA###
 	print FILE "TOTAL_READS=`cat  *.frg |grep '^{FRG'|wc -l`\n";
@@ -704,14 +713,6 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 	if(not(-d "CA/genome.ovlStore")|| $rerun_pe || $rerun_sj){
 	    print FILE "ovlMerThreshold=`jellyfish histo -t $NUM_THREADS k_u_hash_0 | awk '{thresh=75;if(\$1>1) {dist+=\$2;if(dist>int(\"'\$ESTIMATED_GENOME_SIZE'\")*0.98&&flag==0){if(\$1>thresh) thresh=\$1;flag=1}}}END{print thresh}'`\n";
 	    print FILE "echo ovlMerThreshold=\$ovlMerThreshold\n\n";
-	}
-#this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
-	if(scalar(@other_info_array)>0){
-	    $ovlMerSize=22;
-	    $other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClearRanges=2 ovlMerSize=22";
-	}else{
-	    $ovlMerSize=30;
-	    $other_parameters="doFragmentCorrection=0 doOverlapBasedTrimming=0 doExtendClearRanges=0 ovlMerSize=30";
 	}
 
 #filter out non-junction fragments

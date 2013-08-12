@@ -33,7 +33,7 @@ while ($line = <FILE>) {
     ++$gapNum;
 }
 
-$cmd = "grep -A 10 -E \"^\\\{\(SCF|CTP\)\$\" $CeleraTerminatorDirectory/genome.asm |";
+$cmd = "grep --text -A 10 -E \"^\\\{\(SCF|CTP\)\$\" $CeleraTerminatorDirectory/genome.asm |";
 open (FILE, $cmd);
 while ($line = <FILE>) {
     next unless ($line =~ /^ct1:/);
