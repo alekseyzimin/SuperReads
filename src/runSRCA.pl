@@ -606,7 +606,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
         print FILE "exit\n";
         print FILE "fi\n";
 
-        print FILE "ln -sf work3/superReadSequences.jumpLibrary.fasta sj.cor.ext.fa\n";
+        print FILE "awk '{print substr(\$0,1,125)}' work3/superReadSequences.jumpLibrary.fasta > sj.cor.ext.fa\n";
 	}else{
 	print FILE "ln -sf sj.cor.clean.rev.fa sj.cor.ext.fa\n";
 	}
