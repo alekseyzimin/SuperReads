@@ -50,7 +50,7 @@ my $KMER_COUNT_THRESHOLD=1;
 my $KMER_RELIABLE_THRESHOLD=3;
 my $TRIM_PARAM=2;
 my $NUM_THREADS=2;
-my $EXTEND_JUMP_READS=1;
+my $EXTEND_JUMP_READS=0;
 my $JF_SIZE=100000000;
 my $in_paths=0;
 my $in_data=0;
@@ -168,15 +168,15 @@ while($line=<FILE>){
             die("bad value for USE_LINKING_MATES, enter 0 or 1") if($USE_LINKING_MATES!=1 && $USE_LINKING_MATES!=0);
             next;
         }
-#	elsif($line =~ /^KMER_COUNT_THRESHOLD/){
-#	    @f=split(/=/,$line);
-#	    $f[1]=~s/^\s+//;
-#	    $f[1]=~s/\s+$//;
-#	    $KMER_COUNT_THRESHOLD=int($f[1]);
-#	    $KMER_RELIABLE_THRESHOLD=3*$KMER_COUNT_THRESHOLD;
-#	    die("bad value for KMER_COUNT_THRESHOLD") if($KMER_COUNT_THRESHOLD<1);
-#	    next;
-#	}
+	elsif($line =~ /^KMER_COUNT_THRESHOLD/){
+	    @f=split(/=/,$line);
+	    $f[1]=~s/^\s+//;
+	    $f[1]=~s/\s+$//;
+	    $KMER_COUNT_THRESHOLD=int($f[1]);
+	    $KMER_RELIABLE_THRESHOLD=3*$KMER_COUNT_THRESHOLD;
+	    die("bad value for KMER_COUNT_THRESHOLD") if($KMER_COUNT_THRESHOLD<1);
+	    next;
+	}
 	elsif($line =~ /^NUM_THREADS/){
 	    @f=split(/=/,$line);
 	    $f[1]=~s/^\s+//;
@@ -417,12 +417,12 @@ if(scalar(@jump_info_array)>0){
 ###done renaming reads###
 print FILE "\n";
 ###compute minimum and average PE read length and gc content, and kmer size###
-print FILE "head -q -n 2  $list_pe_files | grep -v '^\@' > pe_data.tmp\n";
+print FILE "head -q -n 2  $list_pe_files | grep --text -v '^\@' > pe_data.tmp\n";
 print FILE "PE_AVG_READ_LENGTH=`awk '{n+=length(\$1);m++;}END{print int(n/m)}' pe_data.tmp`\n";
 print FILE "echo \"Average PE read length \$PE_AVG_READ_LENGTH\"\n";
 if(uc($KMER) eq "AUTO"){
 #here we have to estimate gc content and recompute kmer length for the graph
-    print FILE "KMER=`for f in $list_pe_files;do head -n 80000 \$f |tail -n 40000;done | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); print \$kmer'`\n";
+    print FILE "KMER=`head -q -n 4000  $list_pe_files | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); print \$kmer'`\n";
     print FILE "echo \"choosing kmer size of \$KMER for the graph\"\n";
 }else{
     print FILE "KMER=$KMER\n";
@@ -536,11 +536,11 @@ print FILE "\n";
 ###build k-unitigs###
 
 if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
-    print FILE "create_k_unitigs_large_k -c \$((\$KMER-1)) -t $NUM_THREADS -m \$KMER -n \$ESTIMATED_GENOME_SIZE -l \$KMER -f 0.000001 $k_u_arg  | grep -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+    print FILE "create_k_unitigs_large_k -c \$((\$KMER-1)) -t $NUM_THREADS -m \$KMER -n \$ESTIMATED_GENOME_SIZE -l \$KMER -f 0.000001 $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
     print FILE "if [[ \$KMER -eq \$KMER_J ]];then\n";
     print FILE "ln -s guillaumeKUnitigsAtLeast32bases_all.fasta guillaumeKUnitigsAtLeast32bases_all.jump.fasta\n";
     print FILE "else\n";
-    print FILE "create_k_unitigs_large_k -c \$((\$KMER_J-1)) -t $NUM_THREADS -m \$KMER_J -n \$ESTIMATED_GENOME_SIZE -l \$KMER_J -f 0.000001 $k_u_arg  | grep -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.jump.fasta\n";
+    print FILE "create_k_unitigs_large_k -c \$((\$KMER_J-1)) -t $NUM_THREADS -m \$KMER_J -n \$ESTIMATED_GENOME_SIZE -l \$KMER_J -f 0.000001 $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.jump.fasta\n";
     print FILE "fi\n";
     $rerun_pe=1;
     $rerun_sj=1;
@@ -590,7 +590,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
         		@f=split(/\s+/,$jump_info_array[$i]);
 	            	my $if_innie="";
         	        $if_innie=" | reverse_complement " if($f[1]>0);
-            		print FILE "grep -A 1 '^>$f[0]' sj.cor.clean.fa | grep -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
+            		print FILE "grep -A 1 '^>$f[0]' sj.cor.clean.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
         		}
 	}
 
@@ -619,8 +619,8 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	for($i=0;$i<scalar(@jump_info_array);$i++){
 	    @f=split(/\s+/,$jump_info_array[$i]);
 	    print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
-	    print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.fa | grep -v '^\\-\\-' > $f[0].tmp\n";
-	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp | grep '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
+	    print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
+	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp | grep --text '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
         }
 	print FILE "JUMP_BASES_COVERED=`awk 'BEGIN{b=0}{b+=\$1*\$2;}END{print b}' compute_jump_coverage.txt`\n";
 
@@ -630,7 +630,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	for($i=0;$i<scalar(@jump_info_array);$i++){
 	    @f=split(/\s+/,$jump_info_array[$i]);
 	    $list_of_frg_files.="$f[0].cor.clean.frg ";
-	    print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep -v '^\\-\\-' > $f[0].tmp\n";
+	    print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp > $f[0].cor.clean.frg\n";
 	    print FILE "rm -f $f[0].tmp\n";
 	}
@@ -668,7 +668,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	    @f=split(/\s+/,$v);
 	    $list_of_frg_files.="$f[0].linking.frg ";
 	    if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
-		print FILE "grep -A 1 '^>$f[0]' pe.linking.fa | grep -v '^\\-\\-' > $f[0].tmp\n";
+		print FILE "grep -A 1 '^>$f[0]' pe.linking.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 		print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].linking.frg\n";
 		print FILE "rm $f[0].tmp\n";
 	    }
@@ -756,7 +756,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 	    print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
 
 #here we filter for repetitive kmers in the unique unitigs
-	    print FILE "NUM_SUPER_READS=`cat superReadSequences_shr.frg $tmplist | grep '^{FRG' |wc -l`\n";
+	    print FILE "NUM_SUPER_READS=`cat superReadSequences_shr.frg $tmplist | grep --text '^{FRG' |wc -l`\n";
 	    print FILE "cd CA\n";
 	    print FILE "tigStore -g genome.gkpStore -t genome.tigStore 2 -d layout -U | tr -d '-' | awk 'BEGIN{print \">unique unitigs\"}{if(\$1 == \"cns\"){seq=\$2}else if(\$1 == \"data.unitig_coverage_stat\" && \$2>=5){print seq\"N\"}}' | jellyfish-2.0 count -L 2 -C -m $ovlMerSize -s \$ESTIMATED_GENOME_SIZE -t $NUM_THREADS -o unitig_mers /dev/fd/0\n";
 	    print FILE "cat <(overlapStore -b 1 -e \$NUM_SUPER_READS -d genome.ovlStore  | awk '{if(\$1<'\$NUM_SUPER_READS' && \$2<'\$NUM_SUPER_READS') print \$0}'|filter_overlap_file -t $NUM_THREADS <(gatekeeper -dumpfastaseq genome.gkpStore ) unitig_mers /dev/fd/0) <(overlapStore -d genome.ovlStore | awk '{if(\$1>='\$NUM_SUPER_READS' || \$2>='\$NUM_SUPER_READS') print \$1\" \"\$2\" \"\$3\" \"\$4\" \"\$5\" \"\$6\" \"\$7}')  |convertOverlap -b -ovl > overlaps.ovb\n";
