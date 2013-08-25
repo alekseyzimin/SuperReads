@@ -590,7 +590,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
         		@f=split(/\s+/,$jump_info_array[$i]);
 	            	my $if_innie="";
         	        $if_innie=" | reverse_complement " if($f[1]>0);
-            		print FILE "grep -A 1 '^>$f[0]' sj.cor.clean.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
+            		print FILE "grep --text -A 1 '^>$f[0]' sj.cor.clean.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
         		}
 	}
 
@@ -619,7 +619,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	for($i=0;$i<scalar(@jump_info_array);$i++){
 	    @f=split(/\s+/,$jump_info_array[$i]);
 	    print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
-	    print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
+	    print FILE "grep --text -A 1 '^>$f[0]' sj.cor.ext.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp | grep --text '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
         }
 	print FILE "JUMP_BASES_COVERED=`awk 'BEGIN{b=0}{b+=\$1*\$2;}END{print b}' compute_jump_coverage.txt`\n";
@@ -630,7 +630,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	for($i=0;$i<scalar(@jump_info_array);$i++){
 	    @f=split(/\s+/,$jump_info_array[$i]);
 	    $list_of_frg_files.="$f[0].cor.clean.frg ";
-	    print FILE "grep -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
+	    print FILE "grep --text -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp > $f[0].cor.clean.frg\n";
 	    print FILE "rm -f $f[0].tmp\n";
 	}
@@ -668,12 +668,12 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	    @f=split(/\s+/,$v);
 	    $list_of_frg_files.="$f[0].linking.frg ";
 	    if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
-		print FILE "grep -A 1 '^>$f[0]' pe.linking.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
+		print FILE "grep --text -A 1 '^>$f[0]' pe.linking.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 		print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].linking.frg\n";
 		print FILE "rm $f[0].tmp\n";
 	    }
 	}
-	print FILE "echo -n 'Linking PE reads ';\ncat ??.linking.frg |grep '^{FRG' |wc -l;\n";
+	print FILE "echo -n 'Linking PE reads ';\ncat ??.linking.frg |grep --text '^{FRG' |wc -l;\n";
     }
 
 #create frg file for super reads
@@ -703,7 +703,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 
     if(not(-d "CA/7-0-CGW")|| $rerun_pe || $rerun_sj){
 ###figure out the optimal parameters for CA###
-	print FILE "TOTAL_READS=`cat  *.frg |grep '^{FRG'|wc -l`\n";
+	print FILE "TOTAL_READS=`cat  *.frg |grep --text '^{FRG'|wc -l`\n";
 	print FILE "ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/8); if(\$s>100000){print \$s}else{print \"100000\"}'`\n";
 	print FILE "ovlHashBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/80); if(\$s>10000){print \$s}else{print \"10000\"}'`\n";
 	print FILE "ovlCorrBatchSize=\$ovlHashBlockSize\n";
@@ -727,7 +727,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 		print FILE "exit\n";
 		print FILE "fi\n";
 
-		print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep '^>' ../../sj.cor.ext.reduced.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid\n";
+		print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep --text '^>' ../../sj.cor.ext.reduced.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid\n";
 		print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" mateiid 0\"}'  > gkp.edits.msg\n";
 		print FILE "echo -n \"Found additional non-junction reads: \"\nwc -l gkp.edits.msg\n";
 		print FILE "gatekeeper --edit gkp.edits.msg ../genome.gkpStore 1>gatekeeper.err 2>&1\n";
