@@ -65,7 +65,7 @@ next if(length($sequence1)<64);
         print STDOUT "loc:0\n";
         print STDOUT "src:\n.\n";
         print STDOUT "seq:\n$sequence1\n.\n";
-$sequence1 =~ tr/ACGTNacgtn/GGGGGGGGGG/;# create fake quality scores
+$sequence1 =~ tr/ACGTNacgtn/aaaaaaaaaa/;# create fake quality scores
         print STDOUT "qlt:\n$sequence1\n.\n";
         print STDOUT "hps:\n.\n";
         print STDOUT "clv:$clr1,$clr2\n";
