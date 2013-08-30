@@ -8,6 +8,9 @@ $joiningEndPairs = "fauxReads.fasta";
 if ($dirToChangeTo) {
     chdir ($dirToChangeTo); }
 
+$multipleJoinRun = &determineIfMultipleJoinsAreRun;
+$joiningEndPairsOrig = $joiningEndPairs;
+
 &runMainLoop;
 
 sub runMainLoop
@@ -39,43 +42,138 @@ sub runMainLoop
 	    runCommandAndExitIfBad ($cmd);
 	}
 	$tempKUnitigsFile = "k_unitigs_${suffix}.fa";
+	if ($multipleJoinRun) {
+	    $outputJoinFlag = "-output-join-result-for-each-join"; }
 #	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -num-stdevs-allowed $numStdevsAllowed -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
-	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -num-stdevs-allowed $numStdevsAllowed -closegaps -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -join-aggressive $joinAggressive -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
+	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -num-stdevs-allowed $numStdevsAllowed -closegaps -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -join-aggressive $joinAggressive $outputJoinFlag -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
 	if (runCommandAndReturnIfBad ($cmd)) {
 	    last; }
 	# Now looking for the report line from joinKUnitigs indicating what happened with the
 	# faux mate pair (joined, missing nodes, too many nodes, etc.)
 	
+	undef %type;
+	@fwdReadsForNextPass = ();
+	@goodFwdMates = ();
 	open (FILE,"out.$suffix");
-	$localLine = "";
-        while($tempLine=<FILE>){
-	    next if (not($tempLine =~ /^Num/));
-            print $tempLine;
-	    next unless ($tempLine =~ / 1\s*$/);
-	    $localLine = $tempLine;
-	    last; }
-        close(FILE);
+	if (! $multipleJoinRun) {
+	    $localLine = "";
+	    while ($tempLine = <FILE>) {
+		next if ($tempLine !~ /^Num/);
+		print $tempLine;
+		next unless ($tempLine =~ / 1\s*$/);
+		$localLine = $tempLine;
+		last; }
+	}
+	else { # We must check what to print and if undef works with a hash
+	    while ($tempLine = <FILE>) {
+		chomp ($tempLine);
+		next if ($tempLine =~ /^Num/);
+		@flds = split (" ", $tempLine);
+		if ($tempLine =~ /unresolved at end/) {
+		    push (@goodFwdMates, $flds[0]);
+		    $type{$flds[0]} = "unresolved"; }
+		elsif ($tempLine =~ /unjoinable over max nodes/) {
+		    push (@fwdReadsForNextPass, $flds[0]);
+		    $type{$flds[0]} = "over max nodes"; }
+		elsif ($tempLine =~ /unjoinable missing sequence/) {
+		    if ($type{$flds[0]} !~ /\S/) {
+			$type{$flds[0]} = "missing sequence"; } }
+		elsif ($tempLine =~ /same unitig/) {
+		    $type{$flds[0]} = "same unitig"; }
+		elsif ($tempLine =~ /uniquely joinable/) {
+		    push (@goodFwdMates, $flds[0]);
+		    $type{$flds[0]} = "joinable"; }
+		elsif ($tempLine =~ /disambiguated/) {
+		    push (@goodFwdMates, $flds[0]);
+		    $type{$flds[0]} = "disambiguated"; }
+	    }
+	}
+
+	close(FILE);
 
 	# Initial check to see if the faux mates were joinable
         $lineForMatchHold="";
         open(FILE,"work_$suffix/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt");
-        while ($line = <FILE>) {
-            chomp ($line);
-            @flds = split (" ", $line);
-            ($val) = ($flds[0] =~ /^..(\d+)/);
-            $val = int ($val/2);
-            $lineForMatch = "$val $flds[1]";
-            if ($lineForMatch eq $lineForMatchHold) {
-                $directoryPassed = 1;
+	if (! $multipleJoinRun) {
+	    while ($line = <FILE>) {
+		chomp ($line);
+		@flds = split (" ", $line);
+		($val) = ($flds[0] =~ /^..(\d+)/);
+		$val = int ($val/2);
+		$lineForMatch = "$val $flds[1]";
+		if ($lineForMatch eq $lineForMatchHold) {
+		    $directoryPassed = 1;
+		}
+		$lineForMatchHold = $lineForMatch;
 	    }
-            $lineForMatchHold = $lineForMatch;
-        }
+	}
+	else {
+	    undef %indexExists;
+	    @goodJoins = ();
+	    while ($line = <FILE>) {
+		chomp ($line);
+		@flds = split (" ", $line);
+		($prefix, $val) = ($flds[0] =~ /^(..)(\d+)/);
+		$val = int ($val/2);
+		$lineForMatch = "$val $flds[1]";
+		if ($indexExists{$lineForMatch}) {
+		    $val2 = 2 * $val;
+		    push (@goodJoins, "${prefix}$val2");
+		    ++$val2;
+		    push (@goodJoins, "${prefix}$val2"); }
+		++$indexExists{$lineForMatch};
+	    }
+	}
         close(FILE);
-	if ($localLine =~ /same unitig/){ $directoryPassed = 0; next; } 
-	elsif ($directoryPassed == 1) { last; }
-	elsif ($localLine =~ /not uniquely joinable/ || $localLine =~ /too many nodes/) { next; }
-	elsif ($localLine =~ /missing sequence/) { last; }
-	else { last; }
+
+	if (! $multipleJoinRun) {
+	    if ($localLine =~ /same unitig/){ $directoryPassed = 0; next; } 
+	    elsif ($directoryPassed == 1) { last; }
+	    elsif ($localLine =~ /not uniquely joinable/ || $localLine =~ /too many nodes/) { next; }
+	    elsif ($localLine =~ /missing sequence/) { last; }
+	    else { last; }
+	}
+	else {
+	    $passingReadsFile = "passingReadsFile.txt";
+	    open (FILE, ">>$passingReadsFile");
+	    for (@goodFwdMates) {
+		$read = $_;
+		print FILE "$read\n";
+		$mateRead = &getMateFromReadName ($read);
+		print FILE "$mateRead\n"; }
+	    close (FILE);
+	    $readsForNextPassFile = "readsForNextPass.txt";
+	    open (FILE, ">$readsForNextPassFile");
+	    undef %readIsNeededForNextPass;
+	    for (@fwdReadsForNextPass) {
+		$read = $_;
+		print FILE "$read\n";
+		$readIsNeededForNextPass{$read} = 1;
+		$mateRead = &getMateFromReadName ($read);
+		print FILE "$mateRead\n";
+		$readIsNeededForNextPass{$mateRead} = 1; }
+	    close (FILE);
+	    $sz = -s $readsForNextPassFile;
+	    if ($sz == 0) {
+		unlink $readsForNextPassFile;
+		last; }
+	    else {
+		open (FILE, $joiningEndPairs);
+		$newJoiningEndPairs = $joiningEndPairsOrig . ".$k";
+		open (OUTFILE, ">$newJoiningEndPairs");
+		while ($line = <FILE>) {
+		    chomp ($line);
+		    @flds = split (" ", $line);
+		    ($readName) = ($flds[0] =~ /^.(.+)$/);
+		    if ($readIsNeededForNextPass{$readName}) { $on = 1; }
+		    else { $on = 0; }
+		    print OUTFILE "$line\n" if ($on);
+		    $line = <FILE>;
+		    print OUTFILE $line if ($on); }
+		close (FILE); close (OUTFILE);
+		$joiningEndPairs = $newJoiningEndPairs;
+	    }
+	}
     }
     
     $passingKMerFile = "passingKMer.txt";
@@ -85,6 +183,19 @@ sub runMainLoop
     else {
 	print FILE "11\n"; }
     close(FILE);
+}
+
+sub getMateFromReadName
+{
+    my ($readName) = @_;
+    my ($prefix, $last, $mateName);
+    ($prefix, $last) = ($readName =~ /^(.+)(.)$/);
+    if ($last % 2 == 0) {
+	++$last; }
+    else {
+	--$last; }
+    $mateName = $prefix . $last;
+    return ($mateName);
 }
 
 sub getReadFileSize
@@ -172,7 +283,6 @@ sub processArgs
     $maxKMerLen = 65;
     $minKMerLen = 17;
     $numThreads = 1;
-    $useAllKUnitigs = 1;
     $maxNodes = 2000;
     $meanForFauxInserts = 500;
     $stdevForFauxInserts = 200;
@@ -180,10 +290,6 @@ sub processArgs
     $joinAggressive = 0;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
-	if ($arg eq "--dir-for-kunitigs") {
-	    ++$i;
-	    $dirForKUnitigs = $ARGV[$i];
-	    next; }
 	if ($arg eq "--mean-for-faux-inserts") {
 	    ++$i;
 	    $meanForFauxInserts = $ARGV[$i];
@@ -243,5 +349,17 @@ sub processArgs
 sub byNum
 {
     return ($b <=> $a);
+}
+
+sub determineIfMultipleJoinsAreRun
+{
+    my ($cmd, $tline, @flds);
+    $cmd = "wc -l $joiningEndPairs";
+    open (FILE, "$cmd |"); $tline = <FILE>; close (FILE);
+    @flds = split (" ", $tline);
+    if ($flds[0] > 4) {
+	return (1); }
+    else {
+	return (0); }
 }
 
