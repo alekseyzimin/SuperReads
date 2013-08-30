@@ -18,7 +18,7 @@
 
 #!/usr/bin/perl
 $kUni = $ARGV[-1];
-$cmd = "grep -10 \" $kUni \" Illumina_data/work1/arrangedCoordsResultsByRead.txt |";
+$cmd = "grep --text -10 \" $kUni \" Illumina_data/work1/arrangedCoordsResultsByRead.txt |";
 open (FILE, $cmd);
 while ($line = <FILE>) {
     chomp ($line);

@@ -16,7 +16,7 @@ else
 echo "initial failure"
 cp  extendClearRanges-scaffold.initial.err  extendClearRanges-scaffold.continue.err
 while [ 1 ];do 
-FAILED_SCF=`grep 'examining scaffold' extendClearRanges-scaffold.continue.err|tail -n 1|awk '{print substr($3,1,length($3)-1)}'`
+FAILED_SCF=`grep --text 'examining scaffold' extendClearRanges-scaffold.continue.err|tail -n 1|awk '{print substr($3,1,length($3)-1)}'`
 let FAILED_SCF=$FAILED_SCF-1;
 echo "extendClearRanges  -g ../$PREFIX.gkpStore -t ../$PREFIX.tigStore  -n $LAST_CKP  -c $PREFIX  -b $BEGIN_SCF -e $FAILED_SCF  -i $ITERATION  > extendClearRanges-scaffold.$FAILED_SCF.err 2>&1"
 extendClearRanges  -g ../$PREFIX.gkpStore -t ../$PREFIX.tigStore  -n $LAST_CKP  -c $PREFIX  -b $BEGIN_SCF -e $FAILED_SCF  -i $ITERATION  > extendClearRanges-scaffold.$FAILED_SCF.err 2>&1
