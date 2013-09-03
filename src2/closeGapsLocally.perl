@@ -233,7 +233,7 @@ sub processArgs
     $maxNodes = 200000;
     $fauxInsertMean = 500;
     $fauxInsertStdev = 200;
-    $numStdevsAllowed = 3;
+    $numStdevsAllowed = 5;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
         if ($arg eq "--max-fishing-mer-count") {

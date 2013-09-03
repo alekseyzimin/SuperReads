@@ -240,10 +240,6 @@ sub processArgs
 	    ++$i;
 	    push (@readsFiles, $ARGV[$i]);
 	    next; }
-	if ($arg eq "--kunitig-continuation-number") {
-	    ++$i;
-	    $kUnitigContinuationNumber = $ARGV[$i];
-	    next; }
 	if ($arg eq "--maxnodes") {
 	    ++$i;
 	    $maxNodes = $ARGV[$i];
@@ -252,20 +248,7 @@ sub processArgs
 	    ++$i;
 	    $dirToChangeTo = $ARGV[$i];
 	    next; }
-	if (-f $arg) {
-	    push (@readsFiles, $arg);
-	    next; }
-	if ($arg =~ /^\d+/) {
-	    push (@kmerLens, $arg);
-	    next; }
     }
-    @kmerLens = sort byNum @kmerLens;
-    if ($#kmerLens >= 0) {
-	$maxKMerLen = $kmerLens[0]; }
-    if ($#kmerLens >= 1) {
-	$minKMerLen = $kmerLens[1]; }
-    if ($#kmerLens >= 2) {
-	$kUnitigContinuationNumber = $kmerLens[2]; }
 }
 
 sub byNum
