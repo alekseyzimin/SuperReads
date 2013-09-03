@@ -270,8 +270,6 @@ system ($cmd);
 exit (0);
 
  jumpLibraryCalculations:
-$minReadLength = 64;
-$maxReadLength = 2047;
 $cmd = "$exeDir/createFastaSuperReadSequences -jump-library $workingDirectory $joinerOutput -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread 1 $mergedUnitigDataFileStr -kunitigsfile $mergedUnitigInputKUnitigsFile -maxunitignumberfile $mergedMaxKUnitigNumberFile -min-read-length $minReadLength -max-read-length $maxReadLength -good-sequence-output-file $finalSuperReadSequenceFile  2> $sequenceCreationErrorFile";
 &runCommandAndExitIfBad ($cmd, $finalSuperReadSequenceFile, 1, "createFastaSequencesForJumpingLibrary", $finalSuperReadSequenceFile, $sequenceCreationErrorFile);
     
@@ -286,6 +284,8 @@ sub processArgs
     $minReadsInSuperRead = 2;
     $seqDiffMax = 0;
     $numStdevsAllowed = 5;
+    $minReadLength = 64;
+    $maxReadLength = 101;
     $help = 0;
     $timeIt = 0;
     if ($#ARGV < 0) {
@@ -329,6 +329,14 @@ sub processArgs
 	elsif ($ARGV[$i] eq "-merged-unitig-data-prefix") {
 	    ++$i;
 	    $mergedUnitigDataPrefix = $ARGV[$i];
+	    next; }
+	elsif ($ARGV[$i] eq "-min-read-length") {
+	    ++$i;
+	    $minReadLength = $ARGV[$i];
+	    next; }
+	elsif ($ARGV[$i] eq "-max-read-length") {
+	    ++$i;
+	    $maxReadLength = $ARGV[$i];
 	    next; }
 	elsif ($ARGV[$i] eq "-mean-and-stdev-by-prefix-file") {
 	    ++$i;
