@@ -59,7 +59,7 @@ my @pe_info_array=();
 my @jump_info_array=();
 my @other_info_array=();
 my %used_library_ids;
-my $LIMIT_JUMP_COVERAGE=60;
+my $LIMIT_JUMP_COVERAGE=500;
 my $USE_LINKING_MATES=1;
 my $homo_trim_string=" | homo_trim  $TRIM_PARAM ";
 my $CLOSE_GAPS=1;
@@ -513,16 +513,11 @@ if(scalar(@jump_info_array)>0){
 }
 
 if(not(-e "k_u_hash_0")||$rerun_pe==1||$rerun_sj==1){
-    print FILE "jellyfish count -p 126 -m 31 -t $NUM_THREADS -C -s \$JF_SIZE -o k_u $k_u_arg\n";
-    print FILE "if [[ -e k_u_1 ]];then\n";
-    print FILE "jellyfish merge -o k_u_hash_0 k_u_*\n";
-    print FILE "else\n";
-    print FILE "ln -s k_u_0 k_u_hash_0\n";
-    print FILE "fi\n";
+    print FILE "jellyfish-2.0 count -m 31 -t $NUM_THREADS -C -s \$JF_SIZE -o k_u_hash_0 $k_u_arg\n";
 }
 
 
-print FILE "ESTIMATED_GENOME_SIZE=`jellyfish histo -t $NUM_THREADS -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
+print FILE "ESTIMATED_GENOME_SIZE=`jellyfish-2.0 histo -t $NUM_THREADS -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
 print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
 
 ####done estimate genome size###
@@ -705,7 +700,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 
 #estimating mer threshold for overlapper to cover 90% of all distinct k-mers
 	if(not(-d "CA/genome.ovlStore")|| $rerun_pe || $rerun_sj){
-	    print FILE "ovlMerThreshold=`jellyfish histo -t $NUM_THREADS k_u_hash_0 | awk '{thresh=75;if(\$1>1) {dist+=\$2;if(dist>int(\"'\$ESTIMATED_GENOME_SIZE'\")*0.98&&flag==0){if(\$1>thresh) thresh=\$1;flag=1}}}END{print thresh}'`\n";
+	    print FILE "ovlMerThreshold=`jellyfish-2.0 histo -t $NUM_THREADS k_u_hash_0 | awk '{thresh=75;if(\$1>1) {dist+=\$2;if(dist>int(\"'\$ESTIMATED_GENOME_SIZE'\")*0.98&&flag==0){if(\$1>thresh) thresh=\$1;flag=1}}}END{print thresh}'`\n";
 	    print FILE "echo ovlMerThreshold=\$ovlMerThreshold\n\n";
 	}
 
@@ -810,7 +805,7 @@ if($CLOSE_GAPS){
         $reads_argument.="--reads-file $v ";
     }
 
-    print FILE "closeGapsLocally.perl -s $JF_SIZE --Celera-terminator-directory CA/9-terminator $reads_argument --output-directory CA/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $NUM_THREADS --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --maxnodes 10000 --reduce-read-set-kmer-size 21 --max-reads-in-memory 100000000 --faux-insert-mean 600 --faux-insert-stdev 200 1>gapClose.err 2>&1\n";
+    print FILE "closeGapsLocally.perl -s $JF_SIZE --Celera-terminator-directory CA/9-terminator $reads_argument --output-directory CA/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $NUM_THREADS --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 21 1>gapClose.err 2>&1\n";
     print FILE "if [[ -e \"CA/10-gapclose/genome.ctg.fasta\" ]];then\n";
     print FILE "echo \"Gap close success. Output sequence is in CA/10-gapclose/genome.\{ctg,scf\}.fasta\"\n";
     print FILE "else\n";

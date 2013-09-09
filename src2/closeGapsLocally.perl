@@ -225,13 +225,13 @@ sub processArgs
     $reduceReadSetKMerSize = 21;
     $kUnitigContinuationNumber = 2;
     $maxKMerLen = 65;
-    $minKMerLen = 17;
+    $minKMerLen = 19;
     $numThreads = 1;
     $maxFishingKMerCount = 1000;
     $maxReadsInMemory = 100000000;
     $contigLengthForJoining = $contigLengthForFishing = 100;
-    $maxNodes = 200000;
-    $fauxInsertMean = 500;
+    $maxNodes = 20000;
+    $fauxInsertMean = 600;
     $fauxInsertStdev = 200;
     $numStdevsAllowed = 5;
     for ($i=0; $i<=$#ARGV; $i++) {
