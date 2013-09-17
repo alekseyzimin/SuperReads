@@ -51,3 +51,12 @@ TEST(ExpVector, Float) {
   EXPECT_FLOAT_EQ((float)10.0, fv[10]);
   EXPECT_FLOAT_EQ((float)10.0, fvd[10]);
 }
+
+TEST(ExpVector, Initialization) {
+  static const size_t size = 100;
+  exp_vector<int> iv(size);
+
+  EXPECT_EQ(size, iv.size());
+  for(size_t i = 0; i < size; ++i)
+    EXPECT_EQ(0, iv[i]);
+}
