@@ -69,7 +69,7 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/fix_unitigs.sh					\
                     src/recompute_astat_superreads.sh src/runSRCA.pl	\
                     src/extractreads_not.pl src/run_ECR.sh		\
-                    src/filter_alt.pl src/parallel src/filter_overlap_file.pl
+                    src/filter_alt.pl src/parallel src/rename_filter_fastq.pl
 
 noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/diskBasedUnitigger.h			\

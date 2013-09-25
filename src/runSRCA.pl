@@ -366,79 +366,11 @@ foreach $v(@pe_info_array){
     print FILE "echo '$f[0] $f[1] $f[2]' >> meanAndStdevByPrefix.pe.txt\n";
     if(-e "$f[0].renamed.fastq"){
 	next;
-    }
-    else{
+    }else{
 	$rerun_pe=1;
 	$rerun_sj=1;
     }
-    if($f[3] eq $f[4]){
-        print FILE "perl -e 'open(INFILE1,\"zcat -cf $f[3] | \"); 
-                \$readnumber=0; \$seq1=\"\"; \$qlt1=\"\";
-                while(defined(\$line1=<INFILE1>)){
-                        if(\$line1=~ /^@/){ 
-                        if(defined(\$line1=<INFILE1>)){
-                                chomp(\$line1);
-                                \$seq1=\$line1;
-                        }else{
-                        last;
-                        }
-                        if(defined(\$line1=<INFILE1>)){
-                                if(\$line1=~ /^+/){
-                                }else{
-                                last;
-                                }
-                        }
-                        if(defined(\$line1=<INFILE1>)){
-                                chomp(\$line1);
-                                \$qlt1=\$line1;
-                        }else{
-                        last;
-                        }
-                        if(\$seq1 !~ /[^ACGTN]/){
-                                print \"\@\",\"$f[0]\$readnumber\\n\$seq1\\n+\\n\$qlt1\\n\";
-                        }
-                        \$readnumber+=2;
-                        }
-                }' > $f[0].renamed.fastq &\nPID$i=\$!\n";
-    }
-    else{ 
-	print FILE "perl -e 'open(INFILE1,\"zcat -cf $f[3] | \");open(INFILE2,\"zcat -cf $f[4] | \"); 
-		\$readnumber=0; \$seq1=\"\"; \$seq2=\"\"; \$qlt1=\"\"; \$qlt2=\"\";
-		while(defined(\$line1=<INFILE1>) && defined(\$line2=<INFILE2>)){
-			if(\$line1=~ /^@/ && \$line2=~ /^@/){ 
-			if(defined(\$line1=<INFILE1>) && defined(\$line2=<INFILE2>)){
-				chomp(\$line1);
-				\$seq1=\$line1;
-				chomp(\$line2);
-				\$seq2=\$line2;
-			}else{
-			last;
-			}
-			if(defined(\$line1=<INFILE1>) && defined(\$line2=<INFILE2>)){
-				if(\$line1=~ /^+/ && \$line2=~ /^+/){
-				}else{
-				last;
-				}
-			}
-                        if(defined(\$line1=<INFILE1>) && defined(\$line2=<INFILE2>)){
-                                chomp(\$line1);
-                                \$qlt1=\$line1;
-                                chomp(\$line2);
-                                \$qlt2=\$line2;
-                        }else{
-                        last;
-                        }
-			if(\$seq1 !~ /[^ACGTN]/){
-				print \"\@\",\"$f[0]\$readnumber\\n\$seq1\\n+\\n\$qlt1\\n\";
-			}
-			\$readnumber++;
-			if(\$seq2 !~ /[^ACGTN]/){
-				print \"\@\",\"$f[0]\$readnumber\\n\$seq2\\n+\\n\$qlt2\\n\";
-			}
-			\$readnumber++;
-			}
-		}' > $f[0].renamed.fastq &\nPID$i=\$!\n";
-    }
+    print FILE "rename_filter_fastq.pl $f[0] $f[3] $f[4] > $f[0].renamed.fastq &\nPID$i=\$!\n";   
     $i++;
 }
 print FILE "wait ";
@@ -463,44 +395,8 @@ if(scalar(@jump_info_array)>0){
         }
 	if($f[3] eq $f[4]){
 	    die("duplicate jump library $f[0] files");
-	}
-	else{
-        print FILE "perl -e 'open(INFILE1,\"zcat -cf $f[3] | \");open(INFILE2,\"zcat -cf $f[4] | \"); 
-                \$readnumber=0; \$seq1=\"\"; \$seq2=\"\"; \$qlt1=\"\"; \$qlt2=\"\";
-                while(defined(\$line1=<INFILE1>) && defined(\$line2=<INFILE2>)){
-                        if(\$line1=~ /^@/ && \$line2=~ /^@/){ 
-                        if(defined(\$line1=<INFILE1>) && defined(\$line2=<INFILE2>)){
-                                chomp(\$line1);
-                                \$seq1=\$line1;
-                                chomp(\$line2);
-                                \$seq2=\$line2;
-                        }else{
-                        last;
-                        }
-                        if(defined(\$line1=<INFILE1>) && defined(\$line2=<INFILE2>)){
-                                if(\$line1=~ /^+/ && \$line2=~ /^+/){
-                                }else{
-                                last;
-                                }
-                        }
-                        if(defined(\$line1=<INFILE1>) && defined(\$line2=<INFILE2>)){
-                                chomp(\$line1);
-                                \$qlt1=\$line1;
-                                chomp(\$line2);
-                                \$qlt2=\$line2;
-                        }else{
-                        last;
-                        }
-                        if(\$seq1 !~ /[^ACGTN]/){
-                                print \"\@\",\"$f[0]\$readnumber\\n\$seq1\\n+\\n\$qlt1\\n\";
-                        }
-                        \$readnumber++;
-                        if(\$seq2 !~ /[^ACGTN]/){
-                                print \"\@\",\"$f[0]\$readnumber\\n\$seq2\\n+\\n\$qlt2\\n\";
-                        }
-                        \$readnumber++;
-                        }
-                }' > $f[0].renamed.fastq &\nPID$i=\$!\n";
+	}else{
+	print FILE "rename_filter_fastq.pl $f[0] $f[3] $f[4] > $f[0].renamed.fastq &\nPID$i=\$!\n";
 	}
 	$i++;
     }
