@@ -37,6 +37,8 @@
 #                      by the Celera assembler. The standard deviation generated
 #                      by the Celera assembler is used. (default: 3)
 #
+# --num-joins-per-directory # : How many joins to attempt in each directory (default: 100)
+#
 # The flags may be in any order.
 use Cwd;
 use File::Basename;
@@ -134,7 +136,7 @@ runCommandAndExitIfBad ($cmd);
 $cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $kUnitigFilename -s $kUnitigFilesize -low-memory -l $reduceReadSetKMerSize --stopAfter findReadKUnitigMatches -t $numThreads -mkudisr 0 workReadsVsFaux @readsFiles 1>>out.${suffix}_workReadsVsFaux 2>>out.${suffix}_workReadsVsFaux";
 runCommandAndExitIfBad ($cmd);
 # We're still in the output directory
-$cmd = "$exeDir/collectReadSequencesForLocalGapClosing --faux-reads-file $fishingEndPairs --faux-read-matches-to-kunis-file workFauxVsFaux/newTestOutput.nucmerLinesOnly --read-matches-to-kunis-file workReadsVsFaux/newTestOutput.nucmerLinesOnly";
+$cmd = "$exeDir/collectReadSequencesForLocalGapClosing --faux-reads-file $fishingEndPairs --faux-read-matches-to-kunis-file workFauxVsFaux/newTestOutput.nucmerLinesOnly --read-matches-to-kunis-file workReadsVsFaux/newTestOutput.nucmerLinesOnly --num-joins-per-directory $numJoinsPerDirectory";
 for (@readsFiles) {
     $readFile = $_;
     $cmd .= " --reads-file $readFile"; }
@@ -142,8 +144,8 @@ $cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
 runCommandAndExitIfBad ($cmd);
 
 # Now run the directories
-$cmd = "strace -o strace_out -e trace=process,open -f -ttt ";
-$cmd = "$exeDir/runByDirectory -t $numThreads --jumping-read-joining-run $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --join-aggressive 1 --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --num-stdevs-allowed $numStdevsAllowed --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . -o output.txt";
+# $cmd = "strace -o strace_out -e trace=process,open -f -ttt ";
+$cmd = "$exeDir/runByDirectory -t $numThreads --jumping-read-joining-run $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --join-aggressive 1 --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --num-stdevs-allowed $numStdevsAllowed --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . -o output.txt --num-joins-per-directory $numJoinsPerDirectory";
 runCommandAndExitIfBad ($cmd);
 
 $cmd = "$exeDir/reportReadsToExclude.perl output.txt reverseComplemented.jumpingReadFile.fa > readsToExclude.txt";
@@ -200,6 +202,7 @@ sub processArgs
     $fauxInsertMean = 350;
     $fauxInsertStdev = 50;
     $numStdevsAllowed = 3;
+    $numJoinsPerDirectory = 100;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
         if ($arg eq "--max-fishing-mer-count") {
@@ -267,6 +270,10 @@ sub processArgs
             next; }
 	if ($arg eq "--keep-directories") {
 	    $keepDirectoriesFlag = $arg;
+	    next; }
+	if ($arg eq "--num-joins-per-directory") {
+	    ++$i;
+	    $numJoinsPerDirectory = $ARGV[$i];
 	    next; }
 	if (-f $arg) {
 	    push (@readsFiles, $arg);

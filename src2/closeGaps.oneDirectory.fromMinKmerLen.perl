@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
 use File::Basename;
+use File::Copy;
 $exeDir = dirname ($0);
 $localReadsFile = "localReadsFile";
 $joiningEndPairs = "fauxReads.fasta";
@@ -16,17 +17,15 @@ $joiningEndPairsOrig = $joiningEndPairs;
 sub runMainLoop
 {
     my ($k, $suffix, $cmd, $directoryPassed);
-    my ($fn1, $fn2, $isFirstLoop);
+    my ($fn1, $fn2);
     my (@localLines, $localLine, $tempLine);
     my ($outFn, $sz, $sz2, $totInputSize, $minContinuation);
 
     $directoryPassed=0; 
-    $isFirstLoop = 1;
     # Here's the main loop (k-mer values going up)
     for ($k = $minKMerLen; $k<=$maxKMerLen; ++$k) {
 	$suffix = $localReadsFile . "_" . $k . "_" . $kUnitigContinuationNumber;
-	if ($isFirstLoop) {
-	    $isFirstLoop = 0;
+	if (($k == $minKMerLen) || (($k == $minKMerLen+1) && $multipleJoinRun)) {
 	    $totInputSize = getReadFileSize (@readsFiles); }
 #	$minContinuation = int ($k/2);
 	$minContinuation = $k-1;
@@ -161,19 +160,35 @@ sub runMainLoop
 		open (FILE, $joiningEndPairs);
 		$newJoiningEndPairs = $joiningEndPairsOrig . ".$k";
 		open (OUTFILE, ">$newJoiningEndPairs");
+		@readGroupsNeededForNextPass = ();
 		while ($line = <FILE>) {
 		    chomp ($line);
 		    @flds = split (" ", $line);
 		    ($readName) = ($flds[0] =~ /^.(.+)$/);
-		    if ($readIsNeededForNextPass{$readName}) { $on = 1; }
-		    else { $on = 0; }
+		    if ($readIsNeededForNextPass{$readName}) {
+			$on = 1;
+			if ($readName =~ /[02468]$/) {
+			    ($tempFld) = ($readName =~ /^..(.+)$/);
+			    $tempFld /= 2;
+			    push (@readGroupsNeededForNextPass, $tempFld); }
+		    }
+		    else {
+			$on = 0; }
 		    print OUTFILE "$line\n" if ($on);
 		    $line = <FILE>;
 		    print OUTFILE $line if ($on); }
 		close (FILE); close (OUTFILE);
 		$joiningEndPairs = $newJoiningEndPairs;
 	    }
-	}
+	    if ($k == $minKMerLen) {
+		$origReadFileHold = $readsFiles[0] . "Hold";
+		move ($readsFiles[0], $origReadFileHold);
+		$spclCmd = "grep -A 1 -P \" \(" . $readGroupsNeededForNextPass[0];
+		for ($l=1; $l<=$readGroupsNeededForNextPass; ++$l) {
+		    $spclCmd .= ("|" . $readGroupsNeededForNextPass[$l]); }
+		$spclCmd .= "\) \" $origReadFileHold > $readsFiles[0]";
+		system ($spclCmd); }
+	} # Ends section if it is a multiple-join run
     }
     
     $passingKMerFile = "passingKMer.txt";
@@ -183,6 +198,28 @@ sub runMainLoop
     else {
 	print FILE "11\n"; }
     close(FILE);
+    $passingReadsFile = "passingReadsFile.txt";
+    $passingReadsFileHold = "passingReadsFile.orig.txt";
+    $passingReadsFileSize = -s $passingReadsFile;
+    if ($passingReadsFileSize > 0) {
+	undef %isPassing;
+	move ($passingReadsFile, $passingReadsFileHold);
+	open (FILE, $passingReadsFileHold);
+	while ($line = <FILE>) {
+	    chomp ($line);
+	    $isPassing{$line} = 1; }
+	close (FILE);
+	open (OUTFILE, ">$passingReadsFile");
+	open (FILE, $joiningEndPairs);
+	while ($line = <FILE>) {
+	    chomp ($line);
+	    @flds = split (" ", $line);
+	    ($name) = ($flds[0] =~ /^.(.+)$/);
+	    if ($isPassing{$name}) {
+		print OUTFILE "$flds[1]\n"; }
+	}
+	close (FILE);
+    }
 }
 
 sub getMateFromReadName

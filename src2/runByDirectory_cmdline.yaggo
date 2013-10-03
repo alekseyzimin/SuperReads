@@ -51,6 +51,9 @@ option("output-dir") {
 option("contig-end-sequence-file") {
   description "Name of the file containing the contig end sequences for joining"
   c_string; required; typestr "path" }
+option("num-joins-per-directory") {
+  description "Number of joins put in each directory"
+  int; default "1" }
 option ("dir-for-read-sequences") {
   description "Name of dir where readFile.### exist; should be absolute"
   c_string; required; typestr "path" }

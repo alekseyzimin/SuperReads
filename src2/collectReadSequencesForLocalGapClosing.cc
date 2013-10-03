@@ -35,6 +35,7 @@ typedef std::unordered_map<stdString, stdString> readNameToReadSequence;
 typedef std::unordered_map<stdString, int> stringToIntMap;
 typedef std::unordered_map<stdString, stdString> stringToStringMap;
 
+bool readIsFirstOfPair (stdString readName);
 stdString getReadMateName (stdString readName);
 bool loadNeededReads (setOfStrings &readIsNeeded, readNameToReadSequence &readSeq);
 void checkArgs (void);
@@ -50,6 +51,7 @@ int main(int argc, char **argv)
      std::unordered_map<stdString, char> end;
      setOfStrings readIsNeeded;
      readNameToReadSequence readSeq; // Read name to read sequence
+     std::unordered_map<stdString, stdString> outputReadHdr;
      struct stat     statbuf;
      args.parse (argc, argv);
      checkArgs ();
@@ -155,6 +157,7 @@ int main(int argc, char **argv)
        }
      }
      int outputGroupNum = 0;
+     std::unordered_map<stdString, int> readType;
      while (1) {
 //	  bool isAtEnd = loadNeededReads();
 	  bool isAtEnd = loadNeededReads (readIsNeeded, readSeq);
@@ -164,10 +167,15 @@ int main(int argc, char **argv)
 	  sprintf (outfileName, "%s/readFile.%03d", args.dir_for_gaps_arg, outputGroupNum);
 	  outfile.open (outfileName);
 	  
+	  int numGrpsInGrp = args.num_joins_per_directory_arg;
+	  bool outputAfterThisGroup;
 	  for (unsigned int grp=0; grp<readsInGroup.size(); grp++) {
 	       charb istr2(20), newDir(20);
-	       outfile << '>' << grp << "\n";
-	       
+	       outputAfterThisGroup = false;
+	       if (((grp+1) % numGrpsInGrp == 0) || ((grp+1) == readsInGroup.size())) {
+		    outputAfterThisGroup = true;
+		    int groupOfGroupNum = grp / numGrpsInGrp;
+		    outfile << '>' << groupOfGroupNum << "\n"; }
 	       stringToIntMap willBeOutput;
 	       willBeOutput.clear();
 	       vectorOfStrings readsToOutput;
@@ -215,8 +223,10 @@ int main(int argc, char **argv)
 			 readSeq.find (bothMatesHaveMatches[readNum]);
 		    if (readSeqIt == readSeq.end())
 			 continue;
-		    outfile << bothMatesHaveMatches[readNum] << " B\n" <<
-			 readSeqIt->second << "\n";
+		    outputReadHdr[bothMatesHaveMatches[readNum]] += (" " + std::to_string(grp) + " B");
+		    readType[bothMatesHaveMatches[readNum]] = 1;
+//		    outfile << bothMatesHaveMatches[readNum] << " B\n" <<
+//			 readSeqIt->second << "\n";
 	       }
 	       int outCount = 0;
 	       for (unsigned int readNum=0; readNum<mateBroughtInViaMatePair.size(); readNum++) {
@@ -228,11 +238,13 @@ int main(int argc, char **argv)
 		    if (readSeqIt == readSeq.end())
 			 continue;
 		    if (outCount % 2 == 1)
-			 extraStr = stdString ("match");
+			 extraStr = stdString (" match");
 		    else
-			 extraStr = stdString ("mate");
-		    outfile << readName << ' ' << extraStr << " M\n" <<
-			 readSeq[readName] << "\n";
+			 extraStr = stdString (" mate");
+		    readType[readName] = 1;
+		    outputReadHdr[readName] += (" " + std::to_string(grp) + extraStr + " M");
+//		    outfile << readName << ' ' << extraStr << " M\n" <<
+//			 readSeq[readName] << "\n";
 	       }
 	       for (unsigned int readNum=0; readNum<readOnlys.size(); readNum++) {
 		    stdString readName = readOnlys[readNum];
@@ -241,8 +253,36 @@ int main(int argc, char **argv)
 		    if (readSeqIt == readSeq.end())
 			 continue;
 		    stdString mateRead = getReadMateName (readName);
-		    outfile << readName << " O\n" << readSeq[readName] << '\n'
-			    << mateRead << " N\n" << "N\n";
+		    if (readType.find (readName) == readType.end())
+			 readType[readName] = 2;
+		    else if (readType[readName] > 2)
+			 readType[readName] = 2;
+		    outputReadHdr[readName] += (" " + std::to_string(grp) + " O");
+		    if (readType.find (mateRead) == readType.end())
+			 readType[mateRead] = 3;
+		    outputReadHdr[mateRead] += (" " + std::to_string(grp) + " N");
+//		    outfile << readName << " O\n" << readSeq[readName] << '\n'
+//			    << mateRead << " N\n" << "N\n";
+	       }
+	       if (outputAfterThisGroup) {
+		    for (auto it = readType.begin(); it != readType.end(); ++it) {
+			 stdString readName = it->first;
+			 if (! readIsFirstOfPair (readName))
+			      continue;
+			 stdString mateRead = getReadMateName (readName);
+			 outfile << readName << outputReadHdr[readName] << '\n';
+			 if (readType[readName] != 3)
+			      outfile << readSeq[readName] << '\n';
+			 else
+			      outfile << "N\n";
+			 outfile << mateRead << outputReadHdr[mateRead] << '\n';
+			 if (readType[mateRead] != 3)
+			      outfile << readSeq[mateRead] << '\n';
+			 else
+			      outfile << "N\n";
+		    }
+		    outputReadHdr.clear();
+		    readType.clear();
 	       }
 	  }
 	  outfile.close();
@@ -345,6 +385,19 @@ bool loadNeededReads (setOfStrings &readIsNeeded, readNameToReadSequence &readSe
 	  currentFileOffset = (off_t) 0;
      }
      return true;
+}
+
+bool readIsFirstOfPair (stdString readName)
+{
+     int readNameLen = readName.length();
+     charb readNameStr;
+     if (readNameLen == 0)
+	  return false;
+     strcpy (readNameStr, readName.c_str());
+     if (readNameStr[readNameLen-1] % 2 == 0)
+	  return true;
+     else
+	  return false;
 }
 
 stdString getReadMateName (stdString readName)

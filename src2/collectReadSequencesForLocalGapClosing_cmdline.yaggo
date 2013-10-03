@@ -19,6 +19,9 @@ option("reads-file") {
 option("dir-for-gaps") {
   description "Directory to use for files we keep for local gap closing"
   c_string; typestr "path"; default "." }
+option("num-joins-per-directory") {
+  description "Number of joins put in each directory"
+  int; default "1" }
 option("max-reads-in-memory") {
   description "Number of reads to hold in memory for gap closing bins"
   uint64; default "100000000" }

@@ -191,9 +191,14 @@ int main (int argc, char **argv)
       wait(&status);
 
     threadArgs.clear();
-    for (int j = 0; j < 4; ++j) {
-      fgets (tempLine, 1000, contigEndSeqFile);
-      strcat (threadArgs.fauxReadFileDataStr, tempLine);
+    for (int i=0; i<args.num_joins_per_directory_arg; ++i) {
+	 if (! fgets (tempLine, 1000, contigEndSeqFile))
+	      break;
+	 strcat (threadArgs.fauxReadFileDataStr, tempLine);
+	 for (int j = 0; j < 3; ++j) {
+	      fgets (tempLine, 1000, contigEndSeqFile);
+	      strcat (threadArgs.fauxReadFileDataStr, tempLine);
+	 }
     }
     //	       fgets_append (threadArgs.fauxReadFileDataStr, contigEndSeqFile); }
 
@@ -317,7 +322,6 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
       << " --join-aggressive " << args.join_aggressive_arg
       << " --use-all-kunitigs --noclean";
 
-  sprintf (tempFileName, "%s/passingKMer.txt", outDirName);
   system_throw(cmd.str().c_str());
 
   /* Now, if "passingKMer.txt" exists in outDirName, copy the files
@@ -325,6 +329,25 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
      readPlacementsInSuperReads.final.read.superRead.offset.ori.txt (after appropriate
      modifications), copy to the desired output directory from (e.g.)
      'outDirName'/work_localReadsFile_41_2 */
+  if (args.num_joins_per_directory_arg > 1) {
+       charb resultString, tempResultString;
+       sprintf (tempFileName, "%s/passingReadsFile.txt", outDirName);
+       infile = fopen_throw(tempFileName, "r", "Reading list of passing reads");
+       if (!infile)
+	    eraise(std::runtime_error) << "Can't read the file containing the passing reads";
+       while (fgets (tempResultString, 100, infile))
+	    strcat (resultString, tempResultString);
+       fclose (infile);
+       flock_throw(resultFile, LOCK_EX);
+       fputs((char *) resultString, resultFile);
+       fflush (resultFile);
+       flock_throw(resultFile, LOCK_UN);
+
+       return;
+  }
+
+
+  sprintf (tempFileName, "%s/passingKMer.txt", outDirName);
   int passingKMerValue = 0;
 
   infile = fopen_throw(tempFileName, "r", "Reading passing k-mer size");
