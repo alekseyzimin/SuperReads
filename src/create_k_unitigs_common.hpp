@@ -18,12 +18,6 @@
 #ifndef _CREATE_K_UNITIGS_COMMON_H_
 #define _CREATE_K_UNITIGS_COMMON_H_
 
-// TODO: remove mer_stream and use mer_iterator from Jellyfish
-#include <src/mer_stream.hpp>
-// TODO: remove read_parser.hpp and use whole_sequence_parser from Jellyfish
-#include <src/read_parser.hpp>
-
-
 #include <jellyfish/thread_exec.hpp>
 #include <jellyfish/mer_dna.hpp>
 
@@ -43,16 +37,18 @@ bool insert_canonical(set_type& set, const mer_dna& mer) {
 /* - mer_counts_type maps k-mer to counts. Has operator[] returning
      the count.
 
-   - used_type is a set type with operator insert.
-   - end_points_type is a set type with operator insert.
-   - parser_type is the type of sequence parser
+   - used_type is a set type with operator insert. (set compatible)
+   - end_points_type is a set type with operator insert. (set compatible)
+   - parser_type is the type to generate iterator of k-mers
+   - stream_type is the k-mer iteratorp type
    - args_type is the type of switches on command line.
  */
-template<typename mer_counts_type, typename used_type, typename end_points_type, typename parser_type,
+template<typename mer_counts_type, typename used_type, typename end_points_type,
+         typename parser_type, typename stream_type,
          typename args_type>
 class create_k_unitig : public jellyfish::thread_exec {
   const mer_counts_type&        counts_; // Counts for k-mers
-  used_type                     used_mers_; // Mark all k-mers whether they have been visited already
+  used_type&                    used_mers_; // Mark all k-mers whether they have been visited already
   end_points_type               end_points_; // End points of k-unitigs, to ouput only once
   int                           threads_;
   parser_type&                  parser_;
@@ -69,26 +65,28 @@ public:
                   const args_type& args) :
     counts_(counts),
     used_mers_(used),
-    end_points_(args.false_positive_arg, args.nb_mers_arg / 10),
-    threads_(threads), parser_(parser),
+    end_points_(args.false_positive_arg, args.nb_mers_arg),
+    threads_(threads),
+    parser_(parser),
     output_multiplexer_(&output, 3 * threads, 4096),
     unitig_id_(0),
     args_(args)
   { }
 
   virtual void start(int thid) {
-    mer_stream<mer_dna, read_parser> stream(mer_dna::k(), parser_);
-    jflib::omstream                  output(output_multiplexer_);
-    mer_dna                          current;
-    mer_dna                          continuation;
-    mer_dna                          tmp;
+    //    mer_stream<mer_dna, read_parser> stream(mer_dna::k(), parser_);
+    stream_type     stream(parser_, thid);
+    jflib::omstream output(output_multiplexer_);
+    mer_dna         current;
+    mer_dna         continuation;
+    mer_dna         tmp;
 
     for( ; stream; ++stream) {
-      auto is_new = used_mers_.insert(stream.canonical());
+      auto is_new = used_mers_.insert(*stream);
       if(!is_new.second)
         continue;
       // Never start a unitig on low count
-      if(counts_[stream.canonical()] < args_.quality_threshold_arg)
+      if(counts_[*stream] < args_.quality_threshold_arg)
         continue;
       current = *stream;
 
