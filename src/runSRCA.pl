@@ -439,25 +439,25 @@ if(not(-e "combined_0") || $rerun_pe==1){
     print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_trim -s \$JF_SIZE -m 24 --quality-start \$MIN_Q_CHAR --min-quality 5 $list_pe_files\n";
     print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_all -s \$JF_SIZE -m 24 $list_pe_files\n";
 
-    print FILE "CUTOFF=`jellyfish histo -t 48 pe_trim_0 | 
-        perl -ane '{
-        if(\$F[0]>1){
-                \$n+=\$F[0]*\$F[1];
-                \$m+=\$F[1];
-                }
-        }END{
-        \$er=0.01; 
-        \$c=\$n/\$m; 
-        for(\$x=2;\$x<1000;\$x++){
-                if(\$er/sqrt(2*3.1415927*\$x)*((\$er*\$c/3/\$x)**\$x)*exp(-\$er*\$c/3+\$x)<0.000001){
-                        print (\$x+1);
-                        last;
-                }
-        }
-        }'`\n";
-
-    print FILE "echo \"Error correction Poisson cutoff = \$CUTOFF\"\n";
-    print FILE "echo \$CUTOFF > cutoff.txt\n";
+#    print FILE "CUTOFF=`jellyfish histo -t 48 pe_trim_0 | 
+#        perl -ane '{
+#        if(\$F[0]>1){
+#                \$n+=\$F[0]*\$F[1];
+#                \$m+=\$F[1];
+#                }
+#        }END{
+#        \$er=0.01; 
+#        \$c=\$n/\$m; 
+#        for(\$x=2;\$x<1000;\$x++){
+#                if(\$er/sqrt(2*3.1415927*\$x)*((\$er*\$c/3/\$x)**\$x)*exp(-\$er*\$c/3+\$x)<0.000001){
+#                        print (\$x+1);
+#                        last;
+#                }
+#        }
+#        }'`\n";
+#
+#    print FILE "echo \"Error correction Poisson cutoff = \$CUTOFF\"\n";
+#    print FILE "echo \$CUTOFF > cutoff.txt\n";
 #check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
     print FILE "if [[ -e pe_trim_1 || -e pe_all_1 ]];then\n";
     print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2\"\n";
@@ -478,7 +478,7 @@ print FILE "\n";
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
     print FILE "cat combined_0 > /dev/null\n";
-    print FILE "\nquorum_error_correct_reads -p `cat cutoff.txt` --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > pe.cor.fa\n";
+    print FILE "\nquorum_error_correct_reads  --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > pe.cor.fa\n";
     $rerun_pe=1;
 }
 
@@ -490,7 +490,7 @@ if(scalar(@jump_info_array)>0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
         print FILE "cat combined_0 > /dev/null\n";
-	print FILE "\nquorum_error_correct_reads -p `cat cutoff.txt` --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > sj.cor.fa\n";
+	print FILE "\nquorum_error_correct_reads --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > sj.cor.fa\n";
         $rerun_sj=1;
     }
 }
@@ -595,6 +595,12 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
         	        $if_innie=" | reverse_complement " if($f[1]>0);
             		print FILE "grep --text -A 1 '^>$f[0]' sj.cor.clean.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
         		}
+#here we perform another round of filtering bad mates
+	print FILE "mv sj.cor.clean.rev.fa sj.cor.clean.rev.fa.bak\n";
+	print FILE "findReversePointingJumpingReads.perl -s \$JF_SIZE --Celera-terminator-directory . --jumping-library-read-file sj.cor.clean.rev.fa.bak --reads-file pe.cor.fa --output-directory work4 --min-kmer-len 19 --max-kmer-len 80 --num-threads $NUM_THREADS --maxnodes 1000 --reduce-read-set-kmer-size 21 --max-reads-in-memory 100000000 --faux-insert-mean 500 --faux-insert-stdev 100 --num-joins-per-directory 101 1>findReversePointingJumpingReads.err 2>&1 \n";
+	print FILE "extractreads_not.pl work4/output.txt sj.cor.clean.rev.fa.bak 1 > sj.cor.clean.rev.fa\n"
+	print FILE "echo -n Found extra chimeric mates: \n";
+	print FILE "wc -l work4/output.txt\n";
 	}
 
 #here we extend the jumping library reads if they are too short
