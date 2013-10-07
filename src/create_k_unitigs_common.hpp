@@ -20,11 +20,51 @@
 
 #include <jellyfish/thread_exec.hpp>
 #include <jellyfish/mer_dna.hpp>
+#include <jellyfish/mer_iterator.hpp>
+#include <jellyfish/stream_manager.hpp>
+#include <jellyfish/mer_overlap_sequence_parser.hpp>
+#include <jellyfish/mer_dna_bloom_counter.hpp>
 
 #include <jflib/multiplexed_io.hpp>
 #include <jellyfish/atomic_field.hpp>
 
 using jellyfish::mer_dna;
+using jellyfish::thread_exec;
+using jellyfish::mer_dna_bloom_counter;
+using jellyfish::mer_dna_bloom_filter;
+
+// Wrapper around mer_iterator to satisfy common interface
+typedef std::vector<const char*> file_vector;
+typedef jellyfish::stream_manager<file_vector::const_iterator> stream_manager;
+typedef jellyfish::mer_overlap_sequence_parser<stream_manager> sequence_parser;
+typedef jellyfish::mer_iterator<sequence_parser, mer_dna> mer_iterator;
+class read_mers {
+  mer_iterator stream_;
+
+public:
+  read_mers(sequence_parser& parser, int id) : stream_(parser, true) { }
+  operator bool() const { return (void*)stream_ != 0; }
+  const mer_dna* operator->() const { return stream_.operator->(); }
+  const mer_dna& operator*() const { return stream_.operator*(); }
+  read_mers& operator++() {
+    ++stream_;
+    return *this;
+  }
+};
+
+// Wrapper around bloom filter class to have set compatible insert
+// method.
+class mer_bloom {
+  mer_dna_bloom_filter bf_;
+
+public:
+  mer_bloom(double fp, size_t size) : bf_(fp, size) { }
+  std::pair<unsigned int, bool> insert(const mer_dna& m) {
+    unsigned int r = bf_.insert(m);
+    return std::make_pair(r, r == 0);
+  }
+};
+
 
 // Insert a mer in a set and return true if the k-mer is new in the
 // set.
@@ -33,6 +73,27 @@ bool insert_canonical(set_type& set, const mer_dna& mer) {
   return set.insert(mer.get_canonical()).second;
 }
 
+/* Read k-mers and store them in a map. The map_type must have the
+   operator[]. The content returned must have the prefix ++. All this
+   needs to be multi-thread safe.
+ */
+template<typename map_type, typename parser_type, typename stream_type>
+class populate_mer_set : public thread_exec {
+  int          mer_len_;
+  parser_type& parser_;
+  map_type&    set_;
+
+public:
+  populate_mer_set(int mer_len, map_type& set, parser_type& parser) :
+    mer_len_(mer_len), parser_(parser), set_(set)
+  { }
+
+  void start(int thid) {
+    for(stream_type stream(parser_, thid); stream; ++stream)
+      ++set_[*stream];
+    set_.done();
+  }
+};
 
 /* - mer_counts_type maps k-mer to counts. Has operator[] returning
      the count.
@@ -49,7 +110,7 @@ template<typename mer_counts_type, typename used_type, typename end_points_type,
 class create_k_unitig : public jellyfish::thread_exec {
   const mer_counts_type&        counts_; // Counts for k-mers
   used_type&                    used_mers_; // Mark all k-mers whether they have been visited already
-  end_points_type               end_points_; // End points of k-unitigs, to ouput only once
+  end_points_type&              end_points_; // End points of k-unitigs, to ouput only once
   int                           threads_;
   parser_type&                  parser_;
   jflib::o_multiplexer          output_multiplexer_;
@@ -60,12 +121,12 @@ class create_k_unitig : public jellyfish::thread_exec {
   static direction rev_direction(direction dir) { return (direction)-dir; }
 
 public:
-  create_k_unitig(const mer_counts_type& counts, used_type& used,
+  create_k_unitig(const mer_counts_type& counts, used_type& used, end_points_type& ends,
                   int threads, parser_type& parser, std::ostream& output,
                   const args_type& args) :
     counts_(counts),
     used_mers_(used),
-    end_points_(args.false_positive_arg, args.nb_mers_arg),
+    end_points_(ends),
     threads_(threads),
     parser_(parser),
     output_multiplexer_(&output, 3 * threads, 4096),

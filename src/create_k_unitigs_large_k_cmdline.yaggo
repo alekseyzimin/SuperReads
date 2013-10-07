@@ -31,11 +31,8 @@ option("f", "false-positive") {
   description "False positive rate in bloom filter"
   double; default "0.01" }
 option("load") {
-  description "Load kmer bloom filter from this file"
-  c_string; typestr "path"; hidden }
-option("save") {
-  description "Save kmer bloom filter to this file" 
-  c_string; typestr "path"; hidden }
+  description "Load jellyfish bloom counter"
+  c_string; typestr "path" }
 arg("input") {
   description "Read sequence"
   c_string; typestr "path"; multiple }
