@@ -57,19 +57,22 @@ YAGGO_SOURCES = # Append all file to be built by yaggo
 # src pipeline
 ##############################
 bin_PROGRAMS += error_corrected2frg reverse_complement reduce_sr	\
-                sorted_merge create_k_unitigs_large_k homo_trim		\
-                bloom_query filter_overlap_file
+                sorted_merge create_k_unitigs_large_k			\
+                create_k_unitigs_large_k2 homo_trim bloom_query		\
+                filter_overlap_file
 
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl src/close_gaps.sh		\
                     src/compute_sr_cov.pl src/create_sr_frg.pl		\
-                    src2/compute_sr_cov.revisedForGCContig.pl           \
+                    src2/compute_sr_cov.revisedForGCContig.pl		\
                     src/extractreads.pl src/extract_unjoined_pairs.pl	\
                     src/fasta2frg.pl src/filter_library.sh		\
                     src/fix_unitigs.sh					\
                     src/recompute_astat_superreads.sh src/runSRCA.pl	\
                     src/extractreads_not.pl src/run_ECR.sh		\
-                    src/filter_alt.pl src/parallel src/rename_filter_fastq.pl src/filter_redundancy.pl
+                    src/filter_alt.pl src/parallel			\
+                    src/rename_filter_fastq.pl				\
+                    src/filter_redundancy.pl
 
 noinst_HEADERS += src/aligned_simple_array.hpp			\
                   src/diskBasedUnitigger.h			\
@@ -88,11 +91,10 @@ reduce_sr_SOURCES = src/reduce_sr.cc
 YAGGO_SOURCES    += src/reduce_sr_cmdline.hpp
 sorted_merge_SOURCES = src/sorted_merge.cc
 YAGGO_SOURCES       += src/sorted_merge_cmdline.hpp
-create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc	\
-                                   src/read_parser.cc			\
-                                   src/MurmurHash3.cpp			\
-                                   src/mer_stream.hpp
+create_k_unitigs_large_k_SOURCES = src/create_k_unitigs_large_k.cc
 YAGGO_SOURCES += src/create_k_unitigs_large_k_cmdline.hpp
+create_k_unitigs_large_k2_SOURCES = src/create_k_unitigs_large_k2.cc
+YAGGO_SOURCES += src/create_k_unitigs_large_k2_cmdline.hpp
 bloom_query_SOURCES = src/bloom_query.cc src/MurmurHash3.cpp
 YAGGO_SOURCES += src/bloom_query_cmdline.hpp
 filter_overlap_file_SOURCES = src/filter_overlap_file.cc	\

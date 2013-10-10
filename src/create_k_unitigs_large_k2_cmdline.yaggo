@@ -9,6 +9,9 @@ option("m", "mer") {
 option("n", "nb-mers") {
   description "Estimated number of distinct k-mers"
   uint64; suffix; required } 
+option("v", "val") {
+  description "Value field length in hash"
+  int; default 7 }
 option("t", "threads") {
   description "Number of threads"
   int; default "1" }
@@ -27,11 +30,8 @@ option("l", "min-len") {
 option("g", "gzip") {
   description "Gzip output file. Ignored if -o not given."
   off }
-option("f", "false-positive") {
-  description "False positive rate in bloom filter"
-  double; default "0.01" }
 option("load") {
-  description "Load jellyfish bloom counter"
+  description "Load jellyfish hash"
   c_string; typestr "path" }
 arg("input") {
   description "Read sequence"
