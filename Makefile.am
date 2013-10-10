@@ -74,12 +74,12 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/rename_filter_fastq.pl				\
                     src/filter_redundancy.pl
 
-noinst_HEADERS += src/aligned_simple_array.hpp			\
-                  src/diskBasedUnitigger.h			\
-                  src/fibonacci_coding.hpp src/sr_names.hpp	\
-                  src/bloom_filter.hpp src/MurmurHash3.h	\
-                  src/bloom_hash.hpp src/bloom_counter2.hpp	\
-                  src/read_parser.hpp
+noinst_HEADERS += src/aligned_simple_array.hpp				\
+                  src/diskBasedUnitigger.h src/fibonacci_coding.hpp	\
+                  src/sr_names.hpp src/bloom_filter.hpp			\
+                  src/MurmurHash3.h src/bloom_hash.hpp			\
+                  src/bloom_counter2.hpp src/read_parser.hpp		\
+                  src/create_k_unitigs_common.hpp
 
 homo_trim_SOURCES = src/homo_trim.cc
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
@@ -200,7 +200,6 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_read_parser.cc			\
                     unittests/test_hash.cc				\
                     unittests/test_exp_vector.cc			\
-                    unittests/test_mer_stream.cc			\
                     unittests/test_thread_pool.cc			\
                     unittests/test_fork_exec.cc				\
                     unittests/test_dna_fragment.cc
