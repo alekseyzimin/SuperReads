@@ -501,7 +501,7 @@ print FILE "\n";
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
     print FILE "cat combined_0 > /dev/null\n";
-    print FILE "\nquorum_error_correct_reads -p `cat cutoff.txt` --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > pe.cor.fa\n";
+    print FILE "\nquorum_error_correct_reads   -p `cat cutoff.txt` --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > pe.cor.fa\n";
     $rerun_pe=1;
 }
 
@@ -619,6 +619,12 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
         	        $if_innie=" | reverse_complement " if($f[1]>0);
             		print FILE "grep --text -A 1 '^>$f[0]' sj.cor.clean.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
         		}
+#here we perform another round of filtering bad mates
+	print FILE "mv sj.cor.clean.rev.fa sj.cor.clean.rev.fa.bak\n";
+	print FILE "findReversePointingJumpingReads.perl -s \$JF_SIZE --Celera-terminator-directory . --jumping-library-read-file sj.cor.clean.rev.fa.bak --reads-file pe.cor.fa --output-directory work4 --min-kmer-len 19 --max-kmer-len 80 --num-threads $NUM_THREADS --maxnodes 1000 --reduce-read-set-kmer-size 21 --max-reads-in-memory 100000000 --faux-insert-mean 500 --faux-insert-stdev 100 --num-joins-per-directory 101 1>findReversePointingJumpingReads.err 2>&1 \n";
+	print FILE "extractreads_not.pl work4/output.txt sj.cor.clean.rev.fa.bak 1 > sj.cor.clean.rev.fa\n";
+	print FILE "echo Found extra chimeric mates: \n";
+	print FILE "wc -l work4/output.txt\n";
 	}
 
 #here we extend the jumping library reads if they are too short
