@@ -223,7 +223,7 @@ int main(int argc, char **argv)
 			 readSeq.find (bothMatesHaveMatches[readNum]);
 		    if (readSeqIt == readSeq.end())
 			 continue;
-		    outputReadHdr[bothMatesHaveMatches[readNum]] += (" " + std::to_string(grp) + " B");
+//		    outputReadHdr[bothMatesHaveMatches[readNum]] += (" " + std::to_string(grp) + " B");
 		    readType[bothMatesHaveMatches[readNum]] = 1;
 //		    outfile << bothMatesHaveMatches[readNum] << " B\n" <<
 //			 readSeqIt->second << "\n";
@@ -231,18 +231,18 @@ int main(int argc, char **argv)
 	       int outCount = 0;
 	       for (unsigned int readNum=0; readNum<mateBroughtInViaMatePair.size(); readNum++) {
 		    ++outCount;
-		    stdString extraStr;
+//		    stdString extraStr;
 		    stdString readName = mateBroughtInViaMatePair[readNum];
 		    stringToStringMap::iterator readSeqIt =
 			 readSeq.find (readName);
 		    if (readSeqIt == readSeq.end())
 			 continue;
-		    if (outCount % 2 == 1)
-			 extraStr = stdString (" match");
-		    else
-			 extraStr = stdString (" mate");
+//		    if (outCount % 2 == 1)
+//			 extraStr = stdString (" match");
+//		    else
+//			 extraStr = stdString (" mate");
 		    readType[readName] = 1;
-		    outputReadHdr[readName] += (" " + std::to_string(grp) + extraStr + " M");
+//		    outputReadHdr[readName] += (" " + std::to_string(grp) + extraStr + " M");
 //		    outfile << readName << ' ' << extraStr << " M\n" <<
 //			 readSeq[readName] << "\n";
 	       }
@@ -257,30 +257,32 @@ int main(int argc, char **argv)
 			 readType[readName] = 2;
 		    else if (readType[readName] > 2)
 			 readType[readName] = 2;
-		    outputReadHdr[readName] += (" " + std::to_string(grp) + " O");
+//		    outputReadHdr[readName] += (" " + std::to_string(grp) + " O");
 		    if (readType.find (mateRead) == readType.end())
 			 readType[mateRead] = 3;
-		    outputReadHdr[mateRead] += (" " + std::to_string(grp) + " N");
+//		    outputReadHdr[mateRead] += (" " + std::to_string(grp) + " N");
 //		    outfile << readName << " O\n" << readSeq[readName] << '\n'
 //			    << mateRead << " N\n" << "N\n";
 	       }
 	       if (outputAfterThisGroup) {
+		    outfile << "readseq\n";
 		    for (auto it = readType.begin(); it != readType.end(); ++it) {
 			 stdString readName = it->first;
 			 if (! readIsFirstOfPair (readName))
 			      continue;
 			 stdString mateRead = getReadMateName (readName);
-			 outfile << readName << outputReadHdr[readName] << '\n';
+//			 outfile << readName << outputReadHdr[readName] << '\n';
 			 if (readType[readName] != 3)
-			      outfile << readSeq[readName] << '\n';
-			 else
-			      outfile << "N\n";
-			 outfile << mateRead << outputReadHdr[mateRead] << '\n';
+			      outfile << readSeq[readName] << "N";
+//			 else
+//			      outfile << "N\n";
+//			 outfile << mateRead << outputReadHdr[mateRead] << '\n';
 			 if (readType[mateRead] != 3)
-			      outfile << readSeq[mateRead] << '\n';
-			 else
-			      outfile << "N\n";
+			      outfile << readSeq[mateRead] << "N";
+//			 else
+//			      outfile << "N\n";
 		    }
+		    outfile << "N\n";
 		    outputReadHdr.clear();
 		    readType.clear();
 	       }
