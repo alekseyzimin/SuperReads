@@ -625,6 +625,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	print FILE "extractreads_not.pl work4/output.txt sj.cor.clean.rev.fa.bak 1 > sj.cor.clean.rev.fa\n";
 	print FILE "echo Found extra chimeric mates: \n";
 	print FILE "wc -l work4/output.txt\n";
+	print FILE "rm -rf work4/readFile.??? work4/workReadsVsFaux work4/workFauxVsFaux\n";
 	}
 
 #here we extend the jumping library reads if they are too short
