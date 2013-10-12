@@ -264,8 +264,7 @@ int main(int argc, char **argv)
 //		    outfile << readName << " O\n" << readSeq[readName] << '\n'
 //			    << mateRead << " N\n" << "N\n";
 	       }
-	       if (outputAfterThisGroup) {
-		    outfile << "readseq\n";
+	       if (outputAfterThisGroup) { 
 		    for (auto it = readType.begin(); it != readType.end(); ++it) {
 			 stdString readName = it->first;
 			 if (! readIsFirstOfPair (readName))
@@ -273,16 +272,15 @@ int main(int argc, char **argv)
 			 stdString mateRead = getReadMateName (readName);
 //			 outfile << readName << outputReadHdr[readName] << '\n';
 			 if (readType[readName] != 3)
-			      outfile << readSeq[readName] << "N";
+			      outfile << "r\n" << readSeq[readName] << "\n";
 //			 else
 //			      outfile << "N\n";
 //			 outfile << mateRead << outputReadHdr[mateRead] << '\n';
 			 if (readType[mateRead] != 3)
-			      outfile << readSeq[mateRead] << "N";
+			      outfile << "m\n" << readSeq[mateRead] << "\n";
 //			 else
 //			      outfile << "N\n";
 		    }
-		    outfile << "N\n";
 		    outputReadHdr.clear();
 		    readType.clear();
 	       }
