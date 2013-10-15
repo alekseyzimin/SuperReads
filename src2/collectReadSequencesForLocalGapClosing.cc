@@ -272,12 +272,12 @@ int main(int argc, char **argv)
 			 stdString mateRead = getReadMateName (readName);
 //			 outfile << readName << outputReadHdr[readName] << '\n';
 			 if (readType[readName] != 3)
-			      outfile << "r\n" << readSeq[readName] << "\n";
+			      outfile << readName << "\n" << readSeq[readName] << "\n";
 //			 else
 //			      outfile << "N\n";
 //			 outfile << mateRead << outputReadHdr[mateRead] << '\n';
 			 if (readType[mateRead] != 3)
-			      outfile << "m\n" << readSeq[mateRead] << "\n";
+			      outfile << mateRead << "\n" << readSeq[mateRead] << "\n";
 //			 else
 //			      outfile << "N\n";
 		    }
