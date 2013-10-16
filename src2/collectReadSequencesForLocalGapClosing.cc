@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 #include <set>
+#include <map>
 #include <iostream>
 #include <fstream>
 #include <exp_buffer.hpp>
@@ -157,7 +158,7 @@ int main(int argc, char **argv)
        }
      }
      int outputGroupNum = 0;
-     std::unordered_map<stdString, int> readType;
+     std::map<stdString, int> readType;
      while (1) {
 //	  bool isAtEnd = loadNeededReads();
 	  bool isAtEnd = loadNeededReads (readIsNeeded, readSeq);
@@ -223,7 +224,7 @@ int main(int argc, char **argv)
 			 readSeq.find (bothMatesHaveMatches[readNum]);
 		    if (readSeqIt == readSeq.end())
 			 continue;
-//		    outputReadHdr[bothMatesHaveMatches[readNum]] += (" " + std::to_string(grp) + " B");
+		    outputReadHdr[bothMatesHaveMatches[readNum]] += (" " + std::to_string(grp) + " B");
 		    readType[bothMatesHaveMatches[readNum]] = 1;
 //		    outfile << bothMatesHaveMatches[readNum] << " B\n" <<
 //			 readSeqIt->second << "\n";
@@ -243,6 +244,7 @@ int main(int argc, char **argv)
 //			 extraStr = stdString (" mate");
 		    readType[readName] = 1;
 //		    outputReadHdr[readName] += (" " + std::to_string(grp) + extraStr + " M");
+                    outputReadHdr[readName] += (" " + std::to_string(grp) + " M");
 //		    outfile << readName << ' ' << extraStr << " M\n" <<
 //			 readSeq[readName] << "\n";
 	       }
@@ -257,14 +259,14 @@ int main(int argc, char **argv)
 			 readType[readName] = 2;
 		    else if (readType[readName] > 2)
 			 readType[readName] = 2;
-//		    outputReadHdr[readName] += (" " + std::to_string(grp) + " O");
+		    outputReadHdr[readName] += (" " + std::to_string(grp) + " O");
 		    if (readType.find (mateRead) == readType.end())
 			 readType[mateRead] = 3;
-//		    outputReadHdr[mateRead] += (" " + std::to_string(grp) + " N");
+		    outputReadHdr[mateRead] += (" " + std::to_string(grp) + " N");
 //		    outfile << readName << " O\n" << readSeq[readName] << '\n'
 //			    << mateRead << " N\n" << "N\n";
 	       }
-	       if (outputAfterThisGroup) { 
+	       if (outputAfterThisGroup) {
 		    for (auto it = readType.begin(); it != readType.end(); ++it) {
 			 stdString readName = it->first;
 			 if (! readIsFirstOfPair (readName))
@@ -272,14 +274,14 @@ int main(int argc, char **argv)
 			 stdString mateRead = getReadMateName (readName);
 //			 outfile << readName << outputReadHdr[readName] << '\n';
 			 if (readType[readName] != 3)
-			      outfile << readName << " " << grp << "\n" << readSeq[readName] << "\n";
+			      outfile << readName << outputReadHdr[readName] << '\n' << readSeq[readName] << '\n';
 //			 else
 //			      outfile << "N\n";
 //			 outfile << mateRead << outputReadHdr[mateRead] << '\n';
 			 if (readType[mateRead] != 3)
-			      outfile << mateRead << " " << grp << "\n" << readSeq[mateRead] << "\n";
+			      outfile << mateRead << outputReadHdr[mateRead] << '\n' << readSeq[mateRead] << '\n';
 //			 else
-//			      outfile << "N\n";
+///			      outfile << "N\n";
 		    }
 		    outputReadHdr.clear();
 		    readType.clear();
