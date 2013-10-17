@@ -1,0 +1,12 @@
+purpose "Rearrange the jumping library reads so that, when we try to join them to find chimeric pairs, the number of reads used in each group is reduced."
+
+description ""
+
+name "cmdline_parse"
+
+option("super-read-sequence-file") {
+  description "Super read sequence file"
+  c_string; required; typestr "path" ; access "read" }
+option("read-placements-file") {
+  description "File with the placements of the reads in the super-reads"
+  c_string; required; typestr "path" ; access "read" }

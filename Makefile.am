@@ -169,6 +169,9 @@ YAGGO_SOURCES += src2/runByDirectory_cmdline.hpp
 ##############################
 dist_bin_SCRIPTS += src2/reportReadsToExclude.perl src2/outputMatedReadsAsReverseComplement.perl \
 	src2/findReversePointingJumpingReads.perl src2/closeGaps.oneDirectory.fromMinKmerLen.perl
+bin_PROGRAMS += putReadsIntoGroupsBasedOnSuperReads
+putReadsIntoGroupsBasedOnSuperReads_SOURCES = src2/putReadsIntoGroupsBasedOnSuperReads.cc
+YAGGO_SOURCES += src2/putReadsIntoGroupsBasedOnSuperReads_cmdline.hpp
 
 ##############################
 # Celera post-processing
