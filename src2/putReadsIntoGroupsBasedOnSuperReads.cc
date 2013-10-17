@@ -39,22 +39,21 @@ int main (int argc, char **argv)
      std::vector<char *> flds;
      infile = fopen (args.read_placements_file_arg, "r");
 //     infile = fopen ("/genome3/raid/tri/reduceReadsIntoCelera/assembly/work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.reduced.txt", "r");
-     std::set<std::string> wasFound;
-     std::map<std::string, int> superReadForReadName;
+     int superReadHold = 0;
+     std::string readNameHold;
      while (fgets (line, 100, infile)) {
 	  getFldsFromLine (line, flds);
-	  if (flds[0][strlen(flds[0])-1] % 2 == 1)
-	       --flds[0][strlen(flds[0])-1];
+	  if (flds[0][strlen(flds[0])-1] % 2 == 0) {
+	       readNameHold = std::string(flds[0]);
+	       superReadHold = atoi (flds[1]);
+	       continue; }
+	  --flds[0][strlen(flds[0])-1];
 	  std::string readName = std::string(flds[0]);
 	  int superRead = atoi (flds[1]);
-	  if (wasFound.find (readName) == wasFound.end()) {
-	       superReadForReadName[readName] = superRead;
-	       wasFound.insert (readName);
-	       continue; }
-	  // If we get here it's the second of the pair
-	  int superRead2 = atoi (flds[1]);
-	  if (superRead2 > superReadForReadName[readName])
-	       superRead = superReadForReadName[readName];
+	  if (readName != readNameHold)
+	       continue;
+	  if (superReadHold < superRead)
+	       superRead = superReadHold;
 	  superReadToReadList[superRead].push_back (readName); }
      fclose (infile);
      
