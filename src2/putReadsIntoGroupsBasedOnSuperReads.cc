@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <set>
 #include <charb.hpp>
 #include <misc.hpp>
 #include <src2/putReadsIntoGroupsBasedOnSuperReads_cmdline.hpp>
@@ -38,15 +39,22 @@ int main (int argc, char **argv)
      std::vector<char *> flds;
      infile = fopen (args.read_placements_file_arg, "r");
 //     infile = fopen ("/genome3/raid/tri/reduceReadsIntoCelera/assembly/work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.reduced.txt", "r");
+     std::set<std::string> wasFound;
+     std::map<std::string, int> superReadForReadName;
      while (fgets (line, 100, infile)) {
 	  getFldsFromLine (line, flds);
+	  if (flds[0][strlen(flds[0])-1] % 2 == 1)
+	       --flds[0][strlen(flds[0])-1];
 	  std::string readName = std::string(flds[0]);
 	  int superRead = atoi (flds[1]);
-	  fgets (line, 100, infile);
-	  getFldsFromLine (line, flds);
+	  if (wasFound.find (readName) == wasFound.end()) {
+	       superReadForReadName[readName] = superRead;
+	       wasFound.insert (readName);
+	       continue; }
+	  // If we get here it's the second of the pair
 	  int superRead2 = atoi (flds[1]);
-	  if (superRead2 < superRead)
-	       superRead = superRead2;
+	  if (superRead2 > superReadForReadName[readName])
+	       superRead = superReadForReadName[readName];
 	  superReadToReadList[superRead].push_back (readName); }
      fclose (infile);
      
