@@ -186,7 +186,7 @@ sub runMainLoop
 		$spclCmd = "grep -A 1 -P \" \(" . $readGroupsNeededForNextPass[0];
 		for ($l=1; $l<=$readGroupsNeededForNextPass; ++$l) {
 		    $spclCmd .= ("|" . $readGroupsNeededForNextPass[$l]); }
-		$spclCmd .= "\) \" $origReadFileHold > $readsFiles[0]";
+		$spclCmd .= "\) \" $origReadFileHold | grep -v -P \"^-\" > $readsFiles[0]";
 		system ($spclCmd); }
 	} # Ends section if it is a multiple-join run
     }
