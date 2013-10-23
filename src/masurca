@@ -18,12 +18,6 @@
 #This script reads the the config file and runs the full super reads pipeline
 #config file format:
 #
-#PATHS
-#CA_PATH= path to runCA
-#JELLYFISH_PATH= path to jellyfish
-#SR_PATH=  path to super reads routine installation
-#END
-#
 #DATA
 #PE= id mean stdev fastq_forward fastq_reverse
 #JUMP= id mean stdev fastq_forward fastq_reverse 
@@ -38,278 +32,241 @@
 #END
 #
 
-# use strict;
-# use warnings;
+use strict;
+use warnings;
 use Env qw(@PATH @LD_LIBRARY_PATH);
 use File::Spec;
+use FindBin qw($RealBin);
+use Getopt::Long;
 
 #parsing config file
-my $KMER="auto";
-my $JELLYFISH_PATH="";
-my $SR_PATH="";
-my $CA_PATH="";
-my $CA_PARAMETERS="";
-my $WINDOW=10;
-my $MAX_ERR_PER_WINDOW=3;
-my $KMER_COUNT_THRESHOLD=1;
-my $KMER_RELIABLE_THRESHOLD=3;
-my $TRIM_PARAM=2;
-my $NUM_THREADS=2;
-my $EXTEND_JUMP_READS=1;
-my $JF_SIZE=100000000;
-my $in_paths=0;
-my $in_data=0;
-my $in_parameters=0;
-my @pe_info_array=();
-my @jump_info_array=();
-my @other_info_array=();
+my $KMER                    = "auto";
+my $CA_PARAMETERS           = "";
+my $WINDOW                  = 10;
+my $MAX_ERR_PER_WINDOW      = 3;
+my $KMER_COUNT_THRESHOLD    = 1;
+my $KMER_RELIABLE_THRESHOLD = 3;
+my $TRIM_PARAM              = 2;
+my $NUM_THREADS             = 2;
+my $EXTEND_JUMP_READS       = 1;
+my $JF_SIZE                 = 100000000;
+my $in_data                 = 0;
+my $in_parameters           = 0;
+my @pe_info_array           = ();
+my @jump_info_array         = ();
+my @other_info_array        = ();
 my %used_library_ids;
-my $LIMIT_JUMP_COVERAGE=500;
-my $USE_LINKING_MATES=1;
-my $homo_trim_string=" | homo_trim  $TRIM_PARAM ";
-my $CLOSE_GAPS=1;
+my $LIMIT_JUMP_COVERAGE     = 500;
+my $USE_LINKING_MATES       = 1;
+my $DO_HOMOPOLYMER_TRIM     = 0;
+my $homo_trim_string        = " | homo_trim  $TRIM_PARAM ";
+my $CLOSE_GAPS              = 1;
 
-if(not(-e $ARGV[0])||$ARGV[0] eq ""|| $ARGV[0] eq "-h"){
-    print "USAGE: runSRCA.pl <config_file>\n";
-    exit;
+my $assembly_script = "assemble.sh";
+my $generate_default;
+my @prep_path;
+my @prep_ld;
+my $help;
+
+my $usage = "USAGE: $0 <config_file>";
+my $help_str = <<"EOS" ;
+Create the assembly script from a MaSuRCA configuration file. An
+sample configuration file can be generated with the -g switch. The
+assembly script will run the assembly proper.
+
+Options:
+ -o, --output           Assembly script ($assembly_script)
+ -g, --generate         Generate example configuration file
+ -p, --path             Prepend to PATH in assembly script
+ -l, --ld-library-path  Prepend to LD_LIBRARY_PATH in assembly script
+ -h, --help             This message
+EOS
+    ;
+
+GetOptions("o|output=s"          => \$assembly_script,
+           "g|generate"          => \$generate_default,
+           "p|path=s"            => \@prep_path,
+           "l|ld-library-path=s" => \@prep_ld,
+           "h|help"              => \$help) or die $usage;
+
+if($help) {
+  print "$help_str";
+  exit(0);
+}
+die $usage if @ARGV != 1;
+my $config_file = $ARGV[0];
+
+if($generate_default) {
+  die "Refusing to overwrite existing configuration file '$config_file'" if(-e $config_file);
+  open(FILE, ">", $config_file) or die "Error opening configuration file '$config_file': $!";
+  print FILE <<'EOS';
+# example configuration file 
+
+# DATA is specified as type {PE,JUMP,OTHER} and 5 fields:
+# 1)two_letter_prefix 2)mean 3)stdev 4)fastq(.gz)_fwd_reads
+# 5)fastq(.gz)_rev_reads. The PE reads are always assumed to be
+# innies, i.e. --->.<---, and JUMP are assumed to be outties
+# <---.--->. If there are any jump libraries that are innies, such as
+# longjump, specify them as JUMP and specify NEGATIVE mean. Reverse reads
+# are optional for PE libraries and mandatory for JUMP libraries. Any
+# OTHER sequence data (454, Sanger, Ion torrent, etc) must be first
+# converted into Celera Assembler compatible .frg files (see
+# http://wgs-assembler.sourceforge.com)
+DATA
+PE= pe 180 20  /FULL_PATH/frag_1.fastq  /FULL_PATH/frag_2.fastq
+JUMP= sh 3600 200  /FULL_PATH/short_1.fastq  /FULL_PATH/short_2.fastq
+OTHER=/FULL_PATH/file.frg
+END
+
+PARAMETERS
+#this is k-mer size for deBruijn graph values between 25 and 101 are supported, auto will compute the optimal size based on the read data and GC content
+GRAPH_KMER_SIZE=auto
+#set this to 1 for Illumina-only assemblies and to 0 if you have 2x or more long (Sanger, 454) reads
+USE_LINKING_MATES=1
+#this parameter is useful if you have too many jumping library mates. Typically set it to 60 for bacteria and something large (300) for mammals
+LIMIT_JUMP_COVERAGE = 60
+#these are the additional parameters to Celera Assembler.  do not worry about performance, number or processors or batch sizes -- these are computed automatically. for mammals do not set cgwErrorRate above 0.15!!!
+CA_PARAMETERS = ovlMerSize=30 cgwErrorRate=0.25 ovlMemory=4GB
+#minimum count k-mers used in error correction 1 means all k-mers are used.  one can increase to 2 if coverage >100
+KMER_COUNT_THRESHOLD = 1
+#auto-detected number of cpus to use
+NUM_THREADS= $NUM_THREADS
+#this is mandatory jellyfish hash size
+JF_SIZE=100000000
+#this specifies if we do (1) or do not (0) want to trim long runs of homopolymers (e.g. GGGGGGGG) from 3' read ends, use it for high GC genomes
+DO_HOMOPOLYMER_TRIM=0
+END
+EOS
+  close(FILE);
+  exit(0);
 }
 
-my $config_file = $ARGV[0];
-open(FILE, $config_file);
-while($line=<FILE>){
+# Match a line of the form "KEY = VALUE". Returns undef if it does not match
+sub read_param {
+  my ($line) = @_;
+  die "Can't parse line '$line'" unless $line =~ /^\s*(\w+)\s*=\s*(.*)$/;
+  chomp($2);
+  return ($1, $2);
+}
+
+open(FILE, "<", $config_file) or die "Can't open config file '$config_file': $!";
+while(my $line=<FILE>){
     chomp($line);
-    next if($line =~ /^\#/);
-    if($line =~ /^PATHS/){
-	if($in_parameters==1){
-	    die("error in config file: mixed PARAMETERS and PATHS");
-	}
-	if($in_data==1){
-	    die("error in config file: mixed PATHS and DATA");
-	}
-	if($in_paths==1){
-	    die("duplicate PATHS header"); 
-	}
-	$in_paths=1;
-	next;
-    }
-    elsif($line =~ /^DATA/){
-	if($in_parameters==1){
-	    die("error in config file: mixed PARAMETERS and DATA");
-	}
-	if($in_paths==1){
-	    die("error in config file: mixed PATHS and DATA");
-	}
-	if($in_data==1){
-	    die("duplicate PATHS header");
-	}
-	$in_data=1;
-	next;
-    }
-    elsif($line =~ /^PARAMETERS/){
-	if($in_data==1){
-	    die("error in config file: mixed PARAMETERS and DATA");
-	}
-	if($in_paths==1){
-	    die("error in config file: mixed PARAMETERS and PATHS");
-	}
-	if($in_parameters==1){
-	    die("duplicate PARAMETERS header");
-	}
-	$in_parameters=1;
-	next;
+    next if($line =~ /^\s*(#|$)/);
+    if($line =~ /^DATA\s*$/){
+      die("error in config file: mixed PARAMETERS and DATA") if $in_parameters;
+      die("duplicate DATA header") if $in_data;
+      $in_data = 1;
+      next;
+    } elsif($line =~ /^PARAMETERS\s*$/){
+      die("error in config file: mixed PARAMETERS and DATA") if $in_data;
+      die("duplicate PARAMETERS header") if $in_parameters;
+      $in_parameters=1;
+      next;
+    } elsif($line =~ /^PATHS\s*$/) {
+      warn("PATHS section is obsolete. You should remove it from your configuration file. Skipping to next section...");
+      while(<FILE> !~ /^END\s*/) { }
+      next;
+    } elsif($line =~ /^END\s*$/) {
+      die("Not in PARAMETERS or DATA section") if(!($in_parameters || $in_data));
+      $in_data = $in_parameters = 0;
+      next;
     }
 
+    my ($key, $param) = read_param($line);
+    
     if($in_parameters==1){
-	if($line =~ /^END/){
-	    $in_parameters=0;
-	    next;
-	}
-	elsif($line =~ /^EXTEND_JUMP_READS/){
-	    @f=split(/=/,$line);
-	    $f[1]=~s/^\s+//;
-	    $f[1]=~s/\s+$//;
-	    $EXTEND_JUMP_READS=int($f[1]);
-	    die("bad value for EXTEND_JUMP_READS, enter 0 or 1") if($EXTEND_JUMP_READS!=1 && $EXTEND_JUMP_READS!=0);
-	    next;
-	}
-        elsif($line =~ /^DO_HOMOPOLYMER_TRIM/){
-            @f=split(/=/,$line);
-            $f[1]=~s/^\s+//;
-            $f[1]=~s/\s+$//;
-            $DO_HOMOPOLYMER_TRIM=int($f[1]);
+        if($key eq "EXTEND_JUMP_READS"){
+            die("bad value for EXTEND_JUMP_READS, enter 0 or 1") unless($param =~ /^[01]$/);
+	    $EXTEND_JUMP_READS=int($param);
+	} elsif($key eq "DO_HOMOPOLYMER_TRIM"){
+            die("bad value for DO_HOMOPOLYMER_TRIM, enter 0 or 1") unless($param =~ /^[01]$/);
+            $DO_HOMOPOLYMER_TRIM=int($param);
 	    $homo_trim_string="" if($DO_HOMOPOLYMER_TRIM==0);    
-            die("bad value for DO_HOMOPOLYMER_TRIM, enter 0 or 1") if($DO_HOMOPOLYMER_TRIM!=1 && $DO_HOMOPOLYMER_TRIM!=0);
-            next;
-        }
-	elsif($line =~ /^CA_PARAMETERS/){
-	    @f=split(/=/,$line);
-	    $CA_PARAMETERS=$f[1];
-	    for($i=2;$i<scalar(@f);$i++){
-		$CA_PARAMETERS.="=$f[$i]";
-	    }
+          } elsif($key eq "CA_PARAMETERS"){
+	    $CA_PARAMETERS=$param;
 	    die("bad value for CA_PARAMETERS") if($CA_PARAMETERS eq "");
-	    next;
-	}
-        elsif($line =~ /^LIMIT_JUMP_COVERAGE/){
-            @f=split(/=/,$line);
-            $f[1]=~s/^\s+//;
-            $f[1]=~s/\s+$//;
-            $LIMIT_JUMP_COVERAGE=int($f[1]);
-            die("bad value for LIMIT_JUMP_COVERAGE, enter int > 1") if($LIMIT_JUMP_COVERAGE<1);
-            next;
-        }
-        elsif($line =~ /^GRAPH_KMER_SIZE/){
-            @f=split(/=/,$line);
-            $f[1]=~s/^\s+//;
-            $f[1]=~s/\s+$//;
-            $KMER=$f[1];
+	} elsif($key eq "LIMIT_JUMP_COVERAGE"){
+            $LIMIT_JUMP_COVERAGE=int($param);
+            die("bad value for LIMIT_JUMP_COVERAGE, enter int > 1") if($LIMIT_JUMP_COVERAGE<=1);
+        } elsif($key eq "GRAPH_KMER_SIZE"){
+            $KMER=$param;
             die("bad value for GRAPH_KMER_SIZE, enter auto or number > 15 and < 151") if(not($KMER eq "auto") && ($KMER<15 || $KMER>151));
-            next;
-        }
-        elsif($line =~ /^USE_LINKING_MATES/){
-            @f=split(/=/,$line);
-            $f[1]=~s/^\s+//;
-            $f[1]=~s/\s+$//;
-            $USE_LINKING_MATES=int($f[1]);
-            die("bad value for USE_LINKING_MATES, enter 0 or 1") if($USE_LINKING_MATES!=1 && $USE_LINKING_MATES!=0);
-            next;
-        }
-	elsif($line =~ /^KMER_COUNT_THRESHOLD/){
-	    @f=split(/=/,$line);
-	    $f[1]=~s/^\s+//;
-	    $f[1]=~s/\s+$//;
-	    $KMER_COUNT_THRESHOLD=int($f[1]);
+        } elsif($key eq "USE_LINKING_MATES"){
+            die("bad value for USE_LINKING_MATES, enter 0 or 1") unless $param =~ /^[01]$/;
+            $USE_LINKING_MATES=int($param);
+          } elsif($key eq "KMER_COUNT_THRESHOLD"){
+	    $KMER_COUNT_THRESHOLD=int($param);
 	    $KMER_RELIABLE_THRESHOLD=3*$KMER_COUNT_THRESHOLD;
 	    die("bad value for KMER_COUNT_THRESHOLD") if($KMER_COUNT_THRESHOLD<1);
-	    next;
-	}
-	elsif($line =~ /^NUM_THREADS/){
-	    @f=split(/=/,$line);
-	    $f[1]=~s/^\s+//;
-	    $f[1]=~s/\s+$//;
-	    $NUM_THREADS=int($f[1]);
+	} elsif($key eq "NUM_THREADS"){
+	    $NUM_THREADS=int($param);
 	    die("bad value for NUM_THREADS") if($NUM_THREADS<1);
-	    next;
-	}
-	elsif($line =~ /^JF_SIZE/){
-	    @f=split(/=/,$line);
-	    $f[1]=~s/^\s+//;
-	    $f[1]=~s/\s+$//;
-	    $JF_SIZE=int($f[1]);
+	} elsif($key eq "JF_SIZE"){
+	    $JF_SIZE=int($param);
 	    die("bad value for JF_SIZE, enter int > 100000") if($JF_SIZE<100000);
-	    next;
-	}
-	else{
-	    next;
-	}
+	} else {
+            die "Could not parse line '$line'";
+        }
     }
 
-
-    if($in_paths==1){
-	if($line =~ /^END/){
-	    $in_paths=0;
-	    next;
-	}
-	elsif($line =~ /^JELLYFISH_PATH/){
-	    @f=split(/=/,$line);
-	    $JELLYFISH_PATH=$f[1];
-	    $JELLYFISH_PATH=~s/^\s+//;
-	    $JELLYFISH_PATH=~s/\s+$//;
-	    $JELLYFISH_PATH.="/" if(not($JELLYFISH_PATH eq ""));
-	    next;
-	}
-	elsif($line =~ /^CA_PATH/){
-	    @f=split(/=/,$line);
-	    $CA_PATH=$f[1];
-	    $CA_PATH=~s/^\s+//;
-	    $CA_PATH=~s/\s+$//;
-	    $CA_PATH.="/" if(not($CA_PATH eq ""));
-	    next;
-	}
-	elsif($line =~ /^SR_PATH/){
-	    @f=split(/=/,$line);
-	    $SR_PATH=$f[1];
-	    $SR_PATH=~s/^\s+//;
-	    $SR_PATH=~s/\s+$//;
-	    $SR_PATH.="/" if(not($SR_PATH eq ""));
-	    next;
-	}
-	else{
-	    next;
-	}
-    }
-    elsif($in_data==1){
-	if($line =~ /^END/){
-	    if(scalar(@pe_info_array)==0 && scalar(@jump_info_array)==0 && scalar(@other_info_array)==0){
-		die("incomplete DATA section");
-	    }
-	    $in_data=0;
-	    next;
-	}
-	elsif($line =~ /^PE/){
-	    $pe_info_line="";
-	    @f=split(/=/,$line);
-	    $f[1]=~s/^\s+//;
-	    @f1=split(/\s+/,$f[1]);
-	    die("improper id for PE library $f1[0]") if(not(length($f1[0])==2));
-	    die("duplicate id for PE library $f1[0]") if(defined($used_library_ids{$f1[0]}));
-	    $pe_info_line.="$f1[0] ";
-	    $used_library_ids{$f1[0]}=1;
-	    die("improper mean for PE library $f1[0]") if(not(int($f1[1])>0));
-	    $pe_info_line.="$f1[1] ";
-	    die("improper stdev for PE library $f1[0]") if(not(int($f1[2])>0));
-	    $pe_info_line.="$f1[2] ";
-	    die("missing forward file for PE library $f1[0]") if(not(-e $f1[3]));
-	    $pe_info_line.="$f1[3] ";
-	    if(length($f1[4])>0){
-		die("missing reverse file for PE library $f1[0]") if(not(-e $f1[4]));
-		$pe_info_line.="$f1[4] ";
+    if($in_data==1){
+      if($key eq "PE"){
+	    my @f=split(" ", $param);
+	    die("improper id for PE library $f[0]") if(not(length($f[0])==2));
+	    die("duplicate id for PE library $f[0]") if(defined($used_library_ids{$f[0]}));
+	    my $pe_info_line ="$f[0] ";
+	    $used_library_ids{$f[0]}=1;
+	    die("improper mean for PE library $f[0]") if(not(int($f[1])>0));
+	    $pe_info_line.="$f[1] ";
+	    die("improper stdev for PE library $f[0]") if(not(int($f[2])>0));
+	    $pe_info_line.="$f[2] ";
+	    die("missing forward file for PE library $f[0]") if(not(-e $f[3]));
+	    $pe_info_line.="$f[3] ";
+	    if(length($f[4])>0){
+		die("missing reverse file for PE library $f[0]") if(not(-e $f[4]));
+		$pe_info_line.="$f[4] ";
 	    }
 	    else{
-		$pe_info_line.="$f1[3] ";
+		$pe_info_line.="$f[3] ";
 	    }
 	    push(@pe_info_array,$pe_info_line);
-	}
-	elsif($line =~ /^JUMP/){
-	    $jump_info_line="";
-	    @f=split(/=/,$line);
-	    $f[1]=~s/^\s+//;
-	    @f1=split(/\s+/,$f[1]);
-	    die("improper id for JUMP library $f1[0]") if(not(length($f1[0])==2));
-	    die("duplicate id for JUMP library $f1[0]") if(defined($used_library_ids{$f1[0]}));
-	    $jump_info_line.="$f1[0] ";
-	    $used_library_ids{$f1[0]}=1;
-	    die("improper mean for JUMP library $f1[0]") if(int($f1[1])==0);
-	    $jump_info_line.="$f1[1] ";
-	    die("improper stdev for JUMP library $f1[0]") if(not(int($f1[2])>0));
-	    $jump_info_line.="$f1[2] ";
-	    die("missing forward file for JUMP library $f1[0]") if(not(-e $f1[3]));
-	    $jump_info_line.="$f1[3] ";
-	    die("missing reverse file for JUMP library $f1[0]") if(not(-e $f1[4]));
-	    $jump_info_line.="$f1[4] ";
+	} elsif($key eq "JUMP"){
+	    my @f=split(" ", $param);
+	    die("improper id for JUMP library $f[0]") if(not(length($f[0])==2));
+	    die("duplicate id for JUMP library $f[0]") if(defined($used_library_ids{$f[0]}));
+	    my $jump_info_line="$f[0] ";
+	    $used_library_ids{$f[0]}=1;
+	    die("improper mean for JUMP library $f[0]") if(int($f[1])==0);
+	    $jump_info_line.="$f[1] ";
+	    die("improper stdev for JUMP library $f[0]") unless(int($f[2])>0);
+	    $jump_info_line.="$f[2] ";
+	    die("missing forward file for JUMP library $f[0]") unless(-e $f[3]);
+	    $jump_info_line.="$f[3] ";
+	    die("missing reverse file for JUMP library $f[0]") unless(-e $f[4]);
+	    $jump_info_line.="$f[4] ";
 	    push(@jump_info_array,$jump_info_line);
 	}
-	elsif($line=~ /OTHER/){
-	    @f=split(/=/,$line);
-	    $f[1]=~s/^\s+//;
-	    $f[1]=~s/\s+$//;
-	    if($f[1] =~/\.frg$/ && (-e $f[1])){
-		push(@other_info_array,$f[1]);
-	    }
-	    else{
-		die("missing or incorrect frg file for OTHER library");
-	    }
-	}
+	elsif($key eq "OTHER"){
+	    die("missing or incorrect frg file for OTHER library") unless($param =~/\.frg$/ && (-e $param));
+            push(@other_info_array,$param);
+	} else {
+            die "Could not parse line '$line'";
+        }
     }
 }
 die("no read data files specified") if(scalar(@pe_info_array)+scalar(@jump_info_array)+scalar(@other_info_array)==0);
 
-print "PATHS:\nCA_PATH = $CA_PATH\nJELLYFISH_PATH = $JELLYFISH_PATH\nSR_PATH = $SR_PATH\n\n";
 print "Verifying PATHS...\n";
-unshift(@PATH, $JELLYFISH_PATH, $SR_PATH, $CA_PATH);
-unshift(@LD_LIBRARY_PATH, "${JELLYFISH_PATH}/../lib");
+if(@prep_path) {
+  unshift(@PATH, @prep_path);
+} else {
+  unshift(@PATH, $RealBin, $RealBin . "/../CA/Linux-amd64/bin");
+}
+if(@prep_ld) {
+  unshift(@LD_LIBRARY_PATH, @prep_ld);
+}
 
-print("@PATH\n");
 sub check_exec {
   for my $e (@_) {
     system("$e --help >/dev/null 2>&1") == 0 or die "$e not found or failed to run";
@@ -318,51 +275,51 @@ sub check_exec {
 }
 check_exec "jellyfish", "runCA", "createSuperReadsForDirectory.perl";
 
-print "\nPARAMETERS:\nGRAPH_KMER_SIZE = $KMER\nUSE_LINKING_MATES = $USE_LINKING_MATES\nKMER_COUNT_THRESHOLD = $KMER_COUNT_THRESHOLD\nLIMIT_JUMP_COVERAGE = $LIMIT_JUMP_COVERAGE\nNUM_THREADS = $NUM_THREADS\nJF_SIZE = $JF_SIZE\nEXTEND_JUMP_READS = $EXTEND_JUMP_READS\nCA_PARAMETERS = $CA_PARAMETERS\nDO_HOMOPOLYMER_TRIM = $DO_HOMOPOLYMER_TRIM\n\n";
-print "DATA:\nPE:\n";
-foreach $v(@pe_info_array){
-    print "$v\n";
-}
-print "JUMP:\n";
-foreach $v(@jump_info_array){
-    print "$v\n";
-}
-print "OTHER:\n";
-foreach $v(@other_info_array){
-    print "$v\n";
-}
+# print "PARAMETERS:\nGRAPH_KMER_SIZE = $KMER\nUSE_LINKING_MATES = $USE_LINKING_MATES\nKMER_COUNT_THRESHOLD = $KMER_COUNT_THRESHOLD\nLI# MIT_JUMP_COVERAGE = $LIMIT_JUMP_COVERAGE\nNUM_THREADS = $NUM_THREADS\nJF_SIZE = $JF_SIZE\nEXTEND_JUMP_READS = $EXTEND_JUMP_READS\nCA_PARAMETERS = $CA_PARAMETERS\nDO_HOMOPOLYMER_TRIM = $DO_HOMOPOLYMER_TRIM\n\n";
+# print "DATA:\nPE:\n";
+# foreach my $v (@pe_info_array){
+#     print "$v\n";
+# }
+# print "JUMP:\n";
+# foreach my $v (@jump_info_array){
+#     print "$v\n";
+# }
+# print "OTHER:\n";
+# foreach my $v (@other_info_array){
+#     print "$v\n";
+# }
 
 die ("no PE data specified") if(scalar(@pe_info_array)==0);
 
-print("\ncreating script file for the actions...");
+print("creating script file for the actions...");
 
 my $config_abs_path = File::Spec->rel2abs($config_file);
 my $cmd_abs_path = File::Spec->rel2abs(__FILE__);
 
-open(FILE,">assemble.sh");
+open(FILE,">", $assembly_script) or die "Can't open output file '$assembly_script': $!";
 print FILE <<"EOS";
 #!/bin/bash
 
-#assemble.sh generated by runSRCA.pl
+# $assembly_script generated by runSRCA.pl
 CONFIG_PATH="$config_abs_path"
 CMD_PATH="$cmd_abs_path"
 
 # Parse command line switches
-usage() {
-  echo "Usage: \$0 [-r] [-c]"
-  exit 1
-}
 while getopts ":rc" o; do
   case "\${o}" in
     c)
     echo "configuration file is '\$CONFIG_PATH'"
+    exit 0
     ;;
     r)
     echo "Rerunning configuration"
     exec perl "\$CMD_PATH" "\$CONFIG_PATH"
+    echo "Failed to rerun configuration"
+    exit 1
     ;;
     *)
-    usage
+    echo "Usage: \$0 [-r] [-c]"
+    exit 1
     ;;
   esac
 done
@@ -370,25 +327,33 @@ done
 set +e
 # Set some paths and prime system to save environment variables
 save () {
-  (echo -n "$1=\""; eval "echo -n \"\$$1\""; echo "\"") >> environment.sh
+  (echo -n "\$1=\""; eval "echo -n \"\\\$\$1\""; echo "\"") >> environment.sh
 }
 
 rm -f environment.sh; touch environment.sh
-export LD_LIBRARY_PATH="$JELLYFISH_PATH/../lib:\$LD_LIBRARY_PATH"
-save LD_LIBRARY_PATH
-export PATH="$CA_PATH:$SR_PATH:$JELLYFISH_PATH:\$PATH"
-save PATH
 EOS
 
-$i=0;
-$list_pe_files="";
-$list_jump_files="";
-$list_of_frg_files="";
-$rerun_pe=0;
-$rerun_sj=0;
+if(@prep_path) {
+  print FILE "export PATH=\"", join(":", @prep_path), ":\$PATH\"\n";
+} else {
+  print FILE "export PATH=\"$RealBin:$RealBin/../CA/Linux-amd64/bin:\$PATH\"\n";
+}
+print FILE "save PATH\n";
 
-my $tmplist;
-foreach $v(@other_info_array){
+if(@prep_ld) {
+  print FILE "export LD_LIBRARY_PATH=\"", join(":", @prep_ld), ":\$LD_LIBRARY_PATH\"\n";
+  print FILE "save LD_LIBRARY_PATH\n";
+}
+
+my $i                 = 0;
+my $list_pe_files     = "";
+my $list_jump_files   = "";
+my $list_of_frg_files = "";
+my $rerun_pe          = 0;
+my $rerun_sj          = 0;
+
+my $tmplist = "";
+foreach my $v (@other_info_array){
     $list_of_frg_files.="$v ";
     $tmplist.="$v ";
 }
@@ -397,8 +362,8 @@ foreach $v(@other_info_array){
 
 print FILE "echo -n 'processing PE library reads ';date;\n";
 print FILE "rm -rf meanAndStdevByPrefix.pe.txt\n";
-foreach $v(@pe_info_array){
-    @f=split(/\s+/,$v);
+foreach my $v (@pe_info_array){
+    my @f=split(" ", $v);
     $list_pe_files.="$f[0].renamed.fastq ";
     print FILE "echo '$f[0] $f[1] $f[2]' >> meanAndStdevByPrefix.pe.txt\n";
     next if(-e "$f[0].renamed.fastq");
@@ -417,8 +382,8 @@ print FILE "rm -rf meanAndStdevByPrefix.sj.txt\n";
 if(scalar(@jump_info_array)>0){
     print FILE "echo -n 'processing JUMP library reads ';date;\n";
     $i=0;
-    foreach $v(@jump_info_array){
-	@f=split(/\s+/,$v);
+    foreach my $v (@jump_info_array){
+        my @f=split(" ",$v);
 	print FILE "echo '$f[0] 500 100' >> meanAndStdevByPrefix.sj.txt\n";
 	$list_jump_files.="$f[0].renamed.fastq ";
 	next if(-e "$f[0].renamed.fastq");
@@ -510,7 +475,7 @@ print FILE "\n";
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
     print FILE "echo -n 'error correct PE ';date;\n";
     print FILE "cat combined_0 > /dev/null\n";
-    print FILE "\nquorum_error_correct_reads   -p `cat cutoff.txt` --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > pe.cor.fa\n";
+    print FILE "\nquorum_error_correct_reads   -p `cat cutoff.txt` --contaminant=$RealBin/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > pe.cor.fa\n";
     $rerun_pe=1;
 }
 
@@ -522,7 +487,7 @@ if(scalar(@jump_info_array)>0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
 	print FILE "echo -n 'error correct JUMP ';date;\n";
         print FILE "cat combined_0 > /dev/null\n";
-	print FILE "\nquorum_error_correct_reads -p `cat cutoff.txt` --contaminant=$SR_PATH/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > sj.cor.fa\n";
+	print FILE "\nquorum_error_correct_reads -p `cat cutoff.txt` --contaminant=$RealBin/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > sj.cor.fa\n";
         $rerun_sj=1;
     }
 }
@@ -530,17 +495,12 @@ if(scalar(@jump_info_array)>0){
 ###done error correct JUMP###
 print FILE "\n";
 ###estimate genome size###
-
-if(scalar(@jump_info_array)>0){
-    $k_u_arg="pe.cor.fa sj.cor.fa";
-}else{
-    $k_u_arg="pe.cor.fa";
-}
+my $k_u_arg="pe.cor.fa";
+$k_u_arg.=" sj.cor.fa" if(@jump_info_array);
 
 if(not(-e "k_u_hash_0")||$rerun_pe==1||$rerun_sj==1){
     print FILE "jellyfish-2.0 count -m 31 -t $NUM_THREADS -C -s \$JF_SIZE -o k_u_hash_0 $k_u_arg\n";
 }
-
 
 print FILE "ESTIMATED_GENOME_SIZE=`jellyfish-2.0 histo -t $NUM_THREADS -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
 print FILE "save ESTIMATED_GENOME_SIZE\n";
@@ -619,6 +579,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 					print prefix\"\"last_readnumber\"\\n\"prefix\"\"readnumber;
 				}
 			}
+
 			}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 | putReadsIntoGroupsBasedOnSuperReads --super-read-sequence-file work2/superReadSequences.fasta --read-placements-file work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt > sj.cor.clean.fa\n";
 
 #here we perform another round of filtering bad mates
@@ -662,7 +623,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	print FILE "rm -rf compute_jump_coverage.txt\n";
 	
 	for($i=0;$i<scalar(@jump_info_array);$i++){
-	    @f=split(/\s+/,$jump_info_array[$i]);
+	    my @f=split(/\s+/,$jump_info_array[$i]);
 	    print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
 	    print FILE "grep --text -A 1 '^>$f[0]' sj.cor.ext.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp | grep --text '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
@@ -674,7 +635,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	print FILE "perl -e '{srand(1);\$cov=int('\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'); print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=$LIMIT_JUMP_COVERAGE;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.cor.clean.fa\");while(\$line=<FILE>){next if(not(\$line =~ /^>/));chomp(\$line);if(int(substr(\$line,3))%2==0) {print STDERR substr(\$line,1),\"\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>mates_to_break.txt\n";
 	print FILE "extractreads_not.pl mates_to_break.txt sj.cor.ext.fa 1 >  sj.cor.ext.reduced.fa\n";
 	for($i=0;$i<scalar(@jump_info_array);$i++){
-	    @f=split(/\s+/,$jump_info_array[$i]);
+	    my @f=split(/\s+/,$jump_info_array[$i]);
 	    $list_of_frg_files.="$f[0].cor.clean.frg ";
 	    print FILE "grep --text -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp > $f[0].cor.clean.frg\n";
@@ -710,8 +671,8 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	}
 
 #create frg files for PE data
-	foreach $v(@pe_info_array){
-	    @f=split(/\s+/,$v);
+	foreach my $v (@pe_info_array){
+	    my @f=split(/\s+/,$v);
 	    $list_of_frg_files.="$f[0].linking.frg ";
 	    if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
 		print FILE "grep --text -A 1 '^>$f[0]' pe.linking.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
@@ -739,6 +700,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
     }
 
 #this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
+    my ($ovlMerSize, $other_parameters);
         if(scalar(@other_info_array)>0){
             $ovlMerSize=22;
             $other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClearRanges=2 ovlMerSize=22";
@@ -858,12 +820,12 @@ if($CLOSE_GAPS){
 
     print FILE "echo -n 'Gap closing ';date;\n";
     my $reads_argument="";
-    @f=split(" ",$list_pe_files);
-    foreach $v(@f){
+    my @f=split(" ",$list_pe_files);
+    foreach my $v(@f){
 	$reads_argument.="--reads-file $v ";
     }
     @f=split(" ",$list_jump_files);
-    foreach $v(@f){
+    foreach my $v(@f){
         $reads_argument.="--reads-file $v ";
     }
 
@@ -880,6 +842,5 @@ if($CLOSE_GAPS){
 print FILE "echo -n 'All done ';date;\n";
 
 close(FILE);
-system("chmod 0755 assemble.sh");
-print "done.\nexecute assemble.sh to run the assembly\n";
-
+chmod 0755, $assembly_script;
+print "done.\nexecute $assembly_script to run the assembly\n";
