@@ -619,24 +619,25 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 					print prefix\"\"last_readnumber\"\\n\"prefix\"\"readnumber;
 				}
 			}
-			}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 > sj.cor.clean.fa\n";
-	    $rerun_sj=1;
-	    print FILE "rm -rf sj.cor.clean.rev.fa\n";
-	    for($i=0;$i<scalar(@jump_info_array);$i++){
-        		@f=split(/\s+/,$jump_info_array[$i]);
-	            	my $if_innie="";
-        	        $if_innie=" | reverse_complement " if($f[1]>0);
-            		print FILE "grep --text -A 1 '^>$f[0]' sj.cor.clean.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
-        		}
+			}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa 1 | putReadsIntoGroupsBasedOnSuperReads --super-read-sequence-file work2/superReadSequences.fasta --read-placements-file work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt > sj.cor.clean.fa\n";
+
 #here we perform another round of filtering bad mates
-	print FILE "cat sj.cor.clean.rev.fa | putReadsIntoGroupsBasedOnSuperReads --super-read-sequence-file work2/superReadSequences.fasta --read-placements-file work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt > sj.cor.clean.rev.fa.bak\n";
-	print FILE "rm -f sj.cor.clean.rev.fa\n";
-	print FILE "findReversePointingJumpingReads.perl -s \$JF_SIZE --Celera-terminator-directory . --jumping-library-read-file sj.cor.clean.rev.fa.bak --reads-file pe.cor.fa --output-directory work4 --min-kmer-len 23 --max-kmer-len 80 --num-threads $NUM_THREADS --maxnodes 1000 --reduce-read-set-kmer-size 27 --max-reads-in-memory 100000000 --faux-insert-mean 500 --faux-insert-stdev 100 --num-joins-per-directory 101 1>findReversePointingJumpingReads.err 2>&1 \n";
-	print FILE "extractreads_not.pl work4/output.txt sj.cor.clean.rev.fa.bak 1 > sj.cor.clean.rev.fa\n";
+
+	print FILE "findReversePointingJumpingReads.perl -s \$JF_SIZE --Celera-terminator-directory . --jumping-library-read-file sj.cor.clean.fa --reads-file pe.cor.fa --output-directory work2.1 --min-kmer-len 23 --max-kmer-len 80 --num-threads $NUM_THREADS --maxnodes 1000 --reduce-read-set-kmer-size 27 --max-reads-in-memory 100000000 --faux-insert-mean 500 --faux-insert-stdev 100 --num-joins-per-directory 101 1>findReversePointingJumpingReads.err 2>&1 \n";
+	print FILE "extractreads_not.pl work2.1/output.txt sj.cor.clean.fa 1 > sj.cor.clean2.fa\n";
 	print FILE "echo Found extra chimeric mates: \n";
-	print FILE "wc -l work4/output.txt\n";
-	print FILE "rm -rf work4/readFile.??? work4/workReadsVsFaux work4/workFauxVsFaux\n";
+	print FILE "wc -l work2.1/output.txt\n";
+#	print FILE "rm -rf work2.1/readFile.??? work4/workReadsVsFaux work4/workFauxVsFaux\n";
+        print FILE "rm -rf sj.cor.clean.rev.fa\n";
+        for($i=0;$i<scalar(@jump_info_array);$i++){
+               @f=split(/\s+/,$jump_info_array[$i]);
+               my $if_innie="";
+               $if_innie=" | reverse_complement " if($f[1]>0);
+               print FILE "grep --text -A 1 '^>$f[0]' sj.cor.clean2.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
+               }
+            $rerun_sj=1;
 	}
+
 
 #here we extend the jumping library reads if they are too short
         if(not(-e "sj.cor.ext.fa")||$rerun_pe==1||$rerun_sj==1){      

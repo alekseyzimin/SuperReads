@@ -72,7 +72,7 @@ $reverseComplementedJumpingReadFile = returnAbsolutePath ($reverseComplementedJu
 $joiningEndPairs = $reverseComplementedJumpingReadFile;
 $fishingEndPairs = $joiningEndPairs;
 chdir ($outputDirectory);
-$cmd = "$exeDir/outputMatedReadsAsReverseComplement.perl $jumpingLibraryReadFile --reverse-complement > $joiningEndPairs";
+$cmd = "$exeDir/outputMatedReadsAsReverseComplement.perl $jumpingLibraryReadFile > $joiningEndPairs";
 runCommandAndExitIfBad ($cmd);
 
 # $meanAndStdevJoinSeqLenByGapFile = "gap.insertMeanAndStdev.txt";
