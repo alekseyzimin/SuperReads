@@ -305,21 +305,21 @@ CONFIG_PATH="$config_abs_path"
 CMD_PATH="$cmd_abs_path"
 
 # Parse command line switches
-usage() {
-  echo "Usage: \$0 [-r] [-c]"
-  exit 1
-}
 while getopts ":rc" o; do
   case "\${o}" in
     c)
     echo "configuration file is '\$CONFIG_PATH'"
+    exit 0
     ;;
     r)
     echo "Rerunning configuration"
     exec perl "\$CMD_PATH" "\$CONFIG_PATH"
+    echo "Failed to rerun configuration"
+    exit 1
     ;;
     *)
-    usage
+    echo "Usage: \$0 [-r] [-c]"
+    exit 1
     ;;
   esac
 done
