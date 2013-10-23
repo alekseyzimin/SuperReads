@@ -352,7 +352,7 @@ my $list_of_frg_files = "";
 my $rerun_pe          = 0;
 my $rerun_sj          = 0;
 
-my $tmplist;
+my $tmplist = "";
 foreach my $v (@other_info_array){
     $list_of_frg_files.="$v ";
     $tmplist.="$v ";
