@@ -68,7 +68,7 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/extractreads.pl src/extract_unjoined_pairs.pl	\
                     src/fasta2frg.pl src/filter_library.sh		\
                     src/fix_unitigs.sh					\
-                    src/recompute_astat_superreads.sh src/runSRCA.pl	\
+                    src/recompute_astat_superreads.sh src/masurca	\
                     src/extractreads_not.pl src/run_ECR.sh		\
                     src/filter_alt.pl src/parallel			\
                     src/rename_filter_fastq.pl				\
