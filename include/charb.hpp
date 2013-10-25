@@ -159,7 +159,7 @@ char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
   char *start = cptr;
 
   if(b.is_null()) {
-    b.reserve();
+    b.reserve(20);
     start = cptr = b.base();
   }
 
@@ -176,6 +176,8 @@ char *fgets(basic_charb<R> &b, FILE *stream, char *cptr) {
       pos = npos;
     }
     cptr      += char_read;
+    if(cptr == b.base_)
+      asm("int3;");
     if(cptr < b.end_ - 1 || *(cptr - 1) == '\n')
       break;
     size_t off  = cptr  - b.base_;
@@ -291,7 +293,7 @@ ssize_t getline_append(basic_charb<R> &b, FILE* stream) {
 template<typename R>
 std::istream& getline(std::istream &is, basic_charb<R> &b, char delim, char *cptr) {
   if(b.is_null()) {
-    b.reserve();
+    b.reserve(20);
     cptr = b.base();
   }
 
