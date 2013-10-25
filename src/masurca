@@ -39,7 +39,12 @@ use File::Spec;
 use FindBin qw($RealBin);
 use Getopt::Long;
 
-#parsing config file
+#global variables
+my $list_pe_files     = "";
+my $list_jump_files   = "";
+my $list_of_frg_files = "";
+my $rerun_pe          = 0;
+my $rerun_sj          = 0;
 my $KMER                    = "auto";
 my $CA_PARAMETERS           = "";
 my $WINDOW                  = 10;
@@ -83,6 +88,94 @@ Options:
 EOS
     ;
 
+
+sub rename_reads {
+my @read_info=$_[0];
+my $type=$_[1];
+my $i=0;
+print FILE "echo -n 'processing $type library reads ';date;\n";
+print FILE "rm -rf meanAndStdevByPrefix.$type.txt\n";
+foreach my $v (@read_info){
+    my @f=split(" ", $v);
+    if($type eq "pe"){
+    print FILE "echo '$f[0] $f[1] $f[2]' >> meanAndStdevByPrefix.pe.txt\n";
+    $list_pe_files.="$f[0].renamed.fastq ";
+    }else{
+    print FILE "echo '$f[0] 500 100' >> meanAndStdevByPrefix.sj.txt\n";
+    $list_jump_files.="$f[0].renamed.fastq ";
+    }
+    next if(-e "$f[0].renamed.fastq");
+    $rerun_pe=1;
+    $rerun_sj=1;
+    print FILE "rename_filter_fastq.pl $f[0] $f[3] $f[4] > $f[0].renamed.fastq &\nPID$i=\$!\n";
+    $i++;
+}
+print FILE "wait ";
+for(my $j=0;$j<$i;$j++){
+    print FILE "\$PID$j ";
+}
+print FILE "\n";
+}
+
+sub estimate_optimal_kmer{
+     my $filelist=$_[0];
+     my $name=$_[1];
+     print FILE "$name=`for f in $filelist;do head -n 80000 \$f |tail -n 40000;done | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); print \$kmer'`\n";
+}
+
+sub get_MIN_Q_CHAR{
+my $filelist=$_[0];
+print FILE "echo -n 'running Jellyfish ';date;\n";
+print FILE "MIN_Q_CHAR=`cat $filelist |head -n 50000 | awk 'BEGIN{flag=0}{if(\$0 ~ /^\+/){flag=1}else if(flag==1){print \$0;flag=0}}'  | perl -ne 'BEGIN{\$q0_char=\"\@\";}{chomp;\@f=split \"\";foreach \$v(\@f){if(ord(\$v)<ord(\$q0_char)){\$q0_char=\$v;}}}END{\$ans=ord(\$q0_char);if(\$ans<64){print \"33\\n\"}else{print \"64\\n\"}}'`\n";
+print FILE "save MIN_Q_CHAR\n";
+print FILE "echo MIN_Q_CHAR: \$MIN_Q_CHAR\n";
+}
+
+sub count_kmers_for_quorum{
+    my $filelist=$_[0];
+    my $NUM_THREADS=$_[1];
+    my $thresh=$_[2];
+    print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_trim -s \$JF_SIZE -m 24 --quality-start \$MIN_Q_CHAR --min-quality $thresh $filelist\n";
+    print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_all -s \$JF_SIZE -m 24 $filelist\n";
+
+    print FILE "CUTOFF=`jellyfish histo -t 48 pe_trim_0 | 
+        perl -ane '{
+        if(\$F[0]>1){
+                \$n+=\$F[0]*\$F[1];
+                \$m+=\$F[1];
+                }
+        }END{
+        \$er=0.01; 
+        \$c=\$n/\$m; 
+        for(\$x=2;\$x<1000;\$x++){
+                if(\$er/sqrt(2*3.1415927*\$x)*((\$er*\$c/3/\$x)**\$x)*exp(-\$er*\$c/3+\$x)<0.000001){
+                        print (\$x+1);
+                        last;
+                }
+        }
+        }'`\n";
+
+    print FILE "save CUTOFF\n";
+    print FILE "echo \"Error correction Poisson cutoff = \$CUTOFF\"\n";
+    print FILE "echo \$CUTOFF > cutoff.txt\n";
+#check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
+    print FILE "if [[ -e pe_trim_1 || -e pe_all_1 ]];then\n";
+    print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2\"\n";
+    print FILE "rm -f pe_trim_? pe_all_?\n";
+    print FILE "exit\n";
+    print FILE "fi\n";
+    print FILE "quorum_combine_jf_dbs -m 1 pe_trim_0 pe_all_0 -o combined\n";
+    print FILE "rm -f pe_trim_? pe_all_?\n";
+}
+
+sub check_exec {
+  for my $e (@_) {
+    system("$e --help >/dev/null 2>&1") == 0 or die "$e not found or failed to run";
+    print "$e OK\n";
+  }
+}
+
+#parsing config file
 GetOptions("o|output=s"          => \$assembly_script,
            "g|generate"          => \$generate_default,
            "p|path=s"            => \@prep_path,
@@ -267,27 +360,7 @@ if(@prep_ld) {
   unshift(@LD_LIBRARY_PATH, @prep_ld);
 }
 
-sub check_exec {
-  for my $e (@_) {
-    system("$e --help >/dev/null 2>&1") == 0 or die "$e not found or failed to run";
-    print "$e OK\n";
-  }
-}
-check_exec "jellyfish", "runCA", "createSuperReadsForDirectory.perl";
-
-# print "PARAMETERS:\nGRAPH_KMER_SIZE = $KMER\nUSE_LINKING_MATES = $USE_LINKING_MATES\nKMER_COUNT_THRESHOLD = $KMER_COUNT_THRESHOLD\nLI# MIT_JUMP_COVERAGE = $LIMIT_JUMP_COVERAGE\nNUM_THREADS = $NUM_THREADS\nJF_SIZE = $JF_SIZE\nEXTEND_JUMP_READS = $EXTEND_JUMP_READS\nCA_PARAMETERS = $CA_PARAMETERS\nDO_HOMOPOLYMER_TRIM = $DO_HOMOPOLYMER_TRIM\n\n";
-# print "DATA:\nPE:\n";
-# foreach my $v (@pe_info_array){
-#     print "$v\n";
-# }
-# print "JUMP:\n";
-# foreach my $v (@jump_info_array){
-#     print "$v\n";
-# }
-# print "OTHER:\n";
-# foreach my $v (@other_info_array){
-#     print "$v\n";
-# }
+&check_exec("jellyfish", "runCA", "createSuperReadsForDirectory.perl");
 
 die ("no PE data specified") if(scalar(@pe_info_array)==0);
 
@@ -345,13 +418,6 @@ if(@prep_ld) {
   print FILE "save LD_LIBRARY_PATH\n";
 }
 
-my $i                 = 0;
-my $list_pe_files     = "";
-my $list_jump_files   = "";
-my $list_of_frg_files = "";
-my $rerun_pe          = 0;
-my $rerun_sj          = 0;
-
 my $tmplist = "";
 foreach my $v (@other_info_array){
     $list_of_frg_files.="$v ";
@@ -360,54 +426,21 @@ foreach my $v (@other_info_array){
 
 ###renaming reads###
 
-print FILE "echo -n 'processing PE library reads ';date;\n";
-print FILE "rm -rf meanAndStdevByPrefix.pe.txt\n";
-foreach my $v (@pe_info_array){
-    my @f=split(" ", $v);
-    $list_pe_files.="$f[0].renamed.fastq ";
-    print FILE "echo '$f[0] $f[1] $f[2]' >> meanAndStdevByPrefix.pe.txt\n";
-    next if(-e "$f[0].renamed.fastq");
-    $rerun_pe=1;
-    $rerun_sj=1;
-    print FILE "rename_filter_fastq.pl $f[0] $f[3] $f[4] > $f[0].renamed.fastq &\nPID$i=\$!\n";   
-    $i++;
-}
-print FILE "wait ";
-for(my $j=0;$j<$i;$j++){
-    print FILE "\$PID$j ";
-}
-print FILE "\n";
+&rename_reads(@pe_info_array,"pe");
+&rename_reads(@jump_info_array,"jump") if(scalar(@jump_info_array)>0);
 
-print FILE "rm -rf meanAndStdevByPrefix.sj.txt\n";
-if(scalar(@jump_info_array)>0){
-    print FILE "echo -n 'processing JUMP library reads ';date;\n";
-    $i=0;
-    foreach my $v (@jump_info_array){
-        my @f=split(" ",$v);
-	print FILE "echo '$f[0] 500 100' >> meanAndStdevByPrefix.sj.txt\n";
-	$list_jump_files.="$f[0].renamed.fastq ";
-	next if(-e "$f[0].renamed.fastq");
-        $rerun_sj=1;
-	die("duplicate jump library $f[0] files") if($f[3] eq $f[4]);
-	print FILE "rename_filter_fastq.pl $f[0] $f[3] $f[4] > $f[0].renamed.fastq &\nPID$i=\$!\n";
-	$i++;
-    }
-    print FILE "wait ";
-    for(my $j=0;$j<$i;$j++){
-	print FILE "\$PID$j ";
-    }
-    print FILE "\n";
-}
 ###done renaming reads###
 print FILE "\n";
+
 ###compute minimum and average PE read length and gc content, and kmer size###
 print FILE "head -q -n 2  $list_pe_files | grep --text -v '^\@' > pe_data.tmp\n";
 print FILE "PE_AVG_READ_LENGTH=`awk '{n+=length(\$1);m++;}END{print int(n/m)}' pe_data.tmp`\n";
 print FILE "save PE_AVG_READ_LENGTH\n";
 print FILE "echo \"Average PE read length \$PE_AVG_READ_LENGTH\"\n";
+
 if(uc($KMER) eq "AUTO"){
 #here we have to estimate gc content and recompute kmer length for the graph
-     print FILE "KMER=`for f in $list_pe_files;do head -n 80000 \$f |tail -n 40000;done | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); print \$kmer'`\n";
+     &estimate_optimal_kmer($list_pe_files,"KMER");
      print FILE "save KMER\n";
      print FILE "echo \"choosing kmer size of \$KMER for the graph\"\n";
 }else{
@@ -415,55 +448,22 @@ if(uc($KMER) eq "AUTO"){
 }
 
 if(scalar(@jump_info_array)>0){    
-    print FILE "KMER_J=`for f in $list_jump_files;do head -n 80000 \$f |tail -n 40000;done | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31);  print \$kmer'`\n";
+    &estimate_optimal_kmer($list_jump_files,"KMER_J");
     print FILE "save KMER_J\n";
 }else{
    print FILE "KMER_J=\$KMER\n";
 }
 ###done###
-###Jellyfish###
-print FILE "echo -n 'running Jellyfish ';date;\n";
-print FILE "MIN_Q_CHAR=`cat $list_pe_files |head -n 50000 | awk 'BEGIN{flag=0}{if(\$0 ~ /^\+/){flag=1}else if(flag==1){print \$0;flag=0}}'  | perl -ne 'BEGIN{\$q0_char=\"\@\";}{chomp;\@f=split \"\";foreach \$v(\@f){if(ord(\$v)<ord(\$q0_char)){\$q0_char=\$v;}}}END{\$ans=ord(\$q0_char);if(\$ans<64){print \"33\\n\"}else{print \"64\\n\"}}'`\n";
-print FILE "save MIN_Q_CHAR\n";
-print FILE "echo MIN_Q_CHAR: \$MIN_Q_CHAR\n";
 
-#for our error correction we run jellyfish twice: once on all pe bases and once on pe bases with quality >2 
+###Jellyfish###
+
+&get_MIN_Q_CHAR($list_pe_files);
+
 print FILE "JF_SIZE=`ls -l *.fastq | awk '{n+=\$5}END{s=int(n/46); if(s>$JF_SIZE)print s;else print \"$JF_SIZE\";}'`\n";
 print FILE "save JF_SIZE\n";
 print FILE "perl -e '{if(int('\$JF_SIZE')>$JF_SIZE){print \"WARNING: JF_SIZE set too low, increasing JF_SIZE to at least '\$JF_SIZE', this automatic increase may be not enough!\\n\"}}'\n"; 
 if(not(-e "combined_0") || $rerun_pe==1){
-    print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_trim -s \$JF_SIZE -m 24 --quality-start \$MIN_Q_CHAR --min-quality 5 $list_pe_files\n";
-    print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_all -s \$JF_SIZE -m 24 $list_pe_files\n";
-
-    print FILE "CUTOFF=`jellyfish histo -t 48 pe_trim_0 | 
-        perl -ane '{
-        if(\$F[0]>1){
-                \$n+=\$F[0]*\$F[1];
-                \$m+=\$F[1];
-                }
-        }END{
-        \$er=0.01; 
-        \$c=\$n/\$m; 
-        for(\$x=2;\$x<1000;\$x++){
-                if(\$er/sqrt(2*3.1415927*\$x)*((\$er*\$c/3/\$x)**\$x)*exp(-\$er*\$c/3+\$x)<0.000001){
-                        print (\$x+1);
-                        last;
-                }
-        }
-        }'`\n";
-
-    print FILE "save CUTOFF\n";
-    print FILE "echo \"Error correction Poisson cutoff = \$CUTOFF\"\n";
-    print FILE "echo \$CUTOFF > cutoff.txt\n";
-#check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
-    print FILE "if [[ -e pe_trim_1 || -e pe_all_1 ]];then\n";
-    print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2\"\n";
-    print FILE "rm -f pe_trim_? pe_all_?\n";
-    print FILE "exit\n";
-    print FILE "fi\n";
-
-    print FILE "quorum_combine_jf_dbs -m 1 pe_trim_0 pe_all_0 -o combined\n";
-    print FILE "rm -f pe_trim_? pe_all_?\n";
+    &count_kmers_for_quorum($list_pe_files, $NUM_THREADS, 5);
     $rerun_pe=1;
     $rerun_sj=1;
 }
@@ -590,8 +590,8 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	print FILE "wc -l work2.1/output.txt\n";
 #	print FILE "rm -rf work2.1/readFile.??? work4/workReadsVsFaux work4/workFauxVsFaux\n";
         print FILE "rm -rf sj.cor.clean.rev.fa\n";
-        for($i=0;$i<scalar(@jump_info_array);$i++){
-               @f=split(/\s+/,$jump_info_array[$i]);
+        for(my $i=0;$i<scalar(@jump_info_array);$i++){
+               my @f=split(/\s+/,$jump_info_array[$i]);
                my $if_innie="";
                $if_innie=" | reverse_complement " if($f[1]>0);
                print FILE "grep --text -A 1 '^>$f[0]' sj.cor.clean2.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
@@ -622,7 +622,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	print FILE "echo -n 'creating FRG files ';date;\n";
 	print FILE "rm -rf compute_jump_coverage.txt\n";
 	
-	for($i=0;$i<scalar(@jump_info_array);$i++){
+	for(my $i=0;$i<scalar(@jump_info_array);$i++){
 	    my @f=split(/\s+/,$jump_info_array[$i]);
 	    print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
 	    print FILE "grep --text -A 1 '^>$f[0]' sj.cor.ext.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
@@ -634,7 +634,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 #here we reduce jump library coverage: we know the genome size (from k-unitigs) and JUMP_BASES_COVERED contains total jump library coverage :)
 	print FILE "perl -e '{srand(1);\$cov=int('\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'); print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=$LIMIT_JUMP_COVERAGE;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.cor.clean.fa\");while(\$line=<FILE>){next if(not(\$line =~ /^>/));chomp(\$line);if(int(substr(\$line,3))%2==0) {print STDERR substr(\$line,1),\"\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>mates_to_break.txt\n";
 	print FILE "extractreads_not.pl mates_to_break.txt sj.cor.ext.fa 1 >  sj.cor.ext.reduced.fa\n";
-	for($i=0;$i<scalar(@jump_info_array);$i++){
+	for(my $i=0;$i<scalar(@jump_info_array);$i++){
 	    my @f=split(/\s+/,$jump_info_array[$i]);
 	    $list_of_frg_files.="$f[0].cor.clean.frg ";
 	    print FILE "grep --text -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
@@ -844,3 +844,5 @@ print FILE "echo -n 'All done ';date;\n";
 close(FILE);
 chmod 0755, $assembly_script;
 print "done.\nexecute $assembly_script to run the assembly\n";
+
+
