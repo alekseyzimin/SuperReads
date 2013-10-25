@@ -90,9 +90,13 @@ EOS
 
 
 sub rename_reads {
-my @read_info=$_[0];
-my $type=$_[1];
-my $i=0;
+my $i;
+my @read_info;
+my $type;
+for($i=0;$i<$#_;$i++){
+push(@read_info,$_[$i]);
+}
+$type=$_[$i];
 print FILE "echo -n 'processing $type library reads ';date;\n";
 print FILE "rm -rf meanAndStdevByPrefix.$type.txt\n";
 foreach my $v (@read_info){
