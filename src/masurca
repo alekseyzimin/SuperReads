@@ -358,7 +358,10 @@ if(@prep_path) {
 }
 if(@prep_ld) {
   unshift(@LD_LIBRARY_PATH, @prep_ld);
+} else {
+  unshift(@LD_LIBRARY_PATH, $RealBin . "/../lib");
 }
+
 
 &check_exec("jellyfish", "runCA", "createSuperReadsForDirectory.perl");
 
@@ -415,8 +418,11 @@ print FILE "save PATH\n";
 
 if(@prep_ld) {
   print FILE "export LD_LIBRARY_PATH=\"", join(":", @prep_ld), ":\$LD_LIBRARY_PATH\"\n";
-  print FILE "save LD_LIBRARY_PATH\n";
+} else {
+  print FILE "export LD_LIBRARY_PATH=\"$RealBin/../lib:\$LD_LIBRARY_PATH\"\n";
 }
+print FILE "save LD_LIBRARY_PATH\n";
+
 
 my $tmplist = "";
 foreach my $v (@other_info_array){
