@@ -183,9 +183,10 @@ int main (int argc, char **argv)
           << jellyfish::err::no;
   }
 
-  int   status = 0;
-  int   dirNum;
-  bool  atEnd  = false;
+  int		status	  = 0;
+  int		dirNum;
+  bool		atEnd	  = false;
+  unsigned int	fileIndex = 0;
   for (dirNum=0; ! atEnd; dirNum++) {
     if(dirNum >= args.num_threads_arg)
       wait(&status);
@@ -202,21 +203,31 @@ int main (int argc, char **argv)
     }
     //	       fgets_append (threadArgs.fauxReadFileDataStr, contigEndSeqFile); }
 
+#if 0
+    if (dirNum == 28)
+	 asm ("int3;");
+#endif
     atEnd = true;
-    for (unsigned int i = 0; i < readSeqFilesByDir.size(); ++i) {
-      int lineNum=0;
-      while (fgets (line, 100, readSeqFilesByDir[i])) {
-        if (line[0] == '>') {
-          atEnd = false;
-          break;
-        }
-        if (lineNum % 2 == 0)
-          strcat (threadArgs.readFileDataStr, ">");
-        strcat (threadArgs.readFileDataStr, line);
-        ++lineNum;
-      }
+//    while (fileIndex < readSeqFilesByDir.size()) {
+//    for (  ; fileIndex < readSeqFilesByDir.size(); ++fileIndex) {
+    int lineNum=0;
+    while (fgets (line, 100, readSeqFilesByDir[fileIndex])) {
+	 if (line[0] == '>') {
+	      atEnd = false;
+	      break;
+	 }
+	 if (lineNum % 2 == 0)
+	      strcat (threadArgs.readFileDataStr, ">");
+	 strcat (threadArgs.readFileDataStr, line);
+	 ++lineNum;
     }
-
+    
+    if (atEnd) {
+	 ++fileIndex;
+	 if (fileIndex < readSeqFilesByDir.size()) {
+	      fgets (line, 100, readSeqFilesByDir[fileIndex]); // Gets past the first line ('>0')
+	      atEnd = false; } }
+	 
     if (args.mean_and_stdev_file_given) {
       int dirNumTemp;
       int scanned = fscanf (meanAndStdevFile, "%d %f %f\n",

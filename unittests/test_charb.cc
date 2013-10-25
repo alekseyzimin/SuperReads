@@ -23,7 +23,7 @@
 
 TEST(CharbBasic, Init) {
   charb empty;
-  EXPECT_EQ((size_t)0, empty.capacity());
+  EXPECT_EQ((size_t)1, empty.capacity());
   EXPECT_EQ((size_t)0, empty.len());
 
   charb init_len(20);

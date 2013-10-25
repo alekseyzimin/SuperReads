@@ -520,7 +520,10 @@ int main (int argc, char **argv)
 	  perror("stat failed");
 	  exit(1);
      }
-     overlapData = (struct overlapDataStruct *)mmap(0, stat_buf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+     off_t fileSize = stat_buf.st_size;
+     if (fileSize == 0) // So that the 'mmap' doesn't fail
+	  fileSize = 1;
+     overlapData = (struct overlapDataStruct *)mmap(0, fileSize, PROT_READ, MAP_SHARED, fd, 0);
      if(overlapData == MAP_FAILED) {
 	  perror("mmap failed");
 	  exit(1);
@@ -576,7 +579,7 @@ int main (int argc, char **argv)
      KUnitigsJoiner joiners(args.input_file_arg, args.output_arg, args.threads_arg);
      joiners.exec_join(args.threads_arg);
      
-     munmap(overlapData, stat_buf.st_size);
+     munmap(overlapData, fileSize);
      
      return (0);
 }
