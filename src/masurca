@@ -62,7 +62,7 @@ my @jump_info_array         = ();
 my @other_info_array        = ();
 my %used_library_ids;
 my $LIMIT_JUMP_COVERAGE     = 500;
-my $USE_LINKING_MATES       = 1;
+my $USE_LINKING_MATES       = 0;
 my $DO_HOMOPOLYMER_TRIM     = 0;
 my $homo_trim_string        = " | homo_trim  $TRIM_PARAM ";
 my $CLOSE_GAPS              = 1;
@@ -280,6 +280,9 @@ while(my $line=<FILE>){
             die("bad value for DO_HOMOPOLYMER_TRIM, enter 0 or 1") unless($param =~ /^[01]$/);
             $DO_HOMOPOLYMER_TRIM=int($param);
 	    $homo_trim_string="" if($DO_HOMOPOLYMER_TRIM==0);    
+	} elsif($key eq "CLOSE_GAPS"){
+            die("bad value for CLOSE_GAPS, enter 0 or 1") unless($param =~ /^[01]$/);
+            $CLOSE_GAPS=int($param);
           } elsif($key eq "CA_PARAMETERS"){
 	    $CA_PARAMETERS=$param;
 	    die("bad value for CA_PARAMETERS") if($CA_PARAMETERS eq "");
@@ -429,6 +432,8 @@ print FILE "save LD_LIBRARY_PATH\n";
 
 
 my $tmplist = "";
+#override use linking mates if we have any long reads
+$USE_LINKING_MATES=0 if(scalar(@other_info_array)==0);
 foreach my $v (@other_info_array){
     $list_of_frg_files.="$v ";
     $tmplist.="$v ";
