@@ -84,7 +84,7 @@ struct mer_set {
 
 struct used_type {
   template<typename T>
-  constexpr std::pair<int, bool> insert(const T&) const { return std::make_pair(0, true); }
+  std::pair<int, bool> insert(const T&) const { return std::make_pair(0, true); }
 };
 
 // Here, the parser is basically the hash itself, and a stream is an

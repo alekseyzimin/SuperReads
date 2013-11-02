@@ -24,10 +24,10 @@
 // time of the object.
 template<typename T = uint64_t>
 class dna_fragment_base :
-  public jellyfish::mer_dna_ns::mer_base<T, dna_fragment_base<T> >
+  public jellyfish::mer_dna_ns::mer_base<dna_fragment_base<T> >
 {
 public:
-  typedef typename jellyfish::mer_dna_ns::mer_base<T, dna_fragment_base<T> > super;
+  typedef typename jellyfish::mer_dna_ns::mer_base<dna_fragment_base<T> > super;
   typedef T base_type;
 
   dna_fragment_base() : super(0), k_(0) { }
@@ -89,6 +89,13 @@ public:
 private:
   unsigned int k_;
 };
+namespace jellyfish {
+namespace mer_dna_ns {
+template<typename T>
+struct mer_dna_traits<dna_fragment_base<T> > {
+  typedef T base_type;
+};
+} }
 
 typedef dna_fragment_base<uint64_t> dna_fragment;
 

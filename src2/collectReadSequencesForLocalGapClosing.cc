@@ -11,6 +11,7 @@
 #include <map>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <exp_buffer.hpp>
 #include <charb.hpp>
 #include <charbuf.hpp>
@@ -21,6 +22,17 @@
 // THE NEXT 2 LINES ARE COPIED FROM GUILLAUME
 // GLOBAL: command line switches
 cmdline_parse args;
+
+// Define catch all std::to_string for compilers missing it (like g++
+// 4.4).
+namespace std {
+template<typename T>
+string to_string(const T& x) {
+  ostringstream os;
+  os << x;
+  return os.str();
+}
+}
 
 // Names of files and directories
 
