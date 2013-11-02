@@ -96,6 +96,7 @@ public:
   // Insert key with given hashes
   unsigned int insert(const uint64_t* hashes) {
     // Prefetch memory locations
+    static_assert(std::is_pod<prefetch_info>::value, "Prefetch info is a POD");
     prefetch_info pinfo[k()];
     const size_t base = d_.remainder(hashes[0]);
     const size_t inc  = d_.remainder(hashes[1]);
@@ -151,6 +152,7 @@ public:
 
   unsigned int check(uint64_t *hashes) const {
     // Prefetch memory locations
+    static_assert(std::is_pod<prefetch_info>::value, "Prefetch info is a POD");
     prefetch_info pinfo[k()];
     const size_t base = d_.remainder(hashes[0]);
     const size_t inc  = d_.remainder(hashes[1]);

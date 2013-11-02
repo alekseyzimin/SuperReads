@@ -51,14 +51,14 @@ AC_ARG_VAR([DEV_CXXFLAGS], [Extra compiler flags for development])
 if test "x$DEV_CXXFLAGS" = "x"; then
 DEV_CXXFLAGS="-Werror -D_FORTIFY_SOURCE=2"
 # Check for -Wunused-but-set-variable
-my_save_cxxflags="$CXXFLAGS"
-CXXFLAGS=-Wunused-but-set-variable
-AC_MSG_CHECKING([whether CXX supports -Wunused-but-set-variable])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
-    [AC_MSG_RESULT([yes])]
-    [DEV_CXXFLAGS="$DEV_CXXFLAGS -Wunused-but-set-variable"],
-    [AC_MSG_RESULT([no])])
-CXXFLAGS="$my_save_cxxflags"
+dnl my_save_cxxflags="$CXXFLAGS"
+dnl CXXFLAGS=-Wunused-but-set-variable
+dnl AC_MSG_CHECKING([whether CXX supports -Wunused-but-set-variable])
+dnl AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
+dnl     [AC_MSG_RESULT([yes])]
+dnl     [DEV_CXXFLAGS="$DEV_CXXFLAGS -Wunused-but-set-variable"],
+dnl     [AC_MSG_RESULT([no])])
+dnl CXXFLAGS="$my_save_cxxflags"
 fi
 AC_SUBST([DEV_CXXFLAGS])
 

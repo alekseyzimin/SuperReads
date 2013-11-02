@@ -199,6 +199,7 @@ public:
   }
   template<typename T>
   std::pair<iterator, iterator> equal_range(const T& x) const {
+    static_assert(std::is_pod<path_node>::value, "Path_node is a POD");
     path_node path[max_height_];
     node* n = find_node_path(x, path);
     if(n)
@@ -212,12 +213,14 @@ public:
   }
   template<typename T>
   iterator lower_bound(const T& x) const {
+    static_assert(std::is_pod<path_node>::value, "Path_node is a POD");
     path_node path[max_height_];
     find_node_path(x, path);
     return iterator(path[0].val);
   }
   template<typename T>
   iterator upper_bound(const T& x) const {
+    static_assert(std::is_pod<path_node>::value, "Path_node is a POD");
     path_node path[max_height_];
     node*     n = find_node_path(x, path);
     if(n)
@@ -252,6 +255,7 @@ public:
     iterator upper_bound(const T& x) const { return set_.upper_bound(x); }
 
     std::pair<iterator, bool> insert(const value_type& x) {
+      static_assert(std::is_pod<path_node>::value, "Path_node is a POD");
       path_node path[set_.max_height_];
       node* n = set_.find_node_path(x, path);
       if(n)

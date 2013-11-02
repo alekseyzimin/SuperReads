@@ -249,8 +249,8 @@ class KUnitigsJoinerThread {
      ExpandingBuffer<int>                             fwdNumIndices;
      ExpandingBuffer<int>                             revNumIndices;
      ExpandingBuffer<int>                             newNodeNumsFromOld;
-     unitigLocStruct                                 *unitigLocData1;
-     unitigLocStruct                                 *unitigLocData2;
+     // unitigLocStruct                                 *unitigLocData1;
+     // unitigLocStruct                                 *unitigLocData2;
      int                                              mateUnitig1;
      int                                              mateUnitig2;
      unsigned char                                    mateUnitig1ori;
@@ -298,7 +298,7 @@ class KUnitigsJoinerThread {
      int                                              numJoinableUnresolvedAtEnd;
      int                                              numUnjoinableMissingSequence;
      int                                              numUnjoinableOverMaxNodes;
-     int                                             *treeReinitList;
+  //     int                                             *treeReinitList;
      int                                              maxPathNumUsed;
      bool                                             tooManyPossibleInsertLengths;
 

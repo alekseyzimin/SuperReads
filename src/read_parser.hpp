@@ -40,8 +40,8 @@ class read_parser : public multiplexed_parser<read_parser_read> {
   std::vector<std::filebuf*>      filebufs_;
   std::istream                    input_;
   bool                            close_input_;
-  pthread_t                       reader_id_;
-  const char*                     error_;
+  //  pthread_t                       reader_id_;
+  //  const char*                     error_;
 
   std::filebuf* open_file(const char* path) {
     auto res = new std::filebuf();
