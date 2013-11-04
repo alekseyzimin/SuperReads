@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#! /usr/bin/env perl
 # Input a fasta file of reads where mated reads are together
 # Output a fasta file of the mates reads with sequence reverse-complemented
 # Input via the file in the 1 argument; output to STDOUT

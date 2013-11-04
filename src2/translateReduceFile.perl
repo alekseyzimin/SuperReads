@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#! /usr/bin/env perl
 # Pass 2 args: the name of the files containing
 # (1) The original super-read names, and
 # (2) The name of the input reduce file (e.g. reduce.tmp)

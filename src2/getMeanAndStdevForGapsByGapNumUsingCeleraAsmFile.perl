@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#! /usr/bin/env perl
 # Report expected joining sequence length for each Celera gap where, for the
 # correct orientation, the gap has a unique length implied by the mate pairs
 # as reported by the Celera assembler

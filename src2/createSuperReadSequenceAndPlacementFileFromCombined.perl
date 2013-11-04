@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#! /usr/bin/env perl
 # Pass 3 args:
 # 1: The file with fields: gapNum, joinSeq, fauxReadName1, gapNum, fauxRead1offset, fauxRead1ori, fauxReadName2, gapNum, fauxRead2offset, fauxRead2ori
 # 2: The name of the file where the joining super-read sequence goes

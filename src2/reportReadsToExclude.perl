@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#! /usr/bin/env perl
 # The file names might be
 # output.txt and reverseComplemented.jumpingReadFile.fa
 $fileWithListOfConnectedDirectories = $ARGV[0];

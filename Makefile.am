@@ -28,9 +28,9 @@ noinst_HEADERS += $(JFLIB_I)/multiplexed_io.hpp $(JFLIB_I)/pool.hpp	\
 ##############################
 UTILS_I = include
 noinst_HEADERS += $(UTILS_I)/charb.hpp $(UTILS_I)/charbuf.hpp		\
-                  $(UTILS_I)/exp_buffer.hpp $(UTILS_I)/gzip_stream.hpp	\
-                  $(UTILS_I)/misc.hpp $(UTILS_I)/heap.hpp		\
-                  $(UTILS_I)/reallocators.hpp				\
+                  $(UTILS_I)/exp_buffer.hpp				\
+                  $(UTILS_I)/gzip_stream.hpp $(UTILS_I)/misc.hpp	\
+                  $(UTILS_I)/heap.hpp $(UTILS_I)/reallocators.hpp	\
                   $(UTILS_I)/skip_list_set.hpp				\
                   $(UTILS_I)/skip_list_map.hpp				\
                   $(UTILS_I)/gcc_builtins.hpp $(UTILS_I)/rb_tree.hpp	\
@@ -40,8 +40,7 @@ noinst_HEADERS += $(UTILS_I)/charb.hpp $(UTILS_I)/charbuf.hpp		\
                   $(UTILS_I)/multi_thread_skip_list_set.hpp		\
                   $(UTILS_I)/multi_thread_skip_list_map.hpp		\
                   $(UTILS_I)/tmpstream.hpp $(UTILS_I)/exp_vector.hpp	\
-                  $(UTILS_I)/thread_pool.hpp	\
-                  $(UTILS_I)/fork_exec.hpp
+                  $(UTILS_I)/thread_pool.hpp $(UTILS_I)/fork_exec.hpp
 
 noinst_LIBRARIES = libutils.a
 libutils_a_SOURCES = lib/fork_exec.cpp
@@ -69,8 +68,8 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/fasta2frg.pl src/filter_library.sh		\
                     src/fix_unitigs.sh					\
                     src/recompute_astat_superreads.sh src/masurca	\
-                    src/extractreads_not.pl src/run_ECR.sh		\
-                    src/filter_alt.pl src/parallel			\
+                    src/runSRCA.pl src/extractreads_not.pl		\
+                    src/run_ECR.sh src/filter_alt.pl src/parallel	\
                     src/rename_filter_fastq.pl				\
                     src/filter_redundancy.pl
 

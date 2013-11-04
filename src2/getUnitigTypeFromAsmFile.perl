@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#! /usr/bin/env perl
 # This expects 1 arg: the name of an asm file
 # Output is to STDOUT
 # Unitig# [UNS], where 'U' is U-unitig, 'S' is surrogate, 'N' is degenerate
