@@ -218,8 +218,8 @@ END
 PARAMETERS
 #this is k-mer size for deBruijn graph values between 25 and 101 are supported, auto will compute the optimal size based on the read data and GC content
 GRAPH_KMER_SIZE=auto
-#set this to 1 for Illumina-only assemblies and to 0 if you have 2x or more long (Sanger, 454) reads
-USE_LINKING_MATES=1
+#set this to 1 for Illumina-only assemblies and to 0 if you have 1x or more long (Sanger, 454) reads, you can also set this to 0 for large data sets with high jumping clone coverage, e.g. >50x
+USE_LINKING_MATES=0
 #this parameter is useful if you have too many jumping library mates. Typically set it to 60 for bacteria and something large (300) for mammals
 LIMIT_JUMP_COVERAGE = 60
 #these are the additional parameters to Celera Assembler.  do not worry about performance, number or processors or batch sizes -- these are computed automatically. for mammals do not set cgwErrorRate above 0.15!!!
