@@ -96,8 +96,7 @@ create_k_unitigs_large_k2_SOURCES = src/create_k_unitigs_large_k2.cc
 YAGGO_SOURCES += src/create_k_unitigs_large_k2_cmdline.hpp
 bloom_query_SOURCES = src/bloom_query.cc src/MurmurHash3.cpp
 YAGGO_SOURCES += src/bloom_query_cmdline.hpp
-filter_overlap_file_SOURCES = src/filter_overlap_file.cc	\
-                              src/dna_fragment.hpp
+filter_overlap_file_SOURCES = src/filter_overlap_file.cc
 YAGGO_SOURCES += src/filter_overlap_file_cmdline.hpp
 
 ##############################
@@ -203,8 +202,7 @@ all_tests_SOURCES = unittests/test_main.cc unittests/test_charb.cc	\
                     unittests/test_hash.cc				\
                     unittests/test_exp_vector.cc			\
                     unittests/test_thread_pool.cc			\
-                    unittests/test_fork_exec.cc				\
-                    unittests/test_dna_fragment.cc
+                    unittests/test_fork_exec.cc
 all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
                      src/gcc_builtins.cc src/read_parser.cc		\
                      unittests/misc.cc
