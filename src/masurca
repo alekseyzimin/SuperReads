@@ -242,8 +242,9 @@ EOS
 sub read_param {
   my ($line) = @_;
   die "Can't parse line '$line'" unless $line =~ /^\s*(\w+)\s*=\s*(.*)$/;
-  chomp($2);
-  return ($1, $2);
+  my ($k, $v) = ($1, $2);
+  chomp($v);
+  return ($k, $v);
 }
 
 open(FILE, "<", $config_file) or die "Can't open config file '$config_file': $!";
