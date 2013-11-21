@@ -416,15 +416,19 @@ while getopts ":rc" o; do
     ;;
   esac
 done
+EOS
+    ;
 
+print FILE <<'EOS';
 set +e
 # Set some paths and prime system to save environment variables
 save () {
-  (echo -n "\$1=\""; eval "echo -n \"\\\$\$1\""; echo "\"") >> environment.sh
+  (echo -n "$1=\""; eval "echo -n \"\$$1\""; echo '"') >> environment.sh
 }
 
 rm -f environment.sh; touch environment.sh
 EOS
+    ;
 
 if(@prep_path) {
   print FILE "export PATH=\"", join(":", @prep_path), ":\$PATH\"\n";
