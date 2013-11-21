@@ -4,9 +4,9 @@ description ""
 
 name "cmdline_parse"
 
-option ("dir") {
+option("dir") {
        description "Directory where the super-reads work is done"
        c_string; required; typestr "path"; access "read" }
-option ("m", "mer") {
+option("m", "mer") {
        description "Length of mer"
        int; required }

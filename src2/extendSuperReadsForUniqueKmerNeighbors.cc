@@ -22,7 +22,9 @@ int main(int argc, char **argv)
      sprintf (fname, "%s/maxKUnitigNumber.txt", (char *)dir);
      FILE *infile = fopen (fname, "r");
      int maxUnitigNum;
-     fscanf (infile, "%d", &maxUnitigNum);
+     int numItems = fscanf (infile, "%d", &maxUnitigNum);
+     if (numItems != 1)
+	  exit (1);
      fclose (infile);
 
      unsigned char *numBeforeOverlaps, *numAfterOverlaps;

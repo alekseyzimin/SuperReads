@@ -8,6 +8,7 @@
 #include <misc.hpp>
 #include <exp_buffer.hpp>
 #include <charb.hpp>
+#include <src2/extendSuperReadsBasedOnUniqueExtensions_cmdline.hpp>
 
 std::string orientSuperRead (std::string inputString);
 FILE *Fopen (const char *fn, const char *mode);
@@ -36,7 +37,9 @@ int main (int argc, char **argv)
      int maxUnitigNum;
      sprintf (fname, "%s/maxKUnitigNumber.txt", (char *) dir);
      FILE *infile = Fopen (fname, "r");
-     fscanf (infile, "%d\n", &maxUnitigNum);
+     int numItems = fscanf (infile, "%d\n", &maxUnitigNum);
+     if (numItems != 1)
+	  exit (1);
      fclose (infile);
      int *afterUni = (int *) calloc (maxUnitigNum+1, sizeof(int));
      char *afterUniOri = (char *) calloc (maxUnitigNum+1, sizeof(char));
@@ -47,7 +50,7 @@ int main (int argc, char **argv)
      unsigned int *alreadySeen = (unsigned int *) calloc (maxUnitigNum+1, sizeof (unsigned int));
      for (int i=0; i<=maxUnitigNum; ++i)
 	  afterUni[i] = beforeUni[i] = -1;
-     infile = Fopen ("results.txt", "r");
+     infile = Fopen ("extendSuperReadsForUniqueKmerNeighbors.output.txt", "r");
      while (fgets (line, 100, infile)) {
 	  int numFlds = getFldsFromLine (line, flds);
 	  int uni = atoi (flds[1]);
@@ -86,7 +89,7 @@ int main (int argc, char **argv)
      std::vector<stringAndLenStruct> listOfNewSuperReads;
      sprintf (fname, "%s/sr_sizes.tmp", (char *) dir);
      infile = Fopen (fname, "r");
-     int currentLineValue = 0;
+     unsigned int currentLineValue = 0;
      int fldNumToUse = 0;
      int superReadLength;
      while (fgets (line, 100, infile)) {
@@ -181,7 +184,7 @@ int main (int argc, char **argv)
 	  int newStringLength = superReadLength;
 //	  printf ("%s ", superReadName.c_str());
 	  std::string newSuperReadString;
-	  for (int i=0; i<beforeUnitigs.size(); ++i) {
+	  for (unsigned int i=0; i<beforeUnitigs.size(); ++i) {
 	       charb uniNum(30);
 	       sprintf (uniNum, "%d", beforeUnitigs[i]);
 	       newSuperReadString += (char *) uniNum;
@@ -192,7 +195,7 @@ int main (int argc, char **argv)
 	  }
 //	  printf ("%s", superReadName.c_str());
 	  newSuperReadString += superReadName;
-	  for (int i=0; i<afterUnitigs.size(); ++i) {
+	  for (unsigned int i=0; i<afterUnitigs.size(); ++i) {
 	       charb uniNum(30);
 	       sprintf (uniNum, "%d", afterUnitigs[i]);
 	       newSuperReadString += "_";
@@ -222,13 +225,13 @@ int main (int argc, char **argv)
 
 #if 0
      printf ("New superReads:\n");
-     for (int i=0; i<listOfNewSuperReads.size(); ++i) {
+     for (unsigned int i=0; i<listOfNewSuperReads.size(); ++i) {
 	  printf ("%s %d\n", listOfNewSuperReads[i].str.c_str(), listOfNewSuperReads[i].len); }
 #endif
      int maxLen = inputSuperReadLengths[0];
      if (listOfNewSuperReads[0].len > maxLen)
 	  maxLen = listOfNewSuperReads[0].len;
-     int oldIndex=0, newIndex=0;
+     unsigned int oldIndex=0, newIndex=0;
 //     printf ("All superReads together:\n");
      for (int len=maxLen; len>0; --len) {
 	  while ((oldIndex<inputSuperReadLengths.size()) && (inputSuperReadLengths[oldIndex] == len)) {
