@@ -216,6 +216,16 @@ if ($noReduce==0) {
 	$tflag = ""; }
     $cmd = "cat $superReadCountsFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile -good-sequence-output-file $localGoodSequenceOutputFile -super-read-name-and-lengths-file $superReadNameAndLengthsFile $tflag 2> $sequenceCreationErrorFile";
     &runCommandAndExitIfBad ($cmd, $superReadNameAndLengthsFile, $normalFileSizeMinimum, "createFastaSuperReadSequences", $localGoodSequenceOutputFile, $goodSuperReadsNamesFile, $superReadNameAndLengthsFile);
+
+    $extendFile1 = "$workingDirectory/extendSuperReadsForUniqueKmerNeighbors.outputs.txt";
+    if ($extendSuperReads) {
+	$cmd = "$exeDir/extendSuperReadsForUniqueKmerNeighbors --dir $workingDirectory > $extendFile1";
+	print "$cmd\n"; system ($cmd);
+	$superReadNameAndLengthsFileHold = $superReadNameAndLengthsFile . ".hold";
+	$cmd = "mv $superReadNameAndLengthsFile $superReadNameAndLengthsFileHold";
+	print "$cmd\n"; system ($cmd);
+	$cmd = "$exeDir/extendSuperReadsBasedOnUniqueExtensions --dir $workingDirectory -m $merLen > $superReadNameAndLengthsFile";
+	print "$cmd\n"; system ($cmd); }
     
     $cmd = "$exeDir/reduce_sr $maxKUnitigNumber $mergedKUnitigLengthsFile $merLen $superReadNameAndLengthsFile -o $reduceFile";
     &runCommandAndExitIfBad ($cmd, $reduceFile, $normalFileSizeMinimum, "reduceSuperReads", $reduceFile, $fastaSuperReadErrorsFile);
@@ -286,6 +296,7 @@ sub processArgs
     $numStdevsAllowed = 5;
     $minReadLength = 64;
     $maxReadLength = 101;
+    $extendSuperReads = 0;
     $help = 0;
     $timeIt = 0;
     if ($#ARGV < 0) {
@@ -376,6 +387,9 @@ sub processArgs
 	    next; }
 	elsif ($ARGV[$i] eq "-time") {
 	    $timeIt = 1;
+	    next; }
+	elsif ($ARGV[$i] eq "-extend-super-reads") {
+	    $extendSuperReads = 1;
 	    next; }
 	elsif (-f $ARGV[$i]) {
 	    push (@fastaFiles, $ARGV[$i]);
