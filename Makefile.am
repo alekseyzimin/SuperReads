@@ -58,7 +58,7 @@ YAGGO_SOURCES = # Append all file to be built by yaggo
 bin_PROGRAMS += error_corrected2frg reverse_complement reduce_sr	\
                 sorted_merge create_k_unitigs_large_k			\
                 create_k_unitigs_large_k2 homo_trim bloom_query		\
-                filter_overlap_file
+                filter_overlap_file rename_filter_fastq
 
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl src/close_gaps.sh		\
@@ -98,6 +98,8 @@ bloom_query_SOURCES = src/bloom_query.cc src/MurmurHash3.cpp
 YAGGO_SOURCES += src/bloom_query_cmdline.hpp
 filter_overlap_file_SOURCES = src/filter_overlap_file.cc
 YAGGO_SOURCES += src/filter_overlap_file_cmdline.hpp
+rename_filter_fastq_SOURCES = src/rename_filter_fastq.cc
+YAGGO_SOURCES += src/rename_filter_fastq_cmdline.hpp
 
 ##############################
 # src2 pipeline

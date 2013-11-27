@@ -1,0 +1,20 @@
+purpose "Rename and filter input fastq file"
+description ""
+
+name "args_t"
+
+option("o", "output") {
+  description "Output file (stdout)"
+  string }
+option("q", "base-quality") {
+  description "Lowest valide quality score"
+  string; default "#" }
+arg("library") {
+  description "Library prefix"
+  string }
+arg("path1") {
+  description "First sequence file path"
+  string }
+arg("path2") {
+  description "Second sequence file path"
+  string }
