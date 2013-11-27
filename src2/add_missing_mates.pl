@@ -18,53 +18,45 @@
 #
 #This program adds missing mates to the read fasta files "on the fly"
 
-my $readnumberHold=-1;
-my $prefixHold=0;
-while($line=<STDIN>){
+use strict;
+use warnings;
+
+my $readnumberHold = -1;
+my ($editlineHold, $prefixHold, $sequenceHold);
+while(my $line=<STDIN>){
     chomp($line);
-    @f=split(/\s+/,$line);
-    $prefix=substr($f[0],1,2);
-    $readnumber=substr($f[0],3);
-    $editline="";
-    for($i=1;$i<scalar(@f);$i++){
-	$editline.="$f[$i] ";
-	}
+    my ($first, $editline) = split(' ', $line, 2);
+    my $prefix             = substr($first, 1, 2);
+    my $readnumber         = int(substr($first, 3));
 
-#print "DEBUG $prefix | $readnumber | $prefixHold | $readnumberHold\n";
-
-    if($readnumber%2==0){#if the read is even we simply remember it
+    if(($readnumber % 2) == 0){#if the read is even we simply remember it
 	if($readnumberHold!=-1){
-	    print ">$prefixHold$readnumberHold $editlineHold\n$sequenceHold\n>$prefixHold",$readnumberHold+1,"\nN\n";
+          print(">", $prefixHold, $readnumberHold, " ", $editlineHold, "\n", $sequenceHold,
+                "\n>", $prefixHold, $readnumberHold+1, "\nN\n");
 	}
-	$prefixHold=$prefix;
-	$readnumberHold=int($readnumber);
-        $editlineHold=$editline;
-	$line=<STDIN>;
-	chomp($line);
-	$sequenceHold=$line;
+	$prefixHold     = $prefix;
+	$readnumberHold = $readnumber;
+        $editlineHold   = $editline;
+        $sequenceHold   = <STDIN>;
+        chomp($sequenceHold);
     }
     elsif($readnumberHold==-1){#the previous even read is missing
-	print ">$prefix",$readnumber-1,"\nN\n$line\n";
-	$line=<STDIN>;
-	print $line;
+      print(">", $prefix, $readnumber-1,"\nN\n", $line, "\n", scalar(<STDIN>));
     }
     elsif($readnumber-1!=$readnumberHold){#previous mate is missing odd and current is missing even
-	print ">$prefixHold$readnumberHold $editlineHold\n$sequenceHold\n>$prefixHold",$readnumberHold+1,"\nN\n>$prefix",$readnumber-1,"\nN\n$line\n";
-	$line=<STDIN>;
-	print $line;
-	$prefixHold="";
-	$readnumberHold=-1;
+      print(">", $prefixHold, $readnumberHold, " ", $editlineHold, "\n", $sequenceHold, 
+            "\n>", $prefixHold, $readnumberHold+1, "\nN\n>", $prefix, $readnumber-1, "\nN\n",
+            $line, "\n", scalar(<STDIN>));
+      $readnumberHold = -1;
     }
-    elsif($readnumber-1==$readnumberHold){
-	print ">$prefixHold$readnumberHold $editlineHold\n$sequenceHold\n$line\n";
-	$line=<STDIN>;
-	print $line;
-	$prefixHold="";
-	$readnumberHold=-1;
+    else { # if($readnumber-1==$readnumberHold)
+      print(">", $prefixHold, $readnumberHold, " ", $editlineHold, "\n", $sequenceHold, "\n", $line, "\n", scalar(<STDIN>));
+      $readnumberHold = -1;
     }
-    else{
-	print "$line\n";
-	die("error reading input file");
-    }
+}
+
+if($readnumberHold != -1) {
+  print(">", $prefixHold, $readnumberHold, " ", $editlineHold, "\n", $sequenceHold, 
+        "\n>", $prefixHold, $readnumberHold+1, "\nN\n");
 }
 
