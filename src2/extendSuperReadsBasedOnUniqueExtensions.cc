@@ -50,7 +50,8 @@ int main (int argc, char **argv)
      unsigned int *alreadySeen = (unsigned int *) calloc (maxUnitigNum+1, sizeof (unsigned int));
      for (int i=0; i<=maxUnitigNum; ++i)
 	  afterUni[i] = beforeUni[i] = -1;
-     infile = Fopen ("extendSuperReadsForUniqueKmerNeighbors.output.txt", "r");
+     sprintf (fname, "%s/extendSuperReadsForUniqueKmerNeighbors.output.txt", (char *) dir);
+     infile = Fopen (fname, "r");
      while (fgets (line, 100, infile)) {
 	  int numFlds = getFldsFromLine (line, flds);
 	  int uni = atoi (flds[1]);
@@ -222,6 +223,7 @@ int main (int argc, char **argv)
      fclose (infile);
 
      sort (listOfNewSuperReads.begin(), listOfNewSuperReads.end(), stringAndLenCompare);
+     fprintf (stderr, "listOfNewSuperReads.size() = %d\n", (int) listOfNewSuperReads.size());
 
 #if 0
      printf ("New superReads:\n");

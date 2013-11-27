@@ -217,15 +217,15 @@ if ($noReduce==0) {
     $cmd = "cat $superReadCountsFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile -good-sequence-output-file $localGoodSequenceOutputFile -super-read-name-and-lengths-file $superReadNameAndLengthsFile $tflag 2> $sequenceCreationErrorFile";
     &runCommandAndExitIfBad ($cmd, $superReadNameAndLengthsFile, $normalFileSizeMinimum, "createFastaSuperReadSequences", $localGoodSequenceOutputFile, $goodSuperReadsNamesFile, $superReadNameAndLengthsFile);
 
-    $extendFile1 = "$workingDirectory/extendSuperReadsForUniqueKmerNeighbors.outputs.txt";
+    $extendFile1 = "$workingDirectory/extendSuperReadsForUniqueKmerNeighbors.output.txt";
     if ($extendSuperReads) {
 	$cmd = "$exeDir/extendSuperReadsForUniqueKmerNeighbors --dir $workingDirectory > $extendFile1";
-	print "$cmd\n"; system ($cmd);
+	&runCommandAndExitIfBad ($cmd, $extendFile1, $normalFileSizeMinimum, "findUniqueKUnitigExtensions", $extendFile1);
 	$superReadNameAndLengthsFileHold = $superReadNameAndLengthsFile . ".hold";
 	$cmd = "mv $superReadNameAndLengthsFile $superReadNameAndLengthsFileHold";
 	print "$cmd\n"; system ($cmd);
 	$cmd = "$exeDir/extendSuperReadsBasedOnUniqueExtensions --dir $workingDirectory -m $merLen > $superReadNameAndLengthsFile";
-	print "$cmd\n"; system ($cmd); }
+	&runCommandAndExitIfBad ($cmd, $superReadNameAndLengthsFile, $normalFileSizeMinimum, "extendSuperReadsForUniqueKmers", $superReadNameAndLengthsFile); }
     
     $cmd = "$exeDir/reduce_sr $maxKUnitigNumber $mergedKUnitigLengthsFile $merLen $superReadNameAndLengthsFile -o $reduceFile";
     &runCommandAndExitIfBad ($cmd, $reduceFile, $normalFileSizeMinimum, "reduceSuperReads", $reduceFile, $fastaSuperReadErrorsFile);
