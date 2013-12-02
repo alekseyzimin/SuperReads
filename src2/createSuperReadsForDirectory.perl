@@ -47,6 +47,8 @@
 # -keep-kunitigs-in-superread-names : Use the super-read names which have the
 #                 k-unitig numbers in them; otherwise use numeric names
 #                 (lower numbers correspond to shorter super-reads)
+# -extend-super-reads : extend the super-reads if the ending unitigs have
+#                 unique continuations
 # -closegaps : this is from a closeGaps.perl run, so some filesizes may be 0
 # -time : time the commands
 # -h : help 
