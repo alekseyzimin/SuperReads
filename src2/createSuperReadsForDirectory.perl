@@ -225,7 +225,18 @@ if ($noReduce==0) {
 	$cmd = "mv $superReadNameAndLengthsFile $superReadNameAndLengthsFileHold";
 	print "$cmd\n"; system ($cmd);
 	$cmd = "$exeDir/extendSuperReadsBasedOnUniqueExtensions --dir $workingDirectory -m $merLen > $superReadNameAndLengthsFile";
-	&runCommandAndExitIfBad ($cmd, $superReadNameAndLengthsFile, $normalFileSizeMinimum, "extendSuperReadsForUniqueKmers", $superReadNameAndLengthsFile); }
+	&runCommandAndExitIfBad ($cmd, $superReadNameAndLengthsFile, $normalFileSizeMinimum, "extendSuperReadsForUniqueKmers", $superReadNameAndLengthsFile); 
+	$cmd = "cat $workingDirectory/superReadNames.addedByExtension.txt >> $goodSuperReadsNamesFile";
+	print "$cmd\n"; system ($cmd);
+	open (FILE, "$workingDirectory/superReadNames.addedByExtension.txt");
+	open (OUTFILE, ">>$superReadCountsFile");
+	while ($line = <FILE>) {
+	    print OUTFILE "$minReadsInSuperRead $line"; }
+	close (FILE);
+	close (OUTFILE);
+	$cmd = "cat $superReadCountsFile | $exeDir/createFastaSuperReadSequences $workingDirectory /dev/fd/0 -seqdiffmax $seqDiffMax -min-ovl-len $merLenMinus1 -minreadsinsuperread $minReadsInSuperRead $mergedUnitigDataFileStr -good-sr-filename $goodSuperReadsNamesFile -kunitigsfile $mergedUnitigInputKUnitigsFile -good-sequence-output-file $localGoodSequenceOutputFile -super-read-name-and-lengths-file $superReadNameAndLengthsFile $tflag 2> $sequenceCreationErrorFile";
+	&runCommandAndExitIfBad ($cmd, $superReadNameAndLengthsFile, $normalFileSizeMinimum, "createFastaSuperReadSequences", $localGoodSequenceOutputFile, $goodSuperReadsNamesFile, $superReadNameAndLengthsFile);
+    }
     
     $cmd = "$exeDir/reduce_sr $maxKUnitigNumber $mergedKUnitigLengthsFile $merLen $superReadNameAndLengthsFile -o $reduceFile";
     &runCommandAndExitIfBad ($cmd, $reduceFile, $normalFileSizeMinimum, "reduceSuperReads", $reduceFile, $fastaSuperReadErrorsFile);

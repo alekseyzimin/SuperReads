@@ -88,7 +88,7 @@ int main (int argc, char **argv)
      std::vector<int> inputSuperReadLengths;
      std::set<std::string> superReadAlreadyIn;
      std::vector<stringAndLenStruct> listOfNewSuperReads;
-     sprintf (fname, "%s/sr_sizes.tmp", (char *) dir);
+     sprintf (fname, "%s/sr_sizes.tmp.hold", (char *) dir);
      infile = Fopen (fname, "r");
      unsigned int currentLineValue = 0;
      int fldNumToUse = 0;
@@ -235,14 +235,18 @@ int main (int argc, char **argv)
 	  maxLen = listOfNewSuperReads[0].len;
      unsigned int oldIndex=0, newIndex=0;
 //     printf ("All superReads together:\n");
+     sprintf (fname, "%s/superReadNames.addedByExtension.txt", (char *) dir);
+     FILE *outfile = Fopen (fname, "w");
      for (int len=maxLen; len>0; --len) {
 	  while ((oldIndex<inputSuperReadLengths.size()) && (inputSuperReadLengths[oldIndex] == len)) {
 	       printf ("%s %d\n", listOfInputSuperReads[oldIndex].c_str(), inputSuperReadLengths[oldIndex]);
 	       ++oldIndex; }
 	  while ((newIndex<listOfNewSuperReads.size()) && (listOfNewSuperReads[newIndex].len == len)) {
 	       printf ("%s %d\n", listOfNewSuperReads[newIndex].str.c_str(), listOfNewSuperReads[newIndex].len);
+	       fprintf (outfile, "%s\n", listOfNewSuperReads[newIndex].str.c_str());
 	       ++newIndex; }
      }
+     fclose (outfile);
 
      return (0);
 }
