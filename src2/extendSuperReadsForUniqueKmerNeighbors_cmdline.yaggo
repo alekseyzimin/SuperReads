@@ -1,0 +1,10 @@
+purpose "For all ends of kUnitigs, report if they have a unique extending kUnitig."
+
+description ""
+
+name "cmdline_parse"
+
+option ("dir") {
+       description "Directory where the super-reads work is done"
+       c_string; required; typestr "path"; access "read" }
+

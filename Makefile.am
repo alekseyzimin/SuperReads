@@ -172,6 +172,14 @@ putReadsIntoGroupsBasedOnSuperReads_SOURCES = src2/putReadsIntoGroupsBasedOnSupe
 YAGGO_SOURCES += src2/putReadsIntoGroupsBasedOnSuperReads_cmdline.hpp
 
 ##############################
+# reversed jumping read library elimination
+##############################
+bin_PROGRAMS += extendSuperReadsForUniqueKmerNeighbors extendSuperReadsBasedOnUniqueExtensions
+extendSuperReadsForUniqueKmerNeighbors_SOURCES = src2/extendSuperReadsForUniqueKmerNeighbors.cc
+extendSuperReadsBasedOnUniqueExtensions_SOURCES = src2/extendSuperReadsBasedOnUniqueExtensions.cc
+YAGGO_SOURCES += src2/extendSuperReadsForUniqueKmerNeighbors_cmdline.hpp \
+	src2/extendSuperReadsBasedOnUniqueExtensions_cmdline.hpp
+##############################
 # Celera post-processing
 ##############################
 bin_PROGRAMS += addSurrogatesToFrgCtgFile
