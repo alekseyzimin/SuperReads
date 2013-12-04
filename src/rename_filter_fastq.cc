@@ -27,6 +27,7 @@ static args_t args;
 
 const char* const error_header  = "Missing read header '@'";
 const char* const error_qheader = "Missing qual value header '+'";
+const char* const error_eof     = "Unexpected end of file";
 
 void output_N_read(std::ostream& os, const size_t read_number) {
   os << "@" << args.library_arg << read_number << "\nN\n+\n" << args.base_quality_arg << "\n";
@@ -38,7 +39,8 @@ const char* parse_write(std::istream& is, std::ostream& os, const size_t read_nu
   static std::string qheader;
   static std::string quals;
 
-  std::getline(is, header);
+  if(!std::getline(is, header))
+    return error_eof;
   if(header[0] != '@') return error_header;
   std::getline(is, sequence);
   std::getline(is, qheader);
@@ -81,11 +83,14 @@ int main(int argc, char *argv[])
   std::string line;
   size_t read_number = 0;
   while(infile1.good()) {
-    if(parse_write(infile1, out, read_number++))
-      die << "Invalid fastq format in file '" << path1 << "' around position " << infile1.tellg();
+    const char* res = parse_write(infile1, out, read_number++);
+    if(res == error_eof) break;
+    if(res)
+      die << "Invalid fastq format (" << res << ") in file '" << path1 << "' around position " << infile1.tellg();
     if(!unmated) {
-      if(parse_write(infile2, out, read_number++))
-        die << "Invalid fastq format in file '" << path2 << "' around position " << infile2.tellg();
+      res = parse_write(infile2, out, read_number++);
+      if(res)
+        die << "Invalid fastq format (" << res << ") in file '" << path2 << "' around position " << infile2.tellg();
     } else {
       output_N_read(out, read_number++);
     }
