@@ -40,9 +40,9 @@ use FindBin qw($RealBin);
 use Getopt::Long;
 
 #global variables
-my $list_pe_files     = "";
-my $list_jump_files   = "";
-my $list_of_frg_files = "";
+my (@pe_files, @sj_files);
+my ($list_pe_files, $list_jump_files);
+my $list_frg_files = "";
 my $rerun_pe          = 0;
 my $rerun_sj          = 0;
 my $KMER                    = "auto";
@@ -64,7 +64,6 @@ my %used_library_ids;
 my $LIMIT_JUMP_COVERAGE     = 500;
 my $USE_LINKING_MATES       = 0;
 my $DO_HOMOPOLYMER_TRIM     = 0;
-my $homo_trim_string        = " | homo_trim  $TRIM_PARAM ";
 my $CLOSE_GAPS              = 1;
 
 my $assembly_script = "assemble.sh";
@@ -92,86 +91,50 @@ EOS
 
 
 sub rename_reads {
-my $i;
-my @read_info;
-my $type;
-for($i=0;$i<$#_;$i++){
-push(@read_info,$_[$i]);
-}
-$type=$_[$i];
-print FILE "echo -n 'processing $type library reads ';date;\n";
-print FILE "rm -rf meanAndStdevByPrefix.$type.txt\n";
-foreach my $v (@read_info){
-    my @f=split(" ", $v);
-    if($type eq "pe"){
-    print FILE "echo '$f[0] $f[1] $f[2]' >> meanAndStdevByPrefix.pe.txt\n";
-    $list_pe_files.="$f[0].renamed.fastq ";
-    }else{
-    print FILE "echo '$f[0] 500 100' >> meanAndStdevByPrefix.sj.txt\n";
-    $list_jump_files.="$f[0].renamed.fastq ";
-    }
-    next if(-e "$f[0].renamed.fastq");
-    $rerun_pe=1;
-    $rerun_sj=1;
-    print FILE "rename_filter_fastq.pl $f[0] $f[3] $f[4] > $f[0].renamed.fastq &\nPID$i=\$!\n";
-    $i++;
-}
-print FILE "wait ";
-for(my $j=0;$j<$i;$j++){
-    print FILE "\$PID$j ";
-}
-print FILE "\n";
+  my ($type, @read_info) = @_;
+  my @res;
+  my $out = "meanAndStdevByPrefix.$type.txt";
+  my $do_wait = 0;
+
+  print FILE "log 'Processing $type library reads'\n";
+  print FILE "rm -rf $out\n";
+  foreach my $v (@read_info){
+    my ($name, $mean, $stdev, $fr, $rr) = split(" ", $v);
+    my $renamed = "$name.renamed.fastq";
+    ($mean, $stdev) = (500, 100) if($type eq "PE");
+    push(@res, $renamed);
+    print FILE "echo '$name $mean $stdev' >> $out\n";
+    next if(-e $renamed);
+    $do_wait = 1;
+    $rerun_pe = 1;
+    $rerun_sj = 1;
+    print FILE "rename_filter_fastq '$name' '$fr' '$rr' > '$renamed' &\n";
+  }
+  print FILE "wait\n\n" if $do_wait;
+  return @res;
 }
 
 sub estimate_optimal_kmer{
-     my $filelist=$_[0];
-     my $name=$_[1];
-     print FILE "$name=`for f in $filelist;do head -n 80000 \$f |tail -n 40000;done | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); print \$kmer'`\n";
+  my ($filelist, $name) = @_;
+  print FILE "$name=`for f in $filelist;do head -n 80000 \$f |tail -n 40000;done | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); print \$kmer'`\n";
 }
 
 sub get_MIN_Q_CHAR{
-my $filelist=$_[0];
-print FILE "echo -n 'running Jellyfish ';date;\n";
-print FILE "MIN_Q_CHAR=`cat $filelist |head -n 50000 | awk 'BEGIN{flag=0}{if(\$0 ~ /^\+/){flag=1}else if(flag==1){print \$0;flag=0}}'  | perl -ne 'BEGIN{\$q0_char=\"\@\";}{chomp;\@f=split \"\";foreach \$v(\@f){if(ord(\$v)<ord(\$q0_char)){\$q0_char=\$v;}}}END{\$ans=ord(\$q0_char);if(\$ans<64){print \"33\\n\"}else{print \"64\\n\"}}'`\n";
-print FILE "save MIN_Q_CHAR\n";
-print FILE "echo MIN_Q_CHAR: \$MIN_Q_CHAR\n";
+  my $filelist=$_[0];
+  print FILE "MIN_Q_CHAR=`cat $filelist |head -n 50000 | awk 'BEGIN{flag=0}{if(\$0 ~ /^\+/){flag=1}else if(flag==1){print \$0;flag=0}}'  | perl -ne 'BEGIN{\$q0_char=\"\@\";}{chomp;\@f=split \"\";foreach \$v(\@f){if(ord(\$v)<ord(\$q0_char)){\$q0_char=\$v;}}}END{\$ans=ord(\$q0_char);if(\$ans<64){print \"33\\n\"}else{print \"64\\n\"}}'`\n";
+  print FILE "save MIN_Q_CHAR\n";
+  print FILE "echo MIN_Q_CHAR: \$MIN_Q_CHAR\n";
 }
 
-sub count_kmers_for_quorum{
-    my $filelist=$_[0];
-    my $NUM_THREADS=$_[1];
-    my $thresh=$_[2];
-    print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_trim -s \$JF_SIZE -m 24 --quality-start \$MIN_Q_CHAR --min-quality $thresh $filelist\n";
-    print FILE "jellyfish count -t $NUM_THREADS -p 126 -C -r -o pe_all -s \$JF_SIZE -m 24 $filelist\n";
-
-    print FILE "CUTOFF=`jellyfish histo -t 48 pe_trim_0 | 
-        perl -ane '{
-        if(\$F[0]>1){
-                \$n+=\$F[0]*\$F[1];
-                \$m+=\$F[1];
-                }
-        }END{
-        \$er=0.01; 
-        \$c=\$n/\$m; 
-        for(\$x=2;\$x<1000;\$x++){
-                if(\$er/sqrt(2*3.1415927*\$x)*((\$er*\$c/3/\$x)**\$x)*exp(-\$er*\$c/3+\$x)<0.000001){
-                        print (\$x+1);
-                        last;
-                }
-        }
-        }'`\n";
-
-    print FILE "save CUTOFF\n";
-    print FILE "echo \"Error correction Poisson cutoff = \$CUTOFF\"\n";
-    print FILE "echo \$CUTOFF > cutoff.txt\n";
-#check if the JF_SIZE was big enough:  we want to end up with a single raw database for pe_all and pe_trim
-    print FILE "if [[ -e pe_trim_1 || -e pe_all_1 ]];then\n";
-    print FILE "echo \"Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2\"\n";
-    print FILE "rm -f pe_trim_? pe_all_?\n";
-    print FILE "exit\n";
-    print FILE "fi\n";
-    print FILE "quorum_combine_jf_dbs -m 1 pe_trim_0 pe_all_0 -o combined\n";
-    print FILE "rm -f pe_trim_? pe_all_?\n";
+sub count_kmers_for_quorum {
+  my ($filelist, $NUM_THREADS, $thresh) = @_;
+  print FILE <<"EOS";
+quorum_create_database -t $NUM_THREADS -s \$JF_SIZE -b 7 -m 24 -q \$((MIN_Q_CHAR + $thresh)) -o quorum_mer_db.jf $filelist
+if [ $? != 0 ]; then
+  echo "Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2"
+  exit
+fi
+EOS
 }
 
 sub check_exec {
@@ -235,6 +198,8 @@ NUM_THREADS= $NUM_THREADS
 JF_SIZE=100000000
 #this specifies if we do (1) or do not (0) want to trim long runs of homopolymers (e.g. GGGGGGGG) from 3' read ends, use it for high GC genomes
 DO_HOMOPOLYMER_TRIM=0
+#trim parameter controls how aggressive the trimming is. The HIGHER the value, the LESS aggressive it is. It represents roughly the minimum length of a homopolymer at the 3' end to trigger trimming. Defaults to 2 if unspecified.
+TRIM_PARAM=2
 END
 EOS
   close(FILE);
@@ -283,7 +248,9 @@ while(my $line=<FILE>){
 	} elsif($key eq "DO_HOMOPOLYMER_TRIM"){
             die("bad value for DO_HOMOPOLYMER_TRIM, enter 0 or 1") unless($param =~ /^[01]$/);
             $DO_HOMOPOLYMER_TRIM=int($param);
-	    $homo_trim_string="" if($DO_HOMOPOLYMER_TRIM==0);    
+        } elsif($key eq "TRIM_PARAM") {
+            die("bad value for TRIM_PARAM, it should be a positive integer") unless $param =~ /^\d*$/;
+            $TRIM_PARAM = length($param) > 0 ? int($param) : 2;
 	} elsif($key eq "CLOSE_GAPS"){
             die("bad value for CLOSE_GAPS, enter 0 or 1") unless($param =~ /^[01]$/);
             $CLOSE_GAPS=int($param);
@@ -359,23 +326,21 @@ while(my $line=<FILE>){
         }
     }
 }
-die("no read data files specified") if(scalar(@pe_info_array)+scalar(@jump_info_array)+scalar(@other_info_array)==0);
+die("no read data files specified") if(@pe_info_array + @jump_info_array + @other_info_array == 0);
 
 if(@prep_path) {
   unshift(@PATH, @prep_path);
 } else {
   unshift(@PATH, $RealBin, $RealBin . "/../CA/Linux-amd64/bin");
 }
-if(@prep_ld) {
-  unshift(@LD_LIBRARY_PATH, @prep_ld);
-}
+unshift(@LD_LIBRARY_PATH, @prep_ld) if @prep_ld;
 
 unless($skip_path_checking) {
   print "Verifying PATHS...\n";
   &check_exec("jellyfish", "runCA", "createSuperReadsForDirectory.perl");
 }
 
-die ("no PE data specified") if(scalar(@pe_info_array)==0);
+die ("no PE data specified") if(@pe_info_array == 0);
 
 print("creating script file for the actions...");
 
@@ -417,13 +382,22 @@ while getopts ":rc" o; do
   esac
 done
 EOS
-    ;
 
 print FILE <<'EOS';
 set +e
 # Set some paths and prime system to save environment variables
 save () {
   (echo -n "$1=\""; eval "echo -n \"\$$1\""; echo '"') >> environment.sh
+}
+GC=
+NC=
+if tty -s < /dev/fd/1; then
+  GC='\e[0;32m'
+  NC='\e[0m'
+fi
+log () {
+  d=$(date)
+  echo -e "${GC}[$d]${NC} $@"
 }
 
 rm -f environment.sh; touch environment.sh
@@ -441,19 +415,20 @@ if(@prep_ld) {
   print FILE "export LD_LIBRARY_PATH=\"", join(":", @prep_ld), ":\$LD_LIBRARY_PATH\"\n";
   print FILE "save LD_LIBRARY_PATH\n";
 }
+print FILE "NUM_THREADS=$NUM_THREADS\n";
+print FILE "save NUM_THREADS\n";
 
-my $tmplist = "";
 #override use linking mates if we have any long reads
-$USE_LINKING_MATES=0 if(@other_info_array);
-foreach my $v (@other_info_array){
-    $list_of_frg_files.="$v ";
-    $tmplist.="$v ";
-}
+$USE_LINKING_MATES  = 0 if(@other_info_array);
+my $tmplist         = join(" ", @other_info_array);
+$list_frg_files    .= " " . $tmplist;
 
 ###renaming reads###
 
-&rename_reads(@pe_info_array,"pe");
-&rename_reads(@jump_info_array,"jump") if(scalar(@jump_info_array)>0);
+@pe_files        = rename_reads("pe", @pe_info_array);
+@sj_files        = rename_reads("jump", @jump_info_array) if(@jump_info_array);
+$list_pe_files   = join(" ", @pe_files);
+$list_jump_files = join(" ", @sj_files);
 
 ###done renaming reads###
 print FILE "\n";
@@ -473,7 +448,7 @@ if(uc($KMER) eq "AUTO"){
      print FILE "KMER=$KMER\n";
 }
 
-if(scalar(@jump_info_array)>0){    
+if(@jump_info_array > 0){    
     &estimate_optimal_kmer($list_jump_files,"KMER_J");
     print FILE "save KMER_J\n";
 }else{
@@ -488,7 +463,8 @@ if(scalar(@jump_info_array)>0){
 print FILE "JF_SIZE=`ls -l *.fastq | awk '{n+=\$5}END{s=int(n/46); if(s>$JF_SIZE)print s;else print \"$JF_SIZE\";}'`\n";
 print FILE "save JF_SIZE\n";
 print FILE "perl -e '{if(int('\$JF_SIZE')>$JF_SIZE){print \"WARNING: JF_SIZE set too low, increasing JF_SIZE to at least '\$JF_SIZE', this automatic increase may be not enough!\\n\"}}'\n"; 
-if(not(-e "combined_0") || $rerun_pe==1){
+if(not(-e "quorum_mer_db.jf") || $rerun_pe==1){
+    print FILE "log Creating mer database for Quorum.\n";
     &count_kmers_for_quorum($list_pe_files, $NUM_THREADS, 5);
     $rerun_pe=1;
     $rerun_sj=1;
@@ -498,10 +474,18 @@ if(not(-e "combined_0") || $rerun_pe==1){
 print FILE "\n";
 ###error correct PE###
 
+my $homo_polymer_flag = $DO_HOMOPOLYMER_TRIM ? "--homo-trim $TRIM_PARAM" : "";
+
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
-    print FILE "echo -n 'error correct PE ';date;\n";
-    print FILE "cat combined_0 > /dev/null\n";
-    print FILE "\nquorum_error_correct_reads   -p `cat cutoff.txt` --contaminant=$RealBin/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_pe_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > pe.cor.fa\n";
+  print FILE <<"EOS";
+log Error correct PE.
+cat quorum_mer_db.jf > /dev/null
+
+quorum_error_correct_reads  --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $homo_polymer_flag quorum_mer_db.jf $list_pe_files --no-discard -o pe.cor || {
+  echo >&2 Error correction of PE reads failed. Check pe.cor.log.
+  exit 1
+}
+EOS
     $rerun_pe=1;
 }
 
@@ -509,12 +493,18 @@ if(not(-e "pe.cor.fa")||$rerun_pe==1){
 print FILE "\n";
 ###error correct JUMP###
 
-if(scalar(@jump_info_array)>0){
+if(@jump_info_array > 0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
-	print FILE "echo -n 'error correct JUMP ';date;\n";
-        print FILE "cat combined_0 > /dev/null\n";
-	print FILE "\nquorum_error_correct_reads -p `cat cutoff.txt` --contaminant=$RealBin/../share/adapter_0 -d combined_0 -c 2 -C -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $list_jump_files 2>error_correct.log $homo_trim_string | add_missing_mates.pl > sj.cor.fa\n";
-        $rerun_sj=1;
+      print FILE <<"EOS";
+log Error correct JUMP.
+#cat quorum_mer_db.jf > /dev/null
+
+quorum_error_correct_reads --contaminant=$RealBin/../share/adapter_0 -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $homo_polymer_flag quorum_mer_db.jf $list_jump_files --no-discard -o sj.cor.fa || {
+  echo >&2 Error correction of JUMP reads failed. Check sj.cor.log.
+  exit 1
+}
+EOS
+      $rerun_sj=1;
     }
 }
 
@@ -524,6 +514,7 @@ print FILE "\n";
 my $k_u_arg="pe.cor.fa";
 $k_u_arg.=" sj.cor.fa" if(@jump_info_array);
 
+print FILE "log Estimating genome size.\n";
 if(not(-e "k_u_hash_0")||$rerun_pe==1||$rerun_sj==1){
     print FILE "jellyfish-2.0 count -m 31 -t $NUM_THREADS -C -s \$JF_SIZE -o k_u_hash_0 $k_u_arg\n";
 }
@@ -537,12 +528,19 @@ print FILE "\n";
 ###build k-unitigs###
 
 if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
-    print FILE "create_k_unitigs_large_k -c \$((\$KMER-1)) -t $NUM_THREADS -m \$KMER -n \$ESTIMATED_GENOME_SIZE -l \$KMER -f 0.000001 $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
-    print FILE "if [[ \$KMER -eq \$KMER_J ]];then\n";
-    print FILE "ln -s guillaumeKUnitigsAtLeast32bases_all.fasta guillaumeKUnitigsAtLeast32bases_all.jump.fasta\n";
-    print FILE "else\n";
-    print FILE "create_k_unitigs_large_k -c \$((\$KMER_J-1)) -t $NUM_THREADS -m \$KMER_J -n \$ESTIMATED_GENOME_SIZE -l \$KMER_J -f 0.000001 $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.jump.fasta\n";
-    print FILE "fi\n";
+# Used to clean up output of create of create_k_unitigs_large_k. Not needed anymore
+#   | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+
+  printf(FILE <<'EOS', $k_u_arg);
+log Creating k_unitigs with KMER=$KMER.
+create_k_unitigs_large_k -c $(($KMER-1)) -t $NUM_THREADS -m $KMER -n $ESTIMATED_GENOME_SIZE -l $KMER -f 0.000001 -o guillaumeKUnitigsAtLeast32bases_all.fasta %1$s 
+if [[ $KMER -eq $KMER_J ]]; then
+  ln -sf guillaumeKUnitigsAtLeast32bases_all.fasta guillaumeKUnitigsAtLeast32bases_all.jump.fasta 
+else
+  log "Creating k_unitigs KMER=$KMER."
+  create_k_unitigs_large_k -c $(($KMER_J-1)) -t $NUM_THREADS -m $KMER_J -n $ESTIMATED_GENOME_SIZE -l $KMER_J -f 0.000001 -o guillaumeKUnitigsAtLeast32bases_all.jump.fasta %1$s
+fi
+EOS
     $rerun_pe=1;
     $rerun_sj=1;
 }
@@ -552,8 +550,8 @@ print FILE "\n";
 ###super reads and filtering for jump###
 
 if( not(-d "CA") || $rerun_pe || $rerun_sj ){
-    if(scalar(@jump_info_array)>0){
-	print FILE "echo -n 'filtering JUMP ';date;\n";
+    if(@jump_info_array > 0){
+        print FILE "log 'Filtering JUMP'";
 
 #creating super reads for filtering
 	if($rerun_pe==1||$rerun_sj==1||not(-e "work2")){
@@ -616,10 +614,10 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	print FILE "wc -l work2.1/output.txt\n";
 #	print FILE "rm -rf work2.1/readFile.??? work4/workReadsVsFaux work4/workFauxVsFaux\n";
         print FILE "rm -rf sj.cor.clean.rev.fa\n";
-        for(my $i=0;$i<scalar(@jump_info_array);$i++){
-               my @f=split(/\s+/,$jump_info_array[$i]);
-               my $if_innie="";
-               $if_innie=" | reverse_complement " if($f[1]>0);
+        foreach my $v (@jump_info_array) {
+               my @f        = split(" ", $v);
+               my $if_innie = "";
+               $if_innie    = " | reverse_complement " if($f[1]>0);
                print FILE "grep --text -A 1 '^>$f[0]' sj.cor.clean2.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
                }
             $rerun_sj=1;
@@ -645,11 +643,11 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	}
 
 #here we create the frg files for CA from the jump libraries: each jump library will contribute one jump frg file and one additional frg file of linking information from "chimers"
-	print FILE "echo -n 'creating FRG files ';date;\n";
+        print FILE "log 'Creating FRG files'";
 	print FILE "rm -rf compute_jump_coverage.txt\n";
 	
-	for(my $i=0;$i<scalar(@jump_info_array);$i++){
-	    my @f=split(/\s+/,$jump_info_array[$i]);
+        foreach my $v (@jump_info_array) {
+	    my @f = split(" ", $v);
 	    print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
 	    print FILE "grep --text -A 1 '^>$f[0]' sj.cor.ext.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp | grep --text '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
@@ -660,9 +658,9 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 #here we reduce jump library coverage: we know the genome size (from k-unitigs) and JUMP_BASES_COVERED contains total jump library coverage :)
 	print FILE "perl -e '{srand(1);\$cov=int('\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'); print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=$LIMIT_JUMP_COVERAGE;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.cor.clean.fa\");while(\$line=<FILE>){next if(not(\$line =~ /^>/));chomp(\$line);if(int(substr(\$line,3))%2==0) {print STDERR substr(\$line,1),\"\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>mates_to_break.txt\n";
 	print FILE "extractreads_not.pl mates_to_break.txt sj.cor.ext.fa 1 >  sj.cor.ext.reduced.fa\n";
-	for(my $i=0;$i<scalar(@jump_info_array);$i++){
-	    my @f=split(/\s+/,$jump_info_array[$i]);
-	    $list_of_frg_files.="$f[0].cor.clean.frg ";
+        foreach my $v (@jump_info_array) {
+	    my @f = split(" ", $v);
+	    $list_frg_files .= "$f[0].cor.clean.frg ";
 	    print FILE "grep --text -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp > $f[0].cor.clean.frg\n";
 	    print FILE "rm -f $f[0].tmp\n";
@@ -673,7 +671,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
     print FILE "\n";
 ##super reads for PE###
 
-    print FILE "echo -n 'computing super reads from PE ';date;\n";
+    print FILE "log 'Computing super reads from PE '\n";
 
 #create super reads from PE    
     if($rerun_pe==1|| not(-e "work1")){
@@ -699,7 +697,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 #create frg files for PE data
 	foreach my $v (@pe_info_array){
 	    my @f=split(/\s+/,$v);
-	    $list_of_frg_files.="$f[0].linking.frg ";
+	    $list_frg_files .= "$f[0].linking.frg ";
 	    if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
 		print FILE "grep --text -A 1 '^>$f[0]' pe.linking.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 		print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].linking.frg\n";
@@ -720,14 +718,14 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 
 ###Celera Assembler###
 if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
-    print FILE "\necho -n 'Celera Assembler ';date;\n";
+    print FILE "\nlog 'Celera Assembler'\n";
     if($rerun_sj==1||$rerun_pe==1){
 	print FILE "rm -rf CA\n";
     }
 
 #this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
     my ($ovlMerSize, $other_parameters);
-        if(scalar(@other_info_array)>0){
+        if(@other_info_array > 0){
             $ovlMerSize=22;
             $other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClearRanges=2 ovlMerSize=22";
         }else{
@@ -755,9 +753,9 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 
 #filter out non-junction fragments
 
-	if(scalar(@jump_info_array)>0){
+	if(@jump_info_array > 0){
 	    if(not(-e "CA/4-unitigger-filter/gkp.edits.msg") || $rerun_pe || $rerun_sj){
-		print FILE "runCA  gkpFixInsertSizes=0 jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=\$ovlMerThreshold bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
+		print FILE "runCA  gkpFixInsertSizes=0 jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=\$ovlMerThreshold bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_frg_files  1> runCA0.out 2>&1\n\n";
 
 
 		print FILE "if [[ ! -e CA/4-unitigger/unitigger.err ]];then\n";
@@ -781,7 +779,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 	}
 
 	if(not(-e "CA/5-consensus/consensus.success")|| $rerun_pe || $rerun_sj){
-	    print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+	    print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_frg_files   1> runCA1.out 2>&1\n";
 
 	    print FILE "if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then\n";
 	    print FILE "echo \"Overlap/unitig success\"\n";
@@ -804,7 +802,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 	    print FILE "cd ..\n";
 	    
 #and now we rerun the assembler
-	    print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA2.out 2>&1\n";
+	    print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_frg_files   1> runCA2.out 2>&1\n";
 
 	    print FILE "if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then\n";
 	    print FILE "echo \"Overlap/unitig success\"\n";
@@ -844,16 +842,8 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 #end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps for k=17...31
 if($CLOSE_GAPS){
 
-    print FILE "echo -n 'Gap closing ';date;\n";
-    my $reads_argument="";
-    my @f=split(" ",$list_pe_files);
-    foreach my $v(@f){
-	$reads_argument.="--reads-file $v ";
-    }
-    @f=split(" ",$list_jump_files);
-    foreach my $v(@f){
-        $reads_argument.="--reads-file $v ";
-    }
+    print FILE "log 'Gap closing'\n";
+    my $reads_argument= join(" ", map { "--reads-file '$_'" } (@pe_files, @sj_files));
 
     print FILE "closeGapsLocally.perl -s $JF_SIZE --Celera-terminator-directory CA/9-terminator $reads_argument --output-directory CA/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $NUM_THREADS --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 21 1>gapClose.err 2>&1\n";
     print FILE "if [[ -e \"CA/10-gapclose/genome.ctg.fasta\" ]];then\n";
@@ -865,7 +855,7 @@ if($CLOSE_GAPS){
 }
 
 ###Done !!!! Hoorayyyy!!! :)###
-print FILE "echo -n 'All done ';date;\n";
+print FILE "log 'All done'\n";
 
 close(FILE);
 chmod 0755, $assembly_script;
