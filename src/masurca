@@ -40,8 +40,8 @@ use FindBin qw($RealBin);
 use Getopt::Long;
 
 #global variables
-my $list_pe_files     = "";
-my $list_jump_files   = "";
+my (@pe_files, @sj_files);
+my ($list_pe_files, $list_jump_files);
 my $list_of_frg_files = "";
 my $rerun_pe          = 0;
 my $rerun_sj          = 0;
@@ -91,41 +91,32 @@ EOS
 
 
 sub rename_reads {
-my $i;
-my @read_info;
-my $type;
-for($i=0;$i<$#_;$i++){
-push(@read_info,$_[$i]);
-}
-$type=$_[$i];
-print FILE "echo -n 'processing $type library reads ';date;\n";
-print FILE "rm -rf meanAndStdevByPrefix.$type.txt\n";
-foreach my $v (@read_info){
-    my @f=split(" ", $v);
-    if($type eq "pe"){
-      print FILE "echo '$f[0] $f[1] $f[2]' >> meanAndStdevByPrefix.pe.txt\n";
-    $list_pe_files.="$f[0].renamed.fastq ";
-    }else{
-    print FILE "echo '$f[0] 500 100' >> meanAndStdevByPrefix.sj.txt\n";
-    $list_jump_files.="$f[0].renamed.fastq ";
-    }
-    next if(-e "$f[0].renamed.fastq");
-    $rerun_pe=1;
-    $rerun_sj=1;
-    print FILE "rename_filter_fastq.pl $f[0] $f[3] $f[4] > $f[0].renamed.fastq &\nPID$i=\$!\n";
-    $i++;
-}
-print FILE "wait ";
-for(my $j=0;$j<$i;$j++){
-    print FILE "\$PID$j ";
-}
-print FILE "\n";
+  my ($type, @read_info) = @_;
+  my @res;
+  my $out = "meanAndStdevByPrefix.$type.txt";
+  my $do_wait = 0;
+
+  print FILE "echo -n 'processing $type library reads ';date;\n";
+  print FILE "rm -rf $out\n";
+  foreach my $v (@read_info){
+    my ($name, $mean, $stdev, $fr, $rr) = split(" ", $v);
+    my $renamed = "$name.renamed.fastq";
+    ($mean, $stdev) = (500, 100) if($type eq "PE");
+    push(@res, $renamed);
+    print FILE "echo '$name $mean $stdev' >> $out\n";
+    next if(-e $renamed);
+    $do_wait = 1;
+    $rerun_pe = 1;
+    $rerun_sj = 1;
+    print FILE "rename_filter_fastq '$name' '$fr' '$rr' > '$renamed' &\n";
+  }
+  print FILE "wait\n\n" if $do_wait;
+  return @res;
 }
 
 sub estimate_optimal_kmer{
-     my $filelist=$_[0];
-     my $name=$_[1];
-     print FILE "$name=`for f in $filelist;do head -n 80000 \$f |tail -n 40000;done | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); print \$kmer'`\n";
+  my ($filelist, $name) = @_;
+  print FILE "$name=`for f in $filelist;do head -n 80000 \$f |tail -n 40000;done | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); print \$kmer'`\n";
 }
 
 sub get_MIN_Q_CHAR{
@@ -422,8 +413,10 @@ foreach my $v (@other_info_array){
 
 ###renaming reads###
 
-&rename_reads(@pe_info_array,"pe");
-&rename_reads(@jump_info_array,"jump") if(scalar(@jump_info_array)>0);
+@pe_files = rename_reads("pe", @pe_info_array);
+@sj_files = rename_reads("jump", @jump_info_array) if(@jump_info_array);
+$list_pe_files = join(" ", @pe_files);
+$list_jump_files = join(" ", @sj_files);
 
 ###done renaming reads###
 print FILE "\n";
@@ -476,8 +469,8 @@ if(not(-e "pe.cor.fa")||$rerun_pe==1){
 echo -n 'error correct PE. ';date;
 cat quorum_mer_db.jf > /dev/null
 
-quorum_error_correct_reads  --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $homo_polymer_flag quorum_mer_db.jf $list_pe_files 2>error_correct_pe.log | add_missing_mates.pl > pe.cor.fa || {
-  echo >&2 Error correction of PE reads failed. Check error_correct_pe.log.
+quorum_error_correct_reads  --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $homo_polymer_flag quorum_mer_db.jf $list_pe_files --no-discard -o pe.cor || {
+  echo >&2 Error correction of PE reads failed. Check pe.cor.log.
   exit 1
 }
 EOS
@@ -494,8 +487,8 @@ if(scalar(@jump_info_array)>0){
 echo -n 'error correct JUMP. ';date
 #cat quorum_mer_db.jf > /dev/null
 
-quorum_error_correct_reads --contaminant=$RealBin/../share/adapter_0 -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $homo_polymer_flag quorum_mer_db.jf $list_jump_files 2>error_correct_jump.log | add_missing_mates.pl > sj.cor.fa || {
-  echo >&2 Error correction of JUMP reads failed. Check error_correct_jump.log.
+quorum_error_correct_reads --contaminant=$RealBin/../share/adapter_0 -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $homo_polymer_flag quorum_mer_db.jf $list_jump_files --no-discard -o sj.cor.fa || {
+  echo >&2 Error correction of JUMP reads failed. Check sj.cor.log.
   exit 1
 }
 EOS
@@ -527,13 +520,13 @@ if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj=
 #   | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
 
   printf(FILE <<'EOS', $k_u_arg);
-echo -n "Creating k_unitigs from PE reads. "; date
-create_k_unitigs_large_k -c $(($KMER-1)) -t $NUM_THREADS -m $KMER -n $ESTIMATED_GENOME_SIZE -l $KMER -f 0.000001 -o guillaumeKUnitigsAtLeast32bases_all.fasta %1$s
+echo -n "Creating k_unitigs with KMER=$KMER. "; date
+create_k_unitigs_large_k -c $(($KMER-1)) -t $NUM_THREADS -m $KMER -n $ESTIMATED_GENOME_SIZE -l $KMER -f 0.000001 -o guillaumeKUnitigsAtLeast32bases_all.fasta %1$s 
 if [[ $KMER -eq $KMER_J ]]; then
   ln -sf guillaumeKUnitigsAtLeast32bases_all.fasta guillaumeKUnitigsAtLeast32bases_all.jump.fasta 
 else
-  echo -n "Creating k_unitigs from SJ reads. "; date
-  create_k_unitigs_large_k -c $(($KMER_J-1)) -t $NUM_THREADS -m $KMER_J -n $ESTIMATED_GENOME_SIZE -l $KMER_J -f 0.000001 -o guillaumeKUnitigsAtLeast32bases_all.jump.fasta %1$s 
+  echo -n "Creating k_unitigs KMER=$KMER. "; date
+  create_k_unitigs_large_k -c $(($KMER_J-1)) -t $NUM_THREADS -m $KMER_J -n $ESTIMATED_GENOME_SIZE -l $KMER_J -f 0.000001 -o guillaumeKUnitigsAtLeast32bases_all.jump.fasta %1$s
 fi
 EOS
     $rerun_pe=1;
@@ -838,15 +831,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 if($CLOSE_GAPS){
 
     print FILE "echo -n 'Gap closing ';date;\n";
-    my $reads_argument="";
-    my @f=split(" ",$list_pe_files);
-    foreach my $v(@f){
-	$reads_argument.="--reads-file $v ";
-    }
-    @f=split(" ",$list_jump_files);
-    foreach my $v(@f){
-        $reads_argument.="--reads-file $v ";
-    }
+    my $reads_argument= join(" ", map { "--reads-file '$_'" } (@pe_files, @sj_files));
 
     print FILE "closeGapsLocally.perl -s $JF_SIZE --Celera-terminator-directory CA/9-terminator $reads_argument --output-directory CA/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $NUM_THREADS --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 21 1>gapClose.err 2>&1\n";
     print FILE "if [[ -e \"CA/10-gapclose/genome.ctg.fasta\" ]];then\n";
