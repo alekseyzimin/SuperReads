@@ -42,7 +42,7 @@ use Getopt::Long;
 #global variables
 my (@pe_files, @sj_files);
 my ($list_pe_files, $list_jump_files);
-my $list_of_frg_files = "";
+my $list_frg_files = "";
 my $rerun_pe          = 0;
 my $rerun_sj          = 0;
 my $KMER                    = "auto";
@@ -326,7 +326,7 @@ while(my $line=<FILE>){
         }
     }
 }
-die("no read data files specified") if(scalar(@pe_info_array)+scalar(@jump_info_array)+scalar(@other_info_array)==0);
+die("no read data files specified") if(@pe_info_array + @jump_info_array + @other_info_array == 0);
 
 if(@prep_path) {
   unshift(@PATH, @prep_path);
@@ -340,7 +340,7 @@ unless($skip_path_checking) {
   &check_exec("jellyfish", "runCA", "createSuperReadsForDirectory.perl");
 }
 
-die ("no PE data specified") if(scalar(@pe_info_array)==0);
+die ("no PE data specified") if(@pe_info_array == 0);
 
 print("creating script file for the actions...");
 
@@ -418,19 +418,16 @@ if(@prep_ld) {
 print FILE "NUM_THREADS=$NUM_THREADS\n";
 print FILE "save NUM_THREADS\n";
 
-my $tmplist = "";
 #override use linking mates if we have any long reads
-$USE_LINKING_MATES=0 if(@other_info_array);
-foreach my $v (@other_info_array){
-    $list_of_frg_files.="$v ";
-    $tmplist.="$v ";
-}
+$USE_LINKING_MATES  = 0 if(@other_info_array);
+my $tmplist         = join(" ", @other_info_array);
+$list_frg_files    .= " " . $tmplist;
 
 ###renaming reads###
 
-@pe_files = rename_reads("pe", @pe_info_array);
-@sj_files = rename_reads("jump", @jump_info_array) if(@jump_info_array);
-$list_pe_files = join(" ", @pe_files);
+@pe_files        = rename_reads("pe", @pe_info_array);
+@sj_files        = rename_reads("jump", @jump_info_array) if(@jump_info_array);
+$list_pe_files   = join(" ", @pe_files);
 $list_jump_files = join(" ", @sj_files);
 
 ###done renaming reads###
@@ -451,7 +448,7 @@ if(uc($KMER) eq "AUTO"){
      print FILE "KMER=$KMER\n";
 }
 
-if(scalar(@jump_info_array)>0){    
+if(@jump_info_array > 0){    
     &estimate_optimal_kmer($list_jump_files,"KMER_J");
     print FILE "save KMER_J\n";
 }else{
@@ -496,7 +493,7 @@ EOS
 print FILE "\n";
 ###error correct JUMP###
 
-if(scalar(@jump_info_array)>0){
+if(@jump_info_array > 0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
       print FILE <<"EOS";
 log Error correct JUMP.
@@ -553,7 +550,7 @@ print FILE "\n";
 ###super reads and filtering for jump###
 
 if( not(-d "CA") || $rerun_pe || $rerun_sj ){
-    if(scalar(@jump_info_array)>0){
+    if(@jump_info_array > 0){
         print FILE "log 'Filtering JUMP'";
 
 #creating super reads for filtering
@@ -617,10 +614,10 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	print FILE "wc -l work2.1/output.txt\n";
 #	print FILE "rm -rf work2.1/readFile.??? work4/workReadsVsFaux work4/workFauxVsFaux\n";
         print FILE "rm -rf sj.cor.clean.rev.fa\n";
-        for(my $i=0;$i<scalar(@jump_info_array);$i++){
-               my @f=split(/\s+/,$jump_info_array[$i]);
-               my $if_innie="";
-               $if_innie=" | reverse_complement " if($f[1]>0);
+        foreach my $v (@jump_info_array) {
+               my @f        = split(" ", $v);
+               my $if_innie = "";
+               $if_innie    = " | reverse_complement " if($f[1]>0);
                print FILE "grep --text -A 1 '^>$f[0]' sj.cor.clean2.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
                }
             $rerun_sj=1;
@@ -649,8 +646,8 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
         print FILE "log 'Creating FRG files'";
 	print FILE "rm -rf compute_jump_coverage.txt\n";
 	
-	for(my $i=0;$i<scalar(@jump_info_array);$i++){
-	    my @f=split(/\s+/,$jump_info_array[$i]);
+        foreach my $v (@jump_info_array) {
+	    my @f = split(" ", $v);
 	    print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
 	    print FILE "grep --text -A 1 '^>$f[0]' sj.cor.ext.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp | grep --text '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
@@ -661,9 +658,9 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 #here we reduce jump library coverage: we know the genome size (from k-unitigs) and JUMP_BASES_COVERED contains total jump library coverage :)
 	print FILE "perl -e '{srand(1);\$cov=int('\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'); print \"JUMP insert coverage: \$cov\\n\"; \$optimal_cov=$LIMIT_JUMP_COVERAGE;if(\$cov>\$optimal_cov){print \"Reducing JUMP insert coverage from \$cov to \$optimal_cov\\n\";\$prob_coeff=\$optimal_cov/\$cov;open(FILE,\"gkp.edits.msg\");while(\$line=<FILE>){chomp(\$line);\@f=split(/\\s+/,\$line);\$deleted{\$f[2]}=1;}close(FILE); open(FILE,\"sj.cor.clean.fa\");while(\$line=<FILE>){next if(not(\$line =~ /^>/));chomp(\$line);if(int(substr(\$line,3))%2==0) {print STDERR substr(\$line,1),\"\\n\" if(rand(1)>\$prob_coeff);}}}}' 2>mates_to_break.txt\n";
 	print FILE "extractreads_not.pl mates_to_break.txt sj.cor.ext.fa 1 >  sj.cor.ext.reduced.fa\n";
-	for(my $i=0;$i<scalar(@jump_info_array);$i++){
-	    my @f=split(/\s+/,$jump_info_array[$i]);
-	    $list_of_frg_files.="$f[0].cor.clean.frg ";
+        foreach my $v (@jump_info_array) {
+	    my @f = split(" ", $v);
+	    $list_frg_files .= "$f[0].cor.clean.frg ";
 	    print FILE "grep --text -A 1 '^>$f[0]' sj.cor.ext.reduced.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp > $f[0].cor.clean.frg\n";
 	    print FILE "rm -f $f[0].tmp\n";
@@ -700,7 +697,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 #create frg files for PE data
 	foreach my $v (@pe_info_array){
 	    my @f=split(/\s+/,$v);
-	    $list_of_frg_files.="$f[0].linking.frg ";
+	    $list_frg_files .= "$f[0].linking.frg ";
 	    if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
 		print FILE "grep --text -A 1 '^>$f[0]' pe.linking.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
 		print FILE "error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].linking.frg\n";
@@ -728,7 +725,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 
 #this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
     my ($ovlMerSize, $other_parameters);
-        if(scalar(@other_info_array)>0){
+        if(@other_info_array > 0){
             $ovlMerSize=22;
             $other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClearRanges=2 ovlMerSize=22";
         }else{
@@ -756,9 +753,9 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 
 #filter out non-junction fragments
 
-	if(scalar(@jump_info_array)>0){
+	if(@jump_info_array > 0){
 	    if(not(-e "CA/4-unitigger-filter/gkp.edits.msg") || $rerun_pe || $rerun_sj){
-		print FILE "runCA  gkpFixInsertSizes=0 jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=\$ovlMerThreshold bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files  1> runCA0.out 2>&1\n\n";
+		print FILE "runCA  gkpFixInsertSizes=0 jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 ovlMemory=4GB stopAfter=unitigger ovlMerThreshold=\$ovlMerThreshold bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_frg_files  1> runCA0.out 2>&1\n\n";
 
 
 		print FILE "if [[ ! -e CA/4-unitigger/unitigger.err ]];then\n";
@@ -782,7 +779,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 	}
 
 	if(not(-e "CA/5-consensus/consensus.success")|| $rerun_pe || $rerun_sj){
-	    print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA1.out 2>&1\n";
+	    print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_frg_files   1> runCA1.out 2>&1\n";
 
 	    print FILE "if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then\n";
 	    print FILE "echo \"Overlap/unitig success\"\n";
@@ -805,7 +802,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 	    print FILE "cd ..\n";
 	    
 #and now we rerun the assembler
-	    print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_of_frg_files   1> runCA2.out 2>&1\n";
+	    print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_frg_files   1> runCA2.out 2>&1\n";
 
 	    print FILE "if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then\n";
 	    print FILE "echo \"Overlap/unitig success\"\n";
