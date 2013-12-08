@@ -198,6 +198,8 @@ NUM_THREADS= $NUM_THREADS
 JF_SIZE=100000000
 #this specifies if we do (1) or do not (0) want to trim long runs of homopolymers (e.g. GGGGGGGG) from 3' read ends, use it for high GC genomes
 DO_HOMOPOLYMER_TRIM=0
+#trim parameter controls how aggressive the trimming is. The HIGHER the value, the LESS aggressive it is. It represents roughly the minimum length of a homopolymer at the 3' end to trigger trimming. Defaults to 2 if unspecified.
+TRIM_PARAM=2
 END
 EOS
   close(FILE);
@@ -246,6 +248,9 @@ while(my $line=<FILE>){
 	} elsif($key eq "DO_HOMOPOLYMER_TRIM"){
             die("bad value for DO_HOMOPOLYMER_TRIM, enter 0 or 1") unless($param =~ /^[01]$/);
             $DO_HOMOPOLYMER_TRIM=int($param);
+        } elsif($key eq "TRIM_PARAM") {
+            die("bad value for TRIM_PARAM, it should be a positive integer") unless $param =~ /^\d*$/;
+            $TRIM_PARAM = length($param) > 0 ? int($param) : 2;
 	} elsif($key eq "CLOSE_GAPS"){
             die("bad value for CLOSE_GAPS, enter 0 or 1") unless($param =~ /^[01]$/);
             $CLOSE_GAPS=int($param);
