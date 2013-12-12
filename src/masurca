@@ -51,7 +51,7 @@ my $WINDOW                  = 10;
 my $MAX_ERR_PER_WINDOW      = 3;
 my $KMER_COUNT_THRESHOLD    = 1;
 my $KMER_RELIABLE_THRESHOLD = 3;
-my $TRIM_PARAM              = 2;
+my $TRIM_PARAM              = 3;
 my $NUM_THREADS             = 2;
 my $EXTEND_JUMP_READS       = 1;
 my $JF_SIZE                 = 100000000;
@@ -198,8 +198,6 @@ NUM_THREADS= $NUM_THREADS
 JF_SIZE=100000000
 #this specifies if we do (1) or do not (0) want to trim long runs of homopolymers (e.g. GGGGGGGG) from 3' read ends, use it for high GC genomes
 DO_HOMOPOLYMER_TRIM=0
-#trim parameter controls how aggressive the trimming is. The HIGHER the value, the LESS aggressive it is. It represents roughly the minimum length of a homopolymer at the 3' end to trigger trimming. Defaults to 2 if unspecified.
-TRIM_PARAM=2
 END
 EOS
   close(FILE);
