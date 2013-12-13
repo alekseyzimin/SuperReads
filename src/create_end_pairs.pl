@@ -47,23 +47,9 @@ print ">$prefix",$readnumber,"\n",$fwd_e{$l[2]},"\n";
 $readnumber++;
 }
 
-sub reverse_complement
-{
+sub reverse_complement{
     my $string=$_[0];
-    my $rev_comp_sequence="";
-    for(my $i=length($string);$i>=0;$i--)
-    {
-        if($if_qual==1)
-        {
-        $rev_comp_sequence=$rev_comp_sequence.substr($string,$i,1);
-        }
-        else
-        {
-        my $t=substr($string,$i,1);
-        $t=~tr/ACGTNacgtn/TGCANtgcan/;
-        $rev_comp_sequence=$rev_comp_sequence.$t;
-        }
-   }
-    return($rev_comp_sequence);
+    $string=~tr/ACGTacgt/TGCAtgca/;
+    return(scalar reverse($string));
 }
 
