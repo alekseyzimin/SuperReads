@@ -52,7 +52,7 @@ sub runMainLoop
 	    $totInputSize = getReadFileSize (@readsFiles); }
 #	$minContinuation = int ($k/2);
 	$minContinuation = $k-1;
-	$cmd = "$exeDir/create_k_unitigs_large_k2 -c $minContinuation -t $numThreads -m $k -n $totInputSize -l $k @readsFiles fauxReads.fasta |  grep -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' >> k_unitigs_${suffix}.fa";
+	$cmd = "$exeDir/create_k_unitigs_large_k2 -c $minContinuation -t $numThreads -m $k -n $totInputSize -l $k @readsFiles fauxReads.fasta fauxReads.fasta >  k_unitigs_${suffix}.fa";
 	if (runCommandAndReturnIfBad ($cmd)) {
 	    $maxKMerLenInLoop = $k-1;
 	    next; }
@@ -99,11 +99,17 @@ sub runMainLoop
             $lineForMatchHold = $lineForMatch;
         }
         close(FILE);
-	if ($localLine =~ /same unitig/){ $directoryPassed = 0; $minKMerLenInLoop = $k+1; } 
-	elsif ($directoryPassed == 1) { last; }
-	elsif ($localLine =~ /not uniquely joinable/ || $localLine =~ /too many nodes/) {$minKMerLenInLoop = $k+1; }
-	elsif ($localLine =~ /missing sequence/) {$maxKMerLenInLoop = $k-1; }
-	else { $maxKMerLenInLoop = $k-1; }
+	if ($localLine =~ /same unitig/){ 
+		last;
+		#$directoryPassed = 0; $minKMerLenInLoop = $k+1; 
+	}elsif ($directoryPassed == 1){ 
+		last; 
+	}elsif ($localLine =~ /not uniquely joinable/ || $localLine =~ /too many nodes/) {
+		$minKMerLenInLoop = $k+1; 
+	}elsif ($localLine =~ /missing sequence/) {
+		$maxKMerLenInLoop = $k-1; 
+	}else{ $maxKMerLenInLoop = $k-1; 
+	}
     }
     
     $passingKMerFile = "passingKMer.txt";
