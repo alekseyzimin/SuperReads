@@ -606,7 +606,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 
 #here we perform another round of filtering bad mates
 
-	print FILE "findReversePointingJumpingReads.perl -s \$JF_SIZE --Celera-terminator-directory . --jumping-library-read-file sj.cor.clean.fa --reads-file pe.cor.fa --output-directory work2.1 --min-kmer-len 23 --max-kmer-len 80 --num-threads $NUM_THREADS --maxnodes 1000 --reduce-read-set-kmer-size 27 --max-reads-in-memory 100000000 --faux-insert-mean 500 --faux-insert-stdev 100 --num-joins-per-directory 101 1>findReversePointingJumpingReads.err 2>&1 \n";
+	print FILE "findReversePointingJumpingReads.perl -s \$JF_SIZE --Celera-terminator-directory . --jumping-library-read-file sj.cor.clean.fa --reads-file pe.cor.fa --output-directory work2.1 --min-kmer-len 23 --max-kmer-len 80 --num-threads $NUM_THREADS --maxnodes 1000 --reduce-read-set-kmer-size 27 --max-reads-in-memory 100000000 --faux-insert-mean 400 --faux-insert-stdev 100 --num-joins-per-directory 201 1>findReversePointingJumpingReads.err 2>&1 \n";
 	print FILE "extractreads_not.pl work2.1/output.txt sj.cor.clean.fa 1 > sj.cor.clean2.fa\n";
 	print FILE "echo Found extra chimeric mates: \n";
 	print FILE "wc -l work2.1/output.txt\n";

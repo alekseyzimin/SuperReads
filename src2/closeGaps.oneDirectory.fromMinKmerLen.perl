@@ -324,7 +324,7 @@ sub processArgs
     $meanForFauxInserts = 500;
     $stdevForFauxInserts = 200;
     $numStdevsAllowed = 5;
-    $joinAggressive = 0;
+    $joinAggressive = 1;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
 	if ($arg eq "--mean-for-faux-inserts") {

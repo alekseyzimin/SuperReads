@@ -224,13 +224,13 @@ sub processArgs
     my ($arg, $tfile, $cmd, @kmerLens, $i);
     $reduceReadSetKMerSize = 21;
     $kUnitigContinuationNumber = 2;
-    $maxKMerLen = 65;
+    $maxKMerLen = 85;
     $minKMerLen = 19;
     $numThreads = 1;
     $maxFishingKMerCount = 1000;
     $maxReadsInMemory = 100000000;
     $contigLengthForJoining = $contigLengthForFishing = 100;
-    $maxNodes = 20000;
+    $maxNodes = 10000;
     $fauxInsertMean = 600;
     $fauxInsertStdev = 200;
     $numStdevsAllowed = 5;
