@@ -21,8 +21,8 @@
 #include <src2/runByDirectory_cmdline.hpp>
 
 struct arguments {
-  float mean;
-  float stdev;
+  int mean;
+  int stdev;
   int   dirNum;
   charb fauxReadFileDataStr;
   basic_charb<remaper<char> > readFileDataStr;
@@ -230,11 +230,13 @@ int main (int argc, char **argv)
 	 
     if (args.mean_and_stdev_file_given) {
       int dirNumTemp;
-      int scanned = fscanf (meanAndStdevFile, "%d %f %f\n",
+      int scanned = fscanf (meanAndStdevFile, "%d %d %d\n",
                             &dirNumTemp, &threadArgs.mean, &threadArgs.stdev);
-      if(scanned != 3)
-        die << "Failed to parse file '" << args.mean_and_stdev_file_arg << "'"
-            << jellyfish::err::no;
+      if(scanned != 3){
+        std::cerr << "WARNING Bad mean and stdev for gap " << dirNumTemp << " " << threadArgs.mean << " " << threadArgs.stdev << " "  << jellyfish::err::no;
+	threadArgs.mean  = 600;
+	threadArgs.stdev = 200;
+	}
     } else {
       threadArgs.mean  = args.mean_for_faux_inserts_arg;
       threadArgs.stdev = args.stdev_for_faux_inserts_arg;

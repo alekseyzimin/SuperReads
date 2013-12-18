@@ -531,12 +531,12 @@ if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj=
 
   printf(FILE <<'EOS', $k_u_arg);
 log Creating k_unitigs with KMER=$KMER.
-create_k_unitigs_large_k -c $(($KMER-1)) -t $NUM_THREADS -m $KMER -n $ESTIMATED_GENOME_SIZE -l $KMER -f 0.000001 -o guillaumeKUnitigsAtLeast32bases_all.fasta %1$s 
+create_k_unitigs_large_k -c $(($KMER-1)) -t $NUM_THREADS -m $KMER -n $ESTIMATED_GENOME_SIZE -l $KMER -f 0.000001  %1$s | perl -alne 'BEGIN{$n=0}if(not($F[0]=~/^>/)){$seq=$F[0]; $F[0]=~tr/ACTGacgt/TGACtgac/;$revseq=reverse($F[0]); print ">$n length:",length($seq),"\n",(($seq ge $revseq)?$seq:$revseq);++$n;}' > guillaumeKUnitigsAtLeast32bases_all.fasta 
 if [[ $KMER -eq $KMER_J ]]; then
   ln -sf guillaumeKUnitigsAtLeast32bases_all.fasta guillaumeKUnitigsAtLeast32bases_all.jump.fasta 
 else
   log "Creating k_unitigs KMER=$KMER."
-  create_k_unitigs_large_k -c $(($KMER_J-1)) -t $NUM_THREADS -m $KMER_J -n $ESTIMATED_GENOME_SIZE -l $KMER_J -f 0.000001 -o guillaumeKUnitigsAtLeast32bases_all.jump.fasta %1$s
+  create_k_unitigs_large_k -c $(($KMER_J-1)) -t $NUM_THREADS -m $KMER_J -n $ESTIMATED_GENOME_SIZE -l $KMER_J -f 0.000001  %1$s | perl -alne 'BEGIN{$n=0}if(not($F[0]=~/^>/)){$seq=$F[0]; $F[0]=~tr/ACTGacgt/TGACtgac/;$revseq=reverse($F[0]); print ">$n length:",length($seq),"\n",(($seq ge $revseq)?$seq:$revseq);++$n}' > guillaumeKUnitigsAtLeast32bases_all.jump.fasta
 fi
 EOS
     $rerun_pe=1;
