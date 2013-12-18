@@ -129,6 +129,13 @@ public:
       --super::ptr_;
     *super::ptr_ = '\0';
   }
+  /** Truncate the string to the given length. The len() method will
+      return the length passed. */
+  void truncate(size_t s) {
+    super::reserve(s + 1);
+    super::ptr_  = super::base_ + s;
+    *super::ptr_ = '\0';
+  }
 
   friend char *fgets <> (basic_charb<R> &b, FILE *stream, char *cptr);
   friend int vsprintf <> (basic_charb<R> &b, char* start, const char *format, va_list ap);

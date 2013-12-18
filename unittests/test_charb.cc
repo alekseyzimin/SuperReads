@@ -21,6 +21,7 @@
 #include <charb.hpp>
 #include <ext/stdio_filebuf.h>
 
+namespace {
 TEST(CharbBasic, Init) {
   charb empty;
   EXPECT_EQ((size_t)1, empty.capacity());
@@ -332,4 +333,25 @@ TEST(CharbBasic, chomp) {
   charb some_space(some_space_str);
   some_space.chomp();
   EXPECT_STREQ(no_space_str, some_space);
+}
+
+TEST(CharbBasic, truncate) {
+  const char* text = "Hello the world";
+  charb textb(text);
+
+  EXPECT_EQ(strlen(text), strlen(textb));
+  EXPECT_EQ(strlen(text), textb.size());
+
+  const size_t nlen = 5;
+  textb.truncate(nlen);
+  EXPECT_EQ(nlen, strlen(textb));
+  EXPECT_EQ(nlen, textb.size());
+  EXPECT_STREQ("Hello", (char*)textb);
+
+  const size_t nlen2 = 3 * strlen(text);
+  textb.truncate(nlen2);
+  EXPECT_EQ(nlen2, textb.size());
+  EXPECT_LE(nlen2, textb.capacity());
+  EXPECT_NE(strlen(textb), textb.size());
+}
 }
