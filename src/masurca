@@ -52,6 +52,7 @@ my $MAX_ERR_PER_WINDOW      = 3;
 my $KMER_COUNT_THRESHOLD    = 1;
 my $KMER_RELIABLE_THRESHOLD = 3;
 my $TRIM_PARAM              = 3;
+my $RELIABLE_Q_PARAM	    = 30;
 my $NUM_THREADS             = 2;
 my $EXTEND_JUMP_READS       = 1;
 my $JF_SIZE                 = 100000000;
@@ -249,6 +250,9 @@ while(my $line=<FILE>){
         } elsif($key eq "TRIM_PARAM") {
             die("bad value for TRIM_PARAM, it should be a positive integer") unless $param =~ /^\d*$/;
             $TRIM_PARAM = length($param) > 0 ? int($param) : 2;
+        } elsif($key eq "RELIABLE_Q_PARAM") {
+            die("bad value for RELIABLE_Q_PARAM, it should be a positive integer") unless $param =~ /^\d*$/;
+            $RELIABLE_Q_PARAM = length($param) > 0 ? int($param) : 30;
 	} elsif($key eq "CLOSE_GAPS"){
             die("bad value for CLOSE_GAPS, enter 0 or 1") unless($param =~ /^[01]$/);
             $CLOSE_GAPS=int($param);
@@ -479,7 +483,7 @@ if(not(-e "pe.cor.fa")||$rerun_pe==1){
 log Error correct PE.
 cat quorum_mer_db.jf > /dev/null
 
-quorum_error_correct_reads  --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $homo_polymer_flag quorum_mer_db.jf $list_pe_files --no-discard -o pe.cor || {
+quorum_error_correct_reads  -q \$((MIN_Q_CHAR + $RELIABLE_Q_PARAM)) --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $homo_polymer_flag quorum_mer_db.jf $list_pe_files --no-discard -o pe.cor || {
   echo >&2 Error correction of PE reads failed. Check pe.cor.log.
   exit 1
 }
@@ -497,7 +501,7 @@ if(@jump_info_array > 0){
 log Error correct JUMP.
 #cat quorum_mer_db.jf > /dev/null
 
-quorum_error_correct_reads --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $homo_polymer_flag quorum_mer_db.jf $list_jump_files --no-discard -o sj.cor || {
+quorum_error_correct_reads -q \$((MIN_Q_CHAR + $RELIABLE_Q_PARAM)) --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $homo_polymer_flag quorum_mer_db.jf $list_jump_files --no-discard -o sj.cor || {
   echo >&2 Error correction of JUMP reads failed. Check sj.cor.log.
   exit 1
 }
@@ -526,22 +530,16 @@ print FILE "\n";
 ###build k-unitigs###
 
 if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
-# Used to clean up output of create of create_k_unitigs_large_k. Not needed anymore
-#   | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
-
-  printf(FILE <<'EOS', $k_u_arg);
-log Creating k_unitigs with KMER=$KMER.
-create_k_unitigs_large_k -c $(($KMER-1)) -t $NUM_THREADS -m $KMER -n $ESTIMATED_GENOME_SIZE -l $KMER -f 0.000001  %1$s | perl -alne 'BEGIN{$n=0}if(not($F[0]=~/^>/)){$seq=$F[0]; $F[0]=~tr/ACTGacgt/TGACtgac/;$revseq=reverse($F[0]); print ">$n length:",length($seq),"\n",(($seq ge $revseq)?$seq:$revseq);++$n;}' > guillaumeKUnitigsAtLeast32bases_all.fasta 
-if [[ $KMER -eq $KMER_J ]]; then
-  ln -sf guillaumeKUnitigsAtLeast32bases_all.fasta guillaumeKUnitigsAtLeast32bases_all.jump.fasta 
-else
-  log "Creating k_unitigs KMER=$KMER."
-  create_k_unitigs_large_k -c $(($KMER_J-1)) -t $NUM_THREADS -m $KMER_J -n $ESTIMATED_GENOME_SIZE -l $KMER_J -f 0.000001  %1$s | perl -alne 'BEGIN{$n=0}if(not($F[0]=~/^>/)){$seq=$F[0]; $F[0]=~tr/ACTGacgt/TGACtgac/;$revseq=reverse($F[0]); print ">$n length:",length($seq),"\n",(($seq ge $revseq)?$seq:$revseq);++$n}' > guillaumeKUnitigsAtLeast32bases_all.jump.fasta
-fi
-EOS
+    print FILE "create_k_unitigs_large_k -c \$((\$KMER-1)) -t $NUM_THREADS -m \$KMER -n \$ESTIMATED_GENOME_SIZE -l \$KMER -f 0.000001 $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+    print FILE "if [[ \$KMER -eq \$KMER_J ]];then\n";
+    print FILE "ln -s guillaumeKUnitigsAtLeast32bases_all.fasta guillaumeKUnitigsAtLeast32bases_all.jump.fasta\n";
+    print FILE "else\n";
+    print FILE "create_k_unitigs_large_k -c \$((\$KMER_J-1)) -t $NUM_THREADS -m \$KMER_J -n \$ESTIMATED_GENOME_SIZE -l \$KMER_J -f 0.000001 $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.jump.fasta\n";
+    print FILE "fi\n";
     $rerun_pe=1;
     $rerun_sj=1;
 }
+
 
 ###done build k-unitigs###
 print FILE "\n";
