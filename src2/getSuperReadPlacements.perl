@@ -1,12 +1,17 @@
 #!/usr/bin/perl
-$minAStat = 5;
-$minFromEnd = 200;
-$shortestUnitigUsed = 2000;
-$maxSlippagePerPiece = 5;
+# Flags:
+#         -dir for input directory
+#         -minAStat (default = 5)
+#         -minFromEnd (default = 200) (to avoid edge effects)
+#         -shortestUnitigLength (default = 2000)
+#         -superReadDir (defaults to $dir/work1)
+#         -CADir (defaults to $dir/CA)
+#         -h for help
+# We assume 'genome' is the prefix for the files in the CA directory
+$maxSlippagePerSuperReadPiece = 5;
 $prefix = "genome";
-$dir = "/genome3/raid/alekseyz/rhodobacter/assembly2.1.0";
-$CAdir = "$dir/CA";
-$superReadDir = "$dir/work1";
+# $dir = "/genome3/raid/alekseyz/rhodobacter/assembly2.1.0";
+&processArgs;
 $cmd = "gatekeeper -dumpfragments -tabular $CAdir/${prefix}.gkpStore | grep super-read |";
 open (FILE, $cmd);
 while ($line = <FILE>) {
@@ -26,9 +31,16 @@ while ($line = <FILE>) {
 }
 close (FILE);
 
-$cmd = "tigStore -g $CAdir/genome.gkpStore -t $CAdir/${prefix}.tigStore 2 -U -d layout | grep -v -E \"^(cns|qlt) \" |";
+$cmd = "tigStore -g $CAdir/genome.gkpStore -t $CAdir/${prefix}.tigStore 2 -U -d layout | grep -v -E \"^qlt \" |";
 open (FILE, $cmd);
+open (OUTFILE, ">localUnitigSequenceFile.fasta");
 while ($line = <FILE>) {
+    if ($line =~ /^cns\s/) {
+	chomp ($line);
+	($cns) = ($line =~ /^cns\s+(\S.+)$/);
+	$cns =~ s/[^ACGTacgt]//g;
+	print OUTFILE ">$unitig\n$cns\n";
+	next; }
     if ($line =~ /^FRG\s/) {
 	($iid) = ($line =~ /^\S+\s+\S+\s+\S+\s+\S+\s+(\S+)\s/);
 	next unless ($uid{$iid});
@@ -71,6 +83,7 @@ if (($len >= $shortestUnitigUsed) &&
     ($Astat{$unitig} >= $minAStat)) {
     &analyzeResults; }
 &clearResults;
+close (OUTFILE);
 $fn = "$superReadDir/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt";
 open (FILE, $fn);
 while ($line = <FILE>) {
@@ -135,7 +148,7 @@ sub analyzeResults
 		push (@unitigFailsChangingOri, $uid); }
 	    if (abs ($begins[$index] - $begins[$index0]) > 2047) {
 		push (@unitigFailsForGap, $uid); }
-	    if (abs ($impliedBegins[$index] - $impliedBegins[$index0]) > $maxSlippagePerPiece) {
+	    if (abs ($impliedBegins[$index] - $impliedBegins[$index0]) > $maxSlippagePerSuperReadPiece) {
 		push (@unitigFailsForSlippage, $uid); }
 	}
 	if (($#unitigFailsForGap >= 0) ||
@@ -174,15 +187,17 @@ sub analyzeResults
 	    $end = $superBegin{$super};
 	    $beg = $end - $superLen{$super}; }
 	
-	print "$unitig $super $beg $end ";
+#	print "$unitig $super $beg $end ";
 	if ($superOri{$super} eq "F") {
 	    $beginFromSuper{$super} = $beg;
 	    $endFromSuper{$super} = $end;
-	    print "0 $superLen{$super}\n"; }
+#	    print "0 $superLen{$super}\n";
+	}
 	else {
 	    $beginFromSuper{$super} = $end;
 	    $endFromSuper{$super} = $beg;
-	    print "$superLen{$super} 0\n"; }
+#	    print "$superLen{$super} 0\n";
+	}
 	$unitigFromSuper{$super} = $unitig;
     }
 }
@@ -199,5 +214,88 @@ sub spcl
     if ($srNums[$a] != $srNums[$b]) {
 	return ($srNums[$a] <=> $srNums[$b]); }
     return ($srPieces[$a] <=> $srPieces[$b]);
+}
+
+sub processArgs
+{
+    $minAStat = 5;
+    $minFromEnd = 200;
+    $shortestUnitigUsed = 2000;
+    for ($i=0; $i<=$#ARGV; ++$i) {
+	if (($ARGV[$i] eq "-h") || ($ARGV[$i] eq "--help")) {
+	    &reportUsageAndExit; }
+	if ($i == $#ARGV) {
+	    print STDERR "You either have a flag with no value or a missing flag. Bye!\n";
+	    &reportUsageAndExit; }
+	if ($ARGV[$i] eq "-dir") {
+	    ++$i;
+	    $dir = $ARGV[$i];
+	    next; }
+	if ($ARGV[$i] eq "-minAStat") {
+	    ++$i;
+	    $minAStat = $ARGV[$i];
+	    next; }
+	if ($ARGV[$i] eq "-minFromEnd") {
+	    ++$i;
+	    $minFromEnd = $ARGV[$i];
+	    next; }
+	if ($ARGV[$i] eq "-shortestUnitigLength") {
+	    ++$i;
+	    $shortestUnitigUsed = $ARGV[$i];
+	    next; }
+	if ($ARGV[$i] eq "-superReadDir") {
+	    ++$i;
+	    $superReadDir = $ARGV[$i];
+	    next; }
+	if ($ARGV[$i] eq "-CADir") {
+	    ++$i;
+	    $CAdir = $ARGV[$i];
+	    next; }
+	printf STDERR "Unrecognized option '", $ARGV[$i], "'. Bye!\n";
+	&reportUsageAndExit;
+    }
+    if ($dir !~ /\S/) {
+	print STDERR "No directory reported. Bye!\n";
+	&reportUsageAndExit; }
+    if ($superReadDir !~ /\S/) {
+	$superReadDir = "$dir/work1"; }
+    if ($CAdir !~ /\S/) {
+	$CAdir = "$dir/CA"; }
+    &checkDirectoryExistsAndIsADir ($dir);
+    &checkDirectoryExistsAndIsADir ($superReadDir);
+    &checkDirectoryExistsAndIsADir ($CAdir);
+}
+
+sub reportUsageAndExit
+{
+    open (FILE, $0);
+    $line = <FILE>;
+    while ($line = <FILE>) {
+        last unless ($line =~ /^\#/);
+        chomp ($line);
+        $line =~ s/^..//;
+        print "$line\n";
+    }
+    close (FILE);
+    exit;
+}
+
+sub checkFileExists
+{
+    my ($file) = $_;
+    if (! -e $file) {
+	print STDERR "File $file doesn't exist. Bye!\n";
+	&reportUsageAndExit; }
+}
+
+sub checkDirectoryExistsAndIsADir
+{
+    my ($tdir) = @_;
+    if (! -e $tdir) {
+	print STDERR "Directory $tdir doesn't exist. Bye!\n";
+	&reportUsageAndExit; }
+    if (! -d $tdir) {
+	print STDERR "$tdir is not a directory. Bye!\n";
+	&reportUsageAndExit; }
 }
 

@@ -200,12 +200,9 @@ int main (int argc, char **argv)
      // Now get the read placement info
      infile = Fopen (placementFile, "r");
      while (fgets (line, 100, infile)) {
+//	  printf ("%s", (char *) line);
 	  getFldsFromLine (line, flds);
 //	  printf ("rd = %s\n", flds[0]); fflush (stdout);
-	  if (strchr (flds[1], '_') != NULL) // More than 1 k-unitig in the super-read
-	       continue;
-	  // Must be pointing forwards by our naming convention, so kill off the last character
-	  flds[1][strlen(flds[1])-1] = 0;
 	  std::string kUnitig = std::string (flds[1]);
 	  int offset = atoi (flds[2]);
 	  char ori = flds[3][0];
@@ -221,9 +218,9 @@ int main (int argc, char **argv)
 	  else {
 	       endOffset = offset;
 	       beginOffset = offset - localLen; }
-	  if (beginOffset < 0)
+	  if (beginOffset < 0) // printf ("At 1\n"),
 	       beginOffset = 0;
-	  if (endOffset > seqLen[kUnitig])
+	  if (endOffset > seqLen[kUnitig]) // printf ("At 2, endOffset = %d, seqLen = %d, kUnitig = %s\n", endOffset, seqLen[kUnitig], kUnitig.c_str()),
 	       endOffset = seqLen[kUnitig];
 	  if (sequenceStart.find(kUnitig) == sequenceStart.end())
 	       continue;
@@ -233,6 +230,8 @@ int main (int argc, char **argv)
 	  beginAndEndNetCounts[globalBeginOffset]++;
 	  beginAndEndNetCounts[globalEndOffset]--; }
      fclose (infile);
+     for (int i=0; i<beginAndEndNetCounts.size(); ++i)
+	  printf ("%d %d T\n", i, (int) beginAndEndNetCounts[i]);
      
      int count, lastCount = 0;
      for (int seqNum=0; seqNum<seqNames.size(); ++seqNum) {
@@ -242,6 +241,7 @@ int main (int argc, char **argv)
 	  count = 0, lastCount = 0;
 	  unsigned long long startIndex = sequenceStart[seqName] - consensusSequence;
 	  unsigned long long endIndex = startIndex + seqLen[seqName];
+	  printf ("startIndex = %llu\n", startIndex);
 	  for (unsigned long long i=startIndex; i<=endIndex; ++i) {
 	       count = lastCount + beginAndEndNetCounts[i];
 	       lastCount = count;
@@ -255,6 +255,8 @@ int main (int argc, char **argv)
 //		    printf ("i = %llu count = %d, lastCount = %d\n", i, count, lastCount);
 //	  printf ("i = %d, count = %d, lastCount = %d, beginAndEndNetCounts = %d\n", i, count, lastCount, beginAndEndNetCounts[i]);
 		    int GCcount;
+		    if (count < 0)
+			 printf ("i = %d, count = %d\n", (int) i, (int) count);
 		    if (invalidCounts[beginOfInterval] == invalidCounts[endOfInterval]) {
 			 int Ccount = Ccounts[endOfInterval] - Ccounts[beginOfInterval];
 			 int Gcount = Gcounts[endOfInterval] - Gcounts[beginOfInterval];
