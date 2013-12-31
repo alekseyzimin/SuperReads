@@ -172,10 +172,10 @@ int main (int argc, char **argv)
 	  
 //     char *seqFilename = "/genome2/raid/tri/rhodobacter/finished_sequence/Rsphaeroides.1con.fa";
 //     char *filename = "/genome2/raid/tri/rhodobacter/pe.renamed_genome.finishedSeqMatches_aln.k5.fromSamFile.bestAlignsLe6errs.delta";
-     std::vector<int> coverageCounts (totalSequenceLength,0);
      std::vector<int> beginAndEndNetCounts (totalSequenceLength,0);
      std::vector<unsigned long long> Acounts (totalSequenceLength,0), Ccounts (totalSequenceLength,0), Gcounts (totalSequenceLength,0), Tcounts (totalSequenceLength,0), invalidCounts (totalSequenceLength,0);
      std::map<intPair, int> countsForPctCoveragePairs;
+     std::vector<int> &coverageCounts = beginAndEndNetCounts;
      Acounts[0] = Ccounts[0] = Gcounts[0] = Tcounts[0] = invalidCounts[0] = 0;
      printf ("totalSequenceLength = %llu\n", totalSequenceLength);
      printf ("consensusSequence length = %d\n", (int) strlen (consensusSequence));
@@ -230,22 +230,20 @@ int main (int argc, char **argv)
 	  beginAndEndNetCounts[globalBeginOffset]++;
 	  beginAndEndNetCounts[globalEndOffset]--; }
      fclose (infile);
-     for (int i=0; i<beginAndEndNetCounts.size(); ++i)
-	  printf ("%d %d T\n", i, (int) beginAndEndNetCounts[i]);
+     for (int i=1; i<beginAndEndNetCounts.size(); ++i)
+	  coverageCounts[i] = coverageCounts[i-1] + beginAndEndNetCounts[i];
+     for (int i=0; i<coverageCounts.size(); ++i)
+	  printf ("%d %d T\n", i, (int) coverageCounts[i]);
      
-     int count, lastCount = 0;
      for (int seqNum=0; seqNum<seqNames.size(); ++seqNum) {
 	  std::string seqName = seqNames[seqNum];
 	  if (seqLen[seqName] < minSequenceLength)
 	       continue;
-	  count = 0, lastCount = 0;
 	  unsigned long long startIndex = sequenceStart[seqName] - consensusSequence;
 	  unsigned long long endIndex = startIndex + seqLen[seqName];
 	  printf ("startIndex = %llu\n", startIndex);
 	  for (unsigned long long i=startIndex; i<=endIndex; ++i) {
-	       count = lastCount + beginAndEndNetCounts[i];
-	       lastCount = count;
-	       coverageCounts[i] = count;
+	       int count = coverageCounts[i];
 	       if ((i>=startIndex+LENGTH_ON_EACH_SIDE_OF_REGION) &&
 		   (i+LENGTH_ON_EACH_SIDE_OF_REGION <= endIndex)) {
 		    unsigned long long beginOfInterval = i-LENGTH_ON_EACH_SIDE_OF_REGION;
