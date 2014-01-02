@@ -69,12 +69,14 @@ while ($line = <FILE>) {
 close (FILE);
 for ($i=0; $i<=$maxGapNum; $i++) {
     if ($mean[$i] =~ /\d/) {
+	$mean[$i]=0 if($mean[$i]<-20);
+	$stdev[$i]=200 if(not($stdev[$i]  =~ /\d/)||$stdev[$i]<=0);
 	$mean[$i] += ($contigLen1[$i] + $contigLen2[$i]);
 	}else{
-	$mean[$i] = ($contigLen1[$i] + $contigLen2[$i])+500;#assume 500 bp gap
-        $stdev[$i]=200;#assume 200bp stdev
+	$mean[$i] = ($contigLen1[$i] + $contigLen2[$i])+500.0;#assume 500 bp gap
+        $stdev[$i]=200.0;#assume 200bp stdev
 	}
-    print "$i $mean[$i] $stdev[$i]\n";
+    print "$i ",int($mean[$i])," ",int($stdev[$i]),"\n";
 }
 
 sub processArgs
