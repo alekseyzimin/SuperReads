@@ -282,7 +282,7 @@ sub reportUsageAndExit
 
 sub checkFileExists
 {
-    my ($file) = $_;
+    my ($file) = @_;
     if (! -e $file) {
 	print STDERR "File $file doesn't exist. Bye!\n";
 	&reportUsageAndExit; }

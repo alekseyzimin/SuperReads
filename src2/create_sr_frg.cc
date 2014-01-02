@@ -20,11 +20,13 @@ int main (int argc, char **argv)
 //	       printf ("readNameLen = %d\n", readName.len());
 	       if (readName.len() > 0) {
 		    int len = seq.len();
+#if 0
 		    reverse_complement (seq, revCompSeq); 
 		    int oriCode = 0;
 		    if (strcmp (revCompSeq, seq) < 0) {
 			 seq = revCompSeq;
 			 oriCode = 1; }
+#endif
 		    if (len < 2048)
 			 printf ("%s\n%s\n", (char *) readName, (char *)seq);
 		    else {
@@ -61,11 +63,13 @@ int main (int argc, char **argv)
      }
      if (readName.len() > 0) {
 	  int len = seq.len();
+#if 0
 	  reverse_complement (seq, revCompSeq); 
 	  int oriCode = 0;
 	  if (strcmp (revCompSeq, seq) < 0) {
 	       seq = revCompSeq;
 	       oriCode = 1; }
+#endif
 	  if (len < 2048)
 	       printf ("%s\n%s\n", (char *)readName, (char *)seq);
 	  else {
