@@ -21,8 +21,8 @@ while($line=<STDIN>){
     if($line =~ /^>/){
 	if(not($rn eq "")){
 	    $l=length($seq);
-	    $rev_seq=reverse_complement($seq);
-	    $seq=$rev_seq lt $seq ? $rev_seq : $seq;
+	    #$rev_seq=reverse_complement($seq);
+	    #$seq=$rev_seq lt $seq ? $rev_seq : $seq;
 	    if($l<2048){
 		print "$rn\n$seq\n";
 	    }else{
@@ -57,8 +57,8 @@ while($line=<STDIN>){
 }
 #do not forget the last one!!!
 $l=length($seq);
-$rev_seq=reverse_complement($seq);
-$seq=$rev_seq lt $seq ? $rev_seq : $seq;
+#$rev_seq=reverse_complement($seq);
+#$seq=$rev_seq lt $seq ? $rev_seq : $seq;
 if($l<2048){
     print "$rn\n$seq\n";
 }else{
@@ -76,10 +76,4 @@ if($l<2048){
     }
 }
 
-sub reverse_complement{
-    my $str=$_[0];
-    $str =~ tr/acgtACGTNn/tgcaTGCANn/;
-    $str = reverse ($str);
-    return ($str);
-}
 

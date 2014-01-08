@@ -52,7 +52,7 @@ my $MAX_ERR_PER_WINDOW      = 3;
 my $KMER_COUNT_THRESHOLD    = 1;
 my $KMER_RELIABLE_THRESHOLD = 3;
 my $TRIM_PARAM              = 3;
-my $RELIABLE_Q_PARAM	    = 30;
+my $RELIABLE_Q_PARAM	    = 35;
 my $NUM_THREADS             = 2;
 my $EXTEND_JUMP_READS       = 1;
 my $JF_SIZE                 = 100000000;
@@ -252,7 +252,7 @@ while(my $line=<FILE>){
             $TRIM_PARAM = length($param) > 0 ? int($param) : 2;
         } elsif($key eq "RELIABLE_Q_PARAM") {
             die("bad value for RELIABLE_Q_PARAM, it should be a positive integer") unless $param =~ /^\d*$/;
-            $RELIABLE_Q_PARAM = length($param) > 0 ? int($param) : 30;
+            $RELIABLE_Q_PARAM = length($param) > 0 ? int($param) : 35;
 	} elsif($key eq "CLOSE_GAPS"){
             die("bad value for CLOSE_GAPS, enter 0 or 1") unless($param =~ /^[01]$/);
             $CLOSE_GAPS=int($param);
@@ -423,7 +423,7 @@ print FILE "save NUM_THREADS\n";
 #override use linking mates if we have any long reads
 $USE_LINKING_MATES  = 0 if(@other_info_array);
 my $tmplist         = join(" ", @other_info_array);
-$list_frg_files    .= " " . $tmplist;
+$list_frg_files    .= " ".$tmplist." ";
 
 ###renaming reads###
 
