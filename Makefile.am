@@ -111,7 +111,8 @@ bin_PROGRAMS += createFastaSuperReadSequences				\
                 getSuperReadInsertCountsFromReadPlacementFile		\
                 getSuperReadInsertCountsFromReadPlacementFileTwoPasses	\
                 joinKUnitigs_v3 outputRecordsNotOnList killBadKUnitigs \
-                makeAdjustmentFactorsForNumReadsForAStatBasedOnGC
+                makeAdjustmentFactorsForNumReadsForAStatBasedOnGC \
+		create_sr_frg
 
 dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
                     src2/createSuperReadsForDirectory.perl src2/add_missing_mates.pl \
@@ -124,6 +125,7 @@ createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
 findMatchesBetweenKUnitigsAndReads_SOURCES = src/read_parser.cc				\
                                              src2/findMatchesBetweenKUnitigsAndReads.cc	\
                                              src/gcc_builtins.cc
+create_sr_frg_SOURCES = src2/create_sr_frg.cc
 YAGGO_SOURCES += src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp
 
 createKUnitigMaxOverlaps_SOURCES = src2/createKUnitigMaxOverlaps.cc
