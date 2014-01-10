@@ -22,6 +22,12 @@ case $(file -b --mime-type "$FILE") in
         exec bunzip2 -c "$FILE"
         ;;
 
+    (application/*xz)
+        FIRST=$(unxz -c "$FILE" | head -c 1)
+        check_fastq $FIRST
+        exec unxz -c "$FILE"
+        ;;
+
     (text/plain)
         FIRST=$(head -c 1 "$FILE")
         check_fastq $FIRST

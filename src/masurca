@@ -407,10 +407,10 @@ rm -f environment.sh; touch environment.sh
 
 # To run tasks in parallel
 run_bg () {
-  parallel --semaphore -j $NUM_THREADS --id $$ -- "$@"
+  semaphore -j $NUM_THREADS --id masurca_$$ -- "$@"
 }
 run_wait () {
-  parallel --semaphore --id $$ --wait
+  semaphore -j $NUM_THREADS --id masurca_$$ --wait
 }
 EOS
     ;
