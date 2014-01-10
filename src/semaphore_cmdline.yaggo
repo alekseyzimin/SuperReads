@@ -1,0 +1,30 @@
+purpose "Run a command while holding a semaphore"
+description <<EOS
+Run a command while holding a semaphore.
+EOS
+
+package "semaphore"
+name "args_t"
+posix
+
+option("id") {
+  description "Name of semaphore"
+  c_string; conflict "file" }
+option("file", "f") {
+  description "Path to semaphore file"
+  c_string }
+option("jobs", "j") {
+  description "Max number of jobs"
+  uint32; default 1 }
+option("command", "c") {
+  description "Command to run through the shell"
+  c_string }
+option("wait", "w") {
+  description "Wait for all command to be done"
+  off; conflict "command" }
+option("print", "p") {
+  description "Print the number of slots available"
+  off; conflict "wait", "command" }
+arg("cmd") {
+  description "Command to run"
+  c_string; multiple }

@@ -58,7 +58,7 @@ YAGGO_SOURCES = # Append all file to be built by yaggo
 bin_PROGRAMS += error_corrected2frg reverse_complement reduce_sr	\
                 sorted_merge create_k_unitigs_large_k			\
                 create_k_unitigs_large_k2 homo_trim bloom_query		\
-                filter_overlap_file rename_filter_fastq
+                filter_overlap_file rename_filter_fastq semaphore
 
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl src/close_gaps.sh		\
@@ -142,6 +142,9 @@ joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc
 YAGGO_SOURCES          += src2/joinKUnitigs_v3_cmdline.hpp
 outputRecordsNotOnList_SOURCES = src2/outputRecordsNotOnList.cc
 makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_SOURCES = src2/makeAdjustmentFactorsForNumReadsForAStatBasedOnGC.cc
+
+semaphore_SOURCES = src/semaphore.cc
+YAGGO_SOURCES += src/semaphore_cmdline.hpp
 
 ##############################
 # gap closing
