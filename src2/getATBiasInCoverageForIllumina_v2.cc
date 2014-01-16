@@ -117,7 +117,7 @@ int main (int argc, char **argv)
      unsigned long long totalSequenceLength = cptr - consensusSequence;
      // Done processing the consensus sequence
      // Check we have enough usable sequence
-     if (totalLengthOfUsableSequence < MIN_SEQUENCE_TO_CONTINUE) {
+     if (totalLengthOfUsableSequence < ((unsigned long long) MIN_SEQUENCE_TO_CONTINUE)) {
 	  fprintf (stderr, "Need to have at least %d bases of sequence at least %d from the ends. Only have %llu. Bye!\n", MIN_SEQUENCE_TO_CONTINUE, minOffsetFromEndToAccept, totalLengthOfUsableSequence);
 	  exit (-1); }
      
@@ -239,10 +239,10 @@ int main (int argc, char **argv)
 	  beginAndEndNetCounts[globalBeginOffset]++;
 	  beginAndEndNetCounts[globalEndOffset]--; }
      fclose (infile);
-     for (int i=1; i<beginAndEndNetCounts.size(); ++i)
+     for (unsigned int i=1; i<beginAndEndNetCounts.size(); ++i)
 	  coverageCounts[i] = coverageCounts[i-1] + beginAndEndNetCounts[i];
      std::map<std::string, int> numNonZeroCoverageCounts;
-     for (int seqNum=0; seqNum<seqNames.size(); ++seqNum) {
+     for (unsigned int seqNum=0; seqNum<seqNames.size(); ++seqNum) {
 	  std::string seqName = seqNames[seqNum];
 	  int localCount = 0;
 	  unsigned long long startIndex = sequenceStart[seqName] - consensusSequence;
@@ -268,7 +268,7 @@ int main (int argc, char **argv)
 #endif
      // End debugging section
 
-     for (int seqNum=0; seqNum<seqNames.size(); ++seqNum) {
+     for (unsigned int seqNum=0; seqNum < seqNames.size(); ++seqNum) {
 	  std::string seqName = seqNames[seqNum];
 	  if (seqLen[seqName] < minSequenceLength)
 	       continue;

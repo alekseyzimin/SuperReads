@@ -151,8 +151,8 @@ YAGGO_SOURCES += src/semaphore_cmdline.hpp
 ##############################
 dist_bin_SCRIPTS += src2/getGCBiasStatistics.perl src2/getSuperReadPlacements.perl \
 	src2/getMeanAndStdevByGCCount.perl
-bin_PROGRAMS += src2/getATBiasInCoverageForIllumina_v2
-getATBiasInCoverageForIllumina_v2_SOURCES = getATBiasInCoverageForIllumina_v2.cc
+bin_PROGRAMS += getATBiasInCoverageForIllumina_v2
+getATBiasInCoverageForIllumina_v2_SOURCES = src2/getATBiasInCoverageForIllumina_v2.cc
 
 ##############################
 # gap closing
