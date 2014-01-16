@@ -52,7 +52,7 @@ my $MAX_ERR_PER_WINDOW      = 3;
 my $KMER_COUNT_THRESHOLD    = 1;
 my $KMER_RELIABLE_THRESHOLD = 3;
 my $TRIM_PARAM              = 3;
-my $RELIABLE_Q_PARAM	    = 30;
+my $RELIABLE_Q_PARAM	    = 35;
 my $NUM_THREADS             = 2;
 my $EXTEND_JUMP_READS       = 1;
 my $JF_SIZE                 = 100000000;
@@ -109,9 +109,10 @@ sub rename_reads {
     $do_wait = 1;
     $rerun_pe = 1;
     $rerun_sj = 1;
-    print FILE "rename_filter_fastq '$name' '$fr' '$rr' > '$renamed' &\n";
+    print( FILE "run_bg rename_filter_fastq '$name' <(exec expand_fastq '$fr') ",
+           defined($rr) ? "<(exec expand_fastq '$rr')" : "''",
+           " > '$renamed'\n");
   }
-  print FILE "wait\n\n" if $do_wait;
   return @res;
 }
 
@@ -252,7 +253,7 @@ while(my $line=<FILE>){
             $TRIM_PARAM = length($param) > 0 ? int($param) : 2;
         } elsif($key eq "RELIABLE_Q_PARAM") {
             die("bad value for RELIABLE_Q_PARAM, it should be a positive integer") unless $param =~ /^\d*$/;
-            $RELIABLE_Q_PARAM = length($param) > 0 ? int($param) : 30;
+            $RELIABLE_Q_PARAM = length($param) > 0 ? int($param) : 35;
 	} elsif($key eq "CLOSE_GAPS"){
             die("bad value for CLOSE_GAPS, enter 0 or 1") unless($param =~ /^[01]$/);
             $CLOSE_GAPS=int($param);
@@ -403,6 +404,14 @@ log () {
 }
 
 rm -f environment.sh; touch environment.sh
+
+# To run tasks in parallel
+run_bg () {
+  semaphore -j $NUM_THREADS --id masurca_$$ -- "$@"
+}
+run_wait () {
+  semaphore -j $NUM_THREADS --id masurca_$$ --wait
+}
 EOS
     ;
 
@@ -423,12 +432,13 @@ print FILE "save NUM_THREADS\n";
 #override use linking mates if we have any long reads
 $USE_LINKING_MATES  = 0 if(@other_info_array);
 my $tmplist         = join(" ", @other_info_array);
-$list_frg_files    .= " " . $tmplist;
+$list_frg_files    .= " ".$tmplist." ";
 
 ###renaming reads###
 
 @pe_files        = rename_reads("pe", @pe_info_array);
 @sj_files        = rename_reads("sj", @jump_info_array) if(@jump_info_array);
+print FILE "run_wait\n";
 $list_pe_files   = join(" ", @pe_files);
 $list_jump_files = join(" ", @sj_files);
 
@@ -530,10 +540,12 @@ print FILE "\n";
 ###build k-unitigs###
 
 if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
+    print FILE "log Creating k-unitigs with k=\$KMER\n";
     print FILE "create_k_unitigs_large_k -c \$((\$KMER-1)) -t $NUM_THREADS -m \$KMER -n \$ESTIMATED_GENOME_SIZE -l \$KMER -f 0.000001 $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta\n";
     print FILE "if [[ \$KMER -eq \$KMER_J ]];then\n";
     print FILE "ln -s guillaumeKUnitigsAtLeast32bases_all.fasta guillaumeKUnitigsAtLeast32bases_all.jump.fasta\n";
     print FILE "else\n";
+    print FILE "log Creating k-unitigs with k=\$KMER_J\n";
     print FILE "create_k_unitigs_large_k -c \$((\$KMER_J-1)) -t $NUM_THREADS -m \$KMER_J -n \$ESTIMATED_GENOME_SIZE -l \$KMER_J -f 0.000001 $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.jump.fasta\n";
     print FILE "fi\n";
     $rerun_pe=1;

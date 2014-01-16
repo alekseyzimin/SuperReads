@@ -1,0 +1,43 @@
+#! /bin/sh
+
+FILE="$1"
+
+check_fastq () {
+    [ $1 = "@" ] || {
+        echo >&2 "File '$FILE' is not a fastq file"
+        exit 1
+    }
+}
+
+case $(file -b --mime-type "$FILE") in
+    (application/*gzip)
+        FIRST=$(gunzip -c "$FILE" | head -c 1)
+        check_fastq $FIRST
+        exec gunzip -c "$FILE"
+        ;;
+
+    (application/*bzip2)
+        FIRST=$(bunzip2 -c "$FILE" | head -c 1)
+        check_fastq $FIRST
+        exec bunzip2 -c "$FILE"
+        ;;
+
+    (application/*xz)
+        FIRST=$(unxz -c "$FILE" | head -c 1)
+        check_fastq $FIRST
+        exec unxz -c "$FILE"
+        ;;
+
+    (text/plain)
+        FIRST=$(head -c 1 "$FILE")
+        check_fastq $FIRST
+        exec cat "$FILE"
+        ;;
+
+    (*)
+        echo >&2 "Unsupported input format for file '$FILE'"
+        exit 1
+        ;;
+esac
+
+
