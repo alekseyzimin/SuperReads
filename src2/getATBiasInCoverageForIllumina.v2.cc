@@ -20,7 +20,6 @@ typedef std::pair<int, int> intPair;
 FILE *Fopen (const char *fn, const char *mode);
 
 // Change this to half the length of the interval of interest
-const int LENGTH_ON_EACH_SIDE_OF_REGION = 100;
 const int MIN_SEQUENCE_TO_CONTINUE = 40000;
 const int FASTQ = 1;
 const int FASTA = 2;
@@ -34,6 +33,7 @@ int main (int argc, char **argv)
      int minOffsetFromEndToAccept = 0;
      int defaultReadLength = 101;
      int minimumReadLength = 10;
+     int intervalLen = 200;
      std::vector<char *> flds;
      strcpy (readLengthsFile, "");
      for (int i=1; i<argc; ++i) { // Processing the args here
@@ -57,7 +57,12 @@ int main (int argc, char **argv)
 	       ++i;
 	       defaultReadLength = atoi (argv[i]);
 	       continue; }
+	  if (strcmp (argv[i], "--interval-len") == 0) {
+	       ++i;
+	       intervalLen = atoi (argv[i]);
+	       continue; }
      }
+     int LENGTH_ON_EACH_SIDE_OF_REGION = intervalLen / 2;
      // Done processing the args
      if (minOffsetFromEndToAccept < LENGTH_ON_EACH_SIDE_OF_REGION)
 	  minOffsetFromEndToAccept = LENGTH_ON_EACH_SIDE_OF_REGION;
@@ -179,8 +184,10 @@ int main (int argc, char **argv)
      std::map<intPair, int> countsForPctCoveragePairs;
      std::vector<int> &coverageCounts = beginAndEndNetCounts;
      Acounts[0] = Ccounts[0] = Gcounts[0] = Tcounts[0] = invalidCounts[0] = 0;
+#if 0
      printf ("totalSequenceLength = %llu\n", totalSequenceLength);
      printf ("consensusSequence length = %d\n", (int) strlen (consensusSequence));
+#endif
      for (unsigned long long i=0; i<totalSequenceLength; ++i) {
 	  Acounts[i+1] = Acounts[i];
 	  Ccounts[i+1] = Ccounts[i];
@@ -234,16 +241,44 @@ int main (int argc, char **argv)
      fclose (infile);
      for (int i=1; i<beginAndEndNetCounts.size(); ++i)
 	  coverageCounts[i] = coverageCounts[i-1] + beginAndEndNetCounts[i];
-     for (int i=0; i<coverageCounts.size(); ++i)
-	  printf ("%d %d T\n", i, (int) coverageCounts[i]);
-     
+     std::map<std::string, int> numNonZeroCoverageCounts;
+     for (int seqNum=0; seqNum<seqNames.size(); ++seqNum) {
+	  std::string seqName = seqNames[seqNum];
+	  int localCount = 0;
+	  unsigned long long startIndex = sequenceStart[seqName] - consensusSequence;
+	  unsigned long long endIndex = startIndex + seqLen[seqName];
+	  for (unsigned long long i=startIndex; i<=endIndex; ++i)
+	       if (coverageCounts[i] > 0)
+		    ++localCount;
+	  numNonZeroCoverageCounts[seqName] = localCount; }
+     // The next section (between '{' and '}') is for debugging only
+#if 0
      for (int seqNum=0; seqNum<seqNames.size(); ++seqNum) {
 	  std::string seqName = seqNames[seqNum];
 	  if (seqLen[seqName] < minSequenceLength)
 	       continue;
+	  if (numNonZeroCoverageCounts[seqName] < 100)
+	       continue;
 	  unsigned long long startIndex = sequenceStart[seqName] - consensusSequence;
 	  unsigned long long endIndex = startIndex + seqLen[seqName];
+	  printf ("startIndex = %llu, seqName = %s\n", startIndex, seqName.c_str());
+	  for (unsigned long long i=startIndex; i<=endIndex; ++i)
+	       printf ("%llu %d T\n", i, (int) coverageCounts[i]);
+     }
+#endif
+     // End debugging section
+
+     for (int seqNum=0; seqNum<seqNames.size(); ++seqNum) {
+	  std::string seqName = seqNames[seqNum];
+	  if (seqLen[seqName] < minSequenceLength)
+	       continue;
+	  if (numNonZeroCoverageCounts[seqName] < 100)
+	       continue;
+	  unsigned long long startIndex = sequenceStart[seqName] - consensusSequence;
+	  unsigned long long endIndex = startIndex + seqLen[seqName];
+#if 0
 	  printf ("startIndex = %llu\n", startIndex);
+#endif
 	  for (unsigned long long i=startIndex; i<=endIndex; ++i) {
 	       int count = coverageCounts[i];
 	       if ((i>=startIndex+LENGTH_ON_EACH_SIDE_OF_REGION) &&
@@ -255,8 +290,10 @@ int main (int argc, char **argv)
 //		    printf ("i = %llu count = %d, lastCount = %d\n", i, count, lastCount);
 //	  printf ("i = %d, count = %d, lastCount = %d, beginAndEndNetCounts = %d\n", i, count, lastCount, beginAndEndNetCounts[i]);
 		    int GCcount;
+#if 0
 		    if (count < 0)
 			 printf ("i = %d, count = %d\n", (int) i, (int) count);
+#endif
 		    if (invalidCounts[beginOfInterval] == invalidCounts[endOfInterval]) {
 			 int Ccount = Ccounts[endOfInterval] - Ccounts[beginOfInterval];
 			 int Gcount = Gcounts[endOfInterval] - Gcounts[beginOfInterval];
