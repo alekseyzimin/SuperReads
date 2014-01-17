@@ -11,37 +11,41 @@ sub processArgs
     }
 }
 
-#if ($#ARGV >= 0) {
-#    $intervalLen = $ARGV[0]; }
 while ($line = <STDIN>) {
     chomp ($line);
     ($GCcount, $coverage, $countForPoint) = split (" ", $line);
     next if ($coverage == 0);
-    $numLocsForGC[$GCcount] += $countForPoint;
-    $sumReadsCoverage[$GCcount] += ($coverage * $countForPoint);
-    $sumSquareCoverage[$GCcount] += ($coverage * $coverage * $countForPoint);
-}
-
-for ($GCcount=0; $GCcount<=$#numLocsForGC; ++$GCcount) {
-    if ($numLocsForGC[$GCcount] == 0) {
-	next; }
+    next if ($countForPoint == 0);
     $GCpct = $GCcount / $intervalLen;
     $GCpercentage = int ($GCpct * 100);
     $diffLow = ($GCpct*100) - $GCpercentage;
     $diffHigh = $GCpercentage + 1 - $GCpct*100;
-    $sumReadsCoverageByPct[$GCpercentage] += ($diffHigh * $sumReadsCoverage[$GCcount]);
-    $sumSquareCoverageByPct[$GCpercentage] += ($diffHigh * $sumSquareCoverage[$GCcount]);
-    $sumReadsCoverageByPct[$GCpercentage+1] += ($diffLow * $sumReadsCoverage[$GCcount]);
-    $sumSquareCoverageByPct[$GCpercentage+1] += ($diffLow * $sumSquareCoverage[$GCcount]);
-    $numLocsForGCByPct[$GCpercentage] += ($diffHigh * $numLocsForGC[$GCcount]);
-    $numLocsForGCByPct[$GCpercentage+1] += ($diffLow * $numLocsForGC[$GCcount]);
+    if ($diffHigh > 0) { # Work on $GCpercentage
+	$curGCpct = $GCpercentage;
+	$oldAverage = $avg[$curGCpct];
+	$oldWeightSum = $numLocsForGCByPct[$curGCpct];
+	$weight = $diffHigh * $countForPoint;
+	$numLocsForGCByPct[$curGCpct] += $weight;
+	$avg[$curGCpct] = &calculateNewAverage ($oldAverage, $weight, $numLocsForGCByPct[$curGCpct], $coverage);
+	$sumOfVariances[$curGCpct] = &calculateNewSumOfVariances ($sumOfVariances[$curGCpct], $weight, $coverage, $oldAverage, $avg[$curGCpct]);
+    }
+    if ($diffLow > 0) { # Work on $GCpercentage+1
+	$curGCpct = $GCpercentage+1;
+	$oldAverage = $avg[$curGCpct];
+	$oldWeightSum = $numLocsForGCByPct[$curGCpct];
+	$weight = $diffLow * $countForPoint;
+	$numLocsForGCByPct[$curGCpct] += $weight;
+	$avg[$curGCpct] = &calculateNewAverage ($oldAverage, $weight, $numLocsForGCByPct[$curGCpct], $coverage);
+	$sumOfVariances[$curGCpct] = &calculateNewSumOfVariances ($sumOfVariances[$curGCpct], $weight, $coverage, $oldAverage, $avg[$curGCpct]);
+    }
 }
 
 $maxAvg = 0;
 for ($GCcount=40; $GCcount<=60; ++$GCcount) {
     if ($numLocsForGCByPct[$GCcount] == 0) {
 	next; }
-    $avgCoverage = $sumReadsCoverageByPct[$GCcount] * 1.0 / $numLocsForGCByPct[$GCcount];
+    $avgCoverage = $avg[$GCcount];
+#    $avgCoverage = $sumReadsCoverageByPct[$GCcount] * 1.0 / $numLocsForGCByPct[$GCcount];
     if ($maxAvg < $avgCoverage) {
 	$maxAvg = $avgCoverage; }
 }
@@ -49,9 +53,8 @@ for ($GCcount=40; $GCcount<=60; ++$GCcount) {
 for ($GCcount=0; $GCcount<=$#numLocsForGCByPct; ++$GCcount) {
     if ($numLocsForGCByPct[$GCcount] == 0) {
         next; }
-    $avgCoverage = $sumReadsCoverageByPct[$GCcount] * 1.0 / $numLocsForGCByPct[$GCcount];
-    $avgCoverageSquared = $sumSquareCoverageByPct[$GCcount] / $numLocsForGCByPct[$GCcount];
-    $variance = $avgCoverageSquared - $avgCoverage * $avgCoverage;
+    $avgCoverage = $avg[$GCcount];
+    $variance = $sumOfVariances[$GCcount] / $numLocsForGCByPct[$GCcount];
     $stdev = sqrt ($variance);
     $stdevToAvg = $stdev / $avgCoverage;
     $adjustmentFactor = $maxAvg / $avgCoverage;
@@ -74,5 +77,23 @@ for ($GCcount=0; $GCcount<=$#numLocsForGCByPct; ++$GCcount) {
     print "$stdev ";
     print "$numLocsForGCByPct[$GCcount]\n";
 #    print "numLocsForGCByPct = $numLocsForGCByPct[$GCcount] avgCoverage = $avgCoverage stdev = $stdev stdev/avgCoverage = $stdevToAvg\n";
+}
+
+sub calculateNewAverage
+{
+    my ($priorAverage, $weight, $totalWeight, $sampleValue) = @_;
+    my ($avg);
+    $weight *= 1.0;
+    $avg = $priorAverage + ($weight / $totalWeight) * ($sampleValue - $priorAverage);
+    return ($avg);
+}
+
+sub calculateNewSumOfVariances
+{
+    my ($oldSumOfVariances, $weight, $coverage, $oldAverage, $newAverage) = @_;
+    my ($newSumOfVariances);
+
+    $newSumOfVariances = $oldSumOfVariances + $weight * ($coverage - $oldAverage) * ($coverage - $newAverage);
+    return ($newSumOfVariances);
 }
 
