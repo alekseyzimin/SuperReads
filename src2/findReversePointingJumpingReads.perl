@@ -117,9 +117,7 @@ close (FILE); close (OUTFILE);
 
 $kUnitigFilename = "k_unitigs_${suffix}_faux_reads.fa";
 
-$cmd = "$exeDir/jellyfish-2.0 dump k_u_hash_localReadsFile_27_2_faux_reads.jf > ttt.fa;$exeDir/create_k_unitigs_large_k2 -t $numThreads -o $kUnitigFilename -m $reduceReadSetKMerSize -n $localJellyfishHashSize -q 1 ttt.fa";
-runCommandAndExitIfBad ($cmd);
-$cmd = "rm ttt.fa";
+$cmd = "$exeDir/jellyfish-2.0 dump -c k_u_hash_localReadsFile_27_2_faux_reads.jf | awk 'BEGIN{n=0}{n++;if(n<2000000000){print \">\"n\" length:$reduceReadSetKMerSize\\n\"\$1}}' > $kUnitigFilename";
 runCommandAndExitIfBad ($cmd);
 # End section that eliminates k-mers that occur too often
 
