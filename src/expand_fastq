@@ -9,26 +9,26 @@ check_fastq () {
     }
 }
 
-case $(file -b --mime-type "$FILE") in
-    (application/*gzip)
+case $(file -b -i "$FILE") in
+    (application/*gzip*)
         FIRST=$(gunzip -c "$FILE" | head -c 1)
         check_fastq $FIRST
         exec gunzip -c "$FILE"
         ;;
 
-    (application/*bzip2)
+    (application/*bzip2*)
         FIRST=$(bunzip2 -c "$FILE" | head -c 1)
         check_fastq $FIRST
         exec bunzip2 -c "$FILE"
         ;;
 
-    (application/*xz)
+    (application/x-xz*)
         FIRST=$(unxz -c "$FILE" | head -c 1)
         check_fastq $FIRST
         exec unxz -c "$FILE"
         ;;
 
-    (text/plain)
+    (text/plain*)
         FIRST=$(head -c 1 "$FILE")
         check_fastq $FIRST
         exec cat "$FILE"

@@ -63,6 +63,26 @@ public:
   }
 };
 
+template<typename T>
+class auto_unmap {
+  T* _val;
+public:
+  auto_unmap(int fd) :
+    _val((T*)mmap(0, sizeof(T), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0))
+  { }
+  ~auto_unmap() {
+    if(_val != MAP_FAILED)
+      ::munmap(_val, sizeof(T));
+  }
+
+  T* get() { return _val; }
+  T* release() {
+    T* res = _val;
+    _val = (T*)MAP_FAILED;
+    return res;
+  }
+};
+
 class file_semaphore : public semaphore_type {
   typedef semaphore_type super;
   const std::string _path;
@@ -98,9 +118,7 @@ class file_semaphore : public semaphore_type {
     }
 
     // Memory map and make sure it is unmapped, unless we succeed in creating the semaphore
-    auto auto_unmap = std::bind(::munmap, std::placeholders::_1, sizeof(sem_t));
-    std::unique_ptr<sem_t, decltype(auto_unmap)> ptr((sem_t*)mmap(0, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0),
-                                                     auto_unmap);
+    auto_unmap<sem_t> ptr(fd);
     close(fd);
     if(ptr.get() == MAP_FAILED)
       return std::make_pair(-1, SEM_FAILED);
