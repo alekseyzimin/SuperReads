@@ -50,16 +50,23 @@ for ($GCcount=40; $GCcount<=60; ++$GCcount) {
 	$maxAvg = $avgCoverage; }
 }
 
+$minRatioStdErrToMean = .02;
+# $GCcount is actually percent now
 for ($GCcount=0; $GCcount<=$#numLocsForGCByPct; ++$GCcount) {
     if ($numLocsForGCByPct[$GCcount] == 0) {
+	$isBadValue[$GCcount] = 1;
         next; }
     $avgCoverage = $avg[$GCcount];
     $variance = $sumOfVariances[$GCcount] / $numLocsForGCByPct[$GCcount];
     $stdev = sqrt ($variance);
+    $stdev /= sqrt ($numLocsForGCByPct[$GCcount]);
     $stdevToAvg = $stdev / $avgCoverage;
+    if (($stdevToAvg >= $minRatioStdErrToMean) || ($numLocsForGCByPct[$GCcount] < 4)) {
+	$isBadValue[$GCcount] = 1; }
     $adjustmentFactor = $maxAvg / $avgCoverage;
     if ($adjustmentFactor < 1) {
 	$adjustmentFactor = 1; }
+    $adjustmentFactor[$GCcount] = $adjustmentFactor;
     $numLocsForGCByPct[$GCcount] = int ($numLocsForGCByPct[$GCcount] + .5);
     if ($numLocsForGCByPct[$GCcount] < 1) {
 	$numLocsForGCByPct[$GCcount] = 1; }
@@ -71,12 +78,38 @@ for ($GCcount=0; $GCcount<=$#numLocsForGCByPct; ++$GCcount) {
 	print "stdev = $stdev ";
 	print "numLocsForGCByPct = $numLocsForGCByPct[$GCcount]\n";
     }
-    print "$GCpct ";
-    print "$adjustmentFactor ";
-    print "$avgCoverage ";
-    print "$stdev ";
-    print "$numLocsForGCByPct[$GCcount]\n";
+    $outputLine[$GCcount] = "$adjustmentFactor $avgCoverage $stdev $stdevToAvg $numLocsForGCByPct[$GCcount]";
+    if (0) {
+	print "$GCpct ";
+	print "$adjustmentFactor ";
+	print "$avgCoverage ";
+	print "$stdev ";
+	print "$stdevToAvg ";
+	print "$numLocsForGCByPct[$GCcount]\n"; }
 #    print "numLocsForGCByPct = $numLocsForGCByPct[$GCcount] avgCoverage = $avgCoverage stdev = $stdev stdev/avgCoverage = $stdevToAvg\n";
+}
+for ($GCcount=50; $GCcount<=100; ++$GCcount) {
+    if ($isBadValue[$GCcount]) {
+	$lastGoodValue = $GCcount-1; 
+	last; } }
+if ($lastGoodValue !~ /\d/) {
+    $lastGoodValue = 100; }
+for ($GCcount=49; $GCcount>=0; --$GCcount) {
+    if ($isBadValue[$GCcount]) {
+	$firstGoodValue = $GCcount+1; 
+	last; } }
+if ($firstGoodValue !~ /\d/) {
+    $firstGoodValue = 0; }
+
+for ($GCcount=0; $GCcount<=100; ++$GCcount) {
+    $GCpct = $GCcount/100;
+    if ($GCcount < $firstGoodValue) {
+	$adjustmentFactor = $adjustmentFactor[$firstGoodValue]; }
+    elsif ($GCcount > $lastGoodValue) {
+	$adjustmentFactor = $adjustmentFactor[$lastGoodValue]; }
+    else {
+	$adjustmentFactor = $adjustmentFactor[$GCcount]; }
+    print "$GCpct $adjustmentFactor $outputLine[$GCcount]\n";
 }
 
 sub calculateNewAverage
