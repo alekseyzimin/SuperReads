@@ -22,7 +22,11 @@ system ($cmd);
 sub parseArgs
 {
     for ($i=0; $i<=$#ARGV; ++$i) {
-	if ($ARGV[$i] eq "--assemblyDirectory") {
+	if ($ARGV[$i] eq "--assembly-directory") {
+	    ++$i;
+	    $assemblyDirectory = $ARGV[$i];
+	    next; }
+	if ($ARGV[$i] eq "--assemblyDirectory") { # For grandfathering
 	    ++$i;
 	    $assemblyDirectory = $ARGV[$i];
 	    next; }

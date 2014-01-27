@@ -61,7 +61,6 @@ int main (int argc, char **argv)
 	  double cg_content = (float) numGCs / len;
 
 	  double ratio = calculateValueForPolynomial (cg_content, dataPoints);
-	  double retVal = 1 / ratio;
 	  
 	  printf ("%d %f %lf\n", unitigNumber, ratio, cg_content);
      }

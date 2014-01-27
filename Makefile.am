@@ -112,6 +112,7 @@ bin_PROGRAMS += createFastaSuperReadSequences				\
                 getSuperReadInsertCountsFromReadPlacementFileTwoPasses	\
                 joinKUnitigs_v3 outputRecordsNotOnList killBadKUnitigs \
                 makeAdjustmentFactorsForNumReadsForAStatBasedOnGC \
+                makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_v2 \
 		create_sr_frg
 
 dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
@@ -142,6 +143,7 @@ joinKUnitigs_v3_SOURCES = src2/joinKUnitigs_v3.cc
 YAGGO_SOURCES          += src2/joinKUnitigs_v3_cmdline.hpp
 outputRecordsNotOnList_SOURCES = src2/outputRecordsNotOnList.cc
 makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_SOURCES = src2/makeAdjustmentFactorsForNumReadsForAStatBasedOnGC.cc
+makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_v2_SOURCES = src2/makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_v2.cc
 
 semaphore_SOURCES = src/semaphore.cc
 YAGGO_SOURCES += src/semaphore_cmdline.hpp
