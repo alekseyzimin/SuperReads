@@ -340,7 +340,7 @@ unshift(@LD_LIBRARY_PATH, @prep_ld) if @prep_ld;
 
 unless($skip_path_checking) {
   print "Verifying PATHS...\n";
-  &check_exec("jellyfish", "runCA", "createSuperReadsForDirectory.perl");
+  &check_exec("jellyfish-2.0", "runCA", "createSuperReadsForDirectory.perl");
 }
 
 die ("no PE data specified") if(@pe_info_array == 0);
@@ -394,7 +394,7 @@ save () {
 }
 GC=
 NC=
-if tty -s < /dev/fd/1; then
+if tty -s < /dev/fd/1 2> /dev/null; then
   GC='\e[0;32m'
   NC='\e[0m'
 fi
