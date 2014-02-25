@@ -17,6 +17,12 @@
 
 $rn="";
 $shooting_index=0;
+if($ARGV[0] eq ""){
+$suffix="super-read";
+}else{
+$suffix=$ARGV[0];
+}
+print "$rn\n";
 while($line=<STDIN>){
     if($line =~ /^>/){
 	if(not($rn eq "")){
@@ -44,10 +50,10 @@ while($line=<STDIN>){
 	@l=split(/\s+/,$line);
 	if(length($l[0])>100){
             print STDERR "SR$shooting_index ",substr($l[0],1),"\n";
-            $rn=">SR".($shooting_index).":super-read";
+            $rn=">SR".($shooting_index).":".$suffix;
             $shooting_index++;
         }else{
-        $rn=$l[0].":super-read";
+        $rn=$l[0].":".$suffix;
 	}
 	$seq="";
     }else{
