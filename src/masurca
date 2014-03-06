@@ -66,6 +66,7 @@ my $LIMIT_JUMP_COVERAGE     = 1000;
 my $USE_LINKING_MATES       = 0;
 my $DO_HOMOPOLYMER_TRIM     = 0;
 my $CLOSE_GAPS              = 1;
+my $NO_MMAP                 = 0;
 
 my $assembly_script = "assemble.sh";
 my $generate_default;
@@ -281,6 +282,9 @@ while(my $line=<FILE>){
 	} elsif($key eq "JF_SIZE"){
 	    $JF_SIZE=int($param);
 	    die("bad value for JF_SIZE, enter int > 100000") if($JF_SIZE<100000);
+        } elsif($key eq "NO_MMAP"){
+            die("bad value for NO_MMAP, enter 0 or 1") unless($param =~ /^[01]$/);
+            $NO_MMAP=int($param);
 	} else {
             die "Could not parse line '$line'";
         }
@@ -489,13 +493,13 @@ print FILE "\n";
 ###error correct PE###
 
 my $homo_polymer_flag = $DO_HOMOPOLYMER_TRIM ? "--homo-trim $TRIM_PARAM" : "";
+my $mmap_flag = $NO_MMAP ? "-M" : "";
 
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
   print FILE <<"EOS";
 log Error correct PE.
-cat quorum_mer_db.jf > /dev/null
 
-quorum_error_correct_reads  -q \$((MIN_Q_CHAR + $RELIABLE_Q_PARAM)) --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $homo_polymer_flag quorum_mer_db.jf $list_pe_files --no-discard -o pe.cor || {
+quorum_error_correct_reads  -q \$((MIN_Q_CHAR + $RELIABLE_Q_PARAM)) --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $mmap_flag $homo_polymer_flag quorum_mer_db.jf $list_pe_files --no-discard -o pe.cor --verbose || {
   echo >&2 Error correction of PE reads failed. Check pe.cor.log.
   exit 1
 }
@@ -511,9 +515,8 @@ if(@jump_info_array > 0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
       print FILE <<"EOS";
 log Error correct JUMP.
-#cat quorum_mer_db.jf > /dev/null
 
-quorum_error_correct_reads -q \$((MIN_Q_CHAR + $RELIABLE_Q_PARAM)) --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $homo_polymer_flag quorum_mer_db.jf $list_jump_files --no-discard -o sj.cor || {
+quorum_error_correct_reads -q \$((MIN_Q_CHAR + $RELIABLE_Q_PARAM)) --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $mmap_flag $homo_polymer_flag quorum_mer_db.jf $list_jump_files --no-discard -o sj.cor --verbose || {
   echo >&2 Error correction of JUMP reads failed. Check sj.cor.log.
   exit 1
 }
