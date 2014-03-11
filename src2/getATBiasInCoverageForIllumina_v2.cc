@@ -27,7 +27,7 @@ const int LENGTHS_FILE = 3;
 
 int main (int argc, char **argv)
 {
-     charb consensusSequence (100000000), outputLine (10000), line(1000);
+     charb outputLine (10000), line(1000);
      // Process the args ...
      char seqFilename[200], placementFile[200], readLengthsFile[200];
      int minOffsetFromEndToAccept = 0;
@@ -68,6 +68,10 @@ int main (int argc, char **argv)
 	  minOffsetFromEndToAccept = LENGTH_ON_EACH_SIDE_OF_REGION;
      // Processing the consensus sequence ...
      FILE *infile = Fopen (seqFilename, "r");
+     fseek (infile, 0L, SEEK_END);
+     off_t fsize = ftello (infile);
+     charb consensusSequence (fsize);
+     rewind (infile);
      char *currentSequenceStart = consensusSequence;
      char *cptr = consensusSequence;
      std::string seqNameHold;
