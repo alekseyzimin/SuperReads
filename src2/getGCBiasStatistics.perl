@@ -15,6 +15,9 @@ system ($cmd);
 $cmd = "$exeDir/getATBiasInCoverageForIllumina_v2 --sequence-file localUnitigSequenceFile.fasta --default-read-length $defaultReadLength --placement-file $reportedPlacementsFile --interval-len $intervalLen --min-from-end $minFromEnd > $intermResultsFile";
 print "$cmd\n";
 system ($cmd);
+$intermResultsSize = -s $intermResultsFile;
+if ((! -e $intermResultsFile) || ($intermResultsSize == 0)) {
+    exit; }
 $cmd = "cat $intermResultsFile | $exeDir/getMeanAndStdevByGCCount.perl --interval-len $intervalLen > $finalResultsFile";
 print "$cmd\n";
 system ($cmd);
