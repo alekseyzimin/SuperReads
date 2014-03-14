@@ -71,7 +71,7 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/runSRCA.pl src/extractreads_not.pl		\
                     src/run_ECR.sh src/filter_alt.pl src/parallel	\
                     src/rename_filter_fastq.pl				\
-                    src/filter_redundancy.pl src/expand_fastq
+                    src/filter_redundancy.pl src/expand_fastq src/sample_mate_pairs.pl
 
 noinst_HEADERS += src/aligned_simple_array.hpp				\
                   src/diskBasedUnitigger.h src/fibonacci_coding.hpp	\
