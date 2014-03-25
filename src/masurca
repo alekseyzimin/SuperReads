@@ -479,7 +479,7 @@ if(@jump_info_array > 0){
 
 &get_MIN_Q_CHAR($list_pe_files);
 
-print FILE "JF_SIZE=`ls -l *.fastq | awk '{n+=\$5}END{s=int(n/50); if(s>$JF_SIZE)print s;else print \"$JF_SIZE;
+print FILE "JF_SIZE=`ls -l *.fastq | awk '{n+=\$5}END{s=int(n/50); if(s>$JF_SIZE)print s;else print \"$JF_SIZE\";}'`\n";
 print FILE "save JF_SIZE\n";
 print FILE "perl -e '{if(int('\$JF_SIZE')>$JF_SIZE){print \"WARNING: JF_SIZE set too low, increasing JF_SIZE to at least '\$JF_SIZE', this automatic increase may be not enough!\\n\"}}'\n"; 
 if(not(-e "quorum_mer_db.jf") || $rerun_pe==1){
