@@ -500,7 +500,7 @@ if(not(-e "pe.cor.fa")||$rerun_pe==1){
   print FILE <<"EOS";
 log Error correct PE.
 
-quorum_error_correct_reads  -q \$((MIN_Q_CHAR + $RELIABLE_Q_PARAM)) --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $mmap_flag $homo_polymer_flag quorum_mer_db.jf $list_pe_files --no-discard -o pe.cor --verbose || {
+quorum_error_correct_reads  -q \$((MIN_Q_CHAR + $RELIABLE_Q_PARAM)) --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $mmap_flag $homo_polymer_flag quorum_mer_db.jf $list_pe_files --no-discard -o pe.cor --verbose 1>quorum.err 2>&1 || {
   echo >&2 Error correction of PE reads failed. Check pe.cor.log.
   exit 1
 }
@@ -517,7 +517,7 @@ if(@jump_info_array > 0){
       print FILE <<"EOS";
 log Error correct JUMP.
 
-quorum_error_correct_reads -q \$((MIN_Q_CHAR + $RELIABLE_Q_PARAM)) --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $mmap_flag $homo_polymer_flag quorum_mer_db.jf $list_jump_files --no-discard -o sj.cor --verbose || {
+quorum_error_correct_reads -q \$((MIN_Q_CHAR + $RELIABLE_Q_PARAM)) --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $mmap_flag $homo_polymer_flag quorum_mer_db.jf $list_jump_files --no-discard -o sj.cor --verbose 1>quorum.err 2>&1 || {
   echo >&2 Error correction of JUMP reads failed. Check sj.cor.log.
   exit 1
 }
