@@ -40,20 +40,10 @@ while ($line = <STDIN>) {
     }
 }
 
-$maxAvg = 0;
-for ($GCcount=40; $GCcount<=60; ++$GCcount) {
-    if ($numLocsForGCByPct[$GCcount] == 0) {
-	next; }
-    $avgCoverage = $avg[$GCcount];
-#    $avgCoverage = $sumReadsCoverageByPct[$GCcount] * 1.0 / $numLocsForGCByPct[$GCcount];
-    if ($maxAvg < $avgCoverage) {
-	$maxAvg = $avgCoverage; }
-}
-
 $minRatioStdErrToMean = .02;
-# $GCcount is actually percent now
-for ($GCcount=0; $GCcount<=$#numLocsForGCByPct; ++$GCcount) {
-    if ($numLocsForGCByPct[$GCcount] == 0) {
+# In the following 101 is used as a sentinel; GCcount is now whole percent
+for ($GCcount=0; $GCcount<=101; ++$GCcount) { 
+    if ($numLocsForGCByPct[$GCcount] < 4) {
 	$isBadValue[$GCcount] = 1;
         next; }
     $avgCoverage = $avg[$GCcount];
@@ -61,8 +51,30 @@ for ($GCcount=0; $GCcount<=$#numLocsForGCByPct; ++$GCcount) {
     $stdev = sqrt ($variance);
     $stdev /= sqrt ($numLocsForGCByPct[$GCcount]);
     $stdevToAvg = $stdev / $avgCoverage;
-    if (($stdevToAvg >= $minRatioStdErrToMean) || ($numLocsForGCByPct[$GCcount] < 4)) {
+    if ($stdevToAvg >= $minRatioStdErrToMean) {
 	$isBadValue[$GCcount] = 1; }
+}
+
+$maxAvg = 0;
+for ($GCcount=40; $GCcount<=60; ++$GCcount) {
+    if ($numLocsForGCByPct[$GCcount] == 0) {
+	next; }
+    next if ($isBadValue[$GCcount]);
+    $avgCoverage = $avg[$GCcount];
+#    $avgCoverage = $sumReadsCoverageByPct[$GCcount] * 1.0 / $numLocsForGCByPct[$GCcount];
+    if ($maxAvg < $avgCoverage) {
+	$maxAvg = $avgCoverage; }
+}
+exit (0) if ($maxAvg == 0);
+
+# $GCcount is actually percent now
+for ($GCcount=0; $GCcount<=$#numLocsForGCByPct; ++$GCcount) {
+    next if ($numLocsForGCByPct[$GCcount] == 0);
+    $avgCoverage = $avg[$GCcount];
+    $variance = $sumOfVariances[$GCcount] / $numLocsForGCByPct[$GCcount];
+    $stdev = sqrt ($variance);
+    $stdev /= sqrt ($numLocsForGCByPct[$GCcount]);
+    $stdevToAvg = $stdev / $avgCoverage;
     $adjustmentFactor = $maxAvg / $avgCoverage;
     if ($adjustmentFactor < 1) {
 	$adjustmentFactor = 1; }
@@ -88,18 +100,18 @@ for ($GCcount=0; $GCcount<=$#numLocsForGCByPct; ++$GCcount) {
 	print "$numLocsForGCByPct[$GCcount]\n"; }
 #    print "numLocsForGCByPct = $numLocsForGCByPct[$GCcount] avgCoverage = $avgCoverage stdev = $stdev stdev/avgCoverage = $stdevToAvg\n";
 }
-for ($GCcount=50; $GCcount<=100; ++$GCcount) {
-    if ($isBadValue[$GCcount]) {
-	$lastGoodValue = $GCcount-1; 
-	last; } }
-if ($lastGoodValue !~ /\d/) {
-    $lastGoodValue = 100; }
-for ($GCcount=49; $GCcount>=0; --$GCcount) {
-    if ($isBadValue[$GCcount]) {
-	$firstGoodValue = $GCcount+1; 
-	last; } }
-if ($firstGoodValue !~ /\d/) {
-    $firstGoodValue = 0; }
+
+$lastBad = -1;
+$maxGoodLength = 0;
+for ($i=0; $i<=101; ++$i) {
+    next unless ($isBadValue[$i]);
+    $goodLength = $i - $lastBad - 1;
+    if ($goodLength > $maxGoodLength) {
+	$maxGoodLength = $goodLength;
+	$firstGoodValue = $lastBad + 1;
+	$lastGoodValue = $i-1; }
+    $lastBad = $i;
+}
 
 for ($GCcount=0; $GCcount<=100; ++$GCcount) {
     $GCpct = $GCcount/100;
