@@ -83,22 +83,7 @@ for ($GCcount=0; $GCcount<=$#numLocsForGCByPct; ++$GCcount) {
     if ($numLocsForGCByPct[$GCcount] < 1) {
 	$numLocsForGCByPct[$GCcount] = 1; }
     $GCpct = $GCcount/100;
-    if (0) {
-	print "GCpct = $GCpct ";
-	print "adjustmentFactor = $adjustmentFactor ";
-	print "avgCoverage = $avgCoverage ";
-	print "stdev = $stdev ";
-	print "numLocsForGCByPct = $numLocsForGCByPct[$GCcount]\n";
-    }
     $outputLine[$GCcount] = "$adjustmentFactor $avgCoverage $stdev $stdevToAvg $numLocsForGCByPct[$GCcount]";
-    if (0) {
-	print "$GCpct ";
-	print "$adjustmentFactor ";
-	print "$avgCoverage ";
-	print "$stdev ";
-	print "$stdevToAvg ";
-	print "$numLocsForGCByPct[$GCcount]\n"; }
-#    print "numLocsForGCByPct = $numLocsForGCByPct[$GCcount] avgCoverage = $avgCoverage stdev = $stdev stdev/avgCoverage = $stdevToAvg\n";
 }
 
 $lastBad = -1;
