@@ -15,6 +15,9 @@ option("num-stdevs-allowed") {
 option("output-join-result-for-each-join") {
   description "Output the results for each join attempt between mate pairs"
   off }
+option("join-codes-only") {
+  description "Output join codes instead of super-reads and placements"
+  off }
 option("unitig-lengths-file", "u") {
   description "File containing the length of the unitigs."
   c_string; typestr "path"; required }
