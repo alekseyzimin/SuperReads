@@ -25,11 +25,15 @@ sub runMainLoop
     # Here's the main loop (k-mer values going up)
     for ($k = $minKMerLen; $k<=$maxKMerLen; ++$k) {
 	$suffix = $localReadsFile . "_" . $k . "_" . $kUnitigContinuationNumber;
+	$tempKUnitigsFile = "k_unitigs_${suffix}.fa";
 	if (($k == $minKMerLen) || (($k == $minKMerLen+1) && $multipleJoinRun)) {
 	    $totInputSize = getReadFileSize (@readsFiles); }
 #	$minContinuation = int ($k/2);
 	$minContinuation = $k-1;
-	$cmd = "$exeDir/create_k_unitigs_large_k2 -c $minContinuation -t $numThreads -m $k -n $totInputSize -l $k @readsFiles fauxReads.fasta fauxReads.fasta  |  grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > k_unitigs_${suffix}.fa";
+	if (($k == $minKMerLen) && ($inputKUnitigFile)) {
+	    $cmd = "ln -s $inputKUnitigFile $tempKUnitigsFile"; }
+	else {
+	    $cmd = "$exeDir/create_k_unitigs_large_k2 -c $minContinuation -t $numThreads -m $k -n $totInputSize -l $k @readsFiles fauxReads.fasta fauxReads.fasta  |  grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > $tempKUnitigsFile"; }
 	if (runCommandAndReturnIfBad ($cmd)) {
 	    last; }
 	$cmd = "\\rm -rf out.$suffix"; system ($cmd);
@@ -40,7 +44,6 @@ sub runMainLoop
 	    $cmd = "echo cc $meanForFauxInserts $stdevForFauxInserts > $tempFilename"; 
 	    runCommandAndExitIfBad ($cmd);
 	}
-	$tempKUnitigsFile = "k_unitigs_${suffix}.fa";
 	if ($multipleJoinRun) {
 	    $outputJoinFlag = "-output-join-result-for-each-join"; }
 #	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -num-stdevs-allowed $numStdevsAllowed -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
@@ -327,6 +330,10 @@ sub processArgs
     $joinAggressive = 1;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
+	if ($arg eq "--input-kunitig-file") {
+	    ++$i;
+	    $inputKUnitigFile = $ARGV[$i];
+	    next; }
 	if ($arg eq "--mean-for-faux-inserts") {
 	    ++$i;
 	    $meanForFauxInserts = $ARGV[$i];
