@@ -183,7 +183,8 @@ YAGGO_SOURCES += src2/runByDirectory_cmdline.hpp
 # reversed jumping read library elimination
 ##############################
 dist_bin_SCRIPTS += src2/reportReadsToExclude.perl src2/outputMatedReadsAsReverseComplement.perl \
-	src2/findReversePointingJumpingReads.perl src2/closeGaps.oneDirectory.fromMinKmerLen.perl
+	src2/findReversePointingJumpingReads.perl src2/closeGaps.oneDirectory.fromMinKmerLen.perl \
+	src2/findReversePointingJumpingReads_bigGenomes.perl src2/extractJoinableAndNextPassReadsFromJoinKUnitigs.perl
 bin_PROGRAMS += putReadsIntoGroupsBasedOnSuperReads
 putReadsIntoGroupsBasedOnSuperReads_SOURCES = src2/putReadsIntoGroupsBasedOnSuperReads.cc
 YAGGO_SOURCES += src2/putReadsIntoGroupsBasedOnSuperReads_cmdline.hpp

@@ -1,17 +1,32 @@
 #!/usr/bin/env perl
+use Cwd;
 use File::Basename;
 use File::Copy;
 $exeDir = dirname ($0);
 $localReadsFile = "localReadsFile";
-$joiningEndPairs = "fauxReads.fasta";
+$joiningEndPairsOrig = "readsToJoinReads.fasta";
 &processArgs;
+
+for ($i=0; $i<=$#readsFiles; ++$i) {
+    $readsFiles[$i] = returnAbsolutePath ($readsFiles[$i]); }
+for ($i=0; $i<=$#readsForKUnitigsFiles; ++$i) {
+    $readsForKUnitigsFiles[$i] = returnAbsolutePath ($readsForKUnitigsFiles[$i]); }
 
 if ($dirToChangeTo) {
     chdir ($dirToChangeTo); }
 
-$multipleJoinRun = &determineIfMultipleJoinsAreRun;
-$joiningEndPairsOrig = $joiningEndPairs;
+$cmd = "zcat -f @readsFiles > $joiningEndPairsOrig";
+runCommandAndExitIfBad ($cmd);
+
+$minKMerLenMinus1 = $minKMerLen - 1;
+$joiningEndPairs = $joiningEndPairsOrig . ".$minKMerLenMinus1";
+$cmd = "ln -s $joiningEndPairsOrig $joiningEndPairs";
+runCommandAndExitIfBad ($cmd);
+
+$totInputSize = getReadFileSize (@readsForKUnitigsFiles);
+$readPrefix = &getReadPrefix ($joiningEndPairs);
 $joiningEndPairNamesFile = "joinedEndPairs.txt";
+unlink ($joiningEndPairNamesFile);
 
 &runMainLoop;
 
@@ -20,34 +35,35 @@ sub runMainLoop
     my ($k, $suffix, $cmd, $directoryPassed);
     my ($fn1, $fn2);
     my ($localCode, $tempLine);
-    my ($outFn, $sz, $sz2, $totInputSize, $minContinuation);
+    my ($outFn, $sz, $sz2, $minContinuation);
 
     $directoryPassed=0; 
-    $minKMerLenMinus1 = $minKMerLen - 1;
-    $joiningEndPairs = $joiningEndPairsOrig . ".$minKMerLenMinus1";
-    $cmd = "ln -s $joiningEndPairsOrig $joiningEndPairs";
-    runCommandAndExitIfBad ($cmd);
-
     # Here's the main loop (k-mer values going up)
     for ($k = $minKMerLen; $k<=$maxKMerLen; ++$k) {
 	$suffix = $localReadsFile . "_" . $k . "_" . $kUnitigContinuationNumber;
 	$tempKUnitigsFile = "k_unitigs_${suffix}.fa";
-	if (($k == $minKMerLen) || (($k == $minKMerLen+1) && $multipleJoinRun)) {
-	    $totInputSize = getReadFileSize (@readsFiles); }
 #	$minContinuation = int ($k/2);
 	$minContinuation = $k-1;
-	if (($k == $minKMerLen) && ($inputKUnitigFile)) {
-	    $cmd = "ln -s $inputKUnitigFile $tempKUnitigsFile"; }
-	else {
-	    $cmd = "$exeDir/create_k_unitigs_large_k2 -c $minContinuation -t $numThreads -m $k -n $totInputSize -l $k @readsFiles fauxReads.fasta fauxReads.fasta  |  grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > $tempKUnitigsFile"; }
+	if (-e $tempKUnitigsFile) {
+	    goto afterKUnitigCreation; }
+	if ($dirForKUnitigs =~ /\S/) {
+	    $tfile = "$dirForKUnitigs/$tempKUnitigsFile";
+	    if ((-e $tfile) && (-s $tfile > 0)) {
+		$cmd = "ln -s $tfile $tempKUnitigsFile";
+		runCommandAndExitIfBad ($cmd);
+		goto afterKUnitigCreation; }
+	}
+	$cmd = "$exeDir/create_k_unitigs_large_k2 -c $minContinuation -t $numThreads -m $k -n $totInputSize -l $k @readsForKUnitigsFiles  |  grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > $tempKUnitigsFile";
 	if (runCommandAndReturnIfBad ($cmd)) {
 	    last; }
+
+      afterKUnitigCreation:
 	$cmd = "\\rm -rf out.$suffix"; system ($cmd);
 	$cmd = "\\rm -rf work_$suffix"; system ($cmd);
 
-	$tempFilename = "meanAndStdevByPrefix.sj.txt";
+	$tempFilename = "meanAndStdevByPrefix.${readPrefix}.txt";
 	if (! -e $tempFilename) {
-	    $cmd = "echo sj $meanForFauxInserts $stdevForFauxInserts > $tempFilename"; 
+	    $cmd = "echo $readPrefix $meanForFauxInserts $stdevForFauxInserts > $tempFilename"; 
 	    runCommandAndExitIfBad ($cmd);
 	}
 
@@ -55,13 +71,11 @@ sub runMainLoop
 	$inputEndPairs = $joiningEndPairsOrig . ".$kMinus1";
 	$outputEndPairs = $joiningEndPairsOrig . ".$k";
 
-#	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -num-stdevs-allowed $numStdevsAllowed -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
-	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -num-stdevs-allowed $numStdevsAllowed -closegaps -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -join-aggressive $joinAggressive -maxnodes $maxNodes -mkudisr 0 --stopAfter joinKUnitigs work_${suffix} $inputEndPairs 1>>out.$suffix 2>>out.$suffix";
+#	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file $tempFilename -num-stdevs-allowed $numStdevsAllowed -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
+	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file $tempFilename -num-stdevs-allowed $numStdevsAllowed -closegaps -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -join-aggressive $joinAggressive -maxnodes $maxNodes -mkudisr 0 --stopAfter joinKUnitigs work_${suffix} $inputEndPairs 1>>out.$suffix 2>>out.$suffix";
 	if (runCommandAndReturnIfBad ($cmd)) {
 	    last; }
-	# Now looking for the report line from joinKUnitigs indicating what happened with the
-	# faux mate pair (joined, missing nodes, too many nodes, etc.)
-	
+
 	$readPositionFile = "work_$suffix/readPositionsInSuperReads";
 	$readNamesForNextPassFile = "readNamesForNextPass.${k}.txt";
 	$cmd = "$exeDir/extractJoinableAndNextPassReadsFromJoinKUnitigs.perl $readPositionFile $joiningEndPairNamesFile $readNamesForNextPassFile";
@@ -86,140 +100,8 @@ sub runMainLoop
 		print OUTFILE "$line\n$line2"; }
 	}
 	close (FILE); close (OUTFILE);
-	next;
-	################################## Skipping from here on out; later eliminate
-
-	@fwdReadsForNextPass = ();
-	@goodFwdMates = ();
-	open (FILE,"work_$suffix/readPositionsInSuperReads"); ############ Check this is right
-	if (! $multipleJoinRun) {
-	    $tempLine = <FILE>;
-	    chomp ($tempLine);
-	    ($localCode) = ($tempLine =~ /\s(\S+)\s*$/); # Just has the code now
-	    last; 
-	}
-	else { # We must check what to print and if undef works with a hash
-	    ###### Do @goodFwdMates and @fwdReadsForNextPass include both reads of a mate pair or only one.
-	    while ($tempLine = <FILE>) {
-		chomp ($tempLine);
-		next if ($tempLine =~ /^Num/);
-		@flds = split (" ", $tempLine);
-		$localCode = $flds[-1];
-		if ($localCode eq "A") {
-		    push (@goodFwdMates, $flds[0]); }
-		elsif ($localCode eq "TMN") {
-		    push (@fwdReadsForNextPass, $flds[0]); }
-		elsif ($localCode eq "J") {
-		    push (@goodFwdMates, $flds[0]); }
-		elsif ($localCode eq "MS") { }
-		elsif ($localCode eq "SU") { } ############ Must be changed to check for placement
-	    }
-	}
-
-	close(FILE);
-
-	# Initial check to see if the faux mates were joinable
-        $lineForMatchHold="";
-        open(FILE,"work_$suffix/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt");
-	if (! $multipleJoinRun) {
-	    while ($line = <FILE>) {
-		chomp ($line);
-		@flds = split (" ", $line);
-		($val) = ($flds[0] =~ /^..(\d+)/);
-		$val = int ($val/2);
-		$lineForMatch = "$val $flds[1]";
-		if ($lineForMatch eq $lineForMatchHold) {
-		    $directoryPassed = 1;
-		}
-		$lineForMatchHold = $lineForMatch;
-	    }
-	}
-	else {
-	    undef %indexExists;
-	    @goodJoins = ();
-	    while ($line = <FILE>) {
-		chomp ($line);
-		@flds = split (" ", $line);
-		($prefix, $val) = ($flds[0] =~ /^(..)(\d+)/);
-		$val = int ($val/2);
-		$lineForMatch = "$val $flds[1]";
-		if ($indexExists{$lineForMatch}) {
-		    $val2 = 2 * $val;
-		    push (@goodJoins, "${prefix}$val2");
-		    ++$val2;
-		    push (@goodJoins, "${prefix}$val2"); }
-		++$indexExists{$lineForMatch};
-	    }
-	}
-        close(FILE);
-
-	if (! $multipleJoinRun) {
-	    if ($localCode eq "SU"){ $directoryPassed = 0; next; } ###### Must be changed
-	    elsif ($directoryPassed == 1) { last; }
-	    elsif ($localCode eq "A" || $localCode eq "TMN") { next; }
-	    elsif ($localCode eq "MS") { last; }
-	    else { last; }
-	}
-	else {
-	    $passingReadsFile = "passingReadsFile.txt";
-	    open (FILE, ">>$passingReadsFile");
-	    for (@goodFwdMates) {
-		$read = $_;
-		print FILE "$read\n";
-		$mateRead = &getMateFromReadName ($read);
-		print FILE "$mateRead\n"; }
-	    close (FILE);
-	    $readsForNextPassFile = "readsForNextPass.txt";
-	    open (FILE, ">$readsForNextPassFile");
-	    undef %readIsNeededForNextPass;
-	    for (@fwdReadsForNextPass) {
-		$read = $_;
-		print FILE "$read\n";
-		$readIsNeededForNextPass{$read} = 1;
-		$mateRead = &getMateFromReadName ($read);
-		print FILE "$mateRead\n";
-		$readIsNeededForNextPass{$mateRead} = 1; }
-	    close (FILE);
-	    $sz = -s $readsForNextPassFile;
-	    if ($sz == 0) {
-		unlink $readsForNextPassFile;
-		last; }
-	    else {
-		open (FILE, $joiningEndPairs);
-		$newJoiningEndPairs = $joiningEndPairsOrig . ".$k";
-		open (OUTFILE, ">$newJoiningEndPairs");
-		@readGroupsNeededForNextPass = ();
-		while ($line = <FILE>) {
-		    chomp ($line);
-		    @flds = split (" ", $line);
-		    ($readName) = ($flds[0] =~ /^.(.+)$/);
-		    if ($readIsNeededForNextPass{$readName}) {
-			$on = 1;
-			if ($readName =~ /[02468]$/) {
-			    ($tempFld) = ($readName =~ /^..(.+)$/);
-			    $tempFld /= 2;
-			    push (@readGroupsNeededForNextPass, $tempFld); }
-		    }
-		    else {
-			$on = 0; }
-		    print OUTFILE "$line\n" if ($on);
-		    $line = <FILE>;
-		    print OUTFILE $line if ($on); }
-		close (FILE); close (OUTFILE);
-		$joiningEndPairs = $newJoiningEndPairs;
-	    }
-	    if ($k == $minKMerLen) {
-		$origReadFileHold = $readsFiles[0] . "Hold";
-		move ($readsFiles[0], $origReadFileHold);
-		$spclCmd = "grep -A 1 -P \" \(" . $readGroupsNeededForNextPass[0];
-		for ($l=1; $l<=$readGroupsNeededForNextPass; ++$l) {
-		    $spclCmd .= ("|" . $readGroupsNeededForNextPass[$l]); }
-		$spclCmd .= "\) \" $origReadFileHold | grep -v -P \"^-\" > $readsFiles[0]";
-		system ($spclCmd); }
-	} # Ends section if it is a multiple-join run
     }
     return;
-    ##################### Nothing done after here; should be taken out later
     
     $passingKMerFile = "passingKMer.txt";
     open (FILE, ">$passingKMerFile");
@@ -250,19 +132,6 @@ sub runMainLoop
 	}
 	close (FILE);
     }
-}
-
-sub getMateFromReadName
-{
-    my ($readName) = @_;
-    my ($prefix, $last, $mateName);
-    ($prefix, $last) = ($readName =~ /^(.+)(.)$/);
-    if ($last % 2 == 0) {
-	++$last; }
-    else {
-	--$last; }
-    $mateName = $prefix . $last;
-    return ($mateName);
 }
 
 sub getReadFileSize
@@ -357,13 +226,13 @@ sub processArgs
     $joinAggressive = 1;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
-	if ($arg eq "--input-kunitig-file") {
-	    ++$i;
-	    $inputKUnitigFile = $ARGV[$i];
-	    next; }
 	if ($arg eq "--mean-for-faux-inserts") {
 	    ++$i;
 	    $meanForFauxInserts = $ARGV[$i];
+	    next; }
+	if (($arg eq "-t") || ($arg eq "--num-threads")) {
+	    ++$i;
+	    $numThreads = $ARGV[$i];
 	    next; }
 	if ($arg eq "--stdev-for-faux-inserts") {
 	    ++$i;
@@ -388,6 +257,15 @@ sub processArgs
 	if ($arg eq "--reads-file") {
 	    ++$i;
 	    push (@readsFiles, $ARGV[$i]);
+	    next; }
+	if ($arg eq "--reads-for-kunitigs-file") {
+	    ++$i;
+	    push (@readsForKUnitigsFiles, $ARGV[$i]);
+	    next; }
+	if ($arg eq "--dir-for-kunitigs") {
+	    ++$i;
+	    $dirForKUnitigs = $ARGV[$i];
+	    $dirForKUnitigs = returnAbsolutePath ($dirForKUnitigs);
 	    next; }
 	if ($arg eq "--kunitig-continuation-number") {
 	    ++$i;
@@ -432,5 +310,27 @@ sub determineIfMultipleJoinsAreRun
 	return (1); }
     else {
 	return (0); }
+}
+
+sub getReadPrefix
+{
+    my ($inputFile) = @_;
+    my ($tempLine, $prefix);
+
+    open (FILE, $inputFile);
+    $tempLine = <FILE>;
+    close (FILE);
+    ($prefix) = ($tempLine =~ /^.(..)/); # The first skips the '>' at the beginning of the line
+    return ($prefix);
+}
+
+sub returnAbsolutePath
+{
+    my ($file) = @_;
+    if (! $cwd) {
+	$cwd = cwd; }
+    if ($file !~ /^\//) {
+        $file = "$cwd/$file"; }
+    return ($file);
 }
 
