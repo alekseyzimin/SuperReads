@@ -25,7 +25,7 @@ runCommandAndExitIfBad ($cmd);
 
 $totInputSize = getReadFileSize (@readsForKUnitigsFiles);
 $readPrefix = &getReadPrefix ($joiningEndPairs);
-$joiningEndPairNamesFile = "joinedEndPairs.txt";
+$joiningEndPairNamesFile = "readsToExclude.txt";
 unlink ($joiningEndPairNamesFile);
 
 &runMainLoop;
@@ -89,6 +89,7 @@ sub runMainLoop
 	    chomp ($line);
 	    $readsForNextPass{$line} = 1; }
 	close (FILE);
+	unlink ($readNamesForNextPassFile);
 
 	open (FILE, $inputEndPairs);
 	open (OUTFILE, ">$outputEndPairs");
@@ -100,6 +101,8 @@ sub runMainLoop
 		print OUTFILE "$line\n$line2"; }
 	}
 	close (FILE); close (OUTFILE);
+	if (! $keepKUnitigs) {
+	    unlink ($tempKUnitigsFile); }
     }
     return;
     
@@ -250,6 +253,8 @@ sub processArgs
 	    ++$i;
 	    $minKMerLen = $ARGV[$i];
 	    next; }
+	if ($arg eq "--keep-kunitigs") {
+	    $keepKUnitigs = 1; }
 	if ($arg eq "--max-kmer-len") {
 	    ++$i;
 	    $maxKMerLen = $ARGV[$i];

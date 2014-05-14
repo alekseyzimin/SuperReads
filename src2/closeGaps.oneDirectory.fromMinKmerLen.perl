@@ -11,7 +11,8 @@ if ($dirToChangeTo) {
 
 $multipleJoinRun = &determineIfMultipleJoinsAreRun;
 $joiningEndPairsOrig = $joiningEndPairs;
-$joiningEndPairNamesFile = "joinedEndPairs.txt";
+# $joiningEndPairNamesFile = "joinedEndPairs.txt";
+$joiningEndPairNamesFile = "passingReadsFile.txt";
 
 &runMainLoop;
 
