@@ -22,6 +22,8 @@
 
 #include <src/rename_filter_fastq_cmdline.hpp>
 
+namespace err = jellyfish::err;
+
 static args_t args;
 
 
@@ -64,19 +66,19 @@ int main(int argc, char *argv[])
   bool unmated = (path1 == path2) || path2.empty();
   std::ifstream infile1(path1);
   if(!infile1.good())
-    die << "Error while opening sequence file '" << path1 << "'";
+    err::die(err::msg() << "Error while opening sequence file '" << path1 << "'");
   std::ifstream infile2;
   if(!unmated) {
     infile2.open(path2);
     if(!infile2.good())
-      die << "Error while opening sequence file '" << path2 << "'";
+      err::die(err::msg() << "Error while opening sequence file '" << path2 << "'");
   }
 
   std::ofstream outfile;
   if(args.output_given) {
     outfile.open(args.output_arg);
     if(!outfile.good())
-      die << "Error while opening output file '" << args.output_arg << "'";
+      err::die(err::msg() << "Error while opening output file '" << args.output_arg << "'");
   }
   std::ostream& out = args.output_given ? outfile : std::cout;
 
@@ -86,11 +88,11 @@ int main(int argc, char *argv[])
     const char* res = parse_write(infile1, out, read_number++);
     if(res == error_eof) break;
     if(res)
-      die << "Invalid fastq format (" << res << ") in file '" << path1 << "' around position " << infile1.tellg();
+      err::die(err::msg() << "Invalid fastq format (" << res << ") in file '" << path1 << "' around position " << infile1.tellg());
     if(!unmated) {
       res = parse_write(infile2, out, read_number++);
       if(res)
-        die << "Invalid fastq format (" << res << ") in file '" << path2 << "' around position " << infile2.tellg();
+        err::die(err::msg() << "Invalid fastq format (" << res << ") in file '" << path2 << "' around position " << infile2.tellg());
     } else {
       output_N_read(out, read_number++);
     }

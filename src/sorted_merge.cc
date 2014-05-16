@@ -29,6 +29,8 @@
 #include <jellyfish/err.hpp>
 #include <src/sorted_merge_cmdline.hpp>
 
+namespace err = jellyfish::err;
+
 /** Like 'sort -m', but more limited and much faster. Supports sorting
  * only according to 1 key. Support for numerical and string sorting.
  */
@@ -82,7 +84,7 @@ bool parse_line(heap_elt<T> *elt, uint32_t col) {
   for(uint32_t i = 1; key && i < col; ++i)
     key = strtok_r(0, " \t", &saveptr);
   if(!key)
-    die << "Invalid file '" << elt->file_path << "', invalid input line: " << elt->line;
+    err::die(err::msg() << "Invalid file '" << elt->file_path << "', invalid input line: " << elt->line);
   assert(key != 0);
   assert(strlen(key) > 0);
   elt->key = conversion<T>(key);
@@ -116,7 +118,7 @@ void merge_files(std::ofstream &os, uint32_t col, It begin, It end) {
   for(It it = begin; it != end; ++it) {
     heap_elt<T>* new_elt = new heap_elt<T>(*it);
     if(!new_elt->is.good())
-      die << "Failed to open input file '" << *it << "'" << jellyfish::err::no;
+      err::die(err::msg() << "Failed to open input file '" << *it << "': " << err::no);
     if(parse_line(new_elt, col))
       elts.push_back(new_elt);
     else
@@ -134,7 +136,7 @@ int main(int argc, char *argv[]) {
   std::ofstream out(args.output_arg);
 
   if(!out.good())
-    die << "Failed to open output file '" << args.output_arg << "'" << jellyfish::err::no;
+    err::die(err::msg() << "Failed to open output file '" << args.output_arg << "': " << err::no);
   if(args.numerical_flag)
     merge_files<long, cmdline_parse::input_arg_it>
       (out, args.key_arg, args.input_arg.begin(), args.input_arg.end());

@@ -85,10 +85,10 @@ int main (int argc, char **argv)
   ExpBuffer<char *> flds;
   std::ifstream input(args.input_arg);
   if(!input.good())
-    die << "Can't open input file '" << args.input_arg << "'" << jellyfish::err::no;
+    err::die(err::msg() << "Can't open input file '" << args.input_arg << "'" << err::no);
   std::ofstream output(args.output_arg);
   if(!output.good())
-    die << "Can't open output file '" << args.output_arg << "'" << jellyfish::err::no;
+    err::die(err::msg() << "Can't open output file '" << args.output_arg << "'" << err::no);
 
   encode_fn encode;
   decode_fn decode;
@@ -109,7 +109,7 @@ int main (int argc, char **argv)
 
   cptr = &lines[(line = !line)];
   if(!getline (input, *cptr))
-    die << "Invalid input: empty file";
+    err::die("Invalid input: empty file");
   getFldsFromLine (*cptr, flds);
   if(filter->insert(flds[1])) {
     const char *nstr = encode(flds[1]);

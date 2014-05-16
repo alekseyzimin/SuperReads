@@ -50,6 +50,7 @@
 #include <jellyfish/thread_exec.hpp>
 #include <src2/findMatchesBetweenKUnitigsAndReads_cmdline.hpp>
 
+namespace err = jellyfish::err;
 using jellyfish::thread_exec;
 
 // Pack this struct to save 2 bytes per k-mer.
@@ -135,8 +136,8 @@ public:
       //      << " for a supported max of " << ((1 << 15) - 1) << "\n";
       kUnitigLengths[kUnitigNumber] = kUnitigLength;
       if(fields_read != 2)
-        die << "Fasta header of file does not match pattern '>UnitigiNumber length:UnitigLength'\n"
-            << unitig_stream->header << "\n";
+        err::die(err::msg() << "Fasta header of file does not match pattern '>UnitigiNumber length:UnitigLength'\n"
+            << unitig_stream->header);
       if(unitig_stream->sequence.size() < (size_t)mer_dna::k())
         continue;
       char* cptr = unitig_stream->sequence;
@@ -251,11 +252,11 @@ int readLastKUnitigNumber(const char* path) {
      int ret;
      FILE* infile = fopen (path, "r");
      if(!infile)
-	  die << "Failed to open file '" << path << "'" << jellyfish::err::no;
+       err::die(err::msg() << "Failed to open file '" << path << "'" << err::no);
      int fields_read = fscanf (infile, "%d", &ret);
      if(fields_read != 1)
-	  die << "Failed to read the last k-unitig number from file '"
-	      << path << "'" << jellyfish::err::no;
+       err::die(err::msg() << "Failed to read the last k-unitig number from file '"
+           << path << "'" << err::no);
      fclose (infile);
      return ret;
 }
@@ -267,7 +268,7 @@ int main(int argc, char *argv[])
      longOutput = args.long_flag;
 
      if(args.mer_arg == 0 || args.mer_arg > 10000)
-       die << "Mer_len '" << args.mer_arg << "' is out of range";
+       err::die (err::msg() << "Mer_len '" << args.mer_arg << "' is out of range");
      mer_dna::k(args.mer_arg);
 
      // Open output file and make sure it is deleted/closed on exit
@@ -277,7 +278,7 @@ int main(int argc, char *argv[])
      else
        out.reset(new std::ofstream(args.output_arg));
      if(!out->good())
-       die << "Failed to open output file '" << args.output_arg << "'";
+       err::die(err::msg() << "Failed to open output file '" << args.output_arg << "'");
 
 
      // Find out the last kUnitig number

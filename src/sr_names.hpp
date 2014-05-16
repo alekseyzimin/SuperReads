@@ -24,6 +24,8 @@
 #include <jellyfish/err.hpp>
 #include <src/fibonacci_coding.hpp>
 
+namespace err = jellyfish::err;
+
 // Return 1 plus the index of the first 1-bit in x.
 #ifdef __builtin_ffsl
 int ffsl(uint64_t x) { return __builtin_ffsl(x); }
@@ -55,7 +57,7 @@ public:
     size_t len = strlen(str) + 1;
     char *res = (char*)malloc(len);
     if(!res)
-      eraise(std::runtime_error) << "Failed to allocate " << len << " bytes to copy sr_name";
+      throw std::runtime_error(err::msg() << "Failed to allocate " << len << " bytes to copy sr_name");
     strcpy(res, str);
     return res;
   }
@@ -217,7 +219,7 @@ public:
     uint32_t  chunk_left = 64;
 
     if(!res)
-      eraise(std::runtime_error) << "Failed to allocate " << res_len << " bytes for sr_name";
+      throw std::runtime_error(err::msg() << "Failed to allocate " << res_len << " bytes for sr_name");
     
     for(Iterator it = begin; it != end; ++it) {
       uint64_t append = 1;
