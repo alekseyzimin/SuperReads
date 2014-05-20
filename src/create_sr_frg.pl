@@ -33,7 +33,7 @@ while($line=<STDIN>){
 	    if($l<$max_len){
 		print "$rn\n$seq\n";
 	    }else{
-		$max_len_local=int(($l-10000)/$l*$max_len);
+		$max_len_local=int(($l-int($max_len/5))/$l*$max_len);
 		$offset=int(($max_len_local-1)/2);
 	    	for($i=0;$i<$l;$i+=$offset){
 			print "$rn.$max_len_local.$i\n",substr($seq,$i,$max_len_local),"\n";
@@ -62,7 +62,7 @@ $l=length($seq);
             if($l<$max_len){
                 print "$rn\n$seq\n";
             }else{
-                $max_len_local=int(($l-10000)/$l*$max_len);
+                $max_len_local=int(($l-int($max_len/5))/$l*$max_len);
                 $offset=int(($max_len_local-1)/2);
                 while(1){
                     for($i=0;$i<$l;$i+=$offset){
