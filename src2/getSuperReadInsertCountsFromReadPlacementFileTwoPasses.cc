@@ -127,7 +127,7 @@ int main (int argc, char **argv)
 
   std::ofstream output(args.output_arg);
   if(!output.good())
-    die << "Can't open output file '" << args.output_arg << "'" << jellyfish::err::no;
+    die(err::msg() << "Can't open output file '" << args.output_arg << "':" << err::no);
 
   if(args.debug_flag)
     std::cerr << "First pass" << std::endl;

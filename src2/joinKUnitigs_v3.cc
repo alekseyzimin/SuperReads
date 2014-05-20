@@ -55,6 +55,7 @@
 #include <src2/joinKUnitigs_v3_cmdline.hpp>
 #include <rb_tree.hpp>
 
+namespace err = jellyfish::err;
 using jellyfish::thread_exec;
 
 #define FRONT_END 1
@@ -298,6 +299,8 @@ class KUnitigsJoinerThread {
      int                                              numJoinableUnresolvedAtEnd;
      int                                              numUnjoinableMissingSequence;
      int                                              numUnjoinableOverMaxNodes;
+     int                                              joinCode;
+     const char                                      *joinCodeNames[10] = { "NJ", "SU", "J", "A", "MS", "TMN" };
   //     int                                             *treeReinitList;
      int                                              maxPathNumUsed;
      bool                                             tooManyPossibleInsertLengths;
@@ -366,7 +369,7 @@ public:
 	  multiplexer(&out, 3 * nb_threads, 4096)
 	  { 
 	       if(!out.good())
-		    eraise(std::runtime_error) << "Failed to open '" << output_file << "'" << jellyfish::err::no;
+                   throw std::runtime_error(err::msg() << "Failed to open '" << output_file << "'" << err::no);
 	  }
 
      virtual void start(int thid) {
@@ -488,13 +491,13 @@ int main (int argc, char **argv)
      // format
      infile = Fopen (args.unitig_lengths_file_arg, "r");
      if (! fgets (line, 2000, infile))
-	  die << "File '" << args.unitig_lengths_file_arg << "' is of length 0 or can't be read";
+       err::die(err::msg() << "File '" << args.unitig_lengths_file_arg << "' is of length 0 or can't be read");
      numFlds = getFldsFromLine (line, flds);
      rewind (infile);
      if (numFlds == 1) {
 	  for (int i = 0, *iptr = unitigLengths + firstUnitigNum; i < numUnitigs; i++, iptr++) {
 	       if(fscanf (infile, "%d\n", iptr) != 1)
-		    die << "Failed to parse " << i << "th integer in: " << (unitigLengths + firstUnitigNum);
+                   err::die(err::msg() << "Failed to parse " << i << "th integer in: " << (unitigLengths + firstUnitigNum));
 	  }
      }
      else {
@@ -720,6 +723,7 @@ int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& o
 	      (readNum % 2 == 0)) {
 	       if(rdPrefixHold[0] != '\0') {
 		    approxNumPaths = 0;
+		    joinCode = 0;
 		    getSuperReadsForInsert(m_out);
 		    m_out << jflib::endr;
 		    // Set up and load the new data
@@ -731,8 +735,9 @@ int KUnitigsJoinerThread::processKUnitigVsReadMatches (overlap_parser::stream& o
 	  updateMatchRecords(readNum, flds);
 	  readNumHold = readNum;
      }
-     if(!evenReadMatchStructs.empty() || !oddReadMatchStructs.empty())
-	  getSuperReadsForInsert(m_out);
+     if(!evenReadMatchStructs.empty() || !oddReadMatchStructs.empty()) {
+	  joinCode = 0;
+	  getSuperReadsForInsert(m_out); }
      return (0);
 }
      
@@ -910,8 +915,7 @@ int KUnitigsJoinerThread::joinKUnitigsFromMates (int insertLengthMean, int inser
 //	  if (forward_path_unitigs.size() > MAX_NODES_ALLOWED) {
 	  if (numUnitigsPushed > args.max_nodes_allowed_arg) {
 	       ++numUnjoinableOverMaxNodes;
-	       if (args.output_join_result_for_each_join_flag)
-		    fprintf (stderr, "%s%lld unjoinable over max nodes\n", rdPrefixHold, readNumHold-1);
+	       joinCode = 5;
 //          if (treeArr[unitig2].size() > MAX_NODES_ALLOWED) {
 	       forcedStop = 1;
 	       break; }
@@ -1303,8 +1307,9 @@ void KUnitigsJoinerThread::completePathPrint (const T& ptr)
      for (i=0; i<numUnitigPathPrintRecsOnPath; i++)
 	  fprintf (stderr, "uni = %d, offset = %d, ori = %c, beginOffset = %d, endOffset = %d, numOvlsIn = %d, numOvlsOut = %d\n", augmentedUnitigPathPrintData[i].unitig1, augmentedUnitigPathPrintData[i].frontEdgeOffset, augmentedUnitigPathPrintData[i].ori, augmentedUnitigPathPrintData[i].beginOffset, augmentedUnitigPathPrintData[i].endOffset, augmentedUnitigPathPrintData[i].numOverlapsIn, augmentedUnitigPathPrintData[i].numOverlapsOut);
 #endif
-     if (approxNumPaths == 1)
-	  generateSuperReadPlacementLinesForJoinedMates();
+     if (approxNumPaths == 1) {
+	  joinCode = 2;
+	  generateSuperReadPlacementLinesForJoinedMates(); }
 #if 0
 //     printf ("final offset = %d, arraySize = %d\n", finalOffset, dataArr2.arraySize);
      fprintf (stderr, "final offset = %d\n", finalOffset);
@@ -1323,14 +1328,16 @@ void KUnitigsJoinerThread::generateSuperReadPlacementLinesForJoinedMates ()
      isReversed = setSuperReadNameFromAugmentedPath ();
      sprintf (outputString,"%s%lld %s ", rdPrefixHold, readNumHold-1, (char*)superReadName);
      if (! isReversed)
-	  sprintf_append (outputString,"%d F\n", lengthAdjustment1);
+	  sprintf_append (outputString,"%d F ", lengthAdjustment1);
      else
-	  sprintf_append (outputString,"%d R\n", superReadLength - lengthAdjustment1);
+	  sprintf_append (outputString,"%d R ", superReadLength - lengthAdjustment1);
+     sprintf_append (outputString, "%s\n", joinCodeNames[joinCode]);
      sprintf_append (outputString,"%s%lld %s ", rdPrefixHold, readNumHold, (char*)superReadName);
      if (! isReversed)
-	  sprintf_append (outputString,"%d R\n", superReadLength - lengthAdjustment2);
+	  sprintf_append (outputString,"%d R ", superReadLength - lengthAdjustment2);
      else
-	  sprintf_append (outputString,"%d F\n", lengthAdjustment2);
+	  sprintf_append (outputString,"%d F ", lengthAdjustment2);
+     sprintf_append (outputString, "%s\n", joinCodeNames[joinCode]);
 }
 
 int KUnitigsJoinerThread::setSuperReadNameFromAugmentedPath (void)
@@ -1581,8 +1588,8 @@ void KUnitigsJoinerThread::findSingleReadSuperReads(char *readName, jflib::omstr
 	       offsetOfReadInSuperRead = kUTRMSptr[recNumToUse].kUnitigMatchBegin - kUTRMSptr[recNumToUse].readMatchBegin;
 	  else
 	       offsetOfReadInSuperRead = unitigLengths[kUTRMSptr[recNumToUse].kUnitigNumber] - kUTRMSptr[recNumToUse].kUnitigMatchEnd - kUTRMSptr[recNumToUse].readMatchBegin;
-          m_out << readName << " " << superReadName << " " << offsetOfReadInSuperRead << " F\n";
-          //	  fprintf (outputFile, "%s %s %d %c\n", readName, (char*)superReadName, offsetOfReadInSuperRead, 'F');	  
+	  m_out << readName << " " << superReadName << " " << offsetOfReadInSuperRead << " F " << joinCodeNames[joinCode] << "\n";
+	  //	  fprintf (outputFile, "%s %s %d %c\n", readName, (char*)superReadName, offsetOfReadInSuperRead, 'F');	  
      }
      else { // The k-unitigs are reversed from those reported
 	  for (i=countOfMatchingKUnitigs-1; 1; i--)
@@ -1606,8 +1613,8 @@ void KUnitigsJoinerThread::findSingleReadSuperReads(char *readName, jflib::omstr
 	  else
 	       offsetOfReadInSuperRead = kUTRMSptr[recNumToUse].kUnitigMatchEnd + kUTRMSptr[recNumToUse].readMatchBegin;
 	  // The k-unitigs are reversed from those reported
-          m_out << readName << " " << superReadName << " " << offsetOfReadInSuperRead << " R\n";
-          //	  fprintf (outputFile, "%s %s %d %c\n", readName, (char*)superReadName, offsetOfReadInSuperRead, 'R');
+	  m_out << readName << " " << superReadName << " " << offsetOfReadInSuperRead << " R " << joinCodeNames[joinCode] << "\n";
+	  //	  fprintf (outputFile, "%s %s %d %c\n", readName, (char*)superReadName, offsetOfReadInSuperRead, 'R');
      }
 //     printf ("At 50\n");
 }
@@ -1675,6 +1682,7 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
      mateUnitig1 = evenReadMatchStructs[0].kUnitigNumber;
      mateUnitig2 = oddReadMatchStructs[0].kUnitigNumber;
      if (mateUnitig1 == mateUnitig2) {
+	  joinCode = 1;
 	  sprintf (readNameSpace, "%s%lld", rdPrefixHold, readNumHold-1);
 //	  puts ("Entering findSingleReadSuperReads from 1\n"); fflush (stdout);
 	  findSingleReadSuperReads (readNameSpace, m_out);
@@ -1682,8 +1690,6 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 //	  puts ("Entering findSingleReadSuperReads from 2\n"); fflush (stdout);
 	  findSingleReadSuperReads (readNameSpace, m_out);
 	  ++numPairsInOneUnitig;
-	  if (args.output_join_result_for_each_join_flag)
-	       fprintf (stderr, "%s%lld both reads in same unitig\n", rdPrefixHold, readNumHold-1);
 	  return;
      }
 //     puts ("Got to 2\n"); fflush (stdout);
@@ -1797,8 +1803,7 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	  if (approxNumPaths == 1) {
 	       wasJoined = true;
 	       ++numSimplyJoinable;
-	       if (args.output_join_result_for_each_join_flag)
-		    fprintf (stderr, "%s%lld uniquely joinable\n", rdPrefixHold, readNumHold-1); }
+	       joinCode = 2; }
 	  if (approxNumPaths <= 1)
 	       goto afterSuperRead;
 	  // approxNumPaths > 1, joinable but not uniquely so
@@ -2106,11 +2111,10 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 			 augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath].numOverlapsOut = 0;
 		    augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath].ori = nodeArray[unitigNodeNumbersForPath[numUnitigPathPrintRecsOnPath]].ori;
 	       }
+	       joinCode = 2;
 	       generateSuperReadPlacementLinesForJoinedMates();
 	       approxNumPaths = 1;
 	       ++numJoinableAfterRead1Analysis;
-	       if (args.output_join_result_for_each_join_flag)
-		    fprintf (stderr, "%s%lld disambiguated to begin of insert\n", rdPrefixHold, readNumHold-1);
 	       wasJoined = true;
 #ifdef KILL120102
 	       fprintf (stderr, "We have successfully joined the mates after advancing the k-unitig in the first read!\n");
@@ -2357,10 +2361,15 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 #endif
                if (nodeIntArray.size() > 1) {
 		    lastGoodNodeNumber = localLoopNodeNumber;
-		    ++numJoinableUnresolvedAtEnd;
-		    if (args.output_join_result_for_each_join_flag)
-			 fprintf (stderr, "%s%lld unresolved at end\n", rdPrefixHold, readNumHold-1);
-		    wasDeclaredUnresolvedJoinable = true;
+		    if (args.join_aggressive_arg) {
+			 ++numSimplyJoinable;
+			 joinCode = 2;
+			 wasDeclaredUnresolvedJoinable = false; }
+		    else {
+			 ++numJoinableUnresolvedAtEnd;
+			 joinCode = 3;
+			 wasDeclaredUnresolvedJoinable = true;
+		    }
                     while (! nodeIntArray.empty())
                          nodeIntArray.pop();
                     break; }
@@ -2379,11 +2388,10 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
                          augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath].numOverlapsOut = 0;
                     augmentedUnitigPathPrintData[numUnitigPathPrintRecsOnPath].ori = nodeArray[unitigNodeNumbersForPath[numUnitigPathPrintRecsOnPath]].ori;
                }
+	       joinCode = 2;
                generateSuperReadPlacementLinesForJoinedMates();
                approxNumPaths = 1;
 	       ++numJoinableAfterBothReadAnalysis;
-	       if (args.output_join_result_for_each_join_flag)
-		    fprintf (stderr, "%s%lld disambiguated to end of insert\n", rdPrefixHold, readNumHold-1);
 	       wasJoined = true;
 #ifdef KILL120102
 	       fprintf (stderr, "We have successfully joined the mates!\n");
@@ -2408,12 +2416,10 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	       m_out << outputString;
 	       if (isJoinable && (! wasJoined) && (! wasDeclaredUnresolvedJoinable)) {
 		    ++numJoinableUnresolvedAtEnd;
-		    if (args.output_join_result_for_each_join_flag)
-			 fprintf (stderr, "%s%lld unresolved at end\n", rdPrefixHold, readNumHold-1); }
+		    joinCode = 3; }
 	       else if (successCode == 0) {
 		    ++numUnjoinableMissingSequence;
-		    if (args.output_join_result_for_each_join_flag)
-			 fprintf (stderr, "%s%lld unjoinable missing sequence\n", rdPrefixHold, readNumHold-1); }
+		    joinCode = 4; }
 	       //	       fputs (outputString, outputFile);
 	       return; }
 #ifdef KILL120103
@@ -2426,15 +2432,18 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 		    fprintf (stderr, "tooManyPossibleInsertLengths = true\n");
 #endif
 	       if (tooManyPossibleInsertLengths) {
-		    ++numJoinableUnresolvedAtEnd;
-		    if (args.output_join_result_for_each_join_flag)
-			 fprintf (stderr, "%s%lld unresolved at end\n", rdPrefixHold, readNumHold-1);
-		    wasDeclaredUnresolvedJoinable = true; 
+		    if (args.join_aggressive_arg) {
+			 ++numSimplyJoinable;
+			 joinCode = 2;
+			 wasDeclaredUnresolvedJoinable = false; }
+		    else {
+			 ++numJoinableUnresolvedAtEnd;
+			 joinCode = 3;
+			 wasDeclaredUnresolvedJoinable = true; }
 	       }
 	       else {
 		    ++numUnjoinableMissingSequence; 
-		    if (args.output_join_result_for_each_join_flag)
-			 fprintf (stderr, "%s%lld unjoinable missing sequence\n", rdPrefixHold, readNumHold-1); }
+		    joinCode = 4; }
 	       goto outputTheReadsIndividually; }
 	  // Now we move up the unitig on read1 and try again
 	  
@@ -2446,11 +2455,11 @@ void KUnitigsJoinerThread::getSuperReadsForInsert (jflib::omstream& m_out)
 	  findSingleReadSuperReads(readNameSpace, m_out);
 	  if (isJoinable && (! wasJoined) && (! wasDeclaredUnresolvedJoinable)) {
 	       ++numJoinableUnresolvedAtEnd;
-	       if (args.output_join_result_for_each_join_flag) {
-//		    fprintf (stderr, "Approx num paths = %d ; ", approxNumPaths);
-		    fprintf (stderr, "%s%lld unresolved at end\n", rdPrefixHold, readNumHold-1); } }
-
+	       joinCode = 3;
 	  }
+
+     }
+
     return;
 }
 

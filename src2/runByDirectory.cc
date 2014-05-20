@@ -20,6 +20,8 @@
 #include <jellyfish/err.hpp>
 #include <src2/runByDirectory_cmdline.hpp>
 
+namespace err = jellyfish::err;
+
 struct arguments {
   int mean;
   int stdev;
@@ -38,18 +40,18 @@ struct arguments {
 FILE* fopen_throw(const char* path, const char* mode, const char* msg = "") {
   FILE* res = fopen(path, mode);
   if(res == 0)
-    eraise(std::runtime_error) << msg
-                               << "\nfopen(" << path << ", " << mode << ") failed: "
-                               << jellyfish::err::no;
+    throw std::runtime_error(err::msg() << msg
+                             << "\nfopen(" << path << ", " << mode << ") failed: "
+                             << err::no);
   return res;
 }
 
 void mkdir_throw(const char* path, mode_t mode, const char* msg = "") {
   int res = mkdir(path, mode);
   if(res == -1)
-    eraise(std::runtime_error) << msg
-                               << "\nmkdir(" << path << ") failed: "
-                               << jellyfish::err::no;
+    throw std::runtime_error(err::msg() << msg
+                             << "\nmkdir(" << path << ") failed: "
+                             << ::err::no);
 }
 
 void system_throw(const char* command, const char* msg = "") {
@@ -57,25 +59,25 @@ void system_throw(const char* command, const char* msg = "") {
 
   switch(res) {
   case 0: return;
-  case -1: eraise(std::runtime_error) << msg
-                                      << "\nsystem(" << command << ") failed: "
-                                      << jellyfish::err::no;
+  case -1: throw std::runtime_error(err::msg() << msg
+                                    << "\nsystem(" << command << ") failed: "
+                                    << err::no);
   default:
     break;
   }
   // If get there, system call succeeded but the command itself
   // failed.
   if(WIFEXITED(res))
-    eraise(std::runtime_error) << msg
-                               << "\ncommand '" << command << "' returned error code "
-                               << WEXITSTATUS(res);
+    throw std::runtime_error(err::msg() << msg
+                             << "\ncommand '" << command << "' returned error code "
+                             << WEXITSTATUS(res));
   if(WIFSIGNALED(res))
-    eraise(std::runtime_error) << msg
-                               << "\ncommand '" << command << "' killed by signal "
-                               << strsignal(WTERMSIG(res));
-  eraise(std::runtime_error) << msg
-                             << "\ncommand '" << command 
-                             << "' terminated for an unknown reason";
+    throw std::runtime_error(err::msg() << msg
+                             << "\ncommand '" << command << "' killed by signal "
+                             << strsignal(WTERMSIG(res)));
+  throw std::runtime_error(err::msg() << msg
+                           << "\ncommand '" << command 
+                           << "' terminated for an unknown reason");
 }
 
 void flock_throw(FILE* f, int op) {
@@ -84,7 +86,7 @@ void flock_throw(FILE* f, int op) {
 	  if(res == 0)
 	       return;
 	  if(res != EINTR)
-	       eraise(std::runtime_error) << "Failed to lock file: " << strerror(errno);
+            throw std::runtime_error(err::msg() << "Failed to lock file: " << err::no);
      }
 }
 
@@ -139,20 +141,19 @@ int main (int argc, char **argv)
 
   resultFile = fopen(args.output_arg, "w");
   if(!resultFile)
-       die << "Can't open output file '" << args.output_arg << "'"
-	   << jellyfish::err::no;
+    err::die(err::msg() << "Can't open output file '" << args.output_arg << "': " << err::no);
   close_on_exec(resultFile);
 
   errFile = fopen(args.error_out_arg, "a");
   if(!errFile)
-       die << "Can't open error file\n";
+    err::die(err::msg() << "Can't open error file: " << err::no);
   close_on_exec(errFile);
 
   contigEndSeqFile = fopen(args.contig_end_sequence_file_arg, "r");
   close_on_exec(contigEndSeqFile);
   if(!contigEndSeqFile)
-    die << "Can't open '" << args.contig_end_sequence_file_arg << "'"
-        << jellyfish::err::no;
+    err::die(err::msg() << "Can't open '" << args.contig_end_sequence_file_arg << "': "
+        << jellyfish::err::no);
 
   charb fn(200), line(100), tempLine(1000);
 
@@ -170,8 +171,7 @@ int main (int argc, char **argv)
   // Here we make the output directory
   int res = mkdir(args.output_dir_arg, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
   if(res == -1 && errno != EEXIST)
-    die << "Can't create output directory '" << args.output_dir_arg
-        << jellyfish::err::no;
+    err::die(err::msg() << "Can't create output directory '" << args.output_dir_arg << err::no);
 
 
   meanAndStdevFile = NULL;
@@ -179,8 +179,8 @@ int main (int argc, char **argv)
     meanAndStdevFile = fopen(args.mean_and_stdev_file_arg, "r");
     close_on_exec(meanAndStdevFile);
     if(!meanAndStdevFile)
-      die << "Can't open file '" << args.mean_and_stdev_file_arg << "'"
-          << jellyfish::err::no;
+      err::die(err::msg() << "Can't open file '" << args.mean_and_stdev_file_arg << "'"
+          << err::no);
   }
 
   int		status	  = 0;
@@ -248,7 +248,7 @@ int main (int argc, char **argv)
     fflush(stdout);
     switch(fork()) {
     case -1:
-      die << "Fork failed" << jellyfish::err::no;
+      err::die(err::msg() << "Fork failed" << err::no);
     case 0:
 	 analyzeGap(threadArgs, resultFile, errFile);
       exit(0);
@@ -347,7 +347,7 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
        sprintf (tempFileName, "%s/passingReadsFile.txt", outDirName);
        infile = fopen_throw(tempFileName, "r", "Reading list of passing reads");
        if (!infile)
-	    eraise(std::runtime_error) << "Can't read the file containing the passing reads";
+         throw std::runtime_error("Can't read the file containing the passing reads");
        while (fgets (tempResultString, 100, infile))
 	    strcat (resultString, tempResultString);
        fclose (infile);
@@ -365,15 +365,15 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
 
   infile = fopen_throw(tempFileName, "r", "Reading passing k-mer size");
   if(!infile)
-    eraise(std::runtime_error) << "Can't read passing k-mer value file";
+    throw std::runtime_error("Can't read passing k-mer value file");
   int scanned = fscanf(infile, "%d", &passingKMerValue);
   fclose(infile);
   if(scanned != 1)
-    eraise(std::runtime_error) << "Failed to read passing k-mer size"
-                               << jellyfish::err::no;
+    throw std::runtime_error(err::msg() << "Failed to read passing k-mer size"
+                             << err::no);
 
   if(passingKMerValue < args.min_kmer_len_arg)
-       eraise(std::runtime_error) << "Gap closing failed";
+    throw std::runtime_error("Gap closing failed");
 
   charb superReadFastaString(1000);
   sprintf (tempFileName, "%s/work_localReadsFile_%d_2/superReadSequences.fasta",

@@ -69,6 +69,8 @@
 #define KMER_LENGTH 31
 #define EST_OVLS_PER_KUNITIG 5
 
+namespace err = jellyfish::err;
+
 using jellyfish::mer_dna;
 class endKUnitigKmerStruct {
 public:
@@ -329,8 +331,7 @@ void reportKUnitigEndMatches (void)
        size_t res = fwrite (overlapDataToSave + written, sizeof (struct overlapDataStruct),
                             numOvlsOutput - written, overlapsFile);
        if(res == 0)
-         eraise(std::runtime_error) << "Failed to write overlaps to file"
-                                    << jellyfish::err::no;
+         throw std::runtime_error(err::msg() << "Failed to write overlaps to file: " << err::no);
        written += res;
      }
      
@@ -433,7 +434,7 @@ int getLargestKUnitigNumber (char *prefix, int numInputFiles)
 	  infile = Fopen (fname, "r");
 	  fseek (infile, fileOffset, SEEK_SET);
 	  if(!fgets (line, infile))
-            die << "Error reading file '" << fname << "'" << jellyfish::err::no;
+            err::die(err::msg() << "Error reading file '" << fname << "'" << err::no);
 	  while (fgets (line, 1000000, infile)) {
 	       if (line[0] != '>')
 		    continue;
@@ -477,11 +478,11 @@ void loadKUnitigSequences (char *prefix, int numInputFiles)
 	       strcpy (fname, prefix);
 	  infile = Fopen (fname, "r");
 	  if(!infile)
-	    die << "Can't open file '" << fname << "'" << jellyfish::err::no;
+	    err::die(err::msg() << "Can't open file '" << fname << "'" << err::no);
 	  
 	  int next_char = fgetc(infile);
 	  if(next_char != '>')
-	    die << "Badly formatted fasta file '" << fname << "'. Missing header";
+	    err::die(err::msg() << "Badly formatted fasta file '" << fname << "'. Missing header");
 
 	  while(fgets (header, infile)) {
 	    kUnitigNumber = atoi (header);

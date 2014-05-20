@@ -58,6 +58,7 @@ else {
 print "";
 $CeleraTerminatorDirectory = returnAbsolutePath ($CeleraTerminatorDirectory);
 $jumpingLibraryReadFile = returnAbsolutePath ($jumpingLibraryReadFile);
+$meanAndStdevFile = returnAbsolutePath ("meanAndStdevByPrefix.sj.txt");
 for ($i=0; $i<=$#readsFiles; $i++) {
     $readsFile = $readsFiles[$i];
     $readsFile = returnAbsolutePath ($readsFile);
@@ -67,20 +68,17 @@ $localReadsFile = "localReadsFile";
 print "outputDirectory = $outputDirectory\n";
 if (! -e $outputDirectory) {
     $cmd = "mkdir $outputDirectory"; runCommandAndExitIfBad($cmd); }
-$reverseComplementedJumpingReadFile = "$outputDirectory/reverseComplemented.jumpingReadFile.fa";
-$reverseComplementedJumpingReadFile = returnAbsolutePath ($reverseComplementedJumpingReadFile);
-$joiningEndPairs = $reverseComplementedJumpingReadFile;
+$joiningEndPairs = $jumpingLibraryReadFile;
 $fishingEndPairs = $joiningEndPairs;
 chdir ($outputDirectory);
-$cmd = "$exeDir/outputMatedReadsAsReverseComplement.perl $jumpingLibraryReadFile > $joiningEndPairs";
-runCommandAndExitIfBad ($cmd);
 
 # $meanAndStdevJoinSeqLenByGapFile = "gap.insertMeanAndStdev.txt";
 # $cmd = "$exeDir/getMeanAndStdevForGapsByGapNumUsingCeleraAsmFile.perl $CeleraTerminatorDirectory --contig-end-seq-file $joiningEndPairs > $meanAndStdevJoinSeqLenByGapFile";
 # runCommandAndExitIfBad ($cmd);
 
-$cmd = "echo \"cc $fauxInsertMean $fauxInsertStdev\" > meanAndStdevByPrefix.cc.txt";
-runCommandAndExitIfBad ($cmd);
+$cmd = "cp $meanAndStdevFile meanAndStdevByPrefix.sj.txt";
+if (! -e "meanAndStdevByPrefix.sj.txt") {
+    runCommandAndExitIfBad ($cmd); }
 
 # Doing the section to avoid fishing using k-mers that occur (too) many times in the reads
 $cmd = "jellyfish-2.0 count -s $jellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -L 100 -o restrictKmers.jf @readsFiles";
@@ -122,9 +120,9 @@ runCommandAndExitIfBad ($cmd);
 # End section that eliminates k-mers that occur too often
 
 $kUnitigFilesize = -s $kUnitigFilename;
-$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $kUnitigFilename -s $kUnitigFilesize -low-memory -l $reduceReadSetKMerSize --stopAfter findReadKUnitigMatches -t $numThreads -mkudisr 0 workFauxVsFaux $fishingEndPairs 1>>out.${suffix}_workFauxVsFaux 2>>out.${suffix}_workFauxVsFaux";
+$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -minreadsinsuperread 1 -kunitigsfile $kUnitigFilename -s $kUnitigFilesize -low-memory -l $reduceReadSetKMerSize --stopAfter findReadKUnitigMatches -t $numThreads -mkudisr 0 workFauxVsFaux $fishingEndPairs 1>>out.${suffix}_workFauxVsFaux 2>>out.${suffix}_workFauxVsFaux";
 runCommandAndExitIfBad ($cmd);
-$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $kUnitigFilename -s $kUnitigFilesize -low-memory -l $reduceReadSetKMerSize --stopAfter findReadKUnitigMatches -t $numThreads -mkudisr 0 workReadsVsFaux @readsFiles 1>>out.${suffix}_workReadsVsFaux 2>>out.${suffix}_workReadsVsFaux";
+$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -minreadsinsuperread 1 -kunitigsfile $kUnitigFilename -s $kUnitigFilesize -low-memory -l $reduceReadSetKMerSize --stopAfter findReadKUnitigMatches -t $numThreads -mkudisr 0 workReadsVsFaux @readsFiles 1>>out.${suffix}_workReadsVsFaux 2>>out.${suffix}_workReadsVsFaux";
 runCommandAndExitIfBad ($cmd);
 # We're still in the output directory
 $cmd = "$exeDir/collectReadSequencesForLocalGapClosing --faux-reads-file $fishingEndPairs --faux-read-matches-to-kunis-file workFauxVsFaux/newTestOutput.nucmerLinesOnly --read-matches-to-kunis-file workReadsVsFaux/newTestOutput.nucmerLinesOnly --num-joins-per-directory $numJoinsPerDirectory";
@@ -136,10 +134,7 @@ runCommandAndExitIfBad ($cmd);
 
 # Now run the directories
 # $cmd = "strace -o strace_out -e trace=process,open -f -ttt ";
-$cmd = "$exeDir/runByDirectory -t $numThreads --jumping-read-joining-run $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --join-aggressive 1 --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --num-stdevs-allowed $numStdevsAllowed --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . -o output.txt --num-joins-per-directory $numJoinsPerDirectory";
-runCommandAndExitIfBad ($cmd);
-
-$cmd = "$exeDir/reportReadsToExclude.perl output.txt reverseComplemented.jumpingReadFile.fa > readsToExclude.txt";
+$cmd = "$exeDir/runByDirectory -t $numThreads --jumping-read-joining-run $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --join-aggressive 1 --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --num-stdevs-allowed $numStdevsAllowed --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . -o readsToExclude.txt --num-joins-per-directory $numJoinsPerDirectory";
 runCommandAndExitIfBad ($cmd);
 
 if (! $keepDirectoriesFlag) {

@@ -43,6 +43,8 @@
 #define KUNITIG_FILE "/genome8/raid/tri/kUnitigStudy/arg_ant/afterAlekseyAndMikeRedundentKill/guillaumeKUnitigsAtLeast32bases_all.fasta"
 #define READ_DATA_FILE "/genome8/raid/tri/testDirForReadPlacementRoutines/brucellaData/brucella.pass5reads.fasta"
 
+namespace err = jellyfish::err;
+
 unsigned int  *kunitigNumber, *kunitigOffset;
 unsigned long *kUnitigLengths;
 uint64_t       hash_size;
@@ -93,7 +95,7 @@ public:
       sprintf(out_file, " gzip -1 > %s_%d", prefix, id);
       out = popen(out_file, "w");
       if(!out)
-        die << "Can't open output file '" << out_file << "'" << jellyfish::err::no;
+        err::die(err::msg() << "Can't open output file '" << out_file << "': " << err::no);
     }
 
     while((read = read_stream.next_read())) {
@@ -161,7 +163,7 @@ int main(int argc, char *argv[])
    */
   mapped_file dbf(filenames[0]);
   if(memcmp(dbf.base(), "JFRHSHDN", 8))
-    die << "Invalid database format, expected 'JFRHSHDN'";
+    err::die("Invalid database format, expected 'JFRHSHDN'");
   dbf.random().load();
   raw_inv_hash_query_t qhash(dbf);
   //  inv_hash_storage_t hash(dbf.base() + 8, dbf.length() - 8);
@@ -189,11 +191,11 @@ int main(int argc, char *argv[])
   // Find out the last kUnitig number
   infile = fopen (numKUnitigsFile, "r");
   if(!infile)
-    die << "Failed to open file '" << numKUnitigsFile << "'" << jellyfish::err::no;
+    err::die(err::msg() << "Failed to open file '" << numKUnitigsFile << "': " << err::no);
   int fields_read = fscanf (infile, "%d\n", &lastKUnitigNumber);
   if(fields_read != 1)
-    die << "Failed to read the last k-unitig number from file '"
-        << numKUnitigsFile << "'" << jellyfish::err::no;
+    err::die(err::msg() << "Failed to read the last k-unitig number from file '"
+        << numKUnitigsFile << "': " << err::no);
   fclose (infile);
   fprintf (stderr, "The largest kUnitigNumber was %d\n", lastKUnitigNumber);
   mallocOrDie (kUnitigLengths, (lastKUnitigNumber+2), uint64_t);
@@ -201,12 +203,12 @@ int main(int argc, char *argv[])
   fprintf (stderr, "Opening file %s...\n", kUnitigFilename);
   infile = fopen (kUnitigFilename, "r");
   if(!fgets (line, sizeof(line), infile)) // This is a header line
-    die << "Failed to read header line from file '"
-        << kUnitigFilename << "'" << jellyfish::err::no;
+    err::die(err::msg() << "Failed to read header line from file '"
+        << kUnitigFilename << "'" << err::no);
   fields_read = sscanf (line, ">%d length:%d", &kUnitigNumber, &kUnitigLength);
   if(fields_read != 2)
-    die << "Header of file '" << kUnitigFilename
-        << "' does not match pattern '>UnitigiNumber length:UnitigLength'";
+    err::die(err::msg() << "Header of file '" << kUnitigFilename
+        << "' does not match pattern '>UnitigiNumber length:UnitigLength'");
   kUnitigLengths[kUnitigNumber] = kUnitigLength;
   if (kUnitigNumber % 100 == 0)
     fprintf (stderr, "\rkUnitigNumber = %d", kUnitigNumber);
