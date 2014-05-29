@@ -92,6 +92,20 @@ EOS
     ;
 
 
+# Like die, but don't print backtrace like information
+my $config_file;
+sub fail {
+  print(STDERR "Error");
+  if(defined($config_file) &&  defined($_[1])) {
+    print(STDERR " line $_[1] of configuration file '$config_file':\n");
+  } else {
+    print(STDERR ": ");
+  }
+  chomp($_[0]);
+  print(STDERR $_[0], "\n");
+  exit(1);
+}
+
 sub rename_reads {
   my ($type, @read_info) = @_;
   my @res;
@@ -126,7 +140,7 @@ sub estimate_optimal_kmer{
 
 sub get_MIN_Q_CHAR{
   my $filelist=$_[0];
-  print FILE "MIN_Q_CHAR=`cat $filelist |head -n 50000 | awk 'BEGIN{flag=0}{if(\$0 ~ /^\\+/){flag=1}else if(flag==1){print \$0;flag=0}}'  | perl -ne 'BEGIN{\$q0_char=\"\@\";}{chomp;\@f=split \"\";foreach \$v(\@f){if(ord(\$v)<ord(\$q0_char)){\$q0_char=\$v;}}}END{\$ans=ord(\$q0_char);if(\$ans<64){print \"33\\n\"}else{print \"64\\n\"}}'`\n";
+  print FILE "MIN_Q_CHAR=`cat $filelist |head -n 50000 | awk 'BEGIN{flag=0}{if(\$0 ~ /^\\+/){flag=1}else if(flag==1){print \$0;flag=0}}'  | perl -ne 'BEGIN{\$q0_char=\"\@\";}{chomp;\@f=split \"\";foreach \$v(\@f){if(ord(\$v)<ord(\$q0_char)){\$q0_char=\$v;}}}END{\$ans=ord(\$q0_char);if(\$ans<65){print \"33\\n\"}else{print \"64\\n\"}}'`\n";
   print FILE "save MIN_Q_CHAR\n";
   print FILE "echo MIN_Q_CHAR: \$MIN_Q_CHAR\n";
 }
@@ -144,7 +158,7 @@ EOS
 
 sub check_exec {
   for my $e (@_) {
-    system("$e --help >/dev/null 2>&1") == 0 or die "$e not found or failed to run";
+    system("$e --help >/dev/null 2>&1") == 0 or fail "$e not found or failed to run";
     print "$e OK\n";
   }
 }
@@ -155,18 +169,18 @@ GetOptions("o|output=s"          => \$assembly_script,
            "p|path=s"            => \@prep_path,
            "l|ld-library-path=s" => \@prep_ld,
            "skip-checking"       => \$skip_path_checking,
-           "h|help"              => \$help) or die $usage;
+           "h|help"              => \$help) or fail $usage;
 
 if($help) {
   print "$help_str";
   exit(0);
 }
-die $usage if @ARGV != 1;
-my $config_file = $ARGV[0];
+fail $usage if @ARGV != 1;
+$config_file = $ARGV[0];
 
 if($generate_default) {
-  die "Refusing to overwrite existing configuration file '$config_file'" if(-e $config_file);
-  open(FILE, ">", $config_file) or die "Error opening configuration file '$config_file': $!";
+  fail "Refusing to overwrite existing configuration file '$config_file'" if(-e $config_file);
+  open(FILE, ">", $config_file) or fail "Error opening configuration file '$config_file': $!";
   print FILE <<'EOS';
 # example configuration file 
 
@@ -213,24 +227,24 @@ EOS
 # Match a line of the form "KEY = VALUE". Returns undef if it does not match
 sub read_param {
   my ($line) = @_;
-  die "Can't parse line '$line'" unless $line =~ /^\s*(\w+)\s*=\s*(.*)$/;
+  fail("Can't parse line '$line'", $.) unless $line =~ /^\s*(\w+)\s*=\s*(.*)$/;
   my ($k, $v) = ($1, $2);
   chomp($v);
   return ($k, $v);
 }
 
-open(FILE, "<", $config_file) or die "Can't open config file '$config_file': $!";
+open(FILE, "<", $config_file) or fail "Can't open config file '$config_file': $!";
 while(my $line=<FILE>){
     chomp($line);
     next if($line =~ /^\s*(#|$)/);
     if($line =~ /^DATA\s*$/){
-      die("error in config file: mixed PARAMETERS and DATA") if $in_parameters;
-      die("duplicate DATA header") if $in_data;
+      fail("error in config file: mixed PARAMETERS and DATA", $.) if $in_parameters;
+      fail("duplicate DATA header", $.) if $in_data;
       $in_data = 1;
       next;
     } elsif($line =~ /^PARAMETERS\s*$/){
-      die("error in config file: mixed PARAMETERS and DATA") if $in_data;
-      die("duplicate PARAMETERS header") if $in_parameters;
+      fail("error in config file: mixed PARAMETERS and DATA", $.) if $in_data;
+      fail("duplicate PARAMETERS header", $.) if $in_parameters;
       $in_parameters=1;
       next;
     } elsif($line =~ /^PATHS\s*$/) {
@@ -238,7 +252,7 @@ while(my $line=<FILE>){
       while(<FILE> !~ /^END\s*/) { }
       next;
     } elsif($line =~ /^END\s*$/) {
-      die("Not in PARAMETERS or DATA section") if(!($in_parameters || $in_data));
+      fail("Unexpected 'END' keyword. Not in PARAMETERS or DATA section", $.) if(!($in_parameters || $in_data));
       $in_data = $in_parameters = 0;
       next;
     }
@@ -247,66 +261,68 @@ while(my $line=<FILE>){
     
     if($in_parameters==1){
         if($key eq "EXTEND_JUMP_READS"){
-            die("bad value for EXTEND_JUMP_READS, enter 0 or 1") unless($param =~ /^[01]$/);
+            fail("bad value for EXTEND_JUMP_READS, enter 0 or 1", $.) unless($param =~ /^[01]$/);
 	    $EXTEND_JUMP_READS=int($param);
 	} elsif($key eq "DO_HOMOPOLYMER_TRIM"){
-            die("bad value for DO_HOMOPOLYMER_TRIM, enter 0 or 1") unless($param =~ /^[01]$/);
+            fail("bad value for DO_HOMOPOLYMER_TRIM, enter 0 or 1", $.) unless($param =~ /^[01]$/);
             $DO_HOMOPOLYMER_TRIM=int($param);
         } elsif($key eq "TRIM_PARAM") {
-            die("bad value for TRIM_PARAM, it should be a positive integer") unless $param =~ /^\d*$/;
+            fail("bad value for TRIM_PARAM, it should be a positive integer", $.) unless $param =~ /^\d*$/;
             $TRIM_PARAM = length($param) > 0 ? int($param) : 2;
         } elsif($key eq "RELIABLE_Q_PARAM") {
-            die("bad value for RELIABLE_Q_PARAM, it should be a positive integer") unless $param =~ /^\d*$/;
+            fail("bad value for RELIABLE_Q_PARAM, it should be a positive integer", $.) unless $param =~ /^\d*$/;
             $RELIABLE_Q_PARAM = length($param) > 0 ? int($param) : 35;
 	} elsif($key eq "CLOSE_GAPS"){
-            die("bad value for CLOSE_GAPS, enter 0 or 1") unless($param =~ /^[01]$/);
+            fail("bad value for CLOSE_GAPS, enter 0 or 1", $.) unless($param =~ /^[01]$/);
             $CLOSE_GAPS=int($param);
           } elsif($key eq "CA_PARAMETERS"){
 	    $CA_PARAMETERS=$param;
-	    die("bad value for CA_PARAMETERS") if($CA_PARAMETERS eq "");
+	    fail("bad value for CA_PARAMETERS", $.) if($CA_PARAMETERS eq "");
 	} elsif($key eq "LIMIT_JUMP_COVERAGE"){
             $LIMIT_JUMP_COVERAGE=int($param);
-            die("bad value for LIMIT_JUMP_COVERAGE, enter int > 1") if($LIMIT_JUMP_COVERAGE<=1);
+            fail("bad value for LIMIT_JUMP_COVERAGE, enter a number > 1", $.) if($LIMIT_JUMP_COVERAGE<=1);
         } elsif($key eq "GRAPH_KMER_SIZE"){
             $KMER=$param;
-            die("bad value for GRAPH_KMER_SIZE, enter auto or number > 15 and < 151") if(not($KMER eq "auto") && ($KMER<15 || $KMER>151));
+            fail("bad value for GRAPH_KMER_SIZE, enter auto or number >= 15 and <= 151", $.) if(not($KMER eq "auto") && ($KMER<15 || $KMER>151));
         } elsif($key eq "USE_LINKING_MATES"){
-            die("bad value for USE_LINKING_MATES, enter 0 or 1") unless $param =~ /^[01]$/;
+            fail("bad value for USE_LINKING_MATES, enter 0 or 1", $.) unless $param =~ /^[01]$/;
             $USE_LINKING_MATES=int($param);
           } elsif($key eq "KMER_COUNT_THRESHOLD"){
 	    $KMER_COUNT_THRESHOLD=int($param);
 	    $KMER_RELIABLE_THRESHOLD=3*$KMER_COUNT_THRESHOLD;
-	    die("bad value for KMER_COUNT_THRESHOLD") if($KMER_COUNT_THRESHOLD<1);
+	    fail("bad value for KMER_COUNT_THRESHOLD. Enter a number >= 1", $.) if($KMER_COUNT_THRESHOLD<1);
 	} elsif($key eq "NUM_THREADS"){
 	    $NUM_THREADS=int($param);
-	    die("bad value for NUM_THREADS") if($NUM_THREADS<1);
+	    fail("bad value for NUM_THREADS. Enter a number >= 1", $.) if($NUM_THREADS<1);
 	} elsif($key eq "JF_SIZE"){
 	    $JF_SIZE=int($param);
-	    die("bad value for JF_SIZE, enter int > 100000") if($JF_SIZE<100000);
+	    fail("bad value for JF_SIZE, enter a number >= 100000", $.) if($JF_SIZE<100000);
         } elsif($key eq "NO_MMAP"){
-            die("bad value for NO_MMAP, enter 0 or 1") unless($param =~ /^[01]$/);
+            fail("bad value for NO_MMAP, enter 0 or 1", $.) unless($param =~ /^[01]$/);
             $NO_MMAP=int($param);
 	} else {
-            die "Could not parse line '$line'";
+            fail "Could not parse line '$line'";
         }
     }
 
     if($in_data==1){
       if($key eq "PE"){
 	    my @f=split(" ", $param);
-	    die("improper id for PE library $f[0]") if(not(length($f[0])==2));
-	    die("duplicate id for PE library $f[0]") if(defined($used_library_ids{$f[0]}));
+	    fail("improper id for PE library '$f[0]'. It should be two character long (like 'p0')", $.) if(not(length($f[0])==2));
+	    fail("duplicate id for PE library '$f[0]'", $.) if(defined($used_library_ids{$f[0]}));
 	    my $pe_info_line ="$f[0] ";
 	    $used_library_ids{$f[0]}=1;
-	    die("improper mean for PE library $f[0]") if(not(int($f[1])>0));
+	    fail("improper mean '$f[1]' for PE library '$f[0]'. It must be a positive number", $.) unless(int($f[1])>0);
 	    $pe_info_line.="$f[1] ";
-	    die("improper stdev for PE library $f[0]") if(not(int($f[2])>0));
+	    fail("improper stdev '$f[2]' for PE library '$f[0]'. It must be a positive number", $.) unless(int($f[2])>0);
 	    $pe_info_line.="$f[2] ";
-	    die("missing forward file for PE library $f[0]") if(not(-e $f[3]));
+            open(my $io, "<", $f[3]) or fail("invalid forward file for PE library '$f[0]': '$f[3]' $!", $.);
+            close($io);
 	    $pe_info_line.="$f[3] ";
 	    if(defined($f[4])){
-		die("missing reverse file for PE library $f[0]") if(not(-e $f[4]));
-		$pe_info_line.="$f[4] ";
+              open($io, "<", $f[4]) or fail("invalid reverse file for PE library '$f[0]': '$f[4]' $!", $.);
+              close($io);
+              $pe_info_line.="$f[4] ";
 	    }
 	    else{
 		$pe_info_line.="$f[3] ";
@@ -314,29 +330,33 @@ while(my $line=<FILE>){
 	    push(@pe_info_array,$pe_info_line);
 	} elsif($key eq "JUMP"){
 	    my @f=split(" ", $param);
-	    die("improper id for JUMP library $f[0]") if(not(length($f[0])==2));
-	    die("duplicate id for JUMP library $f[0]") if(defined($used_library_ids{$f[0]}));
+	    fail("improper id for JUMP library '$f[0]'. It should be two character long (like 'j1')", $.) if(not(length($f[0])==2));
+	    fail("duplicate id for JUMP library '$f[0]'", $.) if(defined($used_library_ids{$f[0]}));
 	    my $jump_info_line="$f[0] ";
 	    $used_library_ids{$f[0]}=1;
-	    die("improper mean for JUMP library $f[0]") if(int($f[1])==0);
+	    fail("improper mean '$f[1]' for JUMP library '$f[0]'. It must be a positive number", $.) unless(int($f[1])>0);
 	    $jump_info_line.="$f[1] ";
-	    die("improper stdev for JUMP library $f[0]") unless(int($f[2])>0);
+	    fail("improper stdev '$f[2]' for JUMP library '$f[0]'. It must be a positive number", $.) unless(int($f[2])>0);
 	    $jump_info_line.="$f[2] ";
-	    die("missing forward file for JUMP library $f[0]") unless(-e $f[3]);
+            open(my $io, "<", $f[3]) or fail("invalid forward file for JUMP library '$f[0]': '$f[3]' $!", $.);
+            close($io);
 	    $jump_info_line.="$f[3] ";
-	    die("missing reverse file for JUMP library $f[0]") unless(-e $f[4]);
+	    open($io, "<", $f[4]) or fail("invalid reverse file for JUMP library '$f[0]': '$f[4]' $!", $.);
+            close($io);
 	    $jump_info_line.="$f[4] ";
 	    push(@jump_info_array,$jump_info_line);
 	}
 	elsif($key eq "OTHER"){
-	    die("missing or incorrect frg file for OTHER library") unless($param =~/\.frg$/ && (-e $param));
+	    fail("incorrect frg file name '$param'. It must end in '.frg'", $.) unless($param =~/\.frg$/);
+            open(my $io, "<", $param) or fail("invalid frg file for OTHER: '$param' $!", $.);
+            close($io);
             push(@other_info_array,$param);
 	} else {
-            die "Could not parse line '$line'";
+            fail "Could not parse line '$line'";
         }
     }
 }
-die("no read data files specified") if(@pe_info_array + @jump_info_array + @other_info_array == 0);
+fail("no read data files specified") if(@pe_info_array + @jump_info_array + @other_info_array == 0);
 
 if(@prep_path) {
   unshift(@PATH, @prep_path);
@@ -350,14 +370,14 @@ unless($skip_path_checking) {
   &check_exec("jellyfish-2.0", "runCA", "createSuperReadsForDirectory.perl");
 }
 
-die ("no PE data specified") if(@pe_info_array == 0);
+fail ("no PE data specified") if(@pe_info_array == 0);
 
 print("creating script file for the actions...");
 
 my $config_abs_path = File::Spec->rel2abs($config_file);
 my $cmd_abs_path = File::Spec->rel2abs(__FILE__);
 
-open(FILE,">", $assembly_script) or die "Can't open output file '$assembly_script': $!";
+open(FILE,">", $assembly_script) or fail "Can't open output file '$assembly_script': $!";
 print FILE <<"EOS";
 #!/bin/bash
 

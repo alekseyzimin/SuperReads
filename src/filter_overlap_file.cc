@@ -28,6 +28,8 @@
 #include <jellyfish/binary_dumper.hpp>
 #include <jellyfish/large_hash_array.hpp>
 
+namespace err = jellyfish::err;
+
 using jellyfish::thread_exec;
 using jellyfish::mer_dna;
 using jflib::o_multiplexer;
@@ -90,7 +92,7 @@ std::streampos remaining_length(std::ifstream& is) {
 mer_array read_bad_mers(const char* path) {
   std::ifstream fd(path);
   if(!fd.good())
-    die << "Can't open hash '" << path << "'";
+    err::die(err::msg() << "Can't open hash '" << path << "'");
   jellyfish::file_header header(fd);
   // Should check format
   mer_dna::k(header.key_len() / 2);
@@ -141,9 +143,9 @@ public:
     ofd_(output), mult_(&ofd_, 3 * nb_threads, 4096)
   {
     if(!lines_.good())
-      die << "Failed to open overlap file '" << overlaps << "'";
+      err::die(err::msg() << "Failed to open overlap file '" << overlaps << "'");
     if(!ofd_.good())
-      die << "Failed to open output file '" << output << "'";
+      err::die(err::msg() << "Failed to open output file '" << output << "'");
     lines_.start_parsing();
   }
 

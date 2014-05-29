@@ -55,6 +55,7 @@
 #include <src2/joinKUnitigs_v3_cmdline.hpp>
 #include <rb_tree.hpp>
 
+namespace err = jellyfish::err;
 using jellyfish::thread_exec;
 
 #define FRONT_END 1
@@ -368,7 +369,7 @@ public:
 	  multiplexer(&out, 3 * nb_threads, 4096)
 	  { 
 	       if(!out.good())
-		    eraise(std::runtime_error) << "Failed to open '" << output_file << "'" << jellyfish::err::no;
+                   throw std::runtime_error(err::msg() << "Failed to open '" << output_file << "'" << err::no);
 	  }
 
      virtual void start(int thid) {
@@ -490,13 +491,13 @@ int main (int argc, char **argv)
      // format
      infile = Fopen (args.unitig_lengths_file_arg, "r");
      if (! fgets (line, 2000, infile))
-	  die << "File '" << args.unitig_lengths_file_arg << "' is of length 0 or can't be read";
+       err::die(err::msg() << "File '" << args.unitig_lengths_file_arg << "' is of length 0 or can't be read");
      numFlds = getFldsFromLine (line, flds);
      rewind (infile);
      if (numFlds == 1) {
 	  for (int i = 0, *iptr = unitigLengths + firstUnitigNum; i < numUnitigs; i++, iptr++) {
 	       if(fscanf (infile, "%d\n", iptr) != 1)
-		    die << "Failed to parse " << i << "th integer in: " << (unitigLengths + firstUnitigNum);
+                   err::die(err::msg() << "Failed to parse " << i << "th integer in: " << (unitigLengths + firstUnitigNum));
 	  }
      }
      else {

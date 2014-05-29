@@ -24,6 +24,7 @@
 #include <jellyfish/err.hpp>
 #include <src/error_corrected2frg_cmdline.hpp>
 
+namespace err = jellyfish::err;
 
 inline void print_sequence(FILE *out, const char *seq, uint64_t len) {
   fprintf(out, "%s\n", seq);
@@ -62,11 +63,11 @@ int main(int argc, char *argv[])
 
   FP = fopen(args.fasta_file_arg,"r");
   if(!FP)
-    die << "Can't open input file '" << args.fasta_file_arg << "'" << jellyfish::err::no;
+    err::die(err::msg() << "Can't open input file '" << args.fasta_file_arg << "': " << err::no);
 
   int first_char = fgetc(FP);
   if(first_char != '>')
-    die << "Invalid fasta file: no header found at beginning";
+    err::die("Invalid fasta file: no header found at beginning");
 
   printf("{VER\nver:2\n}\n"
          "{LIB\n" "act:A\n" "acc:%s\n"
@@ -81,7 +82,7 @@ int main(int argc, char *argv[])
      // Find read number
     const char *first_word = strtok(header, " \n");
     if(!first_word)
-      die << "Invalid empty header";
+      err::die("Invalid empty header");
     uint64_t n = atoll(first_word+2);
  
     // Compute length of sequence
@@ -103,7 +104,7 @@ int main(int argc, char *argv[])
   while(fgets(header, FP)) {
     const char *first_word = strtok(header, " \n");
     if(first_word == NULL)
-      die << "Invalid empty header in input fasta file";
+      err::die("Invalid empty header in input fasta file");
     uint64_t n = atoll(first_word+2);
 
     first_char = fgetc(FP);

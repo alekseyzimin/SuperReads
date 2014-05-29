@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 $rn="";
+$max_len=2047;
 $shooting_index=0;
 if($ARGV[0] eq ""){
 $suffix="super-read";
@@ -29,20 +30,13 @@ while($line=<STDIN>){
 	    $l=length($seq);
 	    #$rev_seq=reverse_complement($seq);
 	    #$seq=$rev_seq lt $seq ? $rev_seq : $seq;
-	    if($l<2048){
+	    if($l<$max_len){
 		print "$rn\n$seq\n";
 	    }else{
-		my @f=split(//,$seq);
-		$k=0;
-		$offset=1550;
-		while(1){
-		    print "$rn.",$k*$offset,"\n";
-		    for($i=$k*$offset;($i<$k*$offset+2047&&$i<=$#f);$i++){
-			print $f[$i];
-		    }
-		    $k++;
-		    print "\n";
-		    last if($i>$#f);
+		$max_len_local=int(($l-int($max_len/5))/$l*$max_len);
+		$offset=int(($max_len_local-1)/2);
+	    	for($i=0;$i<$l;$i+=$offset){
+			print "$rn.$max_len_local.$i\n",substr($seq,$i,$max_len_local),"\n";
 		}
 	    }
 	}
@@ -65,21 +59,15 @@ while($line=<STDIN>){
 $l=length($seq);
 #$rev_seq=reverse_complement($seq);
 #$seq=$rev_seq lt $seq ? $rev_seq : $seq;
-if($l<2048){
-    print "$rn\n$seq\n";
-}else{
-    my @f=split(//,$seq);
-    $k=0;
-    $offset=1550;
-    while(1){
-	print "$rn.",$k*$offset,"\n";
-	for($i=$k*$offset;($i<$k*$offset+2047&&$i<=$#f);$i++){
-	    print $f[$i];
-	}
-	$k++;
-	print "\n";
-	last if($i>$#f);
-    }
-}
-
+            if($l<$max_len){
+                print "$rn\n$seq\n";
+            }else{
+                $max_len_local=int(($l-int($max_len/5))/$l*$max_len);
+                $offset=int(($max_len_local-1)/2);
+                while(1){
+                    for($i=0;$i<$l;$i+=$offset){
+                        print "$rn.$max_len_local.$i\n",substr($seq,$i,$max_len_local),"\n";
+                    }   
+                }
+            }
 
