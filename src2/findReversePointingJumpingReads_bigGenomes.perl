@@ -277,25 +277,15 @@ sub processArgs
     $minKMerLen = 17;
     $numThreads = 1;
     $maxNodes = 2000;
-    $meanForFauxInserts = 500;
-    $stdevForFauxInserts = 200;
     $numStdevsAllowed = 5;
     $joinAggressive = 1;
     $keepDirectories = 0;
     $kmerStepSize = 1;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
-	if ($arg eq "--mean-for-faux-inserts") {
-	    ++$i;
-	    $meanForFauxInserts = $ARGV[$i];
-	    next; }
 	if (($arg eq "-t") || ($arg eq "--num-threads")) {
 	    ++$i;
 	    $numThreads = $ARGV[$i];
-	    next; }
-	if ($arg eq "--stdev-for-faux-inserts") {
-	    ++$i;
-	    $stdevForFauxInserts = $ARGV[$i];
 	    next; }
 	if ($arg eq "--num-stdevs-allowed") {
 	    ++$i;
@@ -309,10 +299,10 @@ sub processArgs
 	    ++$i;
 	    $jellyfishHashSize = $ARGV[$i];
 	    next; }
-        if ($ARGV[$i] eq "--join-aggressive") {
-            ++$i;
-            $joinAggressive = $ARGV[$i];
-            next; }
+#        if ($ARGV[$i] eq "--join-aggressive") {
+#            ++$i;
+#            $joinAggressive = $ARGV[$i];
+#            next; }
 	if ($arg eq "--min-kmer-len") {
 	    ++$i;
 	    $minKMerLen = $ARGV[$i];
@@ -338,10 +328,10 @@ sub processArgs
 	    $dirForKUnitigs = $ARGV[$i];
 	    $dirForKUnitigs = returnAbsolutePath ($dirForKUnitigs);
 	    next; }
-	if ($arg eq "--kunitig-continuation-number") {
-	    ++$i;
-	    $kUnitigContinuationNumber = $ARGV[$i];
-	    next; }
+#	if ($arg eq "--kunitig-continuation-number") {
+#	    ++$i;
+#	    $kUnitigContinuationNumber = $ARGV[$i];
+#	    next; }
 	if ($arg eq "--maxnodes") {
 	    ++$i;
 	    $maxNodes = $ARGV[$i];
