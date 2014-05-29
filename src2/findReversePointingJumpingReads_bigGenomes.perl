@@ -5,12 +5,38 @@ use File::Copy;
 $exeDir = dirname ($0);
 $localReadsFile = "localReadsFile";
 $joiningEndPairsOrig = "readsToJoinReads.fasta";
+$meanAndStdevFn = "meanAndStdevByPrefix.sj.txt";
+$meanAndStdevFile = returnAbsolutePath ($meanAndStdevFn);
 &processArgs;
+$globalIsGood = 1;
+$isGood = returnIfAllFilesExist (@readsFiles, @readsForKUnitigsFiles);
+if (! $isGood) {
+    $globalIsGood = 0; }
+if ($#readsFiles < 0) {
+    print STDERR "You must enter some reads files.\n";
+    $globalIsGood = 0; }
+if ($#readsForKUnitigsFiles < 0) {
+    if ($dirForKUnitigs !~ /\S/) {
+	print STDERR "You must enter some files containing reads to generate k-unitigs or a directory which has k-unitigs files we can use.\n";
+	$globalIsGood = 0; }
+    else {
+	if (! -d $dirForKUnitigs) {
+	    print STDERR "The directory specified to get the k-unitigs, \'$dirForKUnitigs\' doesn't exist or isn't a directory.\n";
+	    $globalIsGood = 0; }
+    }
+}
+if (! -e $meanAndStdevFn) {
+    print STDERR "\'$meanAndStdevFn\' doesn't exist.\n";
+    $globalIsGood = 0; }
+
 
 for ($i=0; $i<=$#readsFiles; ++$i) {
     $readsFiles[$i] = returnAbsolutePath ($readsFiles[$i]); }
 for ($i=0; $i<=$#readsForKUnitigsFiles; ++$i) {
     $readsForKUnitigsFiles[$i] = returnAbsolutePath ($readsForKUnitigsFiles[$i]); }
+if (! -e $dirToChangeTo) {
+    $cmd = "mkdir $dirToChangeTo";
+    runCommandAndExitIfBad ($cmd); }
 
 if ($dirToChangeTo) {
     chdir ($dirToChangeTo); }
@@ -18,17 +44,38 @@ if ($dirToChangeTo) {
 $cmd = "zcat -f @readsFiles > $joiningEndPairsOrig";
 runCommandAndExitIfBad ($cmd);
 
-$minKMerLenMinus1 = $minKMerLen - 1;
-$joiningEndPairs = $joiningEndPairsOrig . ".$minKMerLenMinus1";
+$tempVal = $minKMerLen - 1;
+$joiningEndPairs = $joiningEndPairsOrig . ".$tempVal";
 $cmd = "ln -s $joiningEndPairsOrig $joiningEndPairs";
 runCommandAndExitIfBad ($cmd);
 
 $totInputSize = getReadFileSize (@readsForKUnitigsFiles);
+if (! $jellyfishHashSize) {
+    $jellyfishHashSize = $totInputSize; }
 $readPrefix = &getReadPrefix ($joiningEndPairs);
 $joiningEndPairNamesFile = "readsToExclude.txt";
 unlink ($joiningEndPairNamesFile);
 
 &runMainLoop;
+
+sub returnIfAllFilesExist
+{
+    my (@files) = @_;
+    my ($isGood);
+    $isGood = 1;
+
+    for (@files) {
+	$file = $_;
+	if (! -e $file) {
+	    print STDERR "File \'$file\' doesn't exist\n";
+	    $isGood = 0; }
+	elsif (-d $file) {
+	    print STDERR "File \'$file\' is a directory\n";
+	    $isGood = 0; }
+    }
+
+    return ($isGood);
+}
 
 sub runMainLoop
 {
@@ -39,7 +86,7 @@ sub runMainLoop
 
     $directoryPassed=0; 
     # Here's the main loop (k-mer values going up)
-    for ($k = $minKMerLen; $k<=$maxKMerLen; ++$k) {
+    for ($k = $minKMerLen; $k<=$maxKMerLen; $k+=$kmerStepSize) {
 	$suffix = $localReadsFile . "_" . $k . "_" . $kUnitigContinuationNumber;
 	$tempKUnitigsFile = "k_unitigs_${suffix}.fa";
 #	$minContinuation = int ($k/2);
@@ -53,26 +100,31 @@ sub runMainLoop
 		runCommandAndExitIfBad ($cmd);
 		goto afterKUnitigCreation; }
 	}
-	$cmd = "$exeDir/create_k_unitigs_large_k2 -c $minContinuation -t $numThreads -m $k -n $totInputSize -l $k @readsForKUnitigsFiles  |  grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > $tempKUnitigsFile";
+	$cmd = "$exeDir/create_k_unitigs_large_k2 -c $minContinuation -t $numThreads -m $k -n $jellyfishHashSize -l $k @readsForKUnitigsFiles  |  grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGacgt/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > $tempKUnitigsFile";
 	if (runCommandAndReturnIfBad ($cmd)) {
+	    last; }
+	if (-s $tempKUnitigsFile == 0) {
+	    print STDERR "create_k_unitigs_large_k2 for k = $k failed.\n";
 	    last; }
 
       afterKUnitigCreation:
 	$cmd = "\\rm -rf out.$suffix"; system ($cmd);
 	$cmd = "\\rm -rf work_$suffix"; system ($cmd);
 
-	$tempFilename = "meanAndStdevByPrefix.${readPrefix}.txt";
-	if (! -e $tempFilename) {
-	    $cmd = "echo $readPrefix $meanForFauxInserts $stdevForFauxInserts > $tempFilename"; 
+	if (! -e $meanAndStdevFn) {
+	    $cmd = "cp $meanAndStdevFile $meanAndStdevFn";
 	    runCommandAndExitIfBad ($cmd);
 	}
 
-	$kMinus1 = $k-1;
-	$inputEndPairs = $joiningEndPairsOrig . ".$kMinus1";
+	if ($k == $minKMerLen) {
+	    $lastKMerSize = $k-1; }
+	else {
+	    $lastKMerSize = $k - $kmerStepSize; }
+	$inputEndPairs = $joiningEndPairsOrig . ".$lastKMerSize";
 	$outputEndPairs = $joiningEndPairsOrig . ".$k";
 
-#	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file $tempFilename -num-stdevs-allowed $numStdevsAllowed -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
-	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file $tempFilename -num-stdevs-allowed $numStdevsAllowed -closegaps -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -join-aggressive $joinAggressive -maxnodes $maxNodes -mkudisr 0 --stopAfter joinKUnitigs work_${suffix} $inputEndPairs 1>>out.$suffix 2>>out.$suffix";
+#	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file $meanAndStdevFn -num-stdevs-allowed $numStdevsAllowed -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -maxnodes $maxNodes -mkudisr 0 work_${suffix} $joiningEndPairs 1>>out.$suffix 2>>out.$suffix";
+	$cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file $meanAndStdevFn -num-stdevs-allowed $numStdevsAllowed -closegaps -minreadsinsuperread 1 -kunitigsfile $tempKUnitigsFile -low-memory -l $k -t $numThreads -join-aggressive $joinAggressive -maxnodes $maxNodes -mkudisr 0 --stopAfter joinKUnitigs work_${suffix} $inputEndPairs 1>>out.$suffix 2>>out.$suffix";
 	if (runCommandAndReturnIfBad ($cmd)) {
 	    last; }
 
@@ -103,6 +155,8 @@ sub runMainLoop
 	close (FILE); close (OUTFILE);
 	if (! $keepKUnitigs) {
 	    unlink ($tempKUnitigsFile); }
+	if (! $keepDirectories) {
+	    $cmd = "\\rm -rf work_$suffix"; system ($cmd); }
     }
     return;
     
@@ -227,6 +281,8 @@ sub processArgs
     $stdevForFauxInserts = 200;
     $numStdevsAllowed = 5;
     $joinAggressive = 1;
+    $keepDirectories = 0;
+    $kmerStepSize = 1;
     for ($i=0; $i<=$#ARGV; $i++) {
 	$arg = $ARGV[$i];
 	if ($arg eq "--mean-for-faux-inserts") {
@@ -245,6 +301,14 @@ sub processArgs
 	    ++$i;
 	    $numStdevsAllowed = $ARGV[$i];
 	    next; }
+	if ($arg eq "--kmer-step-size") {
+	    ++$i;
+	    $kmerStepSize = $ARGV[$i];
+	    next; }
+	if ($arg eq "--jellyfish-hash-size") {
+	    ++$i;
+	    $jellyfishHashSize = $ARGV[$i];
+	    next; }
         if ($ARGV[$i] eq "--join-aggressive") {
             ++$i;
             $joinAggressive = $ARGV[$i];
@@ -255,6 +319,8 @@ sub processArgs
 	    next; }
 	if ($arg eq "--keep-kunitigs") {
 	    $keepKUnitigs = 1; }
+	if ($arg eq "--keep-directories") {
+	    $keepDirectories = 1; }
 	if ($arg eq "--max-kmer-len") {
 	    ++$i;
 	    $maxKMerLen = $ARGV[$i];
