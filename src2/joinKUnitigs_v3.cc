@@ -300,7 +300,7 @@ class KUnitigsJoinerThread {
      int                                              numUnjoinableMissingSequence;
      int                                              numUnjoinableOverMaxNodes;
      int                                              joinCode;
-     const char                                      *joinCodeNames[10] = { "NJ", "SU", "J", "A", "MS", "TMN" };
+     static const char                               *joinCodeNames[6];
   //     int                                             *treeReinitList;
      int                                              maxPathNumUsed;
      bool                                             tooManyPossibleInsertLengths;
@@ -357,6 +357,8 @@ private:
      void getSuperReadsForInsert (jflib::omstream& m_out);
      int processKUnitigVsReadMatches (overlap_parser::stream& ovp_stream, jflib::omstream& m_out);
 };
+const char* KUnitigsJoinerThread::joinCodeNames[6] = { "NJ", "SU", "J", "A", "MS", "TMN" };
+
 
 class KUnitigsJoiner : public thread_exec {
      overlap_parser       ovp_parser;
