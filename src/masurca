@@ -561,7 +561,7 @@ if(not(-e "k_u_hash_0")||$rerun_pe==1||$rerun_sj==1){
 }
 
 print FILE "ESTIMATED_GENOME_SIZE=`jellyfish-2.0 histo -t $NUM_THREADS -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
-if($CA_PARAMETERS =~ "cgwErrorRate=0.25") {print FILE "if [ \$ESTIMATED_GENOME_SIZE -ge 15000000 ]; then echo \"WARNING! cgwErrorRate=0.25 in CA_PARAMETERS should only be used for bacterial genomes; set cgwErrorRate=0.15 for eukaryotes and plants!\";fi\n";}
+if($CA_PARAMETERS =~ "cgwErrorRate=0.25" || $LIMIT_JUMP_COVERAGE==60) {print FILE "if [ \$ESTIMATED_GENOME_SIZE -ge 15000000 ]; then echo \"WARNING! CA_PARAMETERS = cgwErrorRate=0.25 and LIMIT_JUMP_COVERAGE = 60 in config file should only be used for bacterial genomes; set cgwErrorRate=0.15 and  LIMIT_JUMP_COVERAGE=300 for eukaryotes and plants!\";fi\n";}
 print FILE "save ESTIMATED_GENOME_SIZE\n";
 print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
 
