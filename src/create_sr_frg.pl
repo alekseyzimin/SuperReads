@@ -64,10 +64,8 @@ $l=length($seq);
             }else{
                 $max_len_local=int(($l-int($max_len/5))/$l*$max_len);
                 $offset=int(($max_len_local-1)/2);
-                while(1){
                     for($i=0;$i<$l;$i+=$offset){
                         print "$rn.$max_len_local.$i\n",substr($seq,$i,$max_len_local),"\n";
                     }   
-                }
             }
 
