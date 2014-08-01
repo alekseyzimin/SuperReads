@@ -460,6 +460,7 @@ print FILE "NUM_THREADS=$NUM_THREADS\n";
 print FILE "save NUM_THREADS\n";
 
 #override use linking mates if we have any long reads
+$USE_LINKING_MATES  = 1 if(not(@jump_info_array));
 $USE_LINKING_MATES  = 0 if(@other_info_array);
 my $tmplist         = join(" ", @other_info_array);
 $list_frg_files    .= " ".$tmplist." ";
@@ -729,7 +730,11 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	    $rerun_pe=1;
 	}
     print FILE "NUM_LINKING_MATES=`wc -l pe.linking.fa | perl -ane '{print int(\$F[0]/2)}'`\n";
-    print FILE "MAX_LINKING_MATES=`perl -e '{print int('\$ESTIMATED_GENOME_SIZE'/100)}'`\n";
+    if(@jump_info_array){
+    print FILE "MAX_LINKING_MATES=`perl -e '{\$g=int('\$ESTIMATED_GENOME_SIZE'/50);\$g=250000000 if(\$g>250000000);print \$g}'`\n";
+    }else{
+    print FILE "MAX_LINKING_MATES=`perl -e '{\$g=int('\$ESTIMATED_GENOME_SIZE');\$g=250000000 if(\$g>250000000);print \$g}'`\n";
+    }
     
 #create frg files for PE data
 	foreach my $v (@pe_info_array){
