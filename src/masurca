@@ -54,6 +54,7 @@ my $KMER_RELIABLE_THRESHOLD = 3;
 my $TRIM_PARAM              = 3;
 my $RELIABLE_Q_PARAM	    = 35;
 my $NUM_THREADS             = 2;
+my $NUM_CNS_THREADS         = 2;
 my $EXTEND_JUMP_READS       = 1;
 my $JF_SIZE                 = 100000000;
 my $in_data                 = 0;
@@ -296,6 +297,7 @@ while(my $line=<FILE>){
 	    fail("bad value for KMER_COUNT_THRESHOLD. Enter a number >= 1", $.) if($KMER_COUNT_THRESHOLD<1);
 	} elsif($key eq "NUM_THREADS"){
 	    $NUM_THREADS=int($param);
+            $NUM_CNS_THREADS=int($NUM_THREADS/4)+1;
 	    fail("bad value for NUM_THREADS. Enter a number >= 1", $.) if($NUM_THREADS<1);
 	} elsif($key eq "JF_SIZE"){
 	    $JF_SIZE=int($param);
@@ -797,7 +799,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 
 	if(@jump_info_array > 0){
 	    if(not(-e "CA/4-unitigger-filter/gkp.edits.msg") || $rerun_pe || $rerun_sj){
-		print FILE "runCA  gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 stopAfter=unitigger ovlMerThreshold=\$ovlMerThreshold bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_frg_files  1> runCA0.out 2>&1\n\n";
+		print FILE "runCA  gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize utgErrorRate=0.03 merylMemory=8192 stopAfter=unitigger ovlMerThreshold=\$ovlMerThreshold bogBreakAtIntersections=0 unitigger=bog bogBadMateDepth=1000000 -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_CNS_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_frg_files  1> runCA0.out 2>&1\n\n";
 
 
 		print FILE "if [[ ! -e CA/4-unitigger/unitigger.err ]];then\n";
@@ -821,7 +823,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 	}
 
 	if(not(-e "CA/5-consensus/consensus.success")|| $rerun_pe || $rerun_sj){
-	    print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_frg_files   1> runCA1.out 2>&1\n";
+	    print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_CNS_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_frg_files   1> runCA1.out 2>&1\n";
 
 	    print FILE "if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then\n";
 	    print FILE "echo \"Overlap/unitig success\"\n";
@@ -844,7 +846,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 	    print FILE "cd ..\n";
 	    
 #and now we rerun the assembler
-	    print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_frg_files   1> runCA2.out 2>&1\n";
+	    print FILE "runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $CA_PARAMETERS jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$NUM_THREADS frgCorrThreads=1 frgCorrConcurrency=$NUM_THREADS cnsConcurrency=$NUM_CNS_THREADS ovlCorrConcurrency=$NUM_THREADS ovlConcurrency=$NUM_THREADS ovlThreads=1 $other_parameters superReadSequences_shr.frg $list_frg_files   1> runCA2.out 2>&1\n";
 
 	    print FILE "if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then\n";
 	    print FILE "echo \"Overlap/unitig success\"\n";
@@ -871,7 +873,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
     }
 
 #and we continue into the scaffolder...
-    print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_THREADS computeInsertSize=0 $other_parameters 1>runCA3.out 2>&1\n";
+    print FILE "runCA $CA_PARAMETERS unitigger=bog -p genome -d CA cnsConcurrency=$NUM_CNS_THREADS computeInsertSize=0 $other_parameters 1>runCA3.out 2>&1\n";
 
     print FILE "if [[ -e \"CA/9-terminator/genome.qc\" ]];then\n";
     print FILE "echo \"CA success\"\n";
