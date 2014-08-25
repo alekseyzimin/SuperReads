@@ -68,6 +68,7 @@ my $USE_LINKING_MATES       = 0;
 my $DO_HOMOPOLYMER_TRIM     = 0;
 my $CLOSE_GAPS              = 1;
 my $NO_MMAP                 = 0;
+my $STOP_AFTER_SR           = 0;
 
 my $assembly_script = "assemble.sh";
 my $generate_default;
@@ -305,6 +306,9 @@ while(my $line=<FILE>){
         } elsif($key eq "NO_MMAP"){
             fail("bad value for NO_MMAP, enter 0 or 1", $.) unless($param =~ /^[01]$/);
             $NO_MMAP=int($param);
+        } elsif($key eq "STOP_AFTER_SUPERREADS"){
+            fail("bad value for STOP_AFTER_SUPERREADS, enter 0 or 1", $.) unless($param =~ /^[01]$/);
+            $STOP_AFTER_SR = int($param);
 	} else {
             fail "Could not parse line '$line'";
         }
@@ -748,16 +752,24 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 		print FILE "rm $f[0].tmp\n";
 	    }
 	}
-	print FILE "echo -n 'Linking PE reads ';\ncat ??.linking.frg |grep --text '^{FRG' |wc -l;\n";
+	print FILE "echo -n 'Linking PE reads '; grep -c --text '^{FRG' ??.linking.frg\n";
     }
 
 #create frg file for super reads
     if(not(-e "superReadSequences_shr.frg")||$rerun_pe==1){
-	print FILE "cat work1/superReadSequences.fasta | create_sr_frg.pl 2>renamed_sr.txt | fasta2frg.pl super >  superReadSequences_shr.frg\n";
+	print FILE "create_sr_frg.pl <work1/superReadSequences.fasta 2>renamed_sr.txt | fasta2frg.pl super >  superReadSequences_shr.frg\n";
     }
 
 ###done with super reads for PE###
     print FILE "\n";
+}
+
+if($STOP_AFTER_SR) {
+  print FILE "log 'Super reads done'\n";
+  close(FILE);
+  chmod 0755, $assembly_script;
+  print "done.\nexecute $assembly_script to create the super reads\n";
+  exit(0);
 }
 
 ###Celera Assembler###
@@ -779,7 +791,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 
     if(not(-d "CA/7-0-CGW")|| $rerun_pe || $rerun_sj){
 ###figure out the optimal parameters for CA###
-	print FILE "TOTAL_READS=`cat  *.frg |grep --text '^{FRG'|wc -l`\n";
+	print FILE "TOTAL_READS=`grep -c --text '^{FRG' *.frg`\n";
         print FILE "save TOTAL_READS\n";
 	print FILE "ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/8); if(\$s>100000){print \$s}else{print \"100000\"}'`\n";
         print FILE "save ovlRefBlockSize\n";
@@ -808,7 +820,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 		print FILE "fi\n";
 
 		print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep --text '^>' ../../sj.cor.ext.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid\n";
-		print FILE "cat genome.chimeric.uid |awk '{print \"frg uid \"\$1\" mateiid 0\"}'  > gkp.edits.msg\n";
+		print FILE "<genome.chimeric.uid awk '{print \"frg uid \"\$1\" mateiid 0\"}'  > gkp.edits.msg\n";
 		print FILE "echo -n \"Found additional non-junction reads: \"\nwc -l gkp.edits.msg\n";
 		print FILE "gatekeeper --edit gkp.edits.msg ../genome.gkpStore 1>gatekeeper.err 2>&1\n";
 		print FILE "cd ../\nrm -rf *.tigStore\ncd ../\n\n";
@@ -836,7 +848,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 	    print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
 
 #here we filter for repetitive kmers in the unique unitigs
-	    print FILE "NUM_SUPER_READS=`cat superReadSequences_shr.frg $tmplist | grep --text '^{FRG' |wc -l`\n";
+	    print FILE "NUM_SUPER_READS=`grep -c --text '^{FRG' superReadSequences_shr.frg $tmplist`\n";
             print FILE "save NUM_SUPER_READS\n";
 	    print FILE "cd CA\n";
 	    print FILE "tigStore -g genome.gkpStore -t genome.tigStore 2 -d layout -U | tr -d '-' | awk 'BEGIN{print \">unique unitigs\"}{if(\$1 == \"cns\"){seq=\$2}else if(\$1 == \"data.unitig_coverage_stat\" && \$2>=5){print seq\"N\"}}' | jellyfish-2.0 count -L 2 -C -m $ovlMerSize -s \$ESTIMATED_GENOME_SIZE -t $NUM_THREADS -o unitig_mers /dev/fd/0\n";
