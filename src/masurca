@@ -49,6 +49,7 @@ my $KMER                    = "auto";
 my $CA_PARAMETERS           = "";
 my $WINDOW                  = 10;
 my $MAX_ERR_PER_WINDOW      = 3;
+my @moleculo_info_array        = ();
 my $KMER_COUNT_THRESHOLD    = 1;
 my $KMER_RELIABLE_THRESHOLD = 3;
 my $TRIM_PARAM              = 3;
@@ -360,6 +361,11 @@ while(my $line=<FILE>){
             open(my $io, "<", $param) or fail("invalid frg file for OTHER: '$param' $!", $.);
             close($io);
             push(@other_info_array,$param);
+        }
+        elsif($key eq "MOLECULO"){
+             open(my $io, "<", $param) or fail("invalid frg file for OTHER: '$param' $!", $.);
+             close($io);
+             push(@moleculo_info_array,$param);
 	} else {
             fail "Could not parse line '$line'";
         }
@@ -469,6 +475,7 @@ print FILE "save NUM_THREADS\n";
 $USE_LINKING_MATES  = 1 if(not(@jump_info_array));
 $USE_LINKING_MATES  = 0 if(@other_info_array);
 my $tmplist         = join(" ", @other_info_array);
+$tmplist.=" moleculo_shr.frg " if(@moleculo_info_array);
 $list_frg_files    .= " ".$tmplist." ";
 
 ###renaming reads###
@@ -757,9 +764,8 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 
 #create frg file for super reads
     if(not(-e "superReadSequences_shr.frg")||$rerun_pe==1){
-	print FILE "create_sr_frg.pl <work1/superReadSequences.fasta 2>renamed_sr.txt | fasta2frg.pl super >  superReadSequences_shr.frg\n";
+	print FILE "create_sr_frg.pl < work1/superReadSequences.fasta 2>/dev/null | fasta2frg.pl super >  superReadSequences_shr.frg\n";
     }
-
 ###done with super reads for PE###
     print FILE "\n";
 }
@@ -772,6 +778,13 @@ if($STOP_AFTER_SR) {
   exit(0);
 }
 
+if(@moleculo_info_array && not(-e "moleculo_shr.frg")){
+         my $i=0;
+         foreach my $f(@moleculo_info_array){
+         print FILE "perl -e '\$n=0;while(\$line=<>){print \">moleculo$i.\$n\\n\";\$n++;\$line=<>;print \$line;\$line=<>;\$line=<>;}' $f  | create_sr_frg.pl 2>/dev/null | fasta2frg_m.pl moleculo$i >>  moleculo_shr.frg\n";
+         }
+
+
 ###Celera Assembler###
 if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
     print FILE "\nlog 'Celera Assembler'\n";
@@ -781,7 +794,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 
 #this if statement is here because if OTHER frg is specified, we will have to do OBT+ECR, it will slow us down, but it has to be done :(
     my ($ovlMerSize, $other_parameters);
-        if(@other_info_array > 0){
+        if(@other_info_array || @moleculo_info_array){
             $ovlMerSize=22;
             $other_parameters="doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClearRanges=1 ovlMerSize=22";
         }else{
@@ -820,7 +833,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 		print FILE "fi\n";
 
 		print FILE "cd CA/\nmv 4-unitigger 4-unitigger-filter\ncd 4-unitigger-filter\ngrep --text '^>' ../../sj.cor.ext.fa |awk '{print substr(\$1,2)}' > sj.uid\nfilter_library.sh ../ genome sj.uid\n";
-		print FILE "<genome.chimeric.uid awk '{print \"frg uid \"\$1\" mateiid 0\"}'  > gkp.edits.msg\n";
+		print FILE "awk '{print \"frg uid \"\$1\" mateiid 0\"}' genome.chimeric.uid > gkp.edits.msg\n";
 		print FILE "echo -n \"Found additional non-junction reads: \"\nwc -l gkp.edits.msg\n";
 		print FILE "gatekeeper --edit gkp.edits.msg ../genome.gkpStore 1>gatekeeper.err 2>&1\n";
 		print FILE "cd ../\nrm -rf *.tigStore\ncd ../\n\n";
