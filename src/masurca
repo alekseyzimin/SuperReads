@@ -64,7 +64,7 @@ my @pe_info_array           = ();
 my @jump_info_array         = ();
 my @other_info_array        = ();
 my %used_library_ids;
-my $LIMIT_JUMP_COVERAGE     = 1000;
+my $LIMIT_JUMP_COVERAGE     = 300;
 my $USE_LINKING_MATES       = 0;
 my $DO_HOMOPOLYMER_TRIM     = 0;
 my $CLOSE_GAPS              = 1;
