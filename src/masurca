@@ -783,7 +783,7 @@ if(@moleculo_info_array && not(-e "moleculo_shr.frg")){
          foreach my $f(@moleculo_info_array){
          print FILE "perl -e '\$n=0;while(\$line=<>){print \">moleculo$i.\$n\\n\";\$n++;\$line=<>;print \$line;\$line=<>;\$line=<>;}' $f  | create_sr_frg.pl 2>/dev/null | fasta2frg_m.pl moleculo$i >>  moleculo_shr.frg\n";
          }
-
+}
 
 ###Celera Assembler###
 if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
