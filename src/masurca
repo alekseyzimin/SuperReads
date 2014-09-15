@@ -759,7 +759,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 		print FILE "rm $f[0].tmp\n";
 	    }
 	}
-	print FILE "echo -n 'Linking PE reads '; grep -c --text '^{FRG' ??.linking.frg\n";
+	print FILE "echo -n 'Linking PE reads '; cat ??.linking.frg | grep -c --text '^{FRG' \n";
     }
 
 #create frg file for super reads
@@ -804,7 +804,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 
     if(not(-d "CA/7-0-CGW")|| $rerun_pe || $rerun_sj){
 ###figure out the optimal parameters for CA###
-	print FILE "TOTAL_READS=`grep -c --text '^{FRG' *.frg`\n";
+	print FILE "TOTAL_READS=`cat  *.frg | grep -c --text '^{FRG' `\n";
         print FILE "save TOTAL_READS\n";
 	print FILE "ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/8); if(\$s>100000){print \$s}else{print \"100000\"}'`\n";
         print FILE "save ovlRefBlockSize\n";
@@ -861,7 +861,7 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 	    print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
 
 #here we filter for repetitive kmers in the unique unitigs
-	    print FILE "NUM_SUPER_READS=`grep -c --text '^{FRG' superReadSequences_shr.frg $tmplist`\n";
+	    print FILE "NUM_SUPER_READS=`cat superReadSequences_shr.frg $tmplist | grep -c --text '^{FRG' `\n";
             print FILE "save NUM_SUPER_READS\n";
 	    print FILE "cd CA\n";
 	    print FILE "tigStore -g genome.gkpStore -t genome.tigStore 2 -d layout -U | tr -d '-' | awk 'BEGIN{print \">unique unitigs\"}{if(\$1 == \"cns\"){seq=\$2}else if(\$1 == \"data.unitig_coverage_stat\" && \$2>=5){print seq\"N\"}}' | jellyfish-2.0 count -L 2 -C -m $ovlMerSize -s \$ESTIMATED_GENOME_SIZE -t $NUM_THREADS -o unitig_mers /dev/fd/0\n";
