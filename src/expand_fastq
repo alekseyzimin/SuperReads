@@ -9,7 +9,7 @@ check_fastq () {
     }
 }
 
-case $(file -b -i "$FILE") in
+case $(file -L -b -i "$FILE") in
     (application/*gzip*)
         FIRST=$(gunzip -c "$FILE" | head -c 1)
         check_fastq $FIRST
