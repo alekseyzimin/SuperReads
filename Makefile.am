@@ -113,12 +113,13 @@ bin_PROGRAMS += createFastaSuperReadSequences				\
                 joinKUnitigs_v3 outputRecordsNotOnList killBadKUnitigs \
                 makeAdjustmentFactorsForNumReadsForAStatBasedOnGC \
                 makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_v2 \
-		create_sr_frg
+		create_sr_frg splitFileAtNs
 
 dist_bin_SCRIPTS += src2/getLengthStatisticsForKUnitigsFile.perl	\
                     src2/createSuperReadsForDirectory.perl src2/add_missing_mates.pl \
                     src2/outputAlekseysJellyfishReductionFile.perl \
-                    src2/translateReduceFile.perl src/mergeSuperReadsUniquely.pl
+                    src2/translateReduceFile.perl src/mergeSuperReadsUniquely.pl \
+	            src2/closeGapsInScaffFastaFile.perl
 
 killBadKUnitigs_SOURCES = src2/killBadKUnitigs.cc
 createFastaSuperReadSequences_SOURCES = src2/createFastaSuperReadSequences.cc
@@ -144,6 +145,7 @@ YAGGO_SOURCES          += src2/joinKUnitigs_v3_cmdline.hpp
 outputRecordsNotOnList_SOURCES = src2/outputRecordsNotOnList.cc
 makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_SOURCES = src2/makeAdjustmentFactorsForNumReadsForAStatBasedOnGC.cc
 makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_v2_SOURCES = src2/makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_v2.cc
+splitFileAtNs_SOURCES = src2/splitFileAtNs.cc
 
 semaphore_SOURCES = src/semaphore.cc
 YAGGO_SOURCES += src/semaphore_cmdline.hpp
