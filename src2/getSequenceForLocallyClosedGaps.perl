@@ -122,7 +122,10 @@ open (OUTFILE, ">genome.ctg.fasta");
 while ($line = <FILE>) {
     chomp ($line);
     if ($line =~ /^>/) {
-	($contig) = ($line =~ /^>\D*(\d+)/);
+	if ($line =~ /^>\D*\d+_\d+/) {
+	    ($contig) = ($line =~ /^>\D*(\d+_\d+)/); }
+	else {
+	    ($contig) = ($line =~ /^>\D*(\d+)/); }
 	if ($firstMergedContig{$contig}) {
 	    $on = 0; }
 	else {
