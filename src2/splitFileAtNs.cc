@@ -11,20 +11,22 @@ int main (int argc, char **argv)
      char *fn = argv[1];
      int numNsToBreakScaffold;
      if (argc <= 2)
-	  numNsToBreakScaffold = 10;
+	  numNsToBreakScaffold = 2;
      else
 	  numNsToBreakScaffold = atoi (argv[2]);
      if (numNsToBreakScaffold <= 0)
 	  numNsToBreakScaffold = 1;
      int contigNum = 0;
      FILE *infile = fopen (fn, "r");
-     FILE *outfile = fopen ("splitScaffoldPlacementFile.txt", "w");
+     FILE *outfile = fopen ("genome.posmap.ctgscf", "w");
+     FILE *scaffNameTranslationFile = fopen ("scaffNameTranslations.txt", "w");
+     int scaffoldNumber = 0;
      bool isFirstLine = true;
      charb line(100);
      std::vector<char *> flds;
      int numBadInARow = -1;
      charb badSequence(50);
-     charb scaff(30);
+     charb scaff(30), scaffName;
      charb contigName(30);
      int curScaffOffset = 0;
      int beginContigOffsetInScaff = 0, endContigOffsetInScaff = 0;
@@ -34,7 +36,7 @@ int main (int argc, char **argv)
 	       if (! isFirstLine) {
 		    fputc ('\n', stdout);
 		    ++endContigOffsetInScaff;
-		    fprintf (outfile, "%s %s %d %d f\n", (char *)contigName, (char *)scaff, beginContigOffsetInScaff, endContigOffsetInScaff); // Must go to file
+		    fprintf (outfile, "%s %s %d %d f\n", (char *)(contigName+3), (char *)(scaff+3), beginContigOffsetInScaff, endContigOffsetInScaff); // Must go to file
 	       }
 	       else
 		    isFirstLine = false;
@@ -45,7 +47,12 @@ int main (int argc, char **argv)
 		    strcpy (scaff, cptr);
 	       else
 		    strcpy (scaff, "scaff");
-	       sprintf (contigName, "%s_%d", (char *)scaff, contigNum);
+	       // Output scaff and new scaff name
+	       fprintf (scaffNameTranslationFile, "%s ", (char *) scaff);
+	       sprintf (scaff, "scf7190%09d", scaffoldNumber);
+	       fprintf (scaffNameTranslationFile, "%s\n", (char *) scaff);
+	       ++scaffoldNumber;
+	       sprintf (contigName, "scf7180%09d", contigNum);
 	       printf (">%s\n", (char *)contigName);
 	       ++contigNum;
 	       numBadInARow = -1; // Negative until the first good base
@@ -66,8 +73,8 @@ int main (int argc, char **argv)
 			 if (numBadInARow >= numNsToBreakScaffold) {
 			      fputc ('\n', stdout);
 			      ++endContigOffsetInScaff;
-			      fprintf (outfile, "%s %s %d %d f\n", (char *)contigName, (char *)scaff, beginContigOffsetInScaff, endContigOffsetInScaff); // Must go to file
-			      sprintf (contigName, "%s_%d", (char *)scaff, contigNum);
+			      fprintf (outfile, "%s %s %d %d f\n", (char *)(contigName+3), (char *)(scaff+3), beginContigOffsetInScaff, endContigOffsetInScaff); // Must go to file
+			      sprintf (contigName, "scf7180%09d", contigNum);
 			      printf (">%s\n", (char *)contigName);
 			      beginContigOffsetInScaff = curScaffOffset;
 			      ++contigNum; }
@@ -94,11 +101,12 @@ int main (int argc, char **argv)
      if (! isFirstLine) {
 	  fputc ('\n', stdout);
 	  ++endContigOffsetInScaff;
-	  fprintf (outfile, "%s %s %d %d f\n", (char *)contigName, (char *)scaff, beginContigOffsetInScaff, endContigOffsetInScaff); // Must go to file
+	  fprintf (outfile, "%s %s %d %d f\n", (char *)(contigName+3), (char *)(scaff+3), beginContigOffsetInScaff, endContigOffsetInScaff); // Must go to file
      }
 
      fclose (infile);
      fclose (outfile);
+     fclose (scaffNameTranslationFile);
 
      return (0);
 }

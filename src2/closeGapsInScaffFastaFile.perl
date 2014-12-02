@@ -32,19 +32,9 @@
 use File::Basename;
 $exeDir = dirname ($0);
 &processArgs;
+# Also generates genome.posmap.ctgscf
 $cmd = "$exeDir/splitFileAtNs $scaffoldFastaFile > genome.ctg.fasta";
 print "$cmd\n"; system ($cmd);
-
-open (FILE, "splitScaffoldPlacementFile.txt");
-open (OUTFILE, ">genome.posmap.ctgscf");
-while ($line = <FILE>) {
-    chomp ($line);
-    @flds = split (" ", $line);
-    $flds[0] =~ s/^...//;
-    $flds[1] =~ s/^...//;
-    print OUTFILE "@flds\n";
-}
-close (FILE); close (OUTFILE);
 
 open (FILE, "genome.posmap.ctgscf");
 while ($line = <FILE>) {
