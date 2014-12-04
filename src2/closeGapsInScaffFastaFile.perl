@@ -36,28 +36,27 @@ $exeDir = dirname ($0);
 $cmd = "$exeDir/splitFileAtNs $scaffoldFastaFile > genome.ctg.fasta";
 print "$cmd\n"; system ($cmd);
 
+my $last_scf="";
+my $last_end=0;
+my $last_ctg="";
 open (FILE, "genome.posmap.ctgscf");
+open (OUTFILE, ">genome.asm");
 while ($line = <FILE>) {
     chomp ($line);
-    @flds = split (" ", $line);
-    push (@contigs, $flds[0]);
-    push (@begins, $flds[2]);
-    push (@ends, $flds[3]);
-}
-close (FILE);
-
-open (OUTFILE, ">genome.asm");
-for ($i=0; $i<$#contigs; ++$i) {
-    $ctg1 = $contigs[$i];
-    $ctg2 = $contigs[$i+1];
-    $mean = $begins[$i+1] - $ends[$i];
-    $std = $mean * .1;
-    if ($std < 100) {
-	$std = 100; }
-    $std = int ($std);
-    print OUTFILE "{SCF\nct1:$ctg1\nct2:$ctg2\nmea:$mean\nstd:$std\n}\n" if($mean>0);
+    my ($ctg,$scf,$start,$end) = split (" ", $line);
+    if($scf eq $last_scf){
+	my $std = int(($start-$last_end) * .1);
+	$std=100 if($std < 100);
+	print OUTFILE "{SCF\nct1:$last_ctg\nct2:$ctg\nmea:",$start-$last_end,"\nstd:$std\n}\n";
+    }
+    $last_ctg=$ctg;
+    $last_end=$end;
+    $last_scf=$scf;
 }
 
+close(FILE);
+close(OUTFILE);
+	
 for (@readsFiles) {
     $readFile = $_;
     $readFileStr .= "--reads-file $readFile "; }
