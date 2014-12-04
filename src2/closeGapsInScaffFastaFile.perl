@@ -55,7 +55,7 @@ for ($i=0; $i<$#contigs; ++$i) {
     if ($std < 100) {
 	$std = 100; }
     $std = int ($std);
-    print OUTFILE "{SCF\nct1:$ctg1\nct2:$ctg2\nmea:$mean\nstd:$std\n}\n";
+    print OUTFILE "{SCF\nct1:$ctg1\nct2:$ctg2\nmea:$mean\nstd:$std\n}\n" if($mean>0);
 }
 
 for (@readsFiles) {
