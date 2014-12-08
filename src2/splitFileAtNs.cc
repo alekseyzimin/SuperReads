@@ -49,10 +49,10 @@ int main (int argc, char **argv)
 		    strcpy (scaff, "scaff");
 	       // Output scaff and new scaff name
 	       fprintf (scaffNameTranslationFile, "%s ", (char *) scaff);
-	       sprintf (scaff, "scf7190%09d", scaffoldNumber);
+	       sprintf (scaff, "jcf7190%09d", scaffoldNumber);
 	       fprintf (scaffNameTranslationFile, "%s\n", (char *) scaff);
 	       ++scaffoldNumber;
-	       sprintf (contigName, "scf7180%09d", contigNum);
+	       sprintf (contigName, "ctg7180%09d", contigNum);
 	       printf (">%s\n", (char *)contigName);
 	       ++contigNum;
 	       numBadInARow = -1; // Negative until the first good base
@@ -74,7 +74,7 @@ int main (int argc, char **argv)
 			      fputc ('\n', stdout);
 			      ++endContigOffsetInScaff;
 			      fprintf (outfile, "%s %s %d %d f\n", (char *)(contigName+3), (char *)(scaff+3), beginContigOffsetInScaff, endContigOffsetInScaff); // Must go to file
-			      sprintf (contigName, "scf7180%09d", contigNum);
+			      sprintf (contigName, "ctg7180%09d", contigNum);
 			      printf (">%s\n", (char *)contigName);
 			      beginContigOffsetInScaff = curScaffOffset;
 			      ++contigNum; }
