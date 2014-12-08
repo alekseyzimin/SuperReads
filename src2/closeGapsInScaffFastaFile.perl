@@ -33,36 +33,10 @@ use File::Basename;
 $exeDir = dirname ($0);
 &processArgs;
 # Also generates genome.posmap.ctgscf
+# Also generates genome.asm
 $cmd = "$exeDir/splitFileAtNs $scaffoldFastaFile > genome.ctg.fasta";
 print "$cmd\n"; system ($cmd);
 
-my $last_scf="";
-my $last_end=0;
-my $last_ctg="";
-open (FILE, "genome.posmap.ctgscf");
-open (OUTFILE, ">genome.asm");
-while ($line = <FILE>) {
-    chomp ($line);
-    my ($ctg,$scf,$start,$end) = split (" ", $line);
-    if($last_scf eq ""){
-	print OUTFILE "{SCF\nacc:($scf,0)\n";
-    }else{
-    if($scf eq $last_scf){
-	my $std = int(($start-$last_end) * .2);
-	$std=100 if($std < 100);
-	print OUTFILE "{CTP\nct1:$last_ctg\nct2:$ctg\nmea:",$start-$last_end,"\nstd:$std\nori:N\n}\n";
-    }else{
-	print OUTFILE "}\n{SCF\nacc:($scf,0)\n";
-    }
-    }	
-    $last_ctg=$ctg;
-    $last_end=$end;
-    $last_scf=$scf;
-}
-print OUTFILE "}\n";
-close(FILE);
-close(OUTFILE);
-	
 for (@readsFiles) {
     $readFile = $_;
     $readFileStr .= "--reads-file $readFile "; }
