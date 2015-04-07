@@ -28,8 +28,8 @@ while($line=<STDIN>){
     if($line =~ /^>/){
 	if(not($rn eq "")){
 	    $l=length($seq);
-	    #$rev_seq=reverse_complement($seq);
-	    #$seq=$rev_seq lt $seq ? $rev_seq : $seq;
+	    $rev_seq=reverse_complement($seq);
+	    $seq=$rev_seq lt $seq ? $rev_seq : $seq;
 	    if($l<$max_len){
 		print "$rn\n$seq\n";
 	    }else{
@@ -57,8 +57,8 @@ while($line=<STDIN>){
 }
 #do not forget the last one!!!
 $l=length($seq);
-#$rev_seq=reverse_complement($seq);
-#$seq=$rev_seq lt $seq ? $rev_seq : $seq;
+$rev_seq=reverse_complement($seq);
+$seq=$rev_seq lt $seq ? $rev_seq : $seq;
             if($l<$max_len){
                 print "$rn\n$seq\n";
             }else{
@@ -69,3 +69,9 @@ $l=length($seq);
                     }   
             }
 
+sub reverse_complement {
+my $seq=$_[0];
+$seq=~tr/ACGTNacgtn/TGCANtgcan/;
+$seq=reverse($seq);
+return($seq);
+}
