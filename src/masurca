@@ -824,7 +824,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
     
     if(@pacbio_info_array){
     print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $NUM_THREADS -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
-    print FILE "$RealBin/../PacBio/src_mega_reads/mega_reads_assemble.sh -m work1 -p $pacbio_info_array[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files\"\n";
+    print FILE "$RealBin/mega_reads_assemble.sh -m work1 -p $pacbio_info_array[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files\"\n";
     close(FILE);
     chmod 0755, $assembly_script;
     exit(0);
