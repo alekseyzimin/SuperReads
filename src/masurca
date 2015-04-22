@@ -243,7 +243,8 @@ my @jump_info_array=@_;
 	}
 
 #here we extend the jumping library reads if they are too short
-        if(not($SOAP_ASSEMBLY) && (not(-e "sj.cor.ext.fa")||$rerun_pe==1||$rerun_sj==1)){      
+        if(not($SOAP_ASSEMBLY)){
+        if(not(-e "sj.cor.ext.fa")||$rerun_pe==1||$rerun_sj==1){      
         $rerun_sj=1;
 	if($EXTEND_JUMP_READS==1){
         print FILE "createSuperReadsForDirectory.perl -jumplibraryreads -minreadsinsuperread 1 -l \$KMER_J -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.jump.fasta -t $NUM_THREADS -mikedebug work3 sj.cor.clean.rev.fa 1> super2.err 2>&1\n";
@@ -281,6 +282,7 @@ my @jump_info_array=@_;
 	    print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp > $f[0].cor.clean.frg\n";
 	    print FILE "rm -f $f[0].tmp\n";
 	}
+        }
 }
 sub create_pe_linking_mates {
         my @pe_info_array=@_;
@@ -591,7 +593,10 @@ unshift(@LD_LIBRARY_PATH, @prep_ld) if @prep_ld;
 
 unless($skip_path_checking) {
   print "Verifying PATHS...\n";
-  &check_exec("jellyfish-2.0", "runCA", "createSuperReadsForDirectory.perl");
+  my @progs=("jellyfish-2.0", "runCA", "createSuperReadsForDirectory.perl");
+  push(@progs,("nucmer","mega_reads_assemble.sh")) if($pacbio_info_array);
+  push(@progs, "SOAPdenovo-63mer") if($SOAP_ASSEMBLY);
+  &check_exec(@progs);
 }
 
 fail ("no PE data specified") if(@pe_info_array == 0);
@@ -848,6 +853,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 	    $cmdline.=" $f[0]";
      }
     print FILE "$cmdline < sj.cor.clean2.fa\n";
+    print FILE "log 'SOAPdenovo'\n";
     print FILE "SOAPdenovo-63mer all -u -w -p $NUM_THREADS -d 0 -K 35 -k 33 -R -o asm -s soap_config 1>SOAPdenovo.err 2>\&1\n";
     if($CLOSE_GAPS){
 
