@@ -594,7 +594,7 @@ unshift(@LD_LIBRARY_PATH, @prep_ld) if @prep_ld;
 unless($skip_path_checking) {
   print "Verifying PATHS...\n";
   my @progs=("jellyfish-2.0", "runCA", "createSuperReadsForDirectory.perl");
-  push(@progs,("nucmer","mega_reads_assemble.sh")) if($pacbio_info_array);
+  push(@progs,("nucmer","mega_reads_assemble.sh")) if(@pacbio_info_array);
   push(@progs, "SOAPdenovo-63mer") if($SOAP_ASSEMBLY);
   &check_exec(@progs);
 }
@@ -854,13 +854,16 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
      }
     print FILE "$cmdline < sj.cor.clean2.fa\n";
     print FILE "log 'SOAPdenovo'\n";
-    print FILE "SOAPdenovo-63mer all -u -w -p $NUM_THREADS -d 0 -K 35 -k 33 -R -o asm -s soap_config 1>SOAPdenovo.err 2>\&1\n";
+    print FILE "mkdir -p SOAP_assembly\n";
+    print FILE "cd SOAP_assembly\n";
+    print FILE "SOAPdenovo-63mer all -u -w -p $NUM_THREADS -d 0 -K 35 -k 33 -R -o asm -s ../soap_config 1>SOAPdenovo.err 2>\&1\n";
+    print FILE "cd ..\n";
     if($CLOSE_GAPS){
 
     print FILE "log 'Gap closing'\n";
     my $reads_argument= join(" ", map { "--reads-file '$_'" } (@pe_files, @sj_files));
-    print FILE "if [[ -e \"asm.scafSeq\" ]];then\n";
-    print FILE "closeGapsInScaffFastaFile.perl -s $JF_SIZE --scaffold-fasta-file  asm.scafSeq $reads_argument --output-directory SOAP_gapclose --min-kmer-len 19 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $NUM_THREADS --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 25 1>gapClose.err 2>&1\n";
+    print FILE "if [[ -e \"SOAP_assembly/asm.scafSeq\" ]];then\n";
+    print FILE "closeGapsInScaffFastaFile.perl  --max-reads-in-memory 1000000000 -s $JF_SIZE --scaffold-fasta-file  SOAP_assembly/asm.scafSeq $reads_argument --output-directory SOAP_gapclose --min-kmer-len 19 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $NUM_THREADS --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 25 1>gapClose.err 2>&1\n";
     print FILE "if [[ -e \"SOAP_gapclose/genome.ctg.fasta\" ]];then\n";
     print FILE "echo \"Gap close success. Output sequence is in SOAP_gapclose/genome.\{ctg,scf\}.fasta\"\n";
     print FILE "else\n";
@@ -932,7 +935,7 @@ if($CLOSE_GAPS){
     print FILE "log 'Gap closing'\n";
     my $reads_argument= join(" ", map { "--reads-file '$_'" } (@pe_files, @sj_files));
 
-    print FILE "closeGapsLocally.perl -s $JF_SIZE --Celera-terminator-directory CA/9-terminator $reads_argument --output-directory CA/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $NUM_THREADS --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 21 1>gapClose.err 2>&1\n";
+    print FILE "closeGapsLocally.perl --max-reads-in-memory 1000000000 -s $JF_SIZE --Celera-terminator-directory CA/9-terminator $reads_argument --output-directory CA/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $NUM_THREADS --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 21 1>gapClose.err 2>&1\n";
     print FILE "if [[ -e \"CA/10-gapclose/genome.ctg.fasta\" ]];then\n";
     print FILE "echo \"Gap close success. Output sequence is in CA/10-gapclose/genome.\{ctg,scf\}.fasta\"\n";
     print FILE "else\n";
