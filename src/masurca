@@ -660,7 +660,10 @@ fail () {
   echo -e "${RC}[$d]${NC} $@"
   exit 1
 }
-
+signaled () {
+  fail Interrupted
+}
+trap signaled TERM QUIT INT
 rm -f environment.sh; touch environment.sh
 
 # To run tasks in parallel
