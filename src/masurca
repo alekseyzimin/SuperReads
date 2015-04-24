@@ -158,8 +158,7 @@ sub count_kmers_for_quorum {
   print FILE <<"EOS";
 quorum_create_database -t $NUM_THREADS -s \$JF_SIZE -b 7 -m 24 -q \$((MIN_Q_CHAR + $thresh)) -o quorum_mer_db.jf $filelist
 if [ $? != 0 ]; then
-  echo "Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2"
-  exit
+  fail Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2
 fi
 EOS
 }
@@ -185,8 +184,7 @@ my @jump_info_array=@_;
 
 #check if the super reads pipeline finished successfully
 	print FILE "if [[ ! -e work2/superReads.success ]];then\n";
-	print FILE "echo \"Super reads failed, check super2.err and files in ./work2/\"\n";
-	print FILE "exit\n";
+	print FILE "fail Super reads failed, check super2.err and files in ./work2/\n";
 	print FILE "fi\n";
 
 #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
@@ -251,8 +249,7 @@ my @jump_info_array=@_;
 
 #check if the super reads pipeline finished successfully
         print FILE "if [[ ! -e work3/superReads.success ]];then\n";
-        print FILE "echo \"Super reads failed, check super2.err and files in ./work2/\"\n";
-        print FILE "exit\n";
+        print FILE "fail Super reads failed, check super2.err and files in ./work2/\n";
         print FILE "fi\n";
 
         print FILE "ln -sf work3/superReadSequences.jumpLibrary.fasta sj.cor.ext.fa\n";
@@ -331,8 +328,7 @@ sub runCA {
             print FILE "if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then\n";
             print FILE "echo \"Overlap/unitig success\"\n";
             print FILE "else\n";
-            print FILE "echo \"Overlap/unitig failed, check output under CA/ and runCA1.out\"\n";
-            print FILE "exit\n";
+            print FILE "fail Overlap/unitig failed, check output under CA/ and runCA1.out\n";
             print FILE "fi\n";
 
             print FILE "recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt\n";
@@ -366,8 +362,7 @@ sub runCA {
     print FILE "if [[ -e \"CA/9-terminator/genome.qc\" ]];then\n";
     print FILE "echo \"CA success\"\n";
     print FILE "else\n";
-    print FILE "echo \"CA failed, check output under CA/ and runCA3.out\"\n";
-    print FILE "exit\n";
+    print FILE "fail CA failed, check output under CA/ and runCA3.out\n";
     print FILE "fi\n";
 }
 
@@ -649,14 +644,21 @@ save () {
   (echo -n "$1=\""; eval "echo -n \"\$$1\""; echo '"') >> environment.sh
 }
 GC=
+RC=
 NC=
 if tty -s < /dev/fd/1 2> /dev/null; then
   GC='\e[0;32m'
+  RC='\e[0;31m'
   NC='\e[0m'
 fi
 log () {
   d=$(date)
   echo -e "${GC}[$d]${NC} $@"
+}
+fail () {
+  d=$(date)
+  echo -e "${RC}[$d]${NC} $@"
+  exit 1
 }
 
 rm -f environment.sh; touch environment.sh
@@ -752,8 +754,7 @@ if(not(-e "pe.cor.fa")||$rerun_pe==1){
 log Error correct PE.
 
 quorum_error_correct_reads  -q \$((MIN_Q_CHAR + $RELIABLE_Q_PARAM)) --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 1 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $mmap_flag $homo_polymer_flag quorum_mer_db.jf $list_pe_files --no-discard -o pe.cor --verbose 1>quorum.err 2>&1 || {
-  echo >&2 Error correction of PE reads failed. Check pe.cor.log.
-  exit 1
+  fail Error correction of PE reads failed. Check pe.cor.log.
 }
 EOS
     $rerun_pe=1;
@@ -769,8 +770,7 @@ if(@jump_info_array > 0){
 log Error correct JUMP.
 
 quorum_error_correct_reads -q \$((MIN_Q_CHAR + $RELIABLE_Q_PARAM)) --contaminant=$RealBin/../share/adapter.jf -m $KMER_COUNT_THRESHOLD -s 1 -g 2 -a $KMER_RELIABLE_THRESHOLD -t $NUM_THREADS -w $WINDOW -e $MAX_ERR_PER_WINDOW $mmap_flag $homo_polymer_flag quorum_mer_db.jf $list_jump_files --no-discard -o sj.cor --verbose 1>quorum.err 2>&1 || {
-  echo >&2 Error correction of JUMP reads failed. Check sj.cor.log.
-  exit 1
+  fail Error correction of JUMP reads failed. Check sj.cor.log.
 }
 EOS
       $rerun_sj=1;
@@ -842,8 +842,7 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
 
 #check if the super reads pipeline finished successfully
     print FILE "if [[ ! -e work1/superReads.success ]];then\n";
-    print FILE "echo \"Super reads failed, check super1.err and files in ./work1/\"\n";
-    print FILE "exit\n";
+    print FILE "fail Super reads failed, check super1.err and files in ./work1/\n";
     print FILE "fi\n";
 
     if($SOAP_ASSEMBLY){
@@ -867,12 +866,10 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
     print FILE "if [[ -e \"SOAP_gapclose/genome.ctg.fasta\" ]];then\n";
     print FILE "echo \"Gap close success. Output sequence is in SOAP_gapclose/genome.\{ctg,scf\}.fasta\"\n";
     print FILE "else\n";
-    print FILE "echo \"Gap close failed, you can still use pre-gap close scaffold file asm.scafSeq. Check gapClose.err for problems.\"\n";
-    print FILE "exit\n";
+    print FILE "fail Gap close failed, you can still use pre-gap close scaffold file asm.scafSeq. Check gapClose.err for problems.\n";
     print FILE "fi\n";
     print FILE "else\n";
-    print FILE "echo \"SOAPdenovo failed, Check SOAPdenovo.err for problems.\"\n";
-    print FILE "exit\n";
+    print FILE "fail SOAPdenovo failed, Check SOAPdenovo.err for problems.\n";
     print FILE "fi\n";
     }
     close(FILE);
@@ -939,8 +936,7 @@ if($CLOSE_GAPS){
     print FILE "if [[ -e \"CA/10-gapclose/genome.ctg.fasta\" ]];then\n";
     print FILE "echo \"Gap close success. Output sequence is in CA/10-gapclose/genome.\{ctg,scf\}.fasta\"\n";
     print FILE "else\n";
-    print FILE "echo \"Gap close failed, you can still use pre-gap close files under CA/9-terminator/. Check gapClose.err for problems.\"\n";
-    print FILE "exit\n";
+    print FILE "fail Gap close failed, you can still use pre-gap close files under CA/9-terminator/. Check gapClose.err for problems.\n";
     print FILE "fi\n";
 }
 
