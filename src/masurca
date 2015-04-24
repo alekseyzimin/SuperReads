@@ -142,7 +142,7 @@ sub estimate_optimal_kmer{
   if($name eq "KMER_J"){
   print FILE "$name=31\n";
   }else{
-  print FILE "$name=`for f in $filelist;do head -n 80000 \$f |tail -n 40000;done | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); \$kmer=$max_kmer if(\$kmer>$max_kmer); print \$kmer'`\n";
+  print FILE "$name=`for f in $filelist;do head -n 80000 \$f |tail -n 40000;done | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);if(length(\$l)<\$min_len){\$min_len=length(\$l)} \@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); \$kmer++ if(\$kmer\%2==0);\$kmer=$max_kmer if(\$kmer>$max_kmer);print \$kmer'`\n";
 }
 }
 
@@ -856,7 +856,11 @@ if( not(-d "CA") || $rerun_pe || $rerun_sj ){
     print FILE "log 'SOAPdenovo'\n";
     print FILE "mkdir -p SOAP_assembly\n";
     print FILE "cd SOAP_assembly\n";
-    print FILE "SOAPdenovo-63mer all -u -w -p $NUM_THREADS -d 0 -K 35 -k 33 -R -o asm -s ../soap_config 1>../SOAPdenovo.err 2>\&1\n";
+    print FILE "if [ \$KMER -le 63 ];then\n";
+    print FILE "SOAPdenovo-63mer all -u -w -p $NUM_THREADS -D 0 -d 0 -K \$KMER -k 33 -R -o asm -s ../soap_config 1>../SOAPdenovo.err 2>\&1\n";
+    print FILE "else\n";
+    print FILE "SOAPdenovo-127mer all -u -w -p $NUM_THREADS -D 0 -d 0 -K \$KMER -k 33 -R -o asm -s ../soap_config 1>../SOAPdenovo.err 2>\&1\n";
+    print FILE "fi\n";
     print FILE "cd ..\n";
     if($CLOSE_GAPS){
 
