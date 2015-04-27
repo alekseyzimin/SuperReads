@@ -43,6 +43,7 @@ use lib $RealBin;
 
 use MasurcaConf;
 use MasurcaCelera;
+use MasurcaSoap;
 
 #global variables
 my (@pe_files, @sj_files);
@@ -94,6 +95,14 @@ sub fail {
   chomp($_[0]);
   print(STDERR $_[0], "\n");
   exit(1);
+}
+
+sub script_done {
+  close(FILE);
+  chmod 0755, $assembly_script;
+  print("done.\n",
+        "execute $assembly_script to run assembly\n");
+  exit(0);
 }
 
 sub rename_reads {
@@ -545,104 +554,69 @@ if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj=
 ###done build k-unitigs###
 print FILE "\n";
 ###super reads and filtering for jump###
-if( not(-d "CA") || $rerun_pe || $rerun_sj ){
-    if(@{$config{JUMP_INFO}} > 0){
-        print FILE "log 'Filtering JUMP.'\n";
-	&filter_jump(%config);
+if( not(-d "CA") || $rerun_pe || $rerun_sj ) {
+  if(@{$config{JUMP_INFO}} > 0) {
+    print FILE "log 'Filtering JUMP.'\n";
+    filter_jump(%config);
+  }
 }
-}
+
 ###done with super reads and filtering for jump###
-    print FILE "\n";
+print FILE "\n";
 ##super reads for PE###
 
-    print FILE "log 'Computing super reads from PE '\n";
+print FILE "log 'Computing super reads from PE '\n";
 
 #create super reads from PE    
-    if($rerun_pe==1|| not(-e "work1")){
-	print FILE "rm -rf work1\n";
-	$rerun_pe=1;
-    } 
+if($rerun_pe==1|| not(-e "work1")) {
+  print FILE "rm -rf work1\n";
+  $rerun_pe=1;
+}
     
-    if(@{$config{PACBIO_INFO}}){
-    print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
-    print FILE "$RealBin/mega_reads_assemble.sh -m work1 -p $config{PACBIO_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files\"\n";
-    close(FILE);
-    chmod 0755, $assembly_script;
-    exit(0);
-    }else{    
-    print FILE "createSuperReadsForDirectory.perl -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+if(@{$config{PACBIO_INFO}}) {
+  print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+  print FILE "$RealBin/mega_reads_assemble.sh -m work1 -p $config{PACBIO_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files\"\n";
+  script_done
+}
+
+print FILE "createSuperReadsForDirectory.perl -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
 
 #check if the super reads pipeline finished successfully
-    print FILE "if [[ ! -e work1/superReads.success ]];then\n";
-    print FILE "fail Super reads failed, check super1.err and files in ./work1/\n";
-    print FILE "fi\n";
+print FILE "if [[ ! -e work1/superReads.success ]];then\n";
+print FILE "fail Super reads failed, check super1.err and files in ./work1/\n";
+print FILE "fi\n";
 
-    if($config{SOAP_ASSEMBLY}){
-    my $cmdline="splitFileByPrefix.pl";
-    foreach my $v (@{$config{JUMP_INFO}}) {
-            my @f = split(" ", $v);
-	    $cmdline.=" $f[0]";
-     }
-    print FILE "$cmdline < sj.cor.clean2.fa\n";
-    print FILE "log 'SOAPdenovo'\n";
-    print FILE "mkdir -p SOAP_assembly\n";
-    print FILE "cd SOAP_assembly\n";
-    print FILE "if [ \$KMER -le 63 ];then\n";
-    print FILE "SOAPdenovo-63mer all -u -w -p $config{NUM_THREADS} -D 0 -d 0 -K \$KMER -k 33 -R -o asm -s ../soap_config 1>../SOAPdenovo.err 2>\&1\n";
-    print FILE "else\n";
-    print FILE "SOAPdenovo-127mer all -u -w -p $config{NUM_THREADS} -D 0 -d 0 -K \$KMER -k 33 -R -o asm -s ../soap_config 1>../SOAPdenovo.err 2>\&1\n";
-    print FILE "fi\n";
-    print FILE "cd ..\n";
-    if($config{CLOSE_GAPS}){
+if($config{SOAP_ASSEMBLY}){
+  MasurcaSoap::runSOAP(*FILE, [@pe_files, @sj_files], , %config);
+  script_done;
+}
 
-    print FILE "log 'Gap closing'\n";
-    my $reads_argument= join(" ", map { "--reads-file '$_'" } (@pe_files, @sj_files));
-    print FILE "if [[ -e \"SOAP_assembly/asm.scafSeq\" ]];then\n";
-    print FILE "closeGapsInScaffFastaFile.perl  --max-reads-in-memory 1000000000 -s $config{JF_SIZE} --scaffold-fasta-file  SOAP_assembly/asm.scafSeq $reads_argument --output-directory SOAP_gapclose --min-kmer-len 19 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $config{NUM_THREADS} --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 25 1>gapClose.err 2>&1\n";
-    print FILE "if [[ -e \"SOAP_gapclose/genome.ctg.fasta\" ]];then\n";
-    print FILE "echo \"Gap close success. Output sequence is in SOAP_gapclose/genome.\{ctg,scf\}.fasta\"\n";
-    print FILE "else\n";
-    print FILE "fail Gap close failed, you can still use pre-gap close scaffold file asm.scafSeq. Check gapClose.err for problems.\n";
-    print FILE "fi\n";
-    print FILE "else\n";
-    print FILE "fail SOAPdenovo failed, Check SOAPdenovo.err for problems.\n";
-    print FILE "fi\n";
-    }
-    close(FILE);
-    chmod 0755, $assembly_script;
-    print "done.\nexecute $assembly_script to run assembly with SOAPdenovo\n";
-    exit(0);
-    }
-
-if($config{USE_LINKING_MATES} == 1){
+if($config{USE_LINKING_MATES} == 1) {
 #now we extract those PE mates that did not end up in the same super read -- we call them linking mates, they will be useful for scaffolding
-	if(not(-e "pe.linking.fa")||$rerun_pe==1){
+  if(not(-e "pe.linking.fa")||$rerun_pe==1) {
 	    print FILE "extractreads.pl <( awk 'BEGIN{last_readnumber=-1;last_super_read=\"\"}{readnumber=int(substr(\$1,3));if(readnumber%2>0){readnumber--}super_read=\$2;if(readnumber==last_readnumber){if(super_read!=last_super_read){print read;print \$1;}}else{read=\$1;last_super_read=\$2}last_readnumber=readnumber}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt )  pe.cor.fa 1 > pe.linking.fa\n";
 	    $rerun_pe=1;
-	}
-    print FILE "NUM_LINKING_MATES=`wc -l pe.linking.fa | perl -ane '{print int(\$F[0]/2)}'`\n";
-    if(@{$config{JUMP_INFO}}){
+  }
+  print FILE "NUM_LINKING_MATES=`wc -l pe.linking.fa | perl -ane '{print int(\$F[0]/2)}'`\n";
+  if(@{$config{JUMP_INFO}}){
     print FILE "MAX_LINKING_MATES=`perl -e '{\$g=int('\$ESTIMATED_GENOME_SIZE'/25);\$g=250000000 if(\$g>250000000);print \$g}'`\n";
-    }else{
+  } else {
     print FILE "MAX_LINKING_MATES=`perl -e '{\$g=int('\$ESTIMATED_GENOME_SIZE');\$g=250000000 if(\$g>250000000);print \$g}'`\n";
-    }
-    &create_pe_linking_mates(%config);
+  }
+  &create_pe_linking_mates(%config);
 
 #create frg file for super reads
-    if(not(-e "superReadSequences_shr.frg")||$rerun_pe==1){
-	print FILE "create_sr_frg.pl < work1/superReadSequences.fasta 2>/dev/null | fasta2frg.pl super >  superReadSequences_shr.frg\n";
-    }
+  if(not(-e "superReadSequences_shr.frg")||$rerun_pe==1){
+    print FILE "create_sr_frg.pl < work1/superReadSequences.fasta 2>/dev/null | fasta2frg.pl super >  superReadSequences_shr.frg\n";
+  }
 ###done with super reads for PE###
-    print FILE "\n";
-    }
-    }
+  print FILE "\n";
+}
+
 
 if($config{STOP_AFTER_SR}) {
   print FILE "log 'Super reads done'\n";
-  close(FILE);
-  chmod 0755, $assembly_script;
-  print "done.\nexecute $assembly_script to create the super reads\n";
-  exit(0);
+  script_done
 }
 
 if(@{$config{MOLECULO_INFO}} && not(-e "moleculo_shr.frg")){
@@ -679,8 +653,6 @@ if($config{CLOSE_GAPS}){
 ###Done !!!! Hoorayyyy!!! :)###
 print FILE "log 'All done'\n";
 
-close(FILE);
-chmod 0755, $assembly_script;
-print "done.\nexecute $assembly_script to run the assembly\n";
+script_done
 
 
