@@ -377,7 +377,8 @@ print FILE "fail Super reads failed, check super1.err and files in ./work1/\n";
 print FILE "fi\n";
 
 if($config{SOAP_ASSEMBLY}){
-  MasurcaSoap::runSOAP(*FILE, [@pe_files, @sj_files], , %config);
+  MasurcaSoap::SOAPconfig(%config);
+  MasurcaSoap::runSOAP(*FILE, [@pe_files, @sj_files], %config);
   script_done;
 }
 
