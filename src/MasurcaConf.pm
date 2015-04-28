@@ -8,14 +8,7 @@ our (@ISA, @EXPORT, @EXPORT_OK);
 BEGIN {
   require Exporter;
   @ISA = qw(Exporter);
-  @EXPORT = (# Parameters section
-             qw($EXTEND_JUMP_READS $DO_HOMOPOLYMER_TRIM $TRIM_PARAM $JF_SIZE),
-             qw($RELIABLE_Q_PARAM $CLOSE_GAPS $CA_PARAMETERS $LIMIT_JUMP_COVERAGE),
-             qw($KMER $USE_LINKING_MATES $KMER_COUNT_THRESHOLD $KMER_RELIABLE_THRESHOLD),
-             qw($NUM_THREADS $NUM_CNS_THREADS $NO_MMAP $STOP_AFTER_SR),
-             # Data section
-             qw(@pe_info @jump_info @other_info @moleculo_info));
-  @EXPORT_OK = qw(fail default_config config_file);
+  @EXPORT_OK = qw(&fail $default_config $config_file);
 }
 
 my $default_values = {

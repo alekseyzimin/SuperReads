@@ -1,5 +1,17 @@
 package MasurcaSoap;
 
+use MasurcaConf qw(fail);
+
+my $SOAP_CONF = "soap_config";
+
+sub SOAPconfig {
+  my (%config) = @_;
+
+  open(my $io, ">", $SOAP_CONF) or fail("Can't create SOAP configuration file '$SOAP_CONF': $!");
+
+  
+}
+
 sub runSOAP {
   my ($out, $reads_file, %config) = @_;
   
@@ -15,9 +27,9 @@ log 'SOAPdenovo'
 mkdir -p SOAP_assembly
 ( cd SOAP_assembly
   if [ \$KMER -le 63 ];then
-    SOAPdenovo-63mer all -u -w -p $config{NUM_THREADS} -D 0 -d 0 -K \$KMER -k 33 -R -o asm -s ../soap_config 1>../SOAPdenovo.err 2>\&1
+    SOAPdenovo-63mer all -u -w -p $config{NUM_THREADS} -D 0 -d 0 -K \$KMER -k 33 -R -o asm -s ../$SOAP_CONF 1>../SOAPdenovo.err 2>\&1
   else
-    SOAPdenovo-127mer all -u -w -p $config{NUM_THREADS} -D 0 -d 0 -K \$KMER -k 33 -R -o asm -s ../soap_config 1>../SOAPdenovo.err 2>\&1
+    SOAPdenovo-127mer all -u -w -p $config{NUM_THREADS} -D 0 -d 0 -K \$KMER -k 33 -R -o asm -s ../$SOAP_CONF 1>../SOAPdenovo.err 2>\&1
   fi
 )
 EOS

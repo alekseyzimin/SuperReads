@@ -77,7 +77,8 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
 
 # masurca script files
 dist_bin_SCRIPTS += src/masurca src/MasurcaConf.pm		\
-                    src/MasurcaCelera.pm src/MasurcaSoap.pm
+                    src/MasurcaCommon.pm src/MasurcaCelera.pm	\
+                    src/MasurcaSoap.pm src/MasurcaSuperReads.pm
 
 noinst_HEADERS += src/aligned_simple_array.hpp				\
                   src/diskBasedUnitigger.h src/fibonacci_coding.hpp	\
