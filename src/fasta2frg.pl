@@ -17,6 +17,8 @@
 
 
 my $libId=$ARGV[0];
+my $min_len=64;
+$min_len=$ARGV[1] if(not($ARGV[1] eq ""));
 
 print STDOUT "{VER\n";
 print STDOUT "ver:2\n";
@@ -53,7 +55,7 @@ $clr2=$f[2];
 $clr1=0;
 $clr2=length($sequence1);
 }
-next if(length($sequence1)<64);
+next if(length($sequence1)<$min_len);
 
         print STDOUT "{FRG\n";
         print STDOUT "act:A\n";

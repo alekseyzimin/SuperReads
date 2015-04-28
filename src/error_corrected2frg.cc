@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
     
     uint64_t seq_len = strlen(seq);
     printf("{FRG\n" "act:A\n" "acc:%s\n"
-           "rnd:1\n" "sta:G\n" "lib:%s\n"
+           "rnd:0\n" "sta:G\n" "lib:%s\n"
            "pla:0\n" "loc:0\n" "src:\n.\n"
            "seq:\n",
            (char*)header, args.lib_id_arg);
