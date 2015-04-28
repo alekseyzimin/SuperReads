@@ -48,6 +48,14 @@ my $default_values = {
 
 our $config_file;
 
+sub can_read {
+  my ($file) = @_;
+
+  my $res = open(my $io, "<", $file);
+  close($io);
+  return $res;
+}
+
 sub default_config {
   return <<'EOS';
 # example configuration file 
@@ -180,53 +188,35 @@ sub parse_data {
     my @f=split(" ", $param);
     fail("improper id for PE library '$f[0]'. It should be two character long (like 'p0')", $.) if(not(length($f[0])==2));
     fail("duplicate id for PE library '$f[0]'", $.) if(defined($used_library_ids{$f[0]}));
-    my $pe_info_line ="$f[0] ";
     $used_library_ids{$f[0]}=1;
     fail("improper mean '$f[1]' for PE library '$f[0]'. It must be a positive number", $.) unless(int($f[1])>0);
-    $pe_info_line.="$f[1] ";
     fail("improper stdev '$f[2]' for PE library '$f[0]'. It must be a positive number", $.) unless(int($f[2])>0);
-    $pe_info_line.="$f[2] ";
-    open(my $io, "<", $f[3]) or fail("invalid forward file for PE library '$f[0]': '$f[3]' $!", $.);
-    close($io);
-    $pe_info_line.="$f[3] ";
+    can_read($f[3]) or fail("invalid forward file for PE library '$f[0]': '$f[3]' $!", $.);
     if(defined($f[4])){
-      open($io, "<", $f[4]) or fail("invalid reverse file for PE library '$f[0]': '$f[4]' $!", $.);
-      close($io);
-      $pe_info_line.="$f[4] ";
+      can_read($f[4]) or fail("invalid reverse file for PE library '$f[0]': '$f[4]' $!", $.);
+    } else {
+      push(@f, $f[3]);
     }
-    else{
-      $pe_info_line.="$f[3] ";
-    }
-    push(@{$$res{PE_INFO}}, $pe_info_line);
+    push(@{$$res{PE_INFO}}, \@f);
   } elsif($key eq "JUMP"){
-    my @f=split(" ", $param);
+    my @f = split(" ", $param);
     fail("improper id for JUMP library '$f[0]'. It should be two character long (like 'j1')", $.) if(not(length($f[0])==2));
     fail("duplicate id for JUMP library '$f[0]'", $.) if(defined($used_library_ids{$f[0]}));
-    my $jump_info_line="$f[0] ";
     $used_library_ids{$f[0]}=1;
     fail("improper mean '$f[1]' for JUMP library '$f[0]'. It must be a number strictly greater or less than zero", $.) if(int($f[1])==0);
-    $jump_info_line.="$f[1] ";
     fail("improper stdev '$f[2]' for JUMP library '$f[0]'. It must be a positive number", $.) unless(int($f[2])>0);
-    $jump_info_line.="$f[2] ";
-    open(my $io, "<", $f[3]) or fail("invalid forward file for JUMP library '$f[0]': '$f[3]' $!", $.);
-    close($io);
-    $jump_info_line.="$f[3] ";
-    open($io, "<", $f[4]) or fail("invalid reverse file for JUMP library '$f[0]': '$f[4]' $!", $.);
-    close($io);
-    $jump_info_line.="$f[4] ";
-    push(@{$$res{JUMP_INFO}}, $jump_info_line);
+    can_read($f[3]) or fail("invalid forward file for JUMP library '$f[0]': '$f[3]' $!", $.);
+    can_read($f[4]) or fail("invalid reverse file for JUMP library '$f[0]': '$f[4]' $!", $.);
+    push(@{$$res{JUMP_INFO}}, \@f);
   } elsif($key eq "OTHER"){
     fail("incorrect frg file name '$param'. It must end in '.frg'", $.) unless($param =~/\.frg$/);
-    open(my $io, "<", $param) or fail("invalid frg file for OTHER: '$param' $!", $.);
-    close($io);
+    can_read($param) or fail("invalid frg file for OTHER: '$param' $!", $.);
     push(@{$$res{OTHER_INFO}}, $param);
   } elsif($key eq "MOLECULO") {
-    open(my $io, "<", $param) or fail("invalid file for MOLECULO: '$param' $!", $.);
-    close($io);
+    can_read($param) or fail("invalid file for MOLECULO: '$param' $!", $.);
     push(@{$$res{MOLECULO_INFO}}, $param);
   } elsif($key eq "PACBIO") {
-    open(my $io, "<", $param) or fail("invalid file for PACBIO: '$param' $!", $.);
-    close($io);
+    can_read($param) or fail("invalid file for PACBIO: '$param' $!", $.);
     push(@{$$res{PACBIO_INFO}}, $param);
   } else {
     return 1;

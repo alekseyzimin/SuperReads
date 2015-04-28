@@ -56,8 +56,6 @@ my $rerun_sj          = 0;
 my $WINDOW                  = 10;
 my $MAX_ERR_PER_WINDOW      = 3;
 
-my %used_library_ids;
-
 # Options to masurca script
 my $assembly_script = "assemble.sh";
 my $generate_default;
@@ -114,7 +112,7 @@ sub rename_reads {
   print FILE "log 'Processing $type library reads'\n";
   print FILE "rm -rf $out\n";
   foreach my $v (@read_info){
-    my ($name, $mean, $stdev, $fr, $rr) = split(" ", $v);
+    my ($name, $mean, $stdev, $fr, $rr) = @$v;
     my $renamed = "$name.renamed.fastq";
     ($mean, $stdev) = (500, 100) if($type eq "sj");
     push(@res, $renamed);
@@ -226,7 +224,7 @@ sub filter_jump {
     print FILE "wc -l work2.1/readsToExclude.txt\n";
     print FILE "rm -f sj.cor.clean.rev.fa\n";
     foreach my $v (@{$config{JUMP_INFO}}) {
-      my @f        = split(" ", $v);
+      my @f        = @$v;
       my $if_innie = "";
       $if_innie    = " | reverse_complement " if($f[1]>0);
       print FILE "grep --text -A 1 '^>$f[0]' sj.cor.clean2.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
@@ -257,7 +255,7 @@ sub filter_jump {
     print FILE "rm -rf compute_jump_coverage.txt\n";
     
     foreach my $v (@{$config{JUMP_INFO}}) {
-      my @f = split(" ", $v);
+      my @f = @$v;
       print FILE "echo -n \"$f[1] \" >> compute_jump_coverage.txt\n";
       print FILE "grep --text -A 1 '^>$f[0]' sj.cor.ext.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
       print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp | grep --text '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
@@ -267,7 +265,7 @@ sub filter_jump {
 
     #here we reduce jump library coverage: we know the genome size (from k-unitigs) and JUMP_BASES_COVERED contains total jump library coverage :)
     foreach my $v (@{$config{JUMP_INFO}}) {
-      my @f = split(" ", $v);
+      my @f = @$v;
       $list_frg_files .= "$f[0].cor.clean.frg ";
       print FILE "grep --text -A 1 '^>$f[0]' sj.cor.ext.fa | grep --text -v '^\\-\\-' | sample_mate_pairs.pl $config{LIMIT_JUMP_COVERAGE} `perl -e 'print int('\$JUMP_BASES_COVERED'/'\$ESTIMATED_GENOME_SIZE'/1.6)'` 1 > $f[0].tmp\n";
       print FILE "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp > $f[0].cor.clean.frg\n";
@@ -280,7 +278,7 @@ sub create_pe_linking_mates {
   my (%config) = @_;
 
   foreach my $v (@{$config{PE_INFO}}){
-    my @f=split(/\s+/,$v);
+    my @f = @$v;
     $list_frg_files .= "$f[0].linking.frg ";
     if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
       print FILE "grep --text -A 1 '^>$f[0]' pe.linking.fa | grep --text -v '^\\-\\-' | sample_mate_pairs.pl \$MAX_LINKING_MATES \$NUM_LINKING_MATES 1 > $f[0].tmp\n";
