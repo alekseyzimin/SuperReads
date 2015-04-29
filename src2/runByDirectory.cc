@@ -25,7 +25,7 @@ namespace err = jellyfish::err;
 struct arguments {
   int mean;
   int stdev;
-  int   dirNum;
+  long int   dirNum;
   charb fauxReadFileDataStr;
   basic_charb<remaper<char> > readFileDataStr;
 
@@ -184,7 +184,7 @@ int main (int argc, char **argv)
   }
 
   int		status	  = 0;
-  int		dirNum;
+  long int	dirNum;
   bool		atEnd	  = false;
   unsigned int	fileIndex = 0;
   for (dirNum=0; ! atEnd; dirNum++) {
@@ -208,25 +208,21 @@ int main (int argc, char **argv)
 	 asm ("int3;");
 #endif
     atEnd = true;
-//    while (fileIndex < readSeqFilesByDir.size()) {
-//    for (  ; fileIndex < readSeqFilesByDir.size(); ++fileIndex) {
+    fileIndex=0;
+    while (fileIndex < readSeqFilesByDir.size()) {
     int lineNum=0;
     while (fgets (line, 100, readSeqFilesByDir[fileIndex])) {
-	 if (line[0] == '>') {
-	      atEnd = false;
+	 if (line[0] == '>') 
 	      break;
-	 }
 	 if (lineNum % 2 == 0)
 	      strcat (threadArgs.readFileDataStr, ">");
 	 strcat (threadArgs.readFileDataStr, line);
 	 ++lineNum;
     }
-    
-    if (atEnd) {
-	 ++fileIndex;
-	 if (fileIndex < readSeqFilesByDir.size()) {
-	      fgets (line, 100, readSeqFilesByDir[fileIndex]); // Gets past the first line ('>0')
-	      atEnd = false; } }
+    ++fileIndex;
+    }
+
+    if(line[0] == '>') atEnd = false;
 	 
     if (args.mean_and_stdev_file_given) {
       int dirNumTemp;
@@ -272,7 +268,7 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
 int analyzeGap(struct arguments threadArg, FILE* resultFile, FILE* errFile) {
   charb outDirName(100);
 
-  sprintf (outDirName, "%s/gap%09ddir", args.output_dir_arg, threadArg.dirNum);
+  sprintf (outDirName, "%s/gap%09lddir", args.output_dir_arg, threadArg.dirNum);
   int res = mkdir((char *)outDirName, S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH);
   if(res == -1) {
     if(errno != EEXIST) { // OK if directory already exists
@@ -380,7 +376,7 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
            outDirName, passingKMerValue);
  infile = fopen_throw (tempFileName, "r", "Reading SuperRead sequences");
   fgets (line, 100, infile);
-  sprintf (superReadFastaString, "%d ", threadArg.dirNum);
+  sprintf (superReadFastaString, "%ld ", threadArg.dirNum);
   while (fgets (line, 100, infile)){
     line.chomp();
     strcat (superReadFastaString, line);
@@ -394,7 +390,7 @@ void do_analyzeGap(struct arguments& threadArg, const char* outDirName,
   charb readPlacementLine,readPlacementLines;
   while (fgets (line, 100, infile)) {
     getFldsFromLine (line, flds);
-    sprintf(readPlacementLine, " %s %d %s %s", flds[0], threadArg.dirNum, flds[2], flds[3]);
+    sprintf(readPlacementLine, " %s %ld %s %s", flds[0], threadArg.dirNum, flds[2], flds[3]);
     strcat(readPlacementLines,readPlacementLine);
   }
   fclose (infile);

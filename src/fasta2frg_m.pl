@@ -29,9 +29,12 @@ print STDOUT "mea:3000\n";
 print STDOUT "std:300\n";
 print STDOUT "src:\n";
 print STDOUT ".\n";
-print STDOUT "nft:1\n";
+print STDOUT "nft:4\n";
 print STDOUT "fea:\n";
-print STDOUT "doNotOverlapTrim=0\n";
+print STDOUT "isNotRandom=1\n";
+print STDOUT "doTrim_initialNone=1\n";
+print STDOUT "doRemoveChimericReads=1\n";
+print STDOUT "doRemoveSpurReads=1\n";
 print STDOUT ".\n";
 print STDOUT "}\n";
 
