@@ -67,11 +67,18 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/extractreads.pl src/extract_unjoined_pairs.pl	\
                     src/fasta2frg.pl src/filter_library.sh		\
                     src/fix_unitigs.sh					\
-                    src/recompute_astat_superreads.sh src/masurca	\
-                    src/runSRCA.pl src/extractreads_not.pl		\
-                    src/run_ECR.sh src/filter_alt.pl src/parallel	\
+                    src/recompute_astat_superreads.sh src/runSRCA.pl	\
+                    src/extractreads_not.pl src/run_ECR.sh		\
+                    src/filter_alt.pl src/parallel			\
                     src/rename_filter_fastq.pl				\
-                    src/filter_redundancy.pl src/expand_fastq src/sample_mate_pairs.pl src/fasta2frg_m.pl src/splitFileByPrefix.pl
+                    src/filter_redundancy.pl src/expand_fastq		\
+                    src/sample_mate_pairs.pl src/fasta2frg_m.pl		\
+                    src/splitFileByPrefix.pl
+
+# masurca script files
+dist_bin_SCRIPTS += src/masurca src/MasurcaConf.pm		\
+                    src/MasurcaCommon.pm src/MasurcaCelera.pm	\
+                    src/MasurcaSoap.pm src/MasurcaSuperReads.pm
 
 noinst_HEADERS += src/aligned_simple_array.hpp				\
                   src/diskBasedUnitigger.h src/fibonacci_coding.hpp	\
