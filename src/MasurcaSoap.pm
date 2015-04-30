@@ -62,7 +62,7 @@ $cmdline < sj.cor.clean2.fa
 mkdir -p $SOAP_dir
 ( cd SOAP_assembly
   [ \$KMER -le 63 ] && cmd=SOAPdenovo-63mer || cmd=SOAPdenovo-127mer
-  \$cmd all -u -w -p $config{NUM_THREADS} -D 0 -d 0 -K \$KMER -k 33 -R -o asm -s ../$SOAP_CONF 1>../SOAPdenovo.err 2>\&1
+  \$cmd all -u -w -p $config{NUM_THREADS} -D 0 -d 0 -K \$KMER -k 51 -R -o asm -s ../$SOAP_CONF 1>../SOAPdenovo.err 2>\&1
 )
 [ -e "$SOAP_dir/asm.scafSeq" ] || fail SOAPdenovo failed, Check SOAPdenovo.err for problems.
 EOS
