@@ -34,6 +34,7 @@ EOS
       my ($name, $mean, $stdev, $f1, $f2) = @$lib;
       my $file = "../" . $name . ".cor.clean.fa";
       my $rev_seq = $mean < 0 ? "0" : "1";
+      $mean=abs($mean);
       print $io <<"EOS";
 [LIB]
 avg_ins=$mean
