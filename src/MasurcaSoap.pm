@@ -19,31 +19,27 @@ max_rd_len = 65536
 reverse_seq=0
 asm_flags=1
 rank=1
-pair_num_cutoff=3
-map_len=51
-f=../work1/superReadSequences.fasta
+f=../work1/superReadSequences.fasta.all
 EOS
 
   my %ranks;
   foreach my $lib (@{$config{JUMP_INFO}}) {
     my $mean = abs(@$lib[1]);
-    push(@{$ranks{round($mean / 1000)}}, $lib);
+    push(@{$ranks{round($mean / 2000)}}, $lib);
   }
   my @okeys = sort { $a <=> $b } keys(%ranks);
   for(my $i = 0; $i < @okeys; $i++) {
     my $rank = $i + 2;
     foreach my $lib (@{$ranks{$okeys[$i]}}) {
       my ($name, $mean, $stdev, $f1, $f2) = @$lib;
-      my $file = "../" . $name . ".cor.clean.fasta";
+      my $file = "../" . $name . ".cor.clean.fa";
       my $rev_seq = $mean < 0 ? "0" : "1";
       print $io <<"EOS";
 [LIB]
 avg_ins=$mean
 reverse_seq=$rev_seq
 asm_flags=2
-rd_len_cutoff=101
 rank=$rank
-pair_num_cutoff=2
 map_len=51
 p=$file
 EOS
@@ -60,9 +56,9 @@ sub runSOAP {
 log 'SOAPdenovo'
 $cmdline < sj.cor.clean2.fa
 mkdir -p $SOAP_dir
-( cd SOAP_assembly
-  [ \$KMER -le 63 ] && cmd=SOAPdenovo-63mer || cmd=SOAPdenovo-127mer
-  \$cmd all -u -w -p $config{NUM_THREADS} -D 0 -d 0 -K \$KMER -k 51 -R -o asm -s ../$SOAP_CONF 1>../SOAPdenovo.err 2>\&1
+( cd $SOAP_dir
+  [ \$((KMER-2)) -le 63 ] && cmd=SOAPdenovo-63mer || cmd=SOAPdenovo-127mer
+  \$cmd all -u -w -p $config{NUM_THREADS} -D 0 -d 0 -K \$((KMER-2)) -k 51 -R -o asm -s ../$SOAP_CONF 1>../SOAPdenovo.err 2>\&1
 )
 [ -e "$SOAP_dir/asm.scafSeq" ] || fail SOAPdenovo failed, Check SOAPdenovo.err for problems.
 EOS
