@@ -47,7 +47,7 @@ sub estimate_optimal_kmer{
   if($name eq "KMER_J"){
     print $out "$name=31\n";
   } else {
-    print $out "$name=`for f in $filelist;do head -n 80000 \$f |tail -n 40000;done | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);push(\@lengths,length(\$l));\@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \@lengths =sort {\$b <=> \$a} \@lengths; \$min_len=\$lengths[int(\$\#lengths*.75)];  \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer=31 if(\$kmer<31); \$kmer=$max_kmer if(\$kmer>$max_kmer); print \$kmer'`\n";
+    print $out "$name=`for f in $filelist;do head -n 80000 \$f |tail -n 40000;done | perl -e 'while(\$line=<STDIN>){\$line=<STDIN>;chomp(\$line);push(\@lines,\$line);\$line=<STDIN>;\$line=<STDIN>}\$min_len=100000;\$base_count=0;foreach \$l(\@lines){\$base_count+=length(\$l);push(\@lengths,length(\$l));\@f=split(\"\",\$l);foreach \$base(\@f){if(uc(\$base) eq \"G\" || uc(\$base) eq \"C\"){\$gc_count++}}} \@lengths =sort {\$b <=> \$a} \@lengths; \$min_len=\$lengths[int(\$\#lengths*.75)];  \$gc_ratio=\$gc_count/\$base_count;\$kmer=0;if(\$gc_ratio<0.5){\$kmer=int(\$min_len*.7);}elsif(\$gc_ratio>=0.5 && \$gc_ratio<0.6){\$kmer=int(\$min_len*.5);}else{\$kmer=int(\$min_len*.33);} \$kmer++ if(\$kmer\%2==0); \$kmer=31 if(\$kmer<31); \$kmer=$max_kmer if(\$kmer>$max_kmer); print \$kmer'`\n";
   }
 }
 
