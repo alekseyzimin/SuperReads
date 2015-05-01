@@ -33,7 +33,7 @@ my $readname="";
 open (OUTFILE, ">$outfile");
 while ($line = <FILE2>){
     if ($line =~ /^>/){
-	if(not(defined $readnames{$readname})){
+	if(not(defined $readnames{$readname}) && not($readname eq "")){
 	print ">$readname\n$sequence\n";
 	}
 	chomp($line);
@@ -45,7 +45,7 @@ while ($line = <FILE2>){
      $sequence.=$line;
     }
 }
-        if(not(defined $readnames{$readname})){
+        if(not(defined $readnames{$readname}) && not($readname eq "")){
         print ">$readname\n$sequence\n";
         }
 close (FILE2);

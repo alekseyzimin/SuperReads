@@ -20,6 +20,13 @@ reverse_seq=0
 asm_flags=1
 rank=1
 f=../work1/superReadSequences.fasta.all
+[LIB]
+avg_ins=300
+reverse_seq=0
+asm_flags=2
+rank=1
+map_len=51
+p=../pe.cor.fa
 EOS
 
   my %ranks;
