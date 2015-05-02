@@ -22,6 +22,19 @@ asm_flags=1
 rank=1
 f=../work1/superReadSequences.fasta.all
 EOS
+#special case -- only one library
+if(scalar(@{$config{PE_INFO}})==1){
+my $lib=${$config{PE_INFO}}[0];
+print $io <<"EOS";
+[LIB]
+avg_ins=@$lib[1];
+reverse_seq=0
+asm_flags=2
+rank=1
+map_len=63
+p=../pe.cor.fa
+EOS
+}else{
 
   foreach my $lib (@{$config{PE_INFO}}) {
     my $mean = abs(@$lib[1]);
@@ -36,7 +49,23 @@ map_len=63
 p=../$prefix.cor.fa
 EOS
 }
+}
 
+#special case -- only one library
+if(scalar(@{$config{JUMP_INFO}})==1){
+my $lib = ${$config{JUMP_INFO}}[0];
+my $mean = abs(@$lib[1]);
+my $rev_seq = @$lib[1] < 0 ? "0" : "1"; 
+print $io <<"EOS";
+[LIB]
+avg_ins=$mean;
+reverse_seq=$rev_seq
+asm_flags=2
+rank=2
+map_len=63
+p=../sj.cor.clean2.fa
+EOS
+}else{
   my %ranks;
   foreach my $lib (@{$config{JUMP_INFO}}) {
     my $mean = abs(@$lib[1]);
@@ -59,6 +88,7 @@ rank=$rank
 map_len=51
 p=$file
 EOS
+     }
     }
   }
 }
@@ -67,11 +97,13 @@ sub runSOAP {
   my ($out, $reads_file, %config) = @_;
   my $cmdline_jump="splitFileByPrefix.pl " . join(" ", map { $$_[0] } @{$config{JUMP_INFO}});
   my $cmdline_pe="splitFileByPrefix.pl " . join(" ", map { $$_[0] } @{$config{PE_INFO}});
-  print $out <<"EOS";
+ 
 
-log 'SOAPdenovo'
-$cmdline_pe < pe.cor.fa
-$cmdline_jump < sj.cor.clean2.fa
+print $out "log 'SOAPdenovo'\n";
+print $out "$cmdline_pe < pe.cor.fa\n" unless(scalar(@{$config{PE_INFO}})==1); 
+print $out "$cmdline_jump < sj.cor.clean2.fa\n" unless(scalar(@{$config{JUMP_INFO}})==1);
+
+print $out <<"EOS";
 mkdir -p $SOAP_dir
 ( cd $SOAP_dir
   [ \$KMER -le 63 ] && cmd=SOAPdenovo-63mer || cmd=SOAPdenovo-127mer
