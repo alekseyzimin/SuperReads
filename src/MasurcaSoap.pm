@@ -21,14 +21,21 @@ reverse_seq=0
 asm_flags=1
 rank=1
 f=../work1/superReadSequences.fasta.all
+EOS
+
+  foreach my $lib (@{$config{PE_INFO}}) {
+    my $mean = abs(@$lib[1]);
+    my $prefix = @$lib[0];
+print $io <<"EOS";
 [LIB]
-avg_ins=180
+avg_ins=$mean
 reverse_seq=0
 asm_flags=2
 rank=1
 map_len=63
-p=../pe.cor.fa
+p=../$prefix.cor.fa
 EOS
+}
 
   my %ranks;
   foreach my $lib (@{$config{JUMP_INFO}}) {
@@ -58,12 +65,13 @@ EOS
 
 sub runSOAP {
   my ($out, $reads_file, %config) = @_;
-  my $cmdline="splitFileByPrefix.pl " . join(" ", map { $$_[0] } @{$config{JUMP_INFO}});
-
+  my $cmdline_jump="splitFileByPrefix.pl " . join(" ", map { $$_[0] } @{$config{JUMP_INFO}});
+  my $cmdline_pe="splitFileByPrefix.pl " . join(" ", map { $$_[0] } @{$config{PE_INFO}});
   print $out <<"EOS";
 
 log 'SOAPdenovo'
-$cmdline < sj.cor.clean2.fa
+$cmdline_pe < pe.cor.fa
+$cmdline_jump < sj.cor.clean2.fa
 mkdir -p $SOAP_dir
 ( cd $SOAP_dir
   [ \$KMER -le 63 ] && cmd=SOAPdenovo-63mer || cmd=SOAPdenovo-127mer
