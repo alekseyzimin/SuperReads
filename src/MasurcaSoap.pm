@@ -27,7 +27,7 @@ if(scalar(@{$config{PE_INFO}})==1){
 my $lib=${$config{PE_INFO}}[0];
 print $io <<"EOS";
 [LIB]
-avg_ins=@$lib[1];
+avg_ins=@$lib[1]
 reverse_seq=0
 asm_flags=2
 rank=1
@@ -58,7 +58,7 @@ my $mean = abs(@$lib[1]);
 my $rev_seq = @$lib[1] < 0 ? "0" : "1"; 
 print $io <<"EOS";
 [LIB]
-avg_ins=$mean;
+avg_ins=$mean
 reverse_seq=$rev_seq
 asm_flags=2
 rank=2
