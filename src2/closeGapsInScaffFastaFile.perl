@@ -67,7 +67,7 @@ reportUsage if(!defined($scaffoldFastaFile));
 
 # Also generates genome.posmap.ctgscf
 # Also generates genome.asm
-my $cmd = "$exeDir/splitFileAtNs '$scaffoldFastaFile' > genome.ctg.fasta";
+my $cmd = "$exeDir/splitFileAtNs '$scaffoldFastaFile' 1 > genome.ctg.fasta";
 print "$cmd\n";
 system ($cmd) == 0 or
    system_error("Splitting scaffold file at Ns failed");
