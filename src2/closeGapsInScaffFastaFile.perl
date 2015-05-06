@@ -17,12 +17,16 @@ use POSIX;
 
 my $exeDir = dirname ($0);
 my $scaffoldFastaFile;
+my $split=2;
 
 sub processArgs {
   my @nargv;
 
   for(my $i = 0; $i < @ARGV; $i++) {
-    if($ARGV[$i] eq "--scaffold-fasta-file") {
+    if($ARGV[$i] eq "--split") {
+      $split = $ARGV[$i + 1];
+      $i++;
+    } elsif($ARGV[$i] eq "--scaffold-fasta-file") {
       $scaffoldFastaFile = $ARGV[$i + 1];
       $i++;
     } else {
@@ -67,7 +71,7 @@ reportUsage if(!defined($scaffoldFastaFile));
 
 # Also generates genome.posmap.ctgscf
 # Also generates genome.asm
-my $cmd = "$exeDir/splitFileAtNs '$scaffoldFastaFile' 1 > genome.ctg.fasta";
+my $cmd = "$exeDir/splitFileAtNs '$scaffoldFastaFile' $split > genome.ctg.fasta";
 print "$cmd\n";
 system ($cmd) == 0 or
    system_error("Splitting scaffold file at Ns failed");

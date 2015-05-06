@@ -108,31 +108,27 @@ mkdir -p $SOAP_dir
 ( cd $SOAP_dir
   [ \$KMER -le 63 ] && cmd=SOAPdenovo-63mer || cmd=SOAPdenovo-127mer
   [ \$KMER -ge 53 ] && map_KMER=51 || map_KMER=35
-  \$cmd all -u -w -p $config{NUM_THREADS} -D 0 -d 0 -K \$KMER -k \$map_KMER -R -o asm -s ../$SOAP_CONF 1>../SOAPdenovo.err 2>\&1
+  \$cmd all  -u -w -p $config{NUM_THREADS} -D 0 -d 0 -K \$KMER -k \$map_KMER -R -o asm -s ../$SOAP_CONF 1>../SOAPdenovo.err 2>\&1
 )
 [ -e "$SOAP_dir/asm.scafSeq" ] || fail SOAPdenovo failed, Check SOAPdenovo.err for problems.
 EOS
   
-  if($config{CLOSE_GAPS}){
-    my $reads_argument= join(" ", map { "--reads-file '$_'" } @$reads_file);
-    print $out <<"EOS";
-
+my $reads_argument= join(" ", map { "--reads-file '$_'" } @$reads_file);
+print $out <<"EOS";
 log 'Gap closing'
-closeGapsInScaffFastaFile.perl  --max-reads-in-memory 1000000000 -s $config{JF_SIZE} --scaffold-fasta-file  $SOAP_dir/asm.scafSeq $reads_argument --output-directory SOAP_gapclose --min-kmer-len 19 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $config{NUM_THREADS} --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 25 1>gapClose.err 2>&1
+closeGapsInScaffFastaFile.perl --split 3 --max-reads-in-memory 1000000000 -s $config{JF_SIZE} --scaffold-fasta-file  $SOAP_dir/asm.scafSeq $reads_argument --output-directory SOAP_gapclose --min-kmer-len 19 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $config{NUM_THREADS} --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 25 1>gapClose.err 2>&1
 [ -e "SOAP_gapclose/genome.ctg.fasta" ] || fail Gap close failed, you can still use pre-gap close scaffold in file $SOAP_dir/asm.scafSeq. Check gapClose.err for problems.
 log 'Rescaffolding'
 (cd $SOAP_dir
-finalFusion -K \$KMER -g asm2 -c <(splitFileAtNs ../SOAP_gapclose/genome.scf.fasta 3) -D >> ../SOAPdenovo.err
+finalFusion -K \$KMER -g asm2 -c ../SOAP_gapclose/genome.ctg.fasta -D >> ../SOAPdenovo.err
   [ \$KMER -le 63 ] && cmd=SOAPdenovo-63mer || cmd=SOAPdenovo-127mer
   [ \$KMER -ge 53 ] && map_KMER=51 || map_KMER=35
   \$cmd map -s ../$SOAP_CONF -g asm2 -p $config{NUM_THREADS} -k \$map_KMER -f 1>>../SOAPdenovo.err 2>\&1
   \$cmd scaff -g asm2 -p $config{NUM_THREADS} -w -u -F  1>>../SOAPdenovo.err 2>\&1
 )
-log Gap close success. Output sequence is in SOAP_assembly/asm2.scafSeq
+[ -e "$SOAP_dir/asm2.scafSeq" ] || fail SOAPdenovo failed, Check SOAPdenovo.err for problems.
+log Assembly success. Output sequence is in SOAP_assembly/asm2.scafSeq
 EOS
-  } else {
-    print $out "log \"SOAPdenovo success. The scaffolds are in file $SOAP_dir/asm.scafSeq.\"\n";
-  }
 }
 
 1;

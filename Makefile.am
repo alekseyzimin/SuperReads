@@ -73,7 +73,7 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/rename_filter_fastq.pl				\
                     src/filter_redundancy.pl src/expand_fastq		\
                     src/sample_mate_pairs.pl src/fasta2frg_m.pl		\
-                    src/splitFileByPrefix.pl
+                    src/splitFileByPrefix.pl src/restore_ns.pl
 
 # masurca script files
 dist_bin_SCRIPTS += src/masurca src/MasurcaConf.pm		\
