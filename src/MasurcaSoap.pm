@@ -122,7 +122,7 @@ closeGapsInScaffFastaFile.perl  --max-reads-in-memory 1000000000 -s $config{JF_S
 [ -e "SOAP_gapclose/genome.ctg.fasta" ] || fail Gap close failed, you can still use pre-gap close scaffold in file $SOAP_dir/asm.scafSeq. Check gapClose.err for problems.
 log 'Rescaffolding'
 (cd $SOAP_dir
-finalFusion -K \$KMER -g asm2 -c ../SOAP_gapclose/genome.ctg.fasta -D >> ../SOAPdenovo.err
+finalFusion -K \$KMER -g asm2 -c <(splitFileAtNs ../SOAP_gapclose/genome.scf.fasta 3) -D >> ../SOAPdenovo.err
   [ \$KMER -le 63 ] && cmd=SOAPdenovo-63mer || cmd=SOAPdenovo-127mer
   [ \$KMER -ge 53 ] && map_KMER=51 || map_KMER=35
   \$cmd map -s ../$SOAP_CONF -g asm2 -p $config{NUM_THREADS} -k \$map_KMER -f 1>>../SOAPdenovo.err 2>\&1
