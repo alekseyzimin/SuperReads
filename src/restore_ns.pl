@@ -39,6 +39,7 @@ while($line=<FILE>){
 		@f=split(/\s+/,$line);
 		if($f[1]>0){
 		my $gap=$f[1]-$last_pos;
+		$gap=10 if ($gap<10);
 		#print "gap=$gap\n";
 		$scfseq.="N"x$gap;
 		}
