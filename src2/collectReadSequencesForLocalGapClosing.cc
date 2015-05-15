@@ -131,16 +131,27 @@ void loadNeededReads (const setOfStrings &readIsNeeded, readNameToReadSequence &
                 currentFileOffset = (off_t)infile.tellg() - header.size() - 1;
                 return;
             }
-            getline(infile, sequence);
-            if(currentFileFasta) { // potential multiline sequence
+            if(readIsNeeded.find(readNameStr) == readIsNeeded.end()) {
+              // File is ignored, skip lines
+              if(currentFileFasta) {
                 for(c = infile.peek(); c != '>' && c != EOF; c = infile.peek())
-                    getline_append(infile, sequence);
-            }
-            if(readIsNeeded.find(readNameStr) != readIsNeeded.end())
-                readSeq[readNameStr] = sequence;
-            if(!currentFileFasta) { // Quality scores
+                  ignore_line(infile);
+              } else {
+                for(int i = 0; i < 3; ++i)
+                  ignore_line(infile);
+              }
+            } else {
+              // Record read in readSeq
+              getline(infile, sequence);
+              if(currentFileFasta) { // potential multiline sequence
+                for(c = infile.peek(); c != '>' && c != EOF; c = infile.peek())
+                  getline_append(infile, sequence);
+              }
+              readSeq[readNameStr] = sequence;
+              if(!currentFileFasta) { // Quality scores
                 ignore_line(infile);
                 ignore_line(infile);
+              }
             }
         }
         currentFileOffset = (off_t) 0;
