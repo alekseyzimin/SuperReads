@@ -20,11 +20,8 @@
 #include <misc.hpp>
 #include <src2/collectReadSequencesForLocalGapClosing_cmdline.hpp>
 
-// THE NEXT 2 LINES ARE COPIED FROM GUILLAUME
 // GLOBAL: command line switches
 cmdline_parse args;
-
-// Names of files and directories
 
 struct numAndOriStruct {
      int groupNum;
@@ -61,8 +58,6 @@ int main(int argc, char **argv)
 {
      args.parse (argc, argv);
 
-
-     //     checkArgs ();
      setOfStrings readIsNeeded;
      std::vector<vectorOfStrings> readsInGroup, mateReadsInGroup;
      {
@@ -167,30 +162,6 @@ stdString getReadMateName (const stdString& readName)
   return readMate;
 }
 
-void checkArgs (void)
-{
-     struct stat     statbuf;
-     int fail = 0;
-     if (stat (args.faux_reads_file_arg, &statbuf) != 0) {
-	  std::cerr << "Faux reads file '" << args.faux_reads_file_arg << "' doesn't exist.\n";
-	  fail = 1; }
-     if (stat (args.faux_read_matches_to_kunis_file_arg, &statbuf) != 0) {
-	  std::cerr << "File of faux read matches to k-unitigs '" << args.faux_read_matches_to_kunis_file_arg << "' doesn't exist.\n";
-	  fail = 1; }
-     if (stat (args.read_matches_to_kunis_file_arg, &statbuf) != 0) {
-	  std::cerr << "File of read matches to k-unitigs '" << args.read_matches_to_kunis_file_arg << "' doesn't exist.\n";
-	  fail = 1; }
-     for (unsigned int i=0; i<args.reads_file_arg.size(); i++) {
-	  const char *readFile = args.reads_file_arg[i];
-	  if (stat (readFile, &statbuf) != 0) {
-	       std::cerr << "Read file '" << readFile << "' doesn't exist.\n";
-	       fail = 1; }
-     }
-
-     if (fail)
-	  exit (1);
-}
-
 std::unordered_map<stdString, group_info> load_group_info(FILE* infile) {
   std::unordered_map<stdString, group_info> groups;
   charb                                     line;
@@ -219,7 +190,7 @@ std::vector<numAndOriList> load_read_matches_unis(FILE* infile, const std::unord
     // in a mate as well as a read
     const auto fauxReadInfo = groups.find(flds[0]);
     if(fauxReadInfo == groups.cend())
-      cmdline_parse::error() << "Unknown group '" << flds[0] << "' in fauxe read matches file";
+      cmdline_parse::error() << "Unknown group '" << flds[0] << "' in faux read matches file";
     for (unsigned int i=2; i<flds.size(); i+=3) {
       const int  kUni   = atoi (flds[i]);
       const char relOri = *flds[i+2];
