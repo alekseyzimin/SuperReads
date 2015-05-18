@@ -33,6 +33,26 @@ struct group_info {
   char end;
 };
 
+// Match information is kept for each mate pairs, indexed by the name
+// of the first read in a pair. For each pair we keep for each group
+// the reason why the first read in a pair or its mate might be
+// needed: it has a match, the mate has a match, it is pulled in by
+// its mate, the mate is pulled in by the read. If any of those flag
+// is true in any of the group, then the needed flag is ORed
+// accordingly to isNeeded and mateNeeded.
+enum needed_type : char { noneNeeded = 0, isNeeded = 1, mateNeeded = 2 };
+enum match_type : char { noMatch = 0, hasMatch = 1, mateMatch = 2, pulledIn = 4, matePulled = 8 };
+struct group_matches_type {
+  int  groupNum;
+  char match;
+};
+struct pair_group_list_type {
+  char                            needed;
+  std::vector<group_matches_type> matches;
+};
+typedef std::unordered_map<std::string, pair_group_list_type> pair_group_info_type;
+
+
 typedef std::string stdString;
 typedef std::vector<stdString> vectorOfStrings;
 typedef std::unordered_set<stdString> setOfStrings;
@@ -41,25 +61,35 @@ typedef std::unordered_map<stdString, int> stringToIntMap;
 typedef std::unordered_map<stdString, stdString> stringToStringMap;
 typedef std::vector<numAndOriStruct> numAndOriList;
 
+struct header_sequence_type {
+  std::string header;
+  std::string sequence;
+};
+struct read_list_type {
+  size_t index; // index in readSeq
+  char   match; // match type
+};
+
+
 inline bool readIsFirstOfPair (const stdString& readName);
 stdString getReadMateName (const stdString& readName);
-void loadNeededReads (const setOfStrings &readIsNeeded, readNameToReadSequence &readSeq);
+bool loadNeededReads (const pair_group_info_type& pair_info, std::vector<header_sequence_type>& readSeq,
+                      std::vector<std::vector<read_list_type> >& reads_in_group);
 void checkArgs (void);
 std::unordered_map<stdString, group_info> load_group_info(FILE* infile);
 std::vector<numAndOriList> load_read_matches_unis(FILE* infile, const std::unordered_map<stdString, group_info>& groups);
-setOfStrings load_read_mate_groups(FILE* infile, const std::vector<numAndOriList>& kUniMatchStruct,
-                                   std::vector<vectorOfStrings>& readsInGroup, std::vector<vectorOfStrings>& mateReadsInGroup);
-void read_and_write_reads(const setOfStrings& readIsNeeded,
-                          const std::vector<vectorOfStrings>& readsInGroup,
-                          const std::vector<vectorOfStrings>& mateReadsInGroup);
+pair_group_info_type load_read_mate_groups(FILE* infile, const std::vector<numAndOriList>& kUniMatchStructs);
+void read_and_write_reads(const pair_group_info_type& pair_info, const unsigned int numGrps);
 
 
 int main(int argc, char **argv)
 {
      args.parse (argc, argv);
+     const unsigned int numGrpsInGrp = args.num_joins_per_directory_arg;
 
      setOfStrings readIsNeeded;
-     std::vector<vectorOfStrings> readsInGroup, mateReadsInGroup;
+     pair_group_info_type pair_info;
+     unsigned int numGrps = 0;
      {
          FILE *infile;
          infile = fopen(args.faux_reads_file_arg, "r");
@@ -67,7 +97,8 @@ int main(int argc, char **argv)
              cmdline_parse::error() << "Failed to open '" << args.faux_reads_file_arg << "' for reading";
          const std::unordered_map<stdString, group_info> groups = load_group_info(infile);
          fclose (infile);
-         int numFauxReadGroups = (int)groups.size() / 2;
+         const unsigned int numFauxReadGroups = groups.size() / 2;
+         numGrps = numFauxReadGroups / numGrpsInGrp + (numFauxReadGroups % numGrpsInGrp != 0);
 
          infile = fopen(args.faux_read_matches_to_kunis_file_arg, "r");
          if(!infile)
@@ -78,9 +109,7 @@ int main(int argc, char **argv)
          infile = fopen (args.read_matches_to_kunis_file_arg, "r");
          if(!infile)
              cmdline_parse::error() << "Feiled to open '" << args.read_matches_to_kunis_file_arg << "' for reading";
-         readsInGroup.resize(numFauxReadGroups);
-         mateReadsInGroup.resize(numFauxReadGroups);
-         readIsNeeded = load_read_mate_groups(infile, kUniMatchStructs, readsInGroup, mateReadsInGroup);
+         pair_info = load_read_mate_groups(infile, kUniMatchStructs);
          fclose(infile);
      }
 
@@ -89,7 +118,7 @@ int main(int argc, char **argv)
      if(mkdir_err != 0 && errno != EEXIST)
        cmdline_parse::error() << "Failed to create directory for gaps '" << args.dir_for_gaps_arg << "'";
 
-     read_and_write_reads(readIsNeeded, readsInGroup, mateReadsInGroup);
+     read_and_write_reads(pair_info, numGrps);
 
      return EXIT_SUCCESS;
 }
@@ -98,74 +127,91 @@ inline void ignore_line(std::istream& is) {
     is.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 }
 
-void loadNeededReads (const setOfStrings &readIsNeeded, readNameToReadSequence &readSeq)
-{
+bool loadNeededReads (const pair_group_info_type& pair_info, std::vector<header_sequence_type>& readSeq,
+                      std::vector<std::vector<read_list_type> >& reads_in_group) {
     static unsigned int  currentFileNum    = 0;
-    static off_t         currentFileOffset = (off_t) 0;
     static bool          currentFileFasta  = false;
+    static std::ifstream infile;
 
-    readSeq.clear();
-    while (currentFileNum < args.reads_file_arg.size()) {
-        std::ifstream infile(args.reads_file_arg[currentFileNum]);
-        if(currentFileOffset > 0) {
-            infile.seekg(currentFileOffset);
+    for(auto& group : reads_in_group)
+      group.clear();
+
+    charb  seq_tmp;
+    size_t read_index = 0;
+    bool   done       = false;
+
+    while (!done) {
+      if(!infile.is_open() || infile.peek() == EOF) {
+        infile.close();
+        if(currentFileNum >= args.reads_file_arg.size())
+          break;
+        infile.open(args.reads_file_arg[currentFileNum++]);
+        switch(infile.peek()) {
+        case '>': currentFileFasta = true; break;
+        case '@': currentFileFasta = false; break;
+        default: cmdline_parse::error() << "Invalid format. Expected '>' or '@'. Got '" << (char)infile.peek() << "'";
+        }
+      }
+
+      for(int c = infile.get(); c != EOF; c = infile.get()) {
+        if(c != (currentFileFasta ? '>' : '@'))
+          cmdline_parse::error() << "Invalid file format. Expected '" << (currentFileFasta ? '>' : '@')
+                                 << "' got '" << (char)c << "'";
+
+        std::string& header = readSeq[read_index].header;
+        getline(infile, header);
+        const size_t line_size = header.size();
+        const auto space = header.find_first_of(" \t\n");
+        if(space != std::string::npos) header.resize(space);
+        // Got enough reads?
+        if ((read_index == args.max_reads_in_memory_arg - 1 && readIsFirstOfPair(header)) ||
+            (read_index == args.max_reads_in_memory_arg)) {
+          infile.seekg(-(line_size + 2), std::ios::cur); // 2 == \n + ('>' | '@')
+          done = true;
+          break;
+        }
+
+        const bool        isFirst   = readIsFirstOfPair(header);
+        const std::string firstName = isFirst ? header : getReadMateName(header);
+        const auto it = pair_info.find(firstName);
+        if(it == pair_info.cend() || ((it->second.needed & (isFirst ? isNeeded : mateNeeded)) == 0)) {
+          // File is ignored, skip lines
+          if(currentFileFasta) {
+            for(c = infile.peek(); c != '>' && c != EOF; c = infile.peek())
+              ignore_line(infile);
+          } else {
+            for(int i = 0; i < 3; ++i)
+              ignore_line(infile);
+          }
         } else {
-            switch(infile.peek()) {
-            case '>': currentFileFasta = true; break;
-            case '@': currentFileFasta = false; break;
-            default: cmdline_parse::error() << "Invalid format. Expected '>' or '@'. Got '" << (char)infile.peek() << "'";
-            }
+          // Record read in readSeq
+          std::string& sequence = readSeq[read_index].sequence;
+          if(currentFileFasta) { // potential multiline sequence
+            getline(infile, seq_tmp);
+            for(c = infile.peek(); c != '>' && c != EOF; c = infile.peek())
+              getline_append(infile, seq_tmp);
+            sequence.assign(seq_tmp, seq_tmp.size());
+          } else {
+            getline(infile, sequence);
+            ignore_line(infile);
+            ignore_line(infile);  // Quality scores
+          }
+          for(const auto& match : it->second.matches) {
+            if((match.match & (isFirst ? (hasMatch | pulledIn) : (mateMatch | matePulled))) != 0)
+              reads_in_group[match.groupNum].push_back({ read_index, match.match });
+          }
+          ++read_index;
         }
-        charb        header, sequence;
-        const char*  readNameStr = nullptr;
-        char        *saveptr;
-        for(int c = infile.peek(); c != EOF; c = infile.peek()) {
-            getline(infile, header);
-            readNameStr = strtok_r(header + 1, " \t\n", &saveptr);
-            if(c != (currentFileFasta ? '>' : '@'))
-                cmdline_parse::error() << "Invalid file format. Expected '" << (currentFileFasta ? '>' : '@')
-                                       << "' got '" << (char)c << "'";
-            // Got enough reads?
-            if ((readSeq.size() == args.max_reads_in_memory_arg-1 && readNameStr[strlen(readNameStr) - 1] % 2 == 0) ||
-                (readSeq.size() == args.max_reads_in_memory_arg)) {
-                currentFileOffset = (off_t)infile.tellg() - header.size() - 1;
-                return;
-            }
-            if(readIsNeeded.find(readNameStr) == readIsNeeded.end()) {
-              // File is ignored, skip lines
-              if(currentFileFasta) {
-                for(c = infile.peek(); c != '>' && c != EOF; c = infile.peek())
-                  ignore_line(infile);
-              } else {
-                for(int i = 0; i < 3; ++i)
-                  ignore_line(infile);
-              }
-            } else {
-              // Record read in readSeq
-              getline(infile, sequence);
-              if(currentFileFasta) { // potential multiline sequence
-                for(c = infile.peek(); c != '>' && c != EOF; c = infile.peek())
-                  getline_append(infile, sequence);
-              }
-              readSeq[readNameStr] = sequence;
-              if(!currentFileFasta) { // Quality scores
-                ignore_line(infile);
-                ignore_line(infile);
-              }
-            }
-        }
-        currentFileOffset = (off_t) 0;
-        ++currentFileNum;
+      }
     }
+    return read_index > 0;
 }
 
-bool readIsFirstOfPair (const stdString& readName)
-{
+bool readIsFirstOfPair (const stdString& readName) {
   return readName.length() > 0 && (readName.back() % 2 == 0);
 }
 
-stdString getReadMateName (const stdString& readName)
-{
+stdString getReadMateName (const stdString& readName) {
   stdString readMate(readName);
   if(readMate.length() > 0)
     readMate.back() += 1 - 2 * (readMate.back() % 2);
@@ -214,122 +260,82 @@ std::vector<numAndOriList> load_read_matches_unis(FILE* infile, const std::unord
   return kUniMatchStructs;
 }
 
-setOfStrings load_read_mate_groups(FILE* infile, const std::vector<numAndOriList>& kUniMatchStructs,
-                                   std::vector<vectorOfStrings>& readsInGroup, std::vector<vectorOfStrings>& mateReadsInGroup) {
-  setOfStrings readIsNeeded;
-  charb line;
-  ExpBuffer<char *> flds;
+pair_group_info_type load_read_mate_groups(FILE* infile, const std::vector<numAndOriList>& kUniMatchStructs) {
+  pair_group_info_type res;
+  charb                line;
+  ExpBuffer<char *>    flds;
 
   // Ex. line: pe2836 101 610 10 F
-  while (fgets (line, infile)) {
+  while(fgets (line, infile)) {
     getFldsFromLine (line, flds);
-    const stdString readName = flds[0];
-    const stdString readMate = getReadMateName(readName);
-    const int       kUni     = atoi (flds[2]);
-    const char      relOri   = *(flds[4]);
-    for (unsigned int i=0; i<kUniMatchStructs[kUni].size(); i++) {
-      readsInGroup[kUniMatchStructs[kUni][i].groupNum].push_back(readName);
-      readIsNeeded.insert (readName);
-      if (kUniMatchStructs[kUni][i].ori == relOri) {
-        readIsNeeded.insert (readMate);
-        mateReadsInGroup[kUniMatchStructs[kUni][i].groupNum].push_back(readMate); }
+    const stdString& readName  = flds[0];
+    const int        kUni      = atoi (flds[2]);
+    const char       relOri    = *(flds[4]);
+    const bool       isFirst   = readIsFirstOfPair(readName);
+    const stdString  firstName = isFirst ? readName : getReadMateName(readName);
+
+    auto& pair_info = res[firstName];
+    const char my_match     = isFirst ? hasMatch : mateMatch;
+    const char my_pulled    = isFirst ? matePulled : pulledIn;
+    bool       other_needed = false;
+    if(pair_info.needed == noneNeeded) { // Means first time see this mate pair -> copy match information
+      pair_info.matches.reserve(kUniMatchStructs[kUni].size());
+      for(const auto& match_info : kUniMatchStructs[kUni]) {
+        const bool pulled  = match_info.ori == relOri;
+        other_needed      |= pulled;
+        pair_info.matches.push_back({ match_info.groupNum / args.num_joins_per_directory_arg,
+              (char)(my_match | (pulled ? my_pulled : noMatch)) });
+      }
+    } else { // Already seen the pair -> merge match information
+      std::unordered_map<int, char> group2match;
+      for(const auto& match_info : kUniMatchStructs[kUni]) { // put in hash for fast access
+        const bool pulled  = match_info.ori == relOri;
+        other_needed      |= pulled;
+        group2match[match_info.groupNum / args.num_joins_per_directory_arg] = my_match | (pulled ? my_pulled : noMatch);
+      }
+      for(auto& group_match : pair_info.matches) { // do merge
+        auto it = group2match.find(group_match.groupNum);
+        if(it != group2match.end()) {
+          group_match.match |= it->second;
+          group2match.erase(it);
+        }
+      }
+      pair_info.matches.reserve(pair_info.matches.size() + group2match.size());
+      for(const auto& match_info : group2match) { // add remaining
+        pair_info.matches.push_back({ match_info.first, match_info.second });
+      }
     }
+    pair_info.needed |= (isFirst ? isNeeded : mateNeeded);
+    if(other_needed)
+      pair_info.needed |= isFirst ? mateNeeded : isNeeded;
+
   }
-  return readIsNeeded;
+  return res;
 }
 
-void read_and_write_reads(const setOfStrings& readIsNeeded,
-                          const std::vector<vectorOfStrings>& readsInGroup,
-                          const std::vector<vectorOfStrings>& mateReadsInGroup) {
-    int                      outputGroupNum = 0;
-    std::map<stdString, int> readType;
-    readNameToReadSequence   readSeq; // Read name to read sequence
-    std::unordered_map<stdString, stdString>  outputReadHdr;
-    while (true) {
-        loadNeededReads (readIsNeeded, readSeq);
-        if (readSeq.empty())
-            break;
-        charb outfileName(100);
-        sprintf (outfileName, "%s/readFile.%03d", args.dir_for_gaps_arg, outputGroupNum);
-        std::ofstream outfile(outfileName);
+inline char match_str(char x) {
+  if((x & (hasMatch | mateMatch)) == (hasMatch | mateMatch))
+     return 'B';
+  if((x & (pulledIn | matePulled)) != 0)
+    return 'M';
+  return 'O';
+}
 
-        const int numGrpsInGrp = args.num_joins_per_directory_arg;
-        for (unsigned int grp=0; grp<readsInGroup.size(); grp++) {
-            stringToIntMap willBeOutput;
-            vectorOfStrings readsToOutput;
-            for(const auto& readName : readsInGroup[grp]) {
-                if (willBeOutput.find (readName) != willBeOutput.end())
-                    continue;
-                readsToOutput.push_back (readName);
-                willBeOutput[readName] = 2; }
-            for (const auto& readName : mateReadsInGroup[grp]) {
-                if (willBeOutput.find (readName) != willBeOutput.end())
-                    continue;
-                willBeOutput[readName] = 1; }
-            setOfStrings alreadyOutput;
-            vectorOfStrings bothMatesHaveMatches, mateBroughtInViaMatePair, readOnlys;
-            for(const auto& readName : readsToOutput) {
-                if (alreadyOutput.find(readName) != alreadyOutput.end())
-                    continue;
-                const stdString readMate = getReadMateName (readName);
-                alreadyOutput.insert (readName);
-                auto it2 = willBeOutput.find (readMate);
-                if (it2 != willBeOutput.end()) {
-                    alreadyOutput.insert(readMate);
-                    if (it2->second == 2) {
-                        bothMatesHaveMatches.push_back (readName);
-                        bothMatesHaveMatches.push_back (readMate); }
-                    else {
-                        mateBroughtInViaMatePair.push_back (readName);
-                        mateBroughtInViaMatePair.push_back (readMate); }
-                }
-                else
-                    readOnlys.push_back (readName);
-            }
-            for (unsigned int readNum=0; readNum<bothMatesHaveMatches.size(); readNum++) {
-                if (readSeq.find (bothMatesHaveMatches[readNum]) == readSeq.end())
-                    continue;
-                outputReadHdr[bothMatesHaveMatches[readNum]] += (" " + std::to_string(grp) + " B");
-                readType[bothMatesHaveMatches[readNum]] = 1;
-            }
-            int outCount = 0;
-            for (const auto& readName : mateBroughtInViaMatePair) {
-                ++outCount;
-                if (readSeq.find (readName) == readSeq.end())
-                    continue;
-                readType[readName] = 1;
-                outputReadHdr[readName] += (" " + std::to_string(grp) + " M");
-            }
-            for (const auto& readName : readOnlys) {
-                if (readSeq.find (readName) == readSeq.end())
-                    continue;
-                const stdString mateRead = getReadMateName (readName);
-                if (readType.find (readName) == readType.end())
-                    readType[readName] = 2;
-                else if (readType[readName] > 2)
-                    readType[readName] = 2;
-                outputReadHdr[readName] += (" " + std::to_string(grp) + " O");
-                if (readType.find (mateRead) == readType.end())
-                    readType[mateRead] = 3;
-                outputReadHdr[mateRead] += (" " + std::to_string(grp) + " N");
-            }
-            if ((grp+1) % numGrpsInGrp == 0 || (grp+1) == readsInGroup.size()) {
-                outfile << '>' << (grp / numGrpsInGrp) << "\n";
-                for (const auto& readInfo : readType) {
-                    const stdString& readName = readInfo.first;
-                    if (! readIsFirstOfPair (readName))
-                        continue;
-                    const stdString mateRead = getReadMateName (readName);
-                    if (readType[readName] != 3)
-                        outfile << readName << outputReadHdr[readName] << '\n' << readSeq[readName] << '\n';
-                    if (readType[mateRead] != 3)
-                        outfile << mateRead << outputReadHdr[mateRead] << '\n' << readSeq[mateRead] << '\n';
-                }
-                outputReadHdr.clear();
-                readType.clear();
-            }
-        }
-        outfile.close();
-        ++outputGroupNum;
+void read_and_write_reads(const pair_group_info_type& pair_info, const unsigned int numGrps) {
+  std::vector<header_sequence_type> readSeq(args.max_reads_in_memory_arg + 1);
+  std::vector<std::vector<read_list_type> > reads_in_group(numGrps);
+  charb outfileName;
+
+  for(unsigned int outputGroupNum = 0; loadNeededReads(pair_info, readSeq, reads_in_group); ++outputGroupNum) {
+    sprintf (outfileName, "%s/readFile.%03d", args.dir_for_gaps_arg, outputGroupNum);
+    std::ofstream outfile(outfileName);
+
+    for(unsigned int grp = 0; grp < numGrps; ++grp) {
+      outfile << '>' << grp << '\n';
+      for(const auto& read : reads_in_group[grp])
+        outfile << readSeq[read.index].header << ' ' << grp
+                << ' ' << match_str(read.match) << '\n'
+                << readSeq[read.index].sequence << '\n';
     }
+  }
 }
