@@ -62,7 +62,7 @@ avg_ins=$mean
 reverse_seq=$rev_seq
 asm_flags=2
 rank=2
-map_len=63
+map_len=51
 p=../sj.cor.clean2.fa
 EOS
 }else{
@@ -101,8 +101,8 @@ sub runSOAP {
  
 
 print $out "log 'SOAPdenovo'\n";
-print $out "$cmdline_pe < pe.cor.fa\n" unless(scalar(@{$config{PE_INFO}})==1); 
-print $out "$cmdline_jump < sj.cor.clean2.fa\n" unless(scalar(@{$config{JUMP_INFO}})==1);
+print $out "$cmdline_pe < pe.cor.fa\n" if(scalar(@{$config{PE_INFO}})>1); 
+print $out "$cmdline_jump < sj.cor.clean2.fa\n" if(scalar(@{$config{JUMP_INFO}})>1);
 
 print $out <<"EOS";
 mkdir -p $SOAP_dir
