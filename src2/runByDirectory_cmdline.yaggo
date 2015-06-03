@@ -54,6 +54,12 @@ option("contig-end-sequence-file") {
 option("num-joins-per-directory") {
   description "Number of joins put in each directory"
   int; default "1" }
+option("num-joins-per-directory") {
+  description "Number of joins put in each directory"
+  int; default "1" }
+option("skip-gaps") {
+  description "Number of gaps to skip -- useful for restarting"
+  int; default "0" }
 option ("dir-for-read-sequences") {
   description "Name of dir where readFile.### exist; should be absolute"
   c_string; required; typestr "path" }
