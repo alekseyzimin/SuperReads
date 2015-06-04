@@ -100,14 +100,14 @@ runCommandAndExitIfBad ($cmd);
 
 # Doing the section to avoid fishing using k-mers that occur (too) many times in the reads
 if(not(-e "restrictKmers.success")){
-$cmd = "jellyfish-2.0 count -s $jellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -L 100 -o restrictKmers.jf.tmp @readsFiles";
+$cmd = "jellyfish-2.0 count -s $jellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -L 100 -o restrictKmers.jf @readsFiles";
 runCommandAndExitIfBad ($cmd);
 $cmd = "touch restrictKmers.success";
 runCommandAndExitIfBad ($cmd);
 }
 
 if(not(-e "highCountKmers.success")){
-$cmd = "jellyfish-2.0 dump -L $maxFishingKMerCount restrictKmers.jf -c > highCountKmers.txt.tmp";
+$cmd = "jellyfish-2.0 dump -L $maxFishingKMerCount restrictKmers.jf -c > highCountKmers.txt";
 runCommandAndExitIfBad ($cmd);
 $cmd = "touch highCountKmers.success";
 runCommandAndExitIfBad ($cmd);
