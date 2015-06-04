@@ -152,11 +152,21 @@ $cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
 runCommandAndExitIfBad ($cmd);
 
 # Now run the directories
-$cmd = "$exeDir/runByDirectory -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --num-stdevs-allowed $numStdevsAllowed --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . -o output.txt";
+my $restart_gap=0;
+if(-e "output.txt"){
+open(TFILE,"output.txt");
+while($line=<TFILE>){
+($restart_gap,$junk)=split(/\s+/,$line);
+}
+close($TFILE);
+system("cp output.txt output.txt.$restart_gap");
+$restart_gap++;
+}
+$cmd = "$exeDir/runByDirectory --skip-gaps $restart_gap -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --num-stdevs-allowed $numStdevsAllowed --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . -o output.txt";
 system($cmd);
 
 # $cmd = "$exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl out.err superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --num-stdevs-allowed $numStdevsAllowed";
-$cmd = "$exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl output.txt superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt";
+$cmd = "$exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl <(cat output.txt* | sort -nk1,1 -S 50\%) superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt";
 runCommandAndExitIfBad ($cmd);
 
 if (! $keepDirectoriesFlag) {

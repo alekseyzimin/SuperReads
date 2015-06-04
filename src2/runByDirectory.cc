@@ -246,7 +246,7 @@ int main (int argc, char **argv)
     case -1:
       err::die(err::msg() << "Fork failed" << err::no);
     case 0:
-	if(dirNum>args.skip_gaps_arg)
+	if(dirNum>=args.skip_gaps_arg)
 	 analyzeGap(threadArgs, resultFile, errFile);
       exit(0);
     default:
