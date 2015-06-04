@@ -99,15 +99,27 @@ $cmd = "echo \"cc $fauxInsertMean $fauxInsertStdev\" > meanAndStdevByPrefix.cc.t
 runCommandAndExitIfBad ($cmd);
 
 # Doing the section to avoid fishing using k-mers that occur (too) many times in the reads
-$cmd = "jellyfish-2.0 count -s $jellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -L 100 -o restrictKmers.jf @readsFiles";
+if(not(-e "restrictKmers.success")){
+$cmd = "jellyfish-2.0 count -s $jellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -L 100 -o restrictKmers.jf.tmp @readsFiles";
 runCommandAndExitIfBad ($cmd);
-
-$cmd = "jellyfish-2.0 dump -L $maxFishingKMerCount restrictKmers.jf -c > highCountKmers.txt";
+$cmd = "touch restrictKmers.success";
 runCommandAndExitIfBad ($cmd);
+}
 
+if(not(-e "highCountKmers.success")){
+$cmd = "jellyfish-2.0 dump -L $maxFishingKMerCount restrictKmers.jf -c > highCountKmers.txt.tmp";
+runCommandAndExitIfBad ($cmd);
+$cmd = "touch highCountKmers.success";
+runCommandAndExitIfBad ($cmd);
+}
+
+$suffix = $localReadsFile . "_" . $reduceReadSetKMerSize . "_" . $kUnitigContinuationNumber;
+$kUnitigFilename = "k_unitigs_${suffix}_faux_reads.fa";
 $localJellyfishHashSize = -s $fishingEndPairs;
 $localJellyfishHashSize = int ($localJellyfishHashSize / .79) + 1;
 $localJellyfishHashSize = "10k" if $localJellyfishHashSize < 10000;
+
+if(not(-e "highCountKmers_elim.success")){
 $cmd = "jellyfish-2.0 count -s $localJellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -o fishingAll.jf $fishingEndPairs";
 runCommandAndExitIfBad ($cmd);
 
@@ -119,7 +131,6 @@ close (FILE);
 
 # The following outputs a file containing all the k-mers occurring in the contig ends used for fishing that
 # do not occur overly many times in the read database (as specified by our parameters)
-$suffix = $localReadsFile . "_" . $reduceReadSetKMerSize . "_" . $kUnitigContinuationNumber;
 $cmd = "jellyfish-2.0 dump fishingAll.jf -c |";
 open (FILE, $cmd);
 $outcmd = "| jellyfish-2.0 count -s $localJellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -o k_u_hash_${suffix}_faux_reads.jf /dev/fd/0";
@@ -132,26 +143,33 @@ while ($line = <FILE>) {
 # print OUTFILE "\n";
 close (FILE); close (OUTFILE);
 
-$kUnitigFilename = "k_unitigs_${suffix}_faux_reads.fa";
-
 # End section that eliminates k-mers that occur too often
 $cmd = "jellyfish-2.0 dump -c k_u_hash_${suffix}_faux_reads.jf | awk 'BEGIN{n=0}{n++;print \">\"n\" length:$reduceReadSetKMerSize\\n\"\$1}' > $kUnitigFilename";
 runCommandAndExitIfBad ($cmd);
+$cmd = "touch highCountKmers_elim.success";
+runCommandAndExitIfBad ($cmd);
+}
 
 $kUnitigFilesize = -s $kUnitigFilename;
 $cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $kUnitigFilename -s $kUnitigFilesize -low-memory -l $reduceReadSetKMerSize --stopAfter findReadKUnitigMatches -t $numThreads -mkudisr 0 workFauxVsFaux $fishingEndPairs 1>>out.${suffix}_workFauxVsFaux 2>>out.${suffix}_workFauxVsFaux";
 runCommandAndExitIfBad ($cmd);
 $cmd = "$exeDir/createSuperReadsForDirectory.perl -mikedebug -noreduce -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.cc.txt -minreadsinsuperread 1 -kunitigsfile $kUnitigFilename -s $kUnitigFilesize -low-memory -l $reduceReadSetKMerSize --stopAfter findReadKUnitigMatches -t $numThreads -mkudisr 0 workReadsVsFaux @readsFiles 1>>out.${suffix}_workReadsVsFaux 2>>out.${suffix}_workReadsVsFaux";
 runCommandAndExitIfBad ($cmd);
+
 # We're still in the output directory
+if(not(-e "collect.success")){
 $cmd = "$exeDir/collectReadSequencesForLocalGapClosing --faux-reads-file $fishingEndPairs --faux-read-matches-to-kunis-file workFauxVsFaux/newTestOutput.nucmerLinesOnly --read-matches-to-kunis-file workReadsVsFaux/newTestOutput.nucmerLinesOnly";
 for (@readsFiles) {
     $readFile = $_;
     $cmd .= " --reads-file $readFile"; }
 $cmd .= " --max-reads-in-memory $maxReadsInMemory --dir-for-gaps .";
 runCommandAndExitIfBad ($cmd);
+$cmd = "touch collect.success";
+runCommandAndExitIfBad ($cmd);
+}
 
 # Now run the directories
+if(not(-e "runByDirectory.success")){
 my $restart_gap=0;
 if(-e "output.txt"){
 open(TFILE,"output.txt");
@@ -163,10 +181,15 @@ system("cp output.txt output.txt.$restart_gap");
 $restart_gap++;
 }
 $cmd = "$exeDir/runByDirectory --skip-gaps $restart_gap -t $numThreads $keepDirectoriesFlag --Celera-terminator-directory $CeleraTerminatorDirectory --max-nodes $maxNodes --min-kmer-len $minKMerLen --max-kmer-len $maxKMerLen --mean-for-faux-inserts $fauxInsertMean --stdev-for-faux-inserts $fauxInsertStdev --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --num-stdevs-allowed $numStdevsAllowed --output-dir $subdir2 --contig-end-sequence-file $joiningEndPairs --dir-for-read-sequences . -o output.txt";
+print STDERR "$cmd\n";
 system($cmd);
+$cmd = "touch runByDirectory.success";
+runCommandAndExitIfBad ($cmd);
+}
+
 
 # $cmd = "$exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl out.err superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt --mean-and-stdev-file $meanAndStdevJoinSeqLenByGapFile --num-stdevs-allowed $numStdevsAllowed";
-$cmd = "$exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl <(cat output.txt* | sort -nk1,1 -S 50\%) superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt";
+$cmd = "cat output.txt* | sort -nk1,1 -S 50\% | $exeDir/createSuperReadSequenceAndPlacementFileFromCombined.perl /dev/fd/0 superReadSequences.fasta readPlacementsInSuperReads.final.read.superRead.offset.ori.txt";
 runCommandAndExitIfBad ($cmd);
 
 if (! $keepDirectoriesFlag) {
