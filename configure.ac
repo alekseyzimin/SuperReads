@@ -80,6 +80,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[int x = 0;]],
 AC_ARG_ENABLE([debug], AS_HELP_STRING([--enable-debug], [Enable debugging]))
 AS_IF([test "x$enable_debug" = "x"], AC_DEFINE([NDEBUG], [1], [Defined if no debugging]))
 
-AC_CONFIG_FILES([Makefile doxygen.cfg])
+# Don't use doxygen.cfg anymore
+AC_CONFIG_FILES([Makefile])
 
 AC_OUTPUT

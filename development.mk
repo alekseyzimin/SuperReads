@@ -5,8 +5,8 @@ AM_CXXFLAGS += $(AM_DEV_CXXFLAGS) -g
 cloc:
 	cloc --force-lang="Ruby,yaggo" --force-lang="make,am" --force-lang="make,mk" \
 	  --exclude-dir="gtest" --ignored=cloc_ignored_src_files \
-	  $(top_srcdir)/src $(top_srcdir)/src2 $(top_srcdir)/lib $(top_srcdir)/include $(top_srcdir)/unittests \
-	  $(top_srcdir)/Makefile.am $(top_srcdir)/*.mk
+	  $(srcdir)/src $(srcdir)/src2 $(srcdir)/lib $(srcdir)/include $(srcdir)/unittests \
+	  $(srcdir)/Makefile.am $(srcdir)/*.mk
 
 
 # Make a dependency on yaggo the software

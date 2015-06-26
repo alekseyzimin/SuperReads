@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-CXXFLAGS_ALL = -I$(top_srcdir)/include -I$(top_srcdir) -Wall -std=c++0x $(VALGRIND_CFLAGS)
+CXXFLAGS_ALL = -I$(srcdir)/include -I$(srcdir) -Wall -std=c++0x $(VALGRIND_CFLAGS)
 AM_CXXFLAGS = $(CXXFLAGS_ALL) $(JELLYFISH2_0_CFLAGS)
 LDADD_ALL = -lrt -lpthread libutils.a
 LDADD = $(LDADD_ALL) $(JELLYFISH2_0_LIBS)
@@ -243,9 +243,9 @@ all_tests_SOURCES += src/fibonacci_coding.cc src/MurmurHash3.cpp	\
                      src/gcc_builtins.cc src/read_parser.cc		\
                      unittests/misc.cc
 all_tests_CXXFLAGS = $(AM_CXXFLAGS) $(JELLYFISH2_0_CFLAGS)	\
--I$(top_srcdir)/unittests/gtest/include				\
--I$(top_srcdir)unittests/gtest -I$(top_srcdir)/include		\
--I$(top_srcdir)
+-I$(srcdir)/unittests/gtest/include				\
+-I$(srcdir)unittests/gtest -I$(srcdir)/include		\
+-I$(srcdir)
 all_tests_LDFLAGS = $(AM_LDFLAGS) $(JELLYFISH2_0_LIBS)
 all_tests_LDADD = libutils.a libgtest.a
 YAGGO_SOURCES += unittests/test_main_cmdline.hpp
@@ -257,18 +257,18 @@ include gtest.mk
 # Doxygen
 ##############################
 #include doxygen.am
-MOSTLYCLEANFILE = doxygen-doc
-EXTRA_DIST += doxygen.cfg
-.PHONY: doxygen-doc
-doxygen-doc: doxygen.cfg
-	rm -rf $@
-	doxygen $<
+# MOSTLYCLEANFILE = doxygen-doc
+# EXTRA_DIST += doxygen.cfg
+# .PHONY: doxygen-doc
+# doxygen-doc: doxygen.cfg
+# 	rm -rf $@
+# 	doxygen $<
 
 ##############################
 # Extra configuration for development tree
 ##############################
--include $(top_srcdir)/development.mk
--include $(top_srcdir)/personal.mk
+-include $(srcdir)/development.mk
+-include $(srcdir)/personal.mk
 
 ##############################
 # Info
