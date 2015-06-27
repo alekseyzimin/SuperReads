@@ -24,7 +24,7 @@ EOS
 
     if(not(-d "CA/genome.ovlStore")|| $rerun_pe || $rerun_sj){
       print $out <<"EOS";
-ovlMerThreshold=`jellyfish-2.0 histo -t $config{NUM_THREADS} k_u_hash_0 | awk '{thresh=75;if(\$1>1) {dist+=\$2;if(dist>int(\"'\$ESTIMATED_GENOME_SIZE'\")*0.98&&flag==0){if(\$1>thresh) thresh=\$1;flag=1}}}END{print thresh}'`
+ovlMerThreshold=`jellyfish histo -t $config{NUM_THREADS} k_u_hash_0 | awk '{thresh=75;if(\$1>1) {dist+=\$2;if(dist>int(\"'\$ESTIMATED_GENOME_SIZE'\")*0.98&&flag==0){if(\$1>thresh) thresh=\$1;flag=1}}}END{print thresh}'`
 echo ovlMerThreshold=\$ovlMerThreshold\n
 EOS
     }
@@ -44,7 +44,7 @@ recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacement
 NUM_SUPER_READS=`cat superReadSequences_shr.frg $tmplist | grep -c --text '^{FRG' `
 save NUM_SUPER_READS
 ( cd CA
-  tigStore -g genome.gkpStore -t genome.tigStore 2 -d layout -U | tr -d '-' | awk 'BEGIN{print \">unique unitigs\"}{if(\$1 == \"cns\"){seq=\$2}else if(\$1 == \"data.unitig_coverage_stat\" && \$2>=5){print seq\"N\"}}' | jellyfish-2.0 count -L 2 -C -m $ovlMerSize -s \$ESTIMATED_GENOME_SIZE -t $config{NUM_THREADS} -o unitig_mers /dev/fd/0
+  tigStore -g genome.gkpStore -t genome.tigStore 2 -d layout -U | tr -d '-' | awk 'BEGIN{print \">unique unitigs\"}{if(\$1 == \"cns\"){seq=\$2}else if(\$1 == \"data.unitig_coverage_stat\" && \$2>=5){print seq\"N\"}}' | jellyfish count -L 2 -C -m $ovlMerSize -s \$ESTIMATED_GENOME_SIZE -t $config{NUM_THREADS} -o unitig_mers /dev/fd/0
   cat <(overlapStore -b 1 -e \$NUM_SUPER_READS -d genome.ovlStore  | awk '{if(\$1<'\$NUM_SUPER_READS' && \$2<'\$NUM_SUPER_READS') print \$0}'|filter_overlap_file -t $config{NUM_THREADS} <(gatekeeper -dumpfastaseq genome.gkpStore ) unitig_mers /dev/fd/0) <(overlapStore -d genome.ovlStore | awk '{if(\$1>='\$NUM_SUPER_READS' || \$2>='\$NUM_SUPER_READS') print \$1\" \"\$2\" \"\$3\" \"\$4\" \"\$5\" \"\$6\" \"\$7}')  |convertOverlap -b -ovl > overlaps.ovb
   rm -rf 4-unitigger 5-consensus genome.tigStore genome.ovlStore
   overlapStore -c genome.ovlStore -M 4096 -t $config{NUM_THREADS} -g genome.gkpStore overlaps.ovb 1>overlapstore.err 2>&1

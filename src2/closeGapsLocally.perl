@@ -100,14 +100,14 @@ runCommandAndExitIfBad ($cmd);
 
 # Doing the section to avoid fishing using k-mers that occur (too) many times in the reads
 if(not(-e "restrictKmers.success")){
-$cmd = "jellyfish-2.0 count -s $jellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -L 100 -o restrictKmers.jf @readsFiles";
+$cmd = "jellyfish count -s $jellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -L 100 -o restrictKmers.jf @readsFiles";
 runCommandAndExitIfBad ($cmd);
 $cmd = "touch restrictKmers.success";
 runCommandAndExitIfBad ($cmd);
 }
 
 if(not(-e "highCountKmers.success")){
-$cmd = "jellyfish-2.0 dump -L $maxFishingKMerCount restrictKmers.jf -c > highCountKmers.txt";
+$cmd = "jellyfish dump -L $maxFishingKMerCount restrictKmers.jf -c > highCountKmers.txt";
 runCommandAndExitIfBad ($cmd);
 $cmd = "touch highCountKmers.success";
 runCommandAndExitIfBad ($cmd);
@@ -120,7 +120,7 @@ $localJellyfishHashSize = int ($localJellyfishHashSize / .79) + 1;
 $localJellyfishHashSize = "10k" if $localJellyfishHashSize < 10000;
 
 if(not(-e "highCountKmers_elim.success")){
-$cmd = "jellyfish-2.0 count -s $localJellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -o fishingAll.jf $fishingEndPairs";
+$cmd = "jellyfish count -s $localJellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -o fishingAll.jf $fishingEndPairs";
 runCommandAndExitIfBad ($cmd);
 
 open (FILE, "highCountKmers.txt");
@@ -131,9 +131,9 @@ close (FILE);
 
 # The following outputs a file containing all the k-mers occurring in the contig ends used for fishing that
 # do not occur overly many times in the read database (as specified by our parameters)
-$cmd = "jellyfish-2.0 dump fishingAll.jf -c |";
+$cmd = "jellyfish dump fishingAll.jf -c |";
 open (FILE, $cmd);
-$outcmd = "| jellyfish-2.0 count -s $localJellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -o k_u_hash_${suffix}_faux_reads.jf /dev/fd/0";
+$outcmd = "| jellyfish count -s $localJellyfishHashSize -C -t $numThreads -m $reduceReadSetKMerSize -o k_u_hash_${suffix}_faux_reads.jf /dev/fd/0";
 open (OUTFILE, $outcmd);
 print OUTFILE ">strangeFishingOutfile\n";
 while ($line = <FILE>) {
@@ -144,7 +144,7 @@ while ($line = <FILE>) {
 close (FILE); close (OUTFILE);
 
 # End section that eliminates k-mers that occur too often
-$cmd = "jellyfish-2.0 dump -c k_u_hash_${suffix}_faux_reads.jf | awk 'BEGIN{n=0}{n++;print \">\"n\" length:$reduceReadSetKMerSize\\n\"\$1}' > $kUnitigFilename";
+$cmd = "jellyfish dump -c k_u_hash_${suffix}_faux_reads.jf | awk 'BEGIN{n=0}{n++;print \">\"n\" length:$reduceReadSetKMerSize\\n\"\$1}' > $kUnitigFilename";
 runCommandAndExitIfBad ($cmd);
 $cmd = "touch highCountKmers_elim.success";
 runCommandAndExitIfBad ($cmd);
@@ -223,7 +223,7 @@ sub getJellyfishHashSizeNeeded
     my ($jellyfishHash) = @_;
     my ($cmd, $numRecs, $line, @flds, $jellyfishSizeNeeded);
 
-    $cmd = "jellyfish-2.0 histo -t $numThreads -h 1 $jellyfishHash |";
+    $cmd = "jellyfish histo -t $numThreads -h 1 $jellyfishHash |";
     open (FILE, $cmd);
     $numRecs = 0;
     while ($line = <FILE>) {

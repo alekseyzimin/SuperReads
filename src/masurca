@@ -114,7 +114,7 @@ unshift(@LD_LIBRARY_PATH, @prep_ld) if @prep_ld;
 
 unless($skip_checking) {
   print "Verifying PATHS...\n";
-  my @progs=("jellyfish-2.0", "runCA", "createSuperReadsForDirectory.perl");
+  my @progs=("jellyfish", "runCA", "createSuperReadsForDirectory.perl");
   push(@progs,("nucmer","mega_reads_assemble.sh")) if(@{$config{PACBIO_INFO}});
   push(@progs, "SOAPdenovo-63mer") if($config{SOAP_ASSEMBLY});
   &check_exec(@progs);
@@ -314,10 +314,10 @@ $k_u_arg.=" sj.cor.fa" if(@{$config{JUMP_INFO}});
 
 print FILE "log Estimating genome size.\n";
 if(not(-e "k_u_hash_0")||$rerun_pe==1||$rerun_sj==1){
-    print FILE "jellyfish-2.0 count -m 31 -t $config{NUM_THREADS} -C -s \$JF_SIZE -o k_u_hash_0 $k_u_arg\n";
+    print FILE "jellyfish count -m 31 -t $config{NUM_THREADS} -C -s \$JF_SIZE -o k_u_hash_0 $k_u_arg\n";
 }
 
-print FILE "ESTIMATED_GENOME_SIZE=`jellyfish-2.0 histo -t $config{NUM_THREADS} -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
+print FILE "ESTIMATED_GENOME_SIZE=`jellyfish histo -t $config{NUM_THREADS} -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
 if($config{CA_PARAMETERS}=~ "cgwErrorRate=0.25" || $config{LIMIT_JUMP_COVERAGE} == 60) {print FILE "if [ \$ESTIMATED_GENOME_SIZE -ge 15000000 ]; then echo \"WARNING! CA_PARAMETERS = cgwErrorRate=0.25 and LIMIT_JUMP_COVERAGE = 60 in config file should only be used for bacterial genomes; set cgwErrorRate=0.15 and  LIMIT_JUMP_COVERAGE=300 for eukaryotes and plants!\";fi\n";}
 print FILE "save ESTIMATED_GENOME_SIZE\n";
 print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
