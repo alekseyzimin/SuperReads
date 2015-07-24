@@ -390,14 +390,13 @@ if($config{USE_LINKING_MATES} == 1) {
     print FILE "MAX_LINKING_MATES=`perl -e '{\$g=int('\$ESTIMATED_GENOME_SIZE');\$g=250000000 if(\$g>250000000);print \$g}'`\n";
   }
   MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
-
+}
   #create frg file for super reads
   if(not(-e "superReadSequences_shr.frg")||$rerun_pe==1){
     print FILE "create_sr_frg.pl < work1/superReadSequences.fasta 2>/dev/null | fasta2frg.pl super >  superReadSequences_shr.frg\n";
   }
 ###done with super reads for PE###
   print FILE "\n";
-}
 }
 
 if($config{STOP_AFTER_SR}) {
