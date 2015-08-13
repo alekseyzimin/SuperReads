@@ -46,7 +46,7 @@ reverse_seq=0
 asm_flags=2
 rank=1
 map_len=63
-p=../$prefix.cor.fa
+p=../$prefix.cor.clean.fa
 EOS
 }
 }
