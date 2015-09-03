@@ -100,7 +100,7 @@ int *kUnitigLengths;
 uint64_t largestKUnitigNumber;
 char *inputPrefix, *outputPrefix;
 uint64_t *startOverlapByUnitig;
-struct overlapDataStruct *overlapDataToSave;
+uint64_t *overlapDataToSave;
 bool createCoordsFile;
 
 void reportKUnitigEndMatches (void);
@@ -264,17 +264,12 @@ void reportKUnitigEndMatches (void)
      free(kUnitigLengths);
      free(kUnitigSequences);
      free(ptrsToEndKUnitigKmerStructs);
-     mallocOrDie (overlapDataToSave, numOvlsOutput, struct overlapDataStruct);
+     //mallocOrDie (overlapDataToSave, numOvlsOutput, struct overlapDataStruct);
+     mallocOrDie (overlapDataToSave, numOvlsOutput, uint64_t);	
      for (uint64_t j=0; j<numOvlsOutput; j++)
      {
+	  overlapDataToSave[j]=0;
 	  int unitig1 = overlapData[j].kUni1, unitig2 = overlapData[j].kUni2;
-	  
-#if 0
-	  if (unitig1 > unitig2) 
-	       continue;
-	  else if ((unitig1 == unitig2) && (overlapData[j].ahg < 0))
-	       continue;
-#endif
 	  if (unitig1 >= unitig2)
 	       continue;
 	  startOverlapByUnitig[unitig1]++;
@@ -284,57 +279,16 @@ void reportKUnitigEndMatches (void)
 	  startOverlapByUnitig[unitigNum] += startOverlapByUnitig[unitigNum - 1];
      
      for (uint64_t j=0; j<numOvlsOutput; j++)
-     {
-	  int unitig1 = overlapData[j].kUni1, unitig2 = overlapData[j].kUni2;
-	  int ahg = overlapData[j].ahg, bhg = overlapData[j].bhg;
-	  char ori = overlapData[j].netOri;
-	  uint64_t itemp;
-#if 0
-          uint64_t itempHold;
-#endif
-	  
-#if 0
-	  if (unitig1 > unitig2) 
-	       continue;
-	  else if ((unitig1 == unitig2) && (ahg < 0))
-	       continue;
-#endif
-	  if (unitig1 >= unitig2)
-	       continue;
-	  startOverlapByUnitig[unitig1]--;
-	  itemp = startOverlapByUnitig[unitig1];
-	  overlapDataToSave[itemp].kUni1 = unitig1;
-	  overlapDataToSave[itemp].kUni2 = unitig2;
-	  overlapDataToSave[itemp].netOri = ori;
-	  overlapDataToSave[itemp].ahg = ahg;
-	  overlapDataToSave[itemp].bhg = bhg;
-	  startOverlapByUnitig[unitig2]--;
-#if 0
-	  itempHold = itemp;
-#endif
-	  itemp = startOverlapByUnitig[unitig2];
-	  overlapDataToSave[itemp].kUni1 = unitig2;
-	  overlapDataToSave[itemp].kUni2 = unitig1;
-	  overlapDataToSave[itemp].netOri = ori;
-	  if (ori == 'N')
-	  {
-	       overlapDataToSave[itemp].ahg = -ahg;
-	       overlapDataToSave[itemp].bhg = -bhg;
-	  }
-	  else
-	  {
-	       overlapDataToSave[itemp].ahg = bhg;
-	       overlapDataToSave[itemp].bhg = ahg;
-	  }
-     }
+	  overlapDataToSave[--startOverlapByUnitig[overlapData[j].kUni1]]=j;
 
      size_t written = 0;
      while(written < numOvlsOutput) {
-       size_t res = fwrite (overlapDataToSave + written, sizeof (struct overlapDataStruct),
-                            numOvlsOutput - written, overlapsFile);
+       size_t res;
+       res = fwrite (overlapData+overlapDataToSave[written], sizeof (struct overlapDataStruct),
+                            1, overlapsFile);
        if(res == 0)
          throw std::runtime_error(err::msg() << "Failed to write overlaps to file: " << err::no);
-       written += res;
+       written +=res;
      }
      
      if (createCoordsFile)
