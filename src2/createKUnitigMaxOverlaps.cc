@@ -261,7 +261,9 @@ void reportKUnitigEndMatches (void)
      endOfLoop:
 	  beginIndex = endIndex;
      }
-
+     free(kUnitigLengths);
+     free(kUnitigSequences);
+     free(ptrsToEndKUnitigKmerStructs);
      mallocOrDie (overlapDataToSave, numOvlsOutput, struct overlapDataStruct);
      for (uint64_t j=0; j<numOvlsOutput; j++)
      {
