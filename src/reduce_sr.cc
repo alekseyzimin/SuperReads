@@ -23,10 +23,10 @@
 #include<algorithm>
 #include<charb.hpp>
 #include<src/reduce_sr_cmdline.hpp>
-// #define DEBUG 0
+//#define DEBUG 0
 
-typedef ExpandingBuffer<int> int_buf;
-typedef ExpandingBuffer<int_buf, remaper<int_buf> > twoD_int_buf;
+typedef std::vector<int> int_buf;
+typedef std::vector<int_buf> twoD_int_buf;
 typedef ExpandingBuffer<charb, remaper<charb> > twoD_charb_buf;
 
 
@@ -200,7 +200,7 @@ int main(int argc,char *argv[]){
 		    printf("Before qsort:Candidate %d, super read %s\n",candidates[i], (char*)irreducibleSuperReadNames[candidates[i]]);
 #endif
 
-	       qsort(candidates,k,sizeof(int),int_compare);
+	       qsort(&candidates[0],k,sizeof(int),int_compare);
 
 	       superReadName_reverse=superReadName_save;
 
