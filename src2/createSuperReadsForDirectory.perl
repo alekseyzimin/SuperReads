@@ -146,7 +146,7 @@ if ($jumpLibraryReads) {
 # In addition to obvious output file, this also generates the files
 # numKUnitigs.txt, maxKUnitigNumber.txt, and totBasesInKUnitigs.txt in
 # $workingDirectory
-$cmd = "bash -c \"ufasta sizes -H $kUnitigsFile | tee  work1/kUnitigLengths.txt >(wc -l > work1/numKUnitigs.txt) >(tail -n 1 | awk '{print \\\$1}' > work1/maxKUnitigNumber.txt) | awk '{n+=\\\$2}END{print n}' > work1/totBasesInKUnitigs.txt\"";
+$cmd = "bash -c \"ufasta sizes -H $kUnitigsFile | tee  work1/kUnitigLengths.txt >(wc -l > work1/numKUnitigs.txt) >(tail -n 1 | awk '{print \\\$1+1}' > work1/maxKUnitigNumber.txt) | awk '{n+=\\\$2}END{print n}' > work1/totBasesInKUnitigs.txt\"";
 &runCommandAndExitIfBad ($cmd, $kUnitigLengthsFile, 1, "createLengthStatisticsFiles", $totBasesInKUnitigsFile, $numKUnitigsFile, $maxKUnitigNumberFile, $kUnitigLengthsFile);
 
 $minSizeNeededForTable = &reportMinJellyfishTableSizeForKUnitigs;
