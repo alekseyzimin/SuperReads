@@ -66,6 +66,8 @@ sub default_config {
 DATA
 PE= pe 180 20  /FULL_PATH/frag_1.fastq  /FULL_PATH/frag_2.fastq
 JUMP= sh 3600 200  /FULL_PATH/short_1.fastq  /FULL_PATH/short_2.fastq
+#pcbio reads must be in a single fasta file! make sure you provide absolute path
+PACBIO=/FULL_PATH/pacbio.fa
 OTHER=/FULL_PATH/file.frg
 END
 
@@ -78,15 +80,15 @@ USE_LINKING_MATES = 0
 LIMIT_JUMP_COVERAGE = 300
 #these are the additional parameters to Celera Assembler.  do not worry about performance, number or processors or batch sizes -- these are computed automatically. 
 #set cgwErrorRate=0.25 for bacteria and 0.1<=cgwErrorRate<=0.15 for other organisms.
-CA_PARAMETERS = cgwErrorRate=0.15 ovlMemory=4GB
+CA_PARAMETERS = cgwErrorRate=0.15
 #minimum count k-mers used in error correction 1 means all k-mers are used.  one can increase to 2 if coverage >100
 KMER_COUNT_THRESHOLD = 1
 #auto-detected number of cpus to use
 NUM_THREADS = 16
 #this is mandatory jellyfish hash size -- a safe value is estimated_genome_size*estimated_coverage
 JF_SIZE = 200000000
-#this specifies if we do (1) or do not (0) want to trim long runs of homopolymers (e.g. GGGGGGGG) from 3' read ends, use it for high GC genomes
-DO_HOMOPOLYMER_TRIM = 0
+#set this to 1 to use SOAPdenovo contigging/scaffolding module.  Assembly will be worse but will run faster. Usefule for very large (>5Gbp) genomes
+SOAP_ASSEMBLY=0
 END
 EOS
 }

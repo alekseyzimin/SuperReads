@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 $rn="";
-$max_len=2047;
+$max_len=65535;
 $shooting_index=0;
 if($ARGV[0] eq ""){
 $suffix="super-read";

@@ -31,7 +31,7 @@ EOS
 
     if(not(-e "CA/5-consensus/consensus.success")|| $rerun_pe || $rerun_sj){
       print $out <<"EOS";
-runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $config{CA_PARAMETERS} jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$config{NUM_THREADS} frgCorrThreads=1 frgCorrConcurrency=$config{NUM_THREADS} cnsConcurrency=$config{NUM_CNS_THREADS} ovlCorrConcurrency=$config{NUM_THREADS} ovlConcurrency=$config{NUM_THREADS} ovlThreads=1 $other_parameters superReadSequences_shr.frg $frg_files   1> runCA1.out 2>&1
+runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $config{CA_PARAMETERS} ovlRefBlockSize=\$ovlRefBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$config{NUM_THREADS} merylMemory=16384 ovlStoreMemory=16384 frgCorrThreads=2 frgCorrConcurrency=$config{NUM_THREADS} cnsConcurrency=$config{NUM_CNS_THREADS} ovlCorrConcurrency=$config{NUM_THREADS} ovlConcurrency=$config{NUM_THREADS} ovlThreads=2 $other_parameters superReadSequences_shr.frg $frg_files   1> runCA1.out 2>&1
 
 if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then
   echo \"Overlap/unitig success\"
@@ -49,18 +49,8 @@ save NUM_SUPER_READS
   rm -rf 4-unitigger 5-consensus genome.tigStore genome.ovlStore
   overlapStore -c genome.ovlStore -M 4096 -t $config{NUM_THREADS} -g genome.gkpStore overlaps.ovb 1>overlapstore.err 2>&1
 )
-runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $config{CA_PARAMETERS} jellyfishHashSize=\$JF_SIZE ovlRefBlockSize=\$ovlRefBlockSize ovlHashBlockSize=\$ovlHashBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$config{NUM_THREADS} frgCorrThreads=1 frgCorrConcurrency=$config{NUM_THREADS} cnsConcurrency=$config{NUM_CNS_THREADS} ovlCorrConcurrency=$config{NUM_THREADS} ovlConcurrency=$config{NUM_THREADS} ovlThreads=1 $other_parameters superReadSequences_shr.frg $frg_files   1> runCA2.out 2>&1
 
-if [[ -e \"CA/5-consensus/consensus.success\" ]];then
-  echo \"Unitig consensus success\"
-else
-  echo \"Fixing unitig consensus...\"
-  mkdir CA/fix_unitig_consensus
-  ( cd CA/fix_unitig_consensus
-    cp `which fix_unitigs.sh` .
-    ./fix_unitigs.sh genome 
-  )
-fi
+runCA ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $config{CA_PARAMETERS} ovlRefBlockSize=\$ovlRefBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$config{NUM_THREADS} merylMemory=16384 ovlStoreMemory=16384 frgCorrThreads=2 frgCorrConcurrency=$config{NUM_THREADS} cnsConcurrency=$config{NUM_CNS_THREADS} ovlCorrConcurrency=$config{NUM_THREADS} ovlConcurrency=$config{NUM_THREADS} ovlThreads=2 $other_parameters superReadSequences_shr.frg $frg_files   1> runCA2.out 2>&1
 
 recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt
 EOS

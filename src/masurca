@@ -205,7 +205,7 @@ EOS
 if(@prep_path) {
   print FILE "export PATH=\"", join(":", @prep_path), ":\$PATH\"\n";
 } else {
-  print FILE "export PATH=\"$RealBin:$RealBin/../CA/Linux-amd64/bin:\$PATH\"\n";
+  print FILE "export PATH=\"$RealBin:$RealBin/../CA8/Linux-amd64/bin:\$PATH\"\n";
 }
 print FILE "save PATH\n";
 
