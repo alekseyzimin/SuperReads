@@ -32,6 +32,7 @@ use MasurcaCommon qw($rerun_pe $rerun_sj $list_frg_files);
 use MasurcaSuperReads;
 use MasurcaCelera;
 use MasurcaSoap;
+use MasurcaPaths;
 
 #global variables
 my (@pe_files, @sj_files);
@@ -213,6 +214,8 @@ if(@prep_ld) {
   print FILE "export LD_LIBRARY_PATH=\"", join(":", @prep_ld), ":\$LD_LIBRARY_PATH\"\n";
   print FILE "save LD_LIBRARY_PATH\n";
 }
+print FILE "export PERL5LIB=", $RealBin . "/" . MasurcaPaths::rel_ext_bin, "\${PERL5LIB:+:\$PERL5LIB}\n";
+print FILE "save PERL5LIB\n";
 print FILE "NUM_THREADS=$config{NUM_THREADS}\n";
 print FILE "save NUM_THREADS\n";
 
