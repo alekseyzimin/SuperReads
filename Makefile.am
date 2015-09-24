@@ -9,6 +9,7 @@ AM_DEV_CXXFLAGS = $(DEV_CXXFLAGS)
 noinst_HEADERS = $(YAGGO_SOURCES)
 bin_PROGRAMS =
 dist_bin_SCRIPTS =
+bin_SCRIPTS =
 data_DATA =
 BUILT_SOURCES = $(YAGGO_SOURCES)
 CLEANFILES =
@@ -215,6 +216,20 @@ bin_PROGRAMS += addSurrogatesToFrgCtgFile
 dist_bin_SCRIPTS += src2/addSurrogatesToFrgctg.perl src2/getUnitigTypeFromAsmFile.perl
 
 addSurrogatesToFrgCtgFile_SOURCES = src2/addSurrogatesToFrgCtgFile.cc
+
+
+#######################
+# Perl wrapper script #
+#######################
+src/perl: src/perl.in Makefile
+	mkdir -p $(dir $@)
+	LIBDIR=`perl -MFile::Spec -e 'print(File::Spec->abs2rel($$ARGV[0], $$ARGV[1]))' $(PERL_EXT_LIB) $(bindir)`; \
+	sed -e "s,[@]LIBDIR[@],$${LIBDIR},g" $< > $@
+	chmod +x $@
+
+bin_SCRIPTS += src/perl
+CLEANFILES += $(bin_SCRIPTS)
+EXTRA_DIST += src/perl.in
 
 ##############################
 # unittests
