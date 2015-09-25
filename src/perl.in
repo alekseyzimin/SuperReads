@@ -1,0 +1,3 @@
+#! /bin/sh
+
+exec perl -I$(dirname $0)/@LIBDIR@ "$@"

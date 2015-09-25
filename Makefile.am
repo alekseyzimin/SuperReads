@@ -9,6 +9,7 @@ AM_DEV_CXXFLAGS = $(DEV_CXXFLAGS)
 noinst_HEADERS = $(YAGGO_SOURCES)
 bin_PROGRAMS =
 dist_bin_SCRIPTS =
+bin_SCRIPTS =
 data_DATA =
 BUILT_SOURCES = $(YAGGO_SOURCES)
 CLEANFILES =
@@ -76,11 +77,6 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/splitFileByPrefix.pl src/restore_ns.pl		\
                     src/masurca-superreads
 
-# masurca script files
-dist_bin_SCRIPTS += src/masurca src/MasurcaConf.pm		\
-                    src/MasurcaCommon.pm src/MasurcaCelera.pm	\
-                    src/MasurcaSoap.pm src/MasurcaSuperReads.pm
-
 noinst_HEADERS += src/aligned_simple_array.hpp				\
                   src/diskBasedUnitigger.h src/fibonacci_coding.hpp	\
                   src/sr_names.hpp src/bloom_filter.hpp			\
@@ -108,6 +104,24 @@ filter_overlap_file_SOURCES = src/filter_overlap_file.cc
 YAGGO_SOURCES += src/filter_overlap_file_cmdline.hpp
 rename_filter_fastq_SOURCES = src/rename_filter_fastq.cc
 YAGGO_SOURCES += src/rename_filter_fastq_cmdline.hpp
+
+########################
+# masurca script files #
+########################
+bin_SCRIPTS += src/MasurcaPaths.pm
+CLEANFILES += src/MasurcaPaths.pm
+EXTRA_DIST += src/MasurcaPaths.pm.in
+dist_bin_SCRIPTS += src/masurca src/MasurcaConf.pm		\
+                    src/MasurcaCommon.pm src/MasurcaCelera.pm	\
+                    src/MasurcaSoap.pm src/MasurcaSuperReads.pm
+
+src/MasurcaPaths.pm: src/MasurcaPaths.pm.in Makefile
+	mkdir -p $(dir $@)
+	sed -e 's,[@]bindir[@],$(bindir),g' \
+	    -e 's,[@]libdir[@],$(libdir),g' \
+	    -e 's,[@]PERL_EXT_DIR[@],$(PERL_EXT_LIB),g' < $< > $@
+	chmod +x $@
+
 
 ##############################
 # src2 pipeline
@@ -215,6 +229,7 @@ bin_PROGRAMS += addSurrogatesToFrgCtgFile
 dist_bin_SCRIPTS += src2/addSurrogatesToFrgctg.perl src2/getUnitigTypeFromAsmFile.perl
 
 addSurrogatesToFrgCtgFile_SOURCES = src2/addSurrogatesToFrgCtgFile.cc
+
 
 ##############################
 # unittests
