@@ -20,3 +20,5 @@ $PERL_EXT_LIB = "@PERL_EXT_DIR@";
 sub rel_ext_bin {
   return File::Spec->abs2rel($PERL_EXT_LIB, $BINDIR);
 }
+
+1;
