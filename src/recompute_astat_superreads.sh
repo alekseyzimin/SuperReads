@@ -8,7 +8,7 @@ gatekeeper -dumpfragments -tabular ${ASM_DIR}/${PREFIX}.gkpStore |awk '{print $1
 tigStore -g ${ASM_DIR}/${PREFIX}.gkpStore -t ${ASM_DIR}/${PREFIX}.tigStore 5 -U -d layout > unitig_layout.txt
 cat unitig_layout.txt | compute_sr_cov.pl ${PREFIX}.uid $READ_SR $READLEN superReadSequences_shr.frg  1> unitig_cov.txt 2>global_arrival_rate.txt
 tigStore -g ${ASM_DIR}/${PREFIX}.gkpStore -t ${ASM_DIR}/${PREFIX}.tigStore 5 -E unitig_cov.txt 1> tigStore.err 2>&1
-markRepeatUnique -g ${ASM_DIR}/${PREFIX}.gkpStore -t ${ASM_DIR}/${PREFIX}.tigStore 5 -j 1 -k 5 -o ${ASM_DIR}/5-consensus-coverage-stat/genome.markRepeatUnique > ${ASM_DIR}/5-consensus-coverage-stat/markRepeatUnique.err 2>&1
+markRepeatUnique -short 300 -span 2 -lowcov 1 1 -g ${ASM_DIR}/${PREFIX}.gkpStore -t ${ASM_DIR}/${PREFIX}.tigStore 5 -j 1 -k 5 -o ${ASM_DIR}/5-consensus-coverage-stat/genome.markRepeatUnique > ${ASM_DIR}/5-consensus-coverage-stat/markRepeatUnique.err 2>&1
 
 #the following is still buggy
 #getGCBiasStatistics.perl --assembly-directory . --min-from-end 200 --default-read-length $READLEN 1>getGCBiasStatistics.err 2>&1

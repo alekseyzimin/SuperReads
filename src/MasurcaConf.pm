@@ -26,6 +26,7 @@ my $default_values = {
   USE_LINKING_MATES       => 0,
   DO_HOMOPOLYMER_TRIM     => 0,
   CLOSE_GAPS              => 1,
+  NO_PACBIO_REMAP         => 0,
   NO_MMAP                 => 1,
   STOP_AFTER_SR           => 0,
   CA_PARAMETERS           => "",
@@ -126,6 +127,9 @@ sub parse_parameters {
   if($key eq "EXTEND_JUMP_READS"){
     fail("bad value for EXTEND_JUMP_READS, enter 0 or 1", $.) unless($param =~ /^[01]$/);
     $$res{EXTEND_JUMP_READS} = int($param);
+  } elsif($key eq "NO_PACBIO_REMAP"){
+    fail("bad value for NO_PACBIO_REMAP, enter 0 or 1", $.) unless($param =~ /^[01]$/);
+    $$res{NO_PACBIO_REMAP} = int($param);
   } elsif($key eq "DO_HOMOPOLYMER_TRIM"){
     fail("bad value for DO_HOMOPOLYMER_TRIM, enter 0 or 1", $.) unless($param =~ /^[01]$/);
     $$res{DO_HOMOPOLYMER_TRIM} = int($param);
