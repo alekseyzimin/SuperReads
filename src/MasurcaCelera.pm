@@ -32,7 +32,7 @@ EOS
     if(not(-e "CA/5-consensus/consensus.success")|| $rerun_pe || $rerun_sj){
       print $out <<"EOS";
 if [[ ! -e \"CA/overlapFilter.success\" ]];then
-runCA doUnitigSplitting=0 utgErrorLimit=0 cnsMinFrags=`perl -e 'print int('\$TOTAL_READS'/256)'` ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $config{CA_PARAMETERS} ovlRefBlockSize=\$ovlRefBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$config{NUM_THREADS} merylMemory=16384 ovlStoreMemory=16384 frgCorrThreads=2 frgCorrConcurrency=$config{NUM_THREADS} cnsConcurrency=$config{NUM_CNS_THREADS} ovlCorrConcurrency=$config{NUM_THREADS} ovlConcurrency=$config{NUM_THREADS} ovlThreads=2 $other_parameters superReadSequences_shr.frg $frg_files   1> runCA1.out 2>&1
+runCA utgGraphErrorLimit=1000 utgMergeErrorLimit=1000 utgGraphErrorRate=0.015 utgMergeErrorRate=0.015 doUnitigSplitting=0 utgErrorLimit=0 cnsMinFrags=`perl -e 'print int('\$TOTAL_READS'/256)'` ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $config{CA_PARAMETERS} ovlRefBlockSize=\$ovlRefBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bogart -p genome -d CA merylThreads=$config{NUM_THREADS} merylMemory=16384 ovlStoreMemory=16384 frgCorrThreads=2 frgCorrConcurrency=$config{NUM_THREADS} cnsConcurrency=$config{NUM_CNS_THREADS} ovlCorrConcurrency=$config{NUM_THREADS} ovlConcurrency=$config{NUM_THREADS} ovlThreads=2 $other_parameters superReadSequences_shr.frg $frg_files   1> runCA1.out 2>&1
 
 if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then
   echo \"Overlap/unitig success\"
@@ -48,7 +48,7 @@ save NUM_SUPER_READS
 )
 fi
 
-runCA doUnitigSplitting=1 utgErrorLimit=0 cnsMinFrags=`perl -e 'print int('\$TOTAL_READS'/256)'` ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $config{CA_PARAMETERS} ovlRefBlockSize=\$ovlRefBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bog -p genome -d CA merylThreads=$config{NUM_THREADS} merylMemory=16384 ovlStoreMemory=16384 frgCorrThreads=2 frgCorrConcurrency=$config{NUM_THREADS} cnsConcurrency=$config{NUM_CNS_THREADS} ovlCorrConcurrency=$config{NUM_THREADS} ovlConcurrency=$config{NUM_THREADS} ovlThreads=2 $other_parameters superReadSequences_shr.frg $frg_files   1> runCA2.out 2>&1
+runCA utgGraphErrorLimit=1000 utgMergeErrorLimit=1000 utgGraphErrorRate=0.015 utgMergeErrorRate=0.015 doUnitigSplitting=1 utgErrorLimit=0 cnsMinFrags=`perl -e 'print int('\$TOTAL_READS'/256)'` ovlMerThreshold=\$ovlMerThreshold gkpFixInsertSizes=0 $config{CA_PARAMETERS} ovlRefBlockSize=\$ovlRefBlockSize ovlCorrBatchSize=\$ovlCorrBatchSize stopAfter=consensusAfterUnitigger unitigger=bogart -p genome -d CA merylThreads=$config{NUM_THREADS} merylMemory=16384 ovlStoreMemory=16384 frgCorrThreads=2 frgCorrConcurrency=$config{NUM_THREADS} cnsConcurrency=$config{NUM_CNS_THREADS} ovlCorrConcurrency=$config{NUM_THREADS} ovlConcurrency=$config{NUM_THREADS} ovlThreads=2 $other_parameters superReadSequences_shr.frg $frg_files   1> runCA2.out 2>&1
 
 recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt
 EOS
@@ -56,7 +56,7 @@ EOS
   }
 
   print $out <<"EOS";
-runCA $config{CA_PARAMETERS} cnsMinFrags=`perl -e 'print int('\$TOTAL_READS'/256)'` unitigger=bog -p genome -d CA cnsConcurrency=$config{NUM_CNS_THREADS} computeInsertSize=0 $other_parameters 1>runCA3.out 2>&1
+runCA cgwDemoteRBP=0 $config{CA_PARAMETERS} cnsMinFrags=`perl -e 'print int('\$TOTAL_READS'/256)'` unitigger=bogart -p genome -d CA cnsConcurrency=$config{NUM_CNS_THREADS} computeInsertSize=0 $other_parameters 1>runCA3.out 2>&1
 
 if [[ -e \"CA/9-terminator/genome.qc\" ]];then
   echo \"CA success\"
