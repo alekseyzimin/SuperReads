@@ -80,8 +80,8 @@ USE_LINKING_MATES = 0
 #this parameter is useful if you have too many jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
 LIMIT_JUMP_COVERAGE = 300
 #these are the additional parameters to Celera Assembler.  do not worry about performance, number or processors or batch sizes -- these are computed automatically. 
-#set cgwErrorRate=0.25 for bacteria and 0.1<=cgwErrorRate<=0.15 for other organisms.
-CA_PARAMETERS = cgwErrorRate=0.15
+#set cgwErrorRate=0.25 for bacteria and ANY assembly containign PACBIO data and 0.1<=cgwErrorRate<=0.15 for other organisms.
+CA_PARAMETERS =  cgwErrorRate=0.25
 #minimum count k-mers used in error correction 1 means all k-mers are used.  one can increase to 2 if coverage >100
 KMER_COUNT_THRESHOLD = 1
 #auto-detected number of cpus to use
