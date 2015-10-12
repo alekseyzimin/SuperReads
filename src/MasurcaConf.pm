@@ -112,7 +112,7 @@ sub fail {
 # Match a line of the form "KEY = VALUE". Returns undef if it does not match
 sub read_param {
   my ($line) = @_;
-  fail("Can't parse line '$line'", $.) unless $line =~ /^\s*(\w+)\s*=\s*(.*)$/;
+  fail("Can't parse line '$line'", $.) unless $line =~ /^\s*(\w+)\s*=\s*(.*?)\s*$/;
   my ($k, $v) = ($1, $2);
   chomp($v);
   return ($k, $v);
