@@ -331,12 +331,12 @@ print FILE "\n";
 
 if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
     print FILE "log Creating k-unitigs with k=\$KMER\n";
-    print FILE "create_k_unitigs_large_k -c \$((\$KMER-1)) -t $config{NUM_THREADS} -m \$KMER -n \$((\$ESTIMATED_GENOME_SIZE*3)) -l \$KMER -f `perl -e 'print 1/'\$KMER'/1e3'` $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGactg/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta.tmp && mv guillaumeKUnitigsAtLeast32bases_all.fasta.tmp guillaumeKUnitigsAtLeast32bases_all.fasta\n";
+    print FILE "create_k_unitigs_large_k -c \$((\$KMER-1)) -t $config{NUM_THREADS} -m \$KMER -n \$((\$ESTIMATED_GENOME_SIZE*2)) -l \$KMER -f `perl -e 'print 1/'\$KMER'/1e5'` $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGactg/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta.tmp && mv guillaumeKUnitigsAtLeast32bases_all.fasta.tmp guillaumeKUnitigsAtLeast32bases_all.fasta\n";
     print FILE "if [[ \$KMER -eq \$KMER_J ]];then\n";
     print FILE "ln -s guillaumeKUnitigsAtLeast32bases_all.fasta guillaumeKUnitigsAtLeast32bases_all.jump.fasta\n";
     print FILE "else\n";
     print FILE "log Creating k-unitigs with k=\$KMER_J\n";
-    print FILE "create_k_unitigs_large_k -c \$((\$KMER_J-1)) -t $config{NUM_THREADS} -m \$KMER_J -n \$((\$ESTIMATED_GENOME_SIZE*3)) -l \$KMER_J -f `perl -e 'print 1/'\$KMER_J'/1e3'` $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGactg/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.jump.fasta.tmp && mv guillaumeKUnitigsAtLeast32bases_all.jump.fasta.tmp guillaumeKUnitigsAtLeast32bases_all.jump.fasta \n";
+    print FILE "create_k_unitigs_large_k -c \$((\$KMER_J-1)) -t $config{NUM_THREADS} -m \$KMER_J -n \$((\$ESTIMATED_GENOME_SIZE*2)) -l \$KMER_J -f `perl -e 'print 1/'\$KMER_J'/1e5'` $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGactg/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.jump.fasta.tmp && mv guillaumeKUnitigsAtLeast32bases_all.jump.fasta.tmp guillaumeKUnitigsAtLeast32bases_all.jump.fasta \n";
     print FILE "fi\n";
     $rerun_pe=1;
     $rerun_sj=1;
