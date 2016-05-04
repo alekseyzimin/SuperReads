@@ -146,10 +146,12 @@ if ($jumpLibraryReads) {
 # In addition to obvious output file, this also generates the files
 # numKUnitigs.txt, maxKUnitigNumber.txt, and totBasesInKUnitigs.txt in
 # $workingDirectory
-$cmd = "bash -c \"ufasta sizes -H $kUnitigsFile | tee  $kUnitigLengthsFile >(wc -l > $numKUnitigsFile) >(tail -n 1 | awk '{print \\\$1+1}' > $maxKUnitigNumberFile) | perl -ane '{\\\$n+=\\\$F[1]}END{print \\\$n}' > $totBasesInKUnitigsFile\"";
+$cmd ="ufasta sizes -H $kUnitigsFile > $kUnitigLengthsFile; wc -l $kUnitigLengthsFile > $numKUnitigsFile; tail -n 1 $kUnitigLengthsFile | awk '{print \\\$1+1}' > $maxKUnitigNumberFile;  ufasta n50 -S $kUnitigsFile > $totBasesInKUnitigsFile";
 &runCommandAndExitIfBad ($cmd, $kUnitigLengthsFile, 1, "createLengthStatisticsFiles", $totBasesInKUnitigsFile, $numKUnitigsFile, $maxKUnitigNumberFile, $kUnitigLengthsFile);
 
-$minSizeNeededForTable = &reportMinJellyfishTableSizeForKUnitigs;
+$minSizeNeededForTable=0;
+open(FILE,$kUnitigLengthsFile);while($line=<FILE>){chomp($line);my ($ku,$ks)=split(/\s+/,$line);$minSizeNeededForTable+=($ks-$merLenMinus1);}
+$minSizeNeededForTable=int($minSizeNeededForTable/$maxHashFillFactor);
 
 # In addition to obvious output file, this also generates the files
 # mergedKUnitigs.numKUnitigs.txt, mergedKUnitigs.maxKUnitigNumber.txt, and mergedKUnitigs.totBasesInKUnitigs.txt in
@@ -460,24 +462,6 @@ sub getNumLines
     close (CRAZYFILE);
     @flds = split (" ", $line);
     return ($flds[0]);
-}
-
-sub reportMinJellyfishTableSizeForKUnitigs
-{
-    my ($numKMersInKUnitigs, $numKUnitigs, $minSizeNeededForTable);
-    
-    open (FILE, $totBasesInKUnitigsFile);
-    $numKMersInKUnitigs = <FILE>;
-    close (FILE);
-    chomp ($numKMersInKUnitigs);
-    
-    open (FILE, $numKUnitigsFile);
-    $numKUnitigs = <FILE>;
-    chomp ($numKUnitigs);
-    close (FILE);
-    $numKMersInKUnitigs -= ($numKUnitigs * ($merLenMinus1));
-    $minSizeNeededForTable = int ($numKMersInKUnitigs/$maxHashFillFactor + .5);
-    return ($minSizeNeededForTable);
 }
 
 sub killFiles
