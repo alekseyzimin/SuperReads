@@ -102,7 +102,6 @@ $kUnitigLengthsFile = "$workingDirectory/kUnitigLengths.txt";
 $numKUnitigsFile = "$workingDirectory/numKUnitigs.txt";
 # The following stores the largest k-unitig number (+1)
 $maxKUnitigNumberFile = "$workingDirectory/maxKUnitigNumber.txt";
-$totBasesInKUnitigsFile = "$workingDirectory/totBasesInKUnitigs.txt";
 if ($mergedUnitigDataPrefix) {
     $mergedUnitigInputKUnitigsFile = $mergedUnitigDataPrefix . ".fasta";
     $mergedUnitigInputKUnitigMappingFile = $mergedUnitigDataPrefix . ".map";
@@ -117,7 +116,7 @@ else {
     $mergedKUnitigLengthsFile = $kUnitigLengthsFile;
     $mergedNumKUnitigsFile = $numKUnitigsFile;
     $mergedMaxKUnitigNumberFile = $maxKUnitigNumberFile;
-    $mergedTotBasesInKUnitigsFile = $totBasesInKUnitigsFile; }
+    }
     
 $numReadsFile = "$workingDirectory/numReads.txt";
 $prefixForOverlapsBetweenKUnitigs = "$workingDirectory/overlap";
@@ -146,8 +145,8 @@ if ($jumpLibraryReads) {
 # In addition to obvious output file, this also generates the files
 # numKUnitigs.txt, maxKUnitigNumber.txt, and totBasesInKUnitigs.txt in
 # $workingDirectory
-$cmd ="ufasta sizes -H $kUnitigsFile > $kUnitigLengthsFile; wc -l $kUnitigLengthsFile > $numKUnitigsFile; tail -n 1 $kUnitigLengthsFile | awk '{print \\\$1+1}' > $maxKUnitigNumberFile;  ufasta n50 -S $kUnitigsFile > $totBasesInKUnitigsFile";
-&runCommandAndExitIfBad ($cmd, $kUnitigLengthsFile, 1, "createLengthStatisticsFiles", $totBasesInKUnitigsFile, $numKUnitigsFile, $maxKUnitigNumberFile, $kUnitigLengthsFile);
+$cmd ="ufasta sizes -H $kUnitigsFile > $kUnitigLengthsFile; wc -l $kUnitigLengthsFile > $numKUnitigsFile; tail -n 1 $kUnitigLengthsFile | awk '{print \\\$1+1}' > $maxKUnitigNumberFile";
+&runCommandAndExitIfBad ($cmd, $kUnitigLengthsFile, 1, "createLengthStatisticsFiles", $numKUnitigsFile, $maxKUnitigNumberFile, $kUnitigLengthsFile);
 
 $minSizeNeededForTable=0;
 open(FILE,$kUnitigLengthsFile);while($line=<FILE>){chomp($line);my ($ku,$ks)=split(/\s+/,$line);$minSizeNeededForTable+=($ks-$merLenMinus1);}
