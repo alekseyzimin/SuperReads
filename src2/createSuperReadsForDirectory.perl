@@ -145,7 +145,7 @@ if ($jumpLibraryReads) {
 # In addition to obvious output file, this also generates the files
 # numKUnitigs.txt, maxKUnitigNumber.txt, and totBasesInKUnitigs.txt in
 # $workingDirectory
-$cmd ="ufasta sizes -H $kUnitigsFile > $kUnitigLengthsFile; wc -l $kUnitigLengthsFile > $numKUnitigsFile; tail -n 1 $kUnitigLengthsFile | awk '{print \\\$1+1}' > $maxKUnitigNumberFile";
+$cmd ="ufasta sizes -H $kUnitigsFile > $kUnitigLengthsFile; wc -l $kUnitigLengthsFile | awk '{print \$1}' > $numKUnitigsFile; tail -n 1 $kUnitigLengthsFile | awk '{print \$1+1}' > $maxKUnitigNumberFile";
 &runCommandAndExitIfBad ($cmd, $kUnitigLengthsFile, 1, "createLengthStatisticsFiles", $numKUnitigsFile, $maxKUnitigNumberFile, $kUnitigLengthsFile);
 
 $minSizeNeededForTable=0;

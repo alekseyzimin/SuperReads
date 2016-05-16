@@ -26,7 +26,6 @@ my $default_values = {
   USE_LINKING_MATES       => 0,
   DO_HOMOPOLYMER_TRIM     => 0,
   CLOSE_GAPS              => 1,
-  NO_PACBIO_REMAP         => 1,
   NO_MMAP                 => 1,
   STOP_AFTER_SR           => 0,
   CA_PARAMETERS           => "",
@@ -38,6 +37,7 @@ my $default_values = {
   OTHER_INFO    => [],
   MOLECULO_INFO => [],
   PACBIO_INFO   => [],
+  NANOPORE_INFO => [];
 };
 
 our $config_file;
@@ -127,9 +127,6 @@ sub parse_parameters {
   if($key eq "EXTEND_JUMP_READS"){
     fail("bad value for EXTEND_JUMP_READS, enter 0 or 1", $.) unless($param =~ /^[01]$/);
     $$res{EXTEND_JUMP_READS} = int($param);
-  } elsif($key eq "NO_PACBIO_REMAP"){
-    fail("bad value for NO_PACBIO_REMAP, enter 0 or 1", $.) unless($param =~ /^[01]$/);
-    $$res{NO_PACBIO_REMAP} = int($param);
   } elsif($key eq "DO_HOMOPOLYMER_TRIM"){
     fail("bad value for DO_HOMOPOLYMER_TRIM, enter 0 or 1", $.) unless($param =~ /^[01]$/);
     $$res{DO_HOMOPOLYMER_TRIM} = int($param);
@@ -214,6 +211,9 @@ sub parse_data {
   } elsif($key eq "MOLECULO") {
     can_read($param) or fail("invalid file for MOLECULO: '$param' $!", $.);
     push(@{$$res{MOLECULO_INFO}}, $param);
+  } elsif($key eq "NANOPORE") {
+    can_read($param) or fail("invalid file for NANOPORE: '$param' $!", $.);
+    push(@{$$res{NANOPORE_INFO}}, $param);
   } elsif($key eq "PACBIO") {
     can_read($param) or fail("invalid file for PACBIO: '$param' $!", $.);
     push(@{$$res{PACBIO_INFO}}, $param);
