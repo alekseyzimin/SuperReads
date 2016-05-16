@@ -37,7 +37,7 @@ my $default_values = {
   OTHER_INFO    => [],
   MOLECULO_INFO => [],
   PACBIO_INFO   => [],
-  NANOPORE_INFO => [];
+  NANOPORE_INFO => [],
 };
 
 our $config_file;
