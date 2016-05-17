@@ -13,7 +13,7 @@
 #include <charb.hpp>
 #include <misc.hpp>
 
-const int windowSize = 200;
+// const int windowSize = 200;
 
 double calculateValueForPolynomial (double arg, std::vector<double> &vect);
 
