@@ -209,7 +209,7 @@ multiplexed_parser<T>::~multiplexed_parser() {
 
 template<typename T>
 void* multiplexed_parser<T>::static_start_parser_loop(void* self_) {
-  std::auto_ptr<self_pointer> self((self_pointer*)self_);
+  std::unique_ptr<self_pointer> self((self_pointer*)self_);
   self->self->start_parser_loop();
   return 0;
 }

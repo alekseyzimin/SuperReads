@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
      mer_dna::k(args.mer_arg);
 
      // Open output file and make sure it is deleted/closed on exit
-     std::auto_ptr<std::ostream> out;
+     std::unique_ptr<std::ostream> out;
      if(args.gzip_flag)
        out.reset(new gzipstream(args.output_arg));
      else
