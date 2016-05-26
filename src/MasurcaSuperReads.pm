@@ -100,7 +100,7 @@ sub filter_jump {
     
     foreach my $v (@{$config{JUMP_INFO}}) {
       my @f = @$v;
-      print $out "echo -n \"abs($f[1]) \" >> compute_jump_coverage.txt\n";
+      print $out "echo -n \"",abs($f[1])," \" >> compute_jump_coverage.txt\n";
       print $out "grep --text -A 1 '^>$f[0]' sj.cor.ext.fa | grep --text -v '^\\-\\-' > $f[0].tmp\n";
       print $out "error_corrected2frg $f[0] ",abs($f[1])," $f[2] 2000000000 $f[0].tmp | grep --text '^{LKG' |wc -l >> compute_jump_coverage.txt\n";
     }
