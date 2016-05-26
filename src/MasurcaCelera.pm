@@ -3,13 +3,11 @@ package MasurcaCelera;
 # Celera commands. This function depends on many global variables from the masurca script!
 
 sub runCA {
-  my ($out, $frg_files, $tmplist, %config) = @_;
-  
+  my ($rerun_pe, $rerun_sj,$out, $frg_files, $tmplist, %config) = @_;
   my ($ovlMerSize, $other_parameters) = (30, "ovlMemory=4GB doFragmentCorrection=0 doOverlapBasedTrimming=0 doExtendClearRanges=0 ovlMerSize=30");
   if(@{$config{OTHER_INFO}} || @{$config{MOLECULO_INFO}}) {
     ($ovlMerSize, $other_parameters) = (22, "ovlMemory=4GB doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClearRanges=1 ovlMerSize=22");
   }
-
   if(not(-d "CA/7-0-CGW")|| $rerun_pe || $rerun_sj){
     print $out <<"EOS";
 TOTAL_READS=`cat  *.frg | grep -c --text '^{FRG' `

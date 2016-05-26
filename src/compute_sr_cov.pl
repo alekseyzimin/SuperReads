@@ -22,6 +22,8 @@ my $uidfile=$ARGV[0];
 my $countsfile=$ARGV[1];
 my $readlen=$ARGV[2];
 my $srFRGfile=$ARGV[3];
+my $min_len=2000;
+$min_len=$ARGV[4] if(defined($ARGV[4]));
 
 my @uid;
 open(FILE,$uidfile);
@@ -70,7 +72,7 @@ while($line=<STDIN>){
         $count{$utg}=$c;
         $rho{$utg}=$r-$readlen;
         $rho{$utg}=1 if($rho{$utg}<0);
-        if($r>2000){
+        if($r>$min_len){
           $total_rho+=$rho{$utg};
           $total_count+=$c;
         }
@@ -120,6 +122,9 @@ foreach $v(keys %count)
 {
   print STDERR "$v $cg_content{$v}\n";
   my $astat=($rho{$v}*$global_arrival_rate)-(0.6931471805599453094*$count{$v});
+  if($rho{$v}>20000 && $astat<0){
+  $astat=1;
+  }
   print "unitig_coverage_stat $v $astat\n";
 }
 
