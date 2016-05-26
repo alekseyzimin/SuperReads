@@ -118,9 +118,14 @@ print $out <<"EOS";
 log 'Gap closing'
 closeGapsInScaffFastaFile.perl --split 1 --max-reads-in-memory 1000000000 -s $config{JF_SIZE} --scaffold-fasta-file  $SOAP_dir/asm.scafSeq $reads_argument --output-directory SOAP_gapclose --min-kmer-len 19 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $config{NUM_THREADS} --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 25 1>gapClose.err 2>&1
 [ -e "SOAP_gapclose/genome.ctg.fasta" ] || fail Gap close failed, you can still use pre-gap close scaffold in file $SOAP_dir/asm.scafSeq. Check gapClose.err for problems.
+log 'Removing contained contigs'
+SCFSEQ="SOAP_gapclose/genome.scf.fasta"; 
+N95=`ufasta n50 -N95 \$SCFSEQ | awk '{print \$2}'`; 
+nucmer -p dupl -l 31 -c 100 <(ufasta extract -f <(ufasta sizes -H \$SCFSEQ |awk '{if(\$2<'\$N95') print \$0}') \$SCFSEQ) \$SCFSEQ
+ufasta extract -v -f <(show-coords -lcHr dupl.delta |  awk '{if(\$10>99 && \$12<\$13 && \$15>90) print \$(NF-1)}') \$SCFSEQ >\$SCFSEQ.dedup
 log 'Rescaffolding'
 (cd $SOAP_dir
-finalFusion -K 63 -g asm2 -c ../SOAP_gapclose/genome.scf.fasta -D >> ../SOAPdenovo.err
+finalFusion -K 63 -g asm2 -c \$SCFSEQ.dedup -D >> ../SOAPdenovo.err
   [ \$KMER -le 63 ] && cmd=SOAPdenovo-63mer || cmd=SOAPdenovo-127mer
   \$cmd map -s ../$SOAP_CONF -g asm2 -p $config{NUM_THREADS} -k 35  1>>../SOAPdenovo.err 2>\&1
   \$cmd scaff -g asm2 -p $config{NUM_THREADS} -w -u   1>>../SOAPdenovo.err 2>\&1
