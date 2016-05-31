@@ -116,7 +116,7 @@ unshift(@LD_LIBRARY_PATH, @prep_ld) if @prep_ld;
 unless($skip_checking) {
   print "Verifying PATHS...\n";
   my @progs=("jellyfish", "runCA", "createSuperReadsForDirectory.perl");
-  push(@progs,("nucmer","mega_reads_assemble.sh")) if(@{$config{PACBIO_INFO}});
+  push(@progs,("nucmer","mega_reads_assemble_nomatch.sh")) if(@{$config{PACBIO_INFO}});
   push(@progs, "SOAPdenovo-63mer") if($config{SOAP_ASSEMBLY});
   &check_exec(@progs);
 }

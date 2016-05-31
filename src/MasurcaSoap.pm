@@ -69,7 +69,7 @@ EOS
   my %ranks;
   foreach my $lib (@{$config{JUMP_INFO}}) {
     my $mean = abs(@$lib[1]);
-    push(@{$ranks{round($mean / 2000)}}, $lib);
+    push(@{$ranks{round($mean / 10000)}}, $lib);
   }
   my @okeys = sort { $a <=> $b } keys(%ranks);
   for(my $i = 0; $i < @okeys; $i++) {
@@ -125,7 +125,8 @@ nucmer -p dupl -l 31 -c 100 <(ufasta extract -f <(ufasta sizes -H \$SCFSEQ |awk 
 ufasta extract -v -f <(show-coords -lcHr dupl.delta |  awk '{if(\$10>99 && \$12<\$13 && \$15>90) print \$(NF-1)}') \$SCFSEQ >\$SCFSEQ.dedup
 log 'Rescaffolding'
 (cd $SOAP_dir
-finalFusion -K 63 -g asm2 -c ../\$SCFSEQ.dedup -D >> ../SOAPdenovo.err
+  [ \$KMER -ge 64 ] && KMER=63
+  finalFusion -K \$KMER -g asm2 -c ../\$SCFSEQ.dedup -D >> ../SOAPdenovo.err
   [ \$KMER -le 63 ] && cmd=SOAPdenovo-63mer || cmd=SOAPdenovo-127mer
   \$cmd map -s ../$SOAP_CONF -g asm2 -p $config{NUM_THREADS} -k 35  1>>../SOAPdenovo.err 2>\&1
   \$cmd scaff -g asm2 -p $config{NUM_THREADS} -w -u   1>>../SOAPdenovo.err 2>\&1
