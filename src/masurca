@@ -372,7 +372,7 @@ if(@{$config{REF_INFO}}){
   if(@{$config{JUMP_INFO}}){
     print FILE "MAX_LINKING_MATES=`perl -e '{\$g=int('\$ESTIMATED_GENOME_SIZE'/25);\$g=250000000 if(\$g>250000000);print \$g}'`\n";
   } else {
-    print FILE "MAX_LINKING_MATES=`perl -e '{\$g=int('\$ESTIMATED_GENOME_SIZE');\$g=250000000 if(\$g>250000000);print \$g}'`\n";
+    print FILE "MAX_LINKING_MATES=`perl -e '{\$g=int('\$ESTIMATED_GENOME_SIZE'/2);\$g=250000000 if(\$g>250000000);print \$g}'`\n";
   }
   MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
   print FILE "$RealBin/mega_reads_assemble_ref.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{REF_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\"\n";
