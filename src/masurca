@@ -166,8 +166,6 @@ EOS
 
 print FILE <<'EOS';
 set +e
-ulimit -u unlimited
-ulimit -c 0
 # Set some paths and prime system to save environment variables
 save () {
   (echo -n "$1=\""; eval "echo -n \"\$$1\""; echo '"') >> environment.sh
