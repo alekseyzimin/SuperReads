@@ -366,14 +366,6 @@ if($rerun_pe==1|| not(-e "work1")) {
 
 if(@{$config{REF_INFO}}){
   print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
-  
-  print FILE "extractreads.pl <( awk 'BEGIN{last_readnumber=-1;last_super_read=\"\"}{readnumber=int(substr(\$1,3));if(readnumber%2>0){readnumber--}super_read=\$2;if(readnumber==last_readnumber){if(super_read!=last_super_read){print read;print \$1;}}else{read=\$1;last_super_read=\$2}last_readnumber=readnumber}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt )  pe.cor.fa 1 > pe.linking.fa\n";
-  print FILE "NUM_LINKING_MATES=`wc -l pe.linking.fa | perl -ane '{print int(\$F[0]/2)}'`\n";
-  if(@{$config{JUMP_INFO}}){
-    print FILE "MAX_LINKING_MATES=`perl -e '{\$g=int('\$ESTIMATED_GENOME_SIZE'/25);\$g=100000000 if(\$g>100000000);print \$g}'`\n";
-  } else {
-    print FILE "MAX_LINKING_MATES=`perl -e '{\$g=int('\$ESTIMATED_GENOME_SIZE'/2);\$g=100000000 if(\$g>100000000);print \$g}'`\n";
-  }
   MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
   print FILE "$RealBin/mega_reads_assemble_ref.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{REF_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\"\n";
     script_done;
@@ -383,6 +375,7 @@ if(@{$config{PACBIO_INFO}} && @{$config{NANOPORE_INFO}}){
   print FILE "fail Unable to mix Pacbio and nanopore reads.\n";
   script_done;
 }elsif(@{$config{PACBIO_INFO}}) {
+  
   print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
   print FILE "$RealBin/mega_reads_assemble_nomatch.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{PACBIO_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" -B 17 -D 0.029\n";
   script_done;
@@ -404,16 +397,6 @@ if($config{SOAP_ASSEMBLY}){
 
 if($config{USE_LINKING_MATES} == 1) {
 #now we extract those PE mates that did not end up in the same super read -- we call them linking mates, they will be useful for scaffolding
-  if(not(-e "pe.linking.fa")||$rerun_pe==1) {
-    print FILE "extractreads.pl <( awk 'BEGIN{last_readnumber=-1;last_super_read=\"\"}{readnumber=int(substr(\$1,3));if(readnumber%2>0){readnumber--}super_read=\$2;if(readnumber==last_readnumber){if(super_read!=last_super_read){print read;print \$1;}}else{read=\$1;last_super_read=\$2}last_readnumber=readnumber}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt )  pe.cor.fa 1 > pe.linking.fa\n";
-    $rerun_pe=1;
-  }
-  print FILE "NUM_LINKING_MATES=`wc -l pe.linking.fa | perl -ane '{print int(\$F[0]/2)}'`\n";
-  if(@{$config{JUMP_INFO}}){
-    print FILE "MAX_LINKING_MATES=`perl -e '{\$g=int('\$ESTIMATED_GENOME_SIZE'/25);\$g=250000000 if(\$g>250000000);print \$g}'`\n";
-  } else {
-    print FILE "MAX_LINKING_MATES=`perl -e '{\$g=int('\$ESTIMATED_GENOME_SIZE');\$g=250000000 if(\$g>250000000);print \$g}'`\n";
-  }
   MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
 }
   #create frg file for super reads
