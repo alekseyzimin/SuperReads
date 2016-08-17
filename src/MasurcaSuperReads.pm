@@ -120,7 +120,7 @@ sub filter_jump {
 
 sub create_pe_linking_mates {
   my ($out, %config) = @_;
-  if(not(-e "pe.linking.fa")){ 
+  if(not(-e "pe.linking.fa")||$rerun_pe==1){ 
   print FILE "ufasta extract -f <( awk 'BEGIN{last_readnumber=-1;last_super_read=\"\"}{readnumber=int(substr(\$1,3));if(readnumber%2>0){readnumber--}super_read=\$2;if(readnumber==last_readnumber){if(super_read!=last_super_read){print read;print \$1;}}else{read=\$1;last_super_read=\$2}last_readnumber=readnumber}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt )  pe.cor.fa 1 > pe.linking.fa.tmp && mv pe.linking.fa.tmp pe.linking.fa\n";
   }
 
@@ -135,10 +135,8 @@ sub create_pe_linking_mates {
     my @f = @$v;
     $list_frg_files .= "$f[0].linking.frg ";
     if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
-      print $out <<"EOS";
-grep --text -A 1 '^>$f[0]' pe.linking.fa | grep --text -v '^\\-\\-' | sample_mate_pairs.pl \$MAX_LINKING_MATES \$NUM_LINKING_MATES 1 > $f[0].tmp
-error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].linking.frg
-rm $f[0].tmp
+      print $out <<"EOS";      
+grep --text -A 1 '^>$f[0]' pe.linking.fa | grep --text -v '^\\-\\-' | sample_mate_pairs.pl \$MAX_LINKING_MATES \$NUM_LINKING_MATES 1 > $f[0].tmp && error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].linking.frg.tmp && rm $f[0].tmp && mv $f[0].linking.frg.tmp $f[0].linking.frg
 EOS
     }
   }
