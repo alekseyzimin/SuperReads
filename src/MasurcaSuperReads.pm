@@ -121,7 +121,7 @@ sub filter_jump {
 sub create_pe_linking_mates {
   my ($out, %config) = @_;
   if(not(-e "pe.linking.fa")||$rerun_pe==1){ 
-  print $out "ufasta extract -f <( awk 'BEGIN{last_readnumber=-1;last_super_read=\"\"}{readnumber=int(substr(\$1,3));if(readnumber%2>0){readnumber--}super_read=\$2;if(readnumber==last_readnumber){if(super_read!=last_super_read){print read;print \$1;}}else{read=\$1;last_super_read=\$2}last_readnumber=readnumber}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt )  pe.cor.fa 1 > pe.linking.fa.tmp && mv pe.linking.fa.tmp pe.linking.fa\n";
+  print $out "ufasta extract -f <( awk 'BEGIN{last_readnumber=-1;last_super_read=\"\"}{readnumber=int(substr(\$1,3));if(readnumber%2>0){readnumber--}super_read=\$2;if(readnumber==last_readnumber){if(super_read!=last_super_read){print read;print \$1;}}else{read=\$1;last_super_read=\$2}last_readnumber=readnumber}' work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt )  pe.cor.fa > pe.linking.fa.tmp && mv pe.linking.fa.tmp pe.linking.fa\n";
   }
 
   print $out "NUM_LINKING_MATES=`wc -l pe.linking.fa | perl -ane '{print int(\$F[0]/2)}'`\n";
