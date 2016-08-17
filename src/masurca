@@ -219,9 +219,8 @@ print FILE "save PERL5LIB\n";
 print FILE "NUM_THREADS=$config{NUM_THREADS}\n";
 print FILE "save NUM_THREADS\n";
 
-#override use linking mates if we have any long reads
-$config{USE_LINKING_MATES}  = 1 if(not(@{$config{JUMP_INFO}}));
-$config{USE_LINKING_MATES}  = 0 if(@{$config{OTHER_INFO}} || $config{STOP_AFTER_SR});
+#override use linking mates if we only generate super reads 
+$config{USE_LINKING_MATES}  = 0 if($config{STOP_AFTER_SR});
 my $tmplist         = join(" ", @{$config{OTHER_INFO}});
 $tmplist.=" moleculo_shr.frg " if(@{$config{MOLECULO_INFO}});
 $list_frg_files    .= " ".$tmplist." ";
@@ -375,31 +374,35 @@ if(@{$config{PACBIO_INFO}} && @{$config{NANOPORE_INFO}}){
   print FILE "fail Unable to mix Pacbio and nanopore reads.\n";
   script_done;
 }elsif(@{$config{PACBIO_INFO}}) {
-  
+  if($config{USE_LINKING_MATES} == 1) {
+    MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
+  }
   print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
   print FILE "$RealBin/mega_reads_assemble_nomatch.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{PACBIO_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" -B 17 -D 0.029\n";
   script_done;
 }elsif(@{$config{NANOPORE_INFO}}){
+  if($config{USE_LINKING_MATES} == 1) {
+    MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
+  }
   print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
   print FILE "$RealBin/mega_reads_assemble_nomatch.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{NANOPORE_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" -B 13 -D 0.02\n";
   script_done;
 }else{
-print FILE "createSuperReadsForDirectory.perl -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
-print FILE "if [[ ! -e work1/superReads.success ]];then\n";
-print FILE "fail Super reads failed, check super1.err and files in ./work1/\n";
-print FILE "fi\n";
+  print FILE "createSuperReadsForDirectory.perl -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+  print FILE "if [[ ! -e work1/superReads.success ]];then\n";
+  print FILE "fail Super reads failed, check super1.err and files in ./work1/\n";
+  print FILE "fi\n";
 
-if($config{SOAP_ASSEMBLY}){
-  MasurcaSoap::SOAPconfig(%config);
-  MasurcaSoap::runSOAP(*FILE, [@pe_files, @sj_files], %config);
-  script_done;
-}
+  if($config{SOAP_ASSEMBLY}){
+    MasurcaSoap::SOAPconfig(%config);
+    MasurcaSoap::runSOAP(*FILE, [@pe_files, @sj_files], %config);
+    script_done;
+  }
 
-if($config{USE_LINKING_MATES} == 1) {
-#now we extract those PE mates that did not end up in the same super read -- we call them linking mates, they will be useful for scaffolding
-  MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
-}
-  #create frg file for super reads
+  if($config{USE_LINKING_MATES} == 1) {
+    MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
+  }
+#create frg file for super reads
   if(not(-e "superReadSequences_shr.frg")||$rerun_pe==1){
     print FILE "create_sr_frg.pl < work1/superReadSequences.fasta 2>/dev/null | fasta2frg.pl super >  superReadSequences_shr.frg.tmp && mv superReadSequences_shr.frg.tmp superReadSequences_shr.frg\n";
   }

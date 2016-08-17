@@ -55,7 +55,7 @@ sub default_config {
   return <<'EOS';
 # example configuration file 
 
-# DATA is specified as type {PE,JUMP,OTHER} and 5 fields:
+# DATA is specified as type {PE,JUMP,OTHER,PACBIO} and 5 fields:
 # 1)two_letter_prefix 2)mean 3)stdev 4)fastq(.gz)_fwd_reads
 # 5)fastq(.gz)_rev_reads. The PE reads are always assumed to be
 # innies, i.e. --->.<---, and JUMP are assumed to be outties
@@ -68,28 +68,30 @@ sub default_config {
 DATA
 PE= pe 180 20  /FULL_PATH/frag_1.fastq  /FULL_PATH/frag_2.fastq
 JUMP= sh 3600 200  /FULL_PATH/short_1.fastq  /FULL_PATH/short_2.fastq
-#pcbio reads must be in a single fasta file! make sure you provide absolute path
+#pacbio reads must be in a single fasta file! make sure you provide absolute path
 PACBIO=/FULL_PATH/pacbio.fa
 OTHER=/FULL_PATH/file.frg
 END
 
 PARAMETERS
-#this is k-mer size for deBruijn graph values between 25 and 101 are supported, auto will compute the optimal size based on the read data and GC content
+#this is k-mer size for deBruijn graph values between 25 and 127 are supported, auto will compute the optimal size based on the read data and GC content
 GRAPH_KMER_SIZE = auto
-#set this to 1 for Illumina-only assemblies and to 0 if you have 1x or more long (Sanger, 454) reads, you can also set this to 0 for large data sets with high jumping clone coverage, e.g. >50x
+#set this to 1 for all Illumina-only assemblies
+#set this to 1 if you have less than 10x long reads (454, Sanger, Pacbio) and NO Illumina, Sanger or 454 mate pairs
+#otherwise keep at 0
 USE_LINKING_MATES = 0
-#this parameter is useful if you have too many jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
+#this parameter is useful if you have too many Illumina jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
 LIMIT_JUMP_COVERAGE = 300
 #these are the additional parameters to Celera Assembler.  do not worry about performance, number or processors or batch sizes -- these are computed automatically. 
-#set cgwErrorRate=0.25 for bacteria and ANY assembly containign PACBIO data and 0.1<=cgwErrorRate<=0.15 for other organisms.
-CA_PARAMETERS =  cgwErrorRate=0.25
-#minimum count k-mers used in error correction 1 means all k-mers are used.  one can increase to 2 if coverage >100
+#set cgwErrorRate=0.25 for bacteria and 0.1<=cgwErrorRate<=0.15 for other organisms.
+CA_PARAMETERS =  cgwErrorRate=0.15
+#minimum count k-mers used in error correction 1 means all k-mers are used.  one can increase to 2 if Illumina coverage >100
 KMER_COUNT_THRESHOLD = 1
 #auto-detected number of cpus to use
 NUM_THREADS = 16
 #this is mandatory jellyfish hash size -- a safe value is estimated_genome_size*estimated_coverage
 JF_SIZE = 200000000
-#set this to 1 to use SOAPdenovo contigging/scaffolding module.  Assembly will be worse but will run faster. Usefule for very large (>5Gbp) genomes
+#set this to 1 to use SOAPdenovo contigging/scaffolding module.  Assembly will be worse but will run faster. Useful for very large (>5Gbp) genomes
 SOAP_ASSEMBLY=0
 END
 EOS
