@@ -150,11 +150,13 @@ public:
       if(counts_[*stream] < args_.quality_threshold_arg)
         continue;
       current = *stream;
-
+      //printf("Current mer %s\n",(current.to_str()).c_str());
       // Grow unitig if a starting (branching) mer
       if(starting_mer(forward, current)) {
+        //printf("Starting forward\n");
         grow_unitig(backward, current, output);
       } else if(starting_mer(backward, current)) {
+        //printf("Starting reverse\n");
         grow_unitig(forward, current, output);
       }
       // Unique continuation on both sides -> middle of k-unitig: do nothing
@@ -261,7 +263,7 @@ private:
     bool start_new = insert_canonical(end_points_, start);
     if(!start_new)
       return;
-
+    //printf("Starting unitig from %s\n",(start.to_str()).c_str());
     mer_dna            mer1(start);
     mer_dna            mer2;
     mer_dna            mer3;
@@ -271,24 +273,33 @@ private:
     unsigned int       low_run = 0;
     unsigned int       index   = dir == forward ? 0 : start.k() - 1;
     std::string        seq;
-    std::set<mer_dna>  set; // Set of used mers to avoid endless loop
+    std::set<mer_dna>  set; // Current set of used mers to avoid endless loop
+
+    insert_canonical(set, *current);
 
     while(true) {
       insert_canonical(used_mers_, *current);
-      if(!insert_canonical(set, *current))
-        return; // loop. Don't output anything
+      //if(!insert_canonical(set, *current))
+        //break; // loop. Don't output anything  //AZ modified to avoid loss of k-unitigs from loops
       if(!next_mer(dir, *current, *cont, &count))
         break;
+      //printf("Count next fwd %d mer %s\n",count,(current->to_str()).c_str());
       if(!next_mer(rev_direction(dir), *cont, mer3))
         break;
+      //printf("Count next rev %d mer %s\n",count,(cont->to_str()).c_str());
+      //printf("Mer3 %s\n",(mer3.to_str()).c_str());
       // This can happen (only) with continuation on low. It does not
       // create a branch as far as next_mer is concerned if one low
       // count and one high count, but it still a branch in this case:
       // there are two way to go through that region
       if(mer3 != *current)
         break;
-      seq += (char)cont->base(index);
 
+      if(!insert_canonical(set, *cont)) //AZ we hit a loop -- do not extend
+          break;
+          
+      seq += (char)cont->base(index);
+      //printf("Seq cont is %s low_run is %d\n",seq.c_str(),low_run);
       if(count < args_.quality_threshold_arg) {
         if(++low_run > args_.cont_on_low_arg)
           break;
@@ -297,7 +308,7 @@ private:
 
       std::swap(current, cont);
     }
-
+    //printf("Done %s\n",seq.c_str());
     // Erase trailing low quality bases if any and reset current to be
     // the actual last k-mer (with only good quality bases). Needed
     // for the test of already written k-unitigs to be accurate.
@@ -333,7 +344,6 @@ private:
       if(start.get_canonical() < current->get_canonical())
         return;
     }
-
     // Output results
     if(start.k() + seq.length() < args_.min_len_arg)
       return;

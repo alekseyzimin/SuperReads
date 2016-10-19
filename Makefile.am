@@ -57,7 +57,7 @@ YAGGO_SOURCES = # Append all file to be built by yaggo
 # src pipeline
 ##############################
 bin_PROGRAMS += error_corrected2frg reverse_complement reduce_sr	\
-                sorted_merge create_k_unitigs_large_k			\
+                sorted_merge create_k_unitigs_large_k 			\
                 create_k_unitigs_large_k2 homo_trim bloom_query		\
                 filter_overlap_file rename_filter_fastq semaphore
 
