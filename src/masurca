@@ -374,10 +374,10 @@ if(@{$config{PACBIO_INFO}} && @{$config{NANOPORE_INFO}}){
   print FILE "fail Unable to mix Pacbio and nanopore reads.\n";
   script_done;
 }elsif(@{$config{PACBIO_INFO}}) {
-  if($config{USE_LINKING_MATES} == 1) {
-    MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
-  }
   print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+  if($config{USE_LINKING_MATES} == 1) {
+      MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
+  }
   print FILE "$RealBin/mega_reads_assemble_nomatch.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{PACBIO_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" -B 17 -D 0.029\n";
   script_done;
 }elsif(@{$config{NANOPORE_INFO}}){

@@ -64,7 +64,7 @@ EOS
 sub count_kmers_for_quorum {
   my ($out, $filelist, $NUM_THREADS, $thresh) = @_;
   print $out <<"EOS";
-quorum_create_database -t $NUM_THREADS -s \$JF_SIZE -b 7 -m 24 -q \$((MIN_Q_CHAR + $thresh)) -o quorum_mer_db.jf $filelist
+quorum_create_database -t $NUM_THREADS -s \$JF_SIZE -b 7 -m 24 -q \$((MIN_Q_CHAR + $thresh)) -o quorum_mer_db.jf.tmp $filelist && mv quorum_mer_db.jf.tmp quorum_mer_db.jf
 if [ $? != 0 ]; then
   fail Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2
 fi

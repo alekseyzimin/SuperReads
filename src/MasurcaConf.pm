@@ -77,7 +77,7 @@ PARAMETERS
 #this is k-mer size for deBruijn graph values between 25 and 127 are supported, auto will compute the optimal size based on the read data and GC content
 GRAPH_KMER_SIZE = auto
 #set this to 1 for all Illumina-only assemblies
-#set this to 1 if you have less than 10x long reads (454, Sanger, Pacbio) and NO Illumina, Sanger or 454 mate pairs
+#set this to 1 if you have less than 20x long reads (454, Sanger, Pacbio) and less than 50x CLONE coverage by Illumina, Sanger or 454 mate pairs
 #otherwise keep at 0
 USE_LINKING_MATES = 0
 #this parameter is useful if you have too many Illumina jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
