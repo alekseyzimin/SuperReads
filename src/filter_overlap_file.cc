@@ -206,6 +206,13 @@ public:
       long ahang = strtol(endptr, &endptr, 10);
       long bhang = strtol(endptr, &endptr, 10);
 
+      //AZ if containment overlap -- leave it alone
+      if(ahang*bhang<0){
+        out << id1 << " " << id2 << " " << ori << " " << ahang << " " << bhang << endptr << "\n";
+        out << jflib::endr;
+        continue;
+      }
+
       // Get sequences and range of matches
       auto frag1_it = fragments_.find(id1);
       if(frag1_it == fragments_.end()) {
