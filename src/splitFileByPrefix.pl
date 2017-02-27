@@ -14,12 +14,16 @@ foreach my $v (@ARGV) {
 
 my $current_index=0;
 while($line=<STDIN>){
-$current_index=$findex{substr($line,1,2)} if($line=~ /^>/);
-print {$fh[$current_index]} $line;
-$line=<STDIN>;
-print {$fh[$current_index]} $line;
+  if(substr($line,0,1) eq ">"){
+    if(defined($findex{substr($line,1,2)})){
+      $current_index=$findex{substr($line,1,2)};
+      print {$fh[$current_index]} $line;
+      $line=<STDIN>;
+      print {$fh[$current_index]} $line;
+    }
+  }
 }
 foreach my $v (@fh) {
-close($v);
+  close($v);
 }
 
