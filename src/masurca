@@ -263,7 +263,7 @@ if(@{$config{JUMP_INFO}} > 0){
 
 MasurcaCommon::get_MIN_Q_CHAR(*FILE, $list_pe_files);
 
-print FILE "JF_SIZE=`ls -l *.fastq | awk '{n+=\$5}END{s=int(n/50); if(s>$config{JF_SIZE})print \"\%.0f\",s;else print \"$config{JF_SIZE}\";}'`\n";
+print FILE "JF_SIZE=`ls -l *.fastq | awk '{n+=\$5}END{s=int(n/50); if(s>$config{JF_SIZE})printf \"\%.0f\",s;else print \"$config{JF_SIZE}\";}'`\n";
 print FILE "save JF_SIZE\n";
 print FILE "perl -e '{if(int('\$JF_SIZE')>$config{JF_SIZE}){print \"WARNING: JF_SIZE set too low, increasing JF_SIZE to at least '\$JF_SIZE', this automatic increase may be not enough!\\n\"}}'\n"; 
 if(not(-e "quorum_mer_db.jf") || $rerun_pe==1){
