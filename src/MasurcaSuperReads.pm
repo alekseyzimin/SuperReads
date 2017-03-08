@@ -133,6 +133,7 @@ sub create_pe_linking_mates {
 
   foreach my $v (@{$config{PE_INFO}}){
     my @f = @$v;
+    next if($f[3] eq $f[4]);
     $list_frg_files .= "$f[0].linking.frg ";
     if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
       print $out <<"EOS";      
