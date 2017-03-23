@@ -31,7 +31,7 @@ avg_ins=@$lib[1]
 reverse_seq=0
 asm_flags=2
 rank=1
-map_len=63
+map_len=35
 p=../pe.cor.fa
 EOS
 }else{
@@ -45,7 +45,7 @@ avg_ins=$mean
 reverse_seq=0
 asm_flags=2
 rank=1
-map_len=63
+map_len=35
 p=../$prefix.cor.clean.fa
 EOS
 }
