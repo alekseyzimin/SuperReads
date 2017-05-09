@@ -229,7 +229,7 @@ $list_frg_files    .= " ".$tmplist." ";
 
 @pe_files        = MasurcaCommon::rename_reads(*FILE, "pe", @{$config{PE_INFO}});
 @sj_files        = MasurcaCommon::rename_reads(*FILE, "sj", @{$config{JUMP_INFO}}) if(@{$config{JUMP_INFO}});
-print FILE "run_wait\n";
+#print FILE "run_wait\n";
 $list_pe_files   = join(" ", @pe_files);
 $list_jump_files = join(" ", @sj_files);
 
