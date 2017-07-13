@@ -344,7 +344,7 @@ if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj=
 ###done build k-unitigs###
 print FILE "\n";
 ###super reads and filtering for jump###
-if( not(-d "CA") || $rerun_pe || $rerun_sj ) {
+if( not(-e "sj.cor.clean2.fa") || $rerun_pe || $rerun_sj ) {
   if(@{$config{JUMP_INFO}} > 0) {
     print FILE "log 'Filtering JUMP.'\n";
     MasurcaSuperReads::filter_jump(*FILE, %config);
@@ -363,14 +363,14 @@ if($rerun_pe==1|| not(-e "work1")) {
   $rerun_pe=1;
 }
 
+print FILE "CA_DIR=\"CA\";\n";
+
 if(@{$config{REF_INFO}}){
   print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
   MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
   print FILE "$RealBin/mega_reads_assemble_ref.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{REF_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\"\n";
     script_done;
-}
-
-if(@{$config{PACBIO_INFO}} && @{$config{NANOPORE_INFO}}){
+}elsif(@{$config{PACBIO_INFO}} && @{$config{NANOPORE_INFO}}){
   print FILE "fail Unable to mix Pacbio and nanopore reads.\n";
   script_done;
 }elsif(@{$config{PACBIO_INFO}}) {
@@ -379,14 +379,18 @@ if(@{$config{PACBIO_INFO}} && @{$config{NANOPORE_INFO}}){
       MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
   }
   print FILE "$RealBin/mega_reads_assemble_nomatch.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{PACBIO_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" -B 17 -D 0.029\n";
-  script_done;
+  print FILE "CA_DIR=`cat CA_dir.txt`\n";
+  print FILE "PLOIDY=`cat PLOIDY.txt`\n";
+  #script_done;
 }elsif(@{$config{NANOPORE_INFO}}){
   print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
   if($config{USE_LINKING_MATES} == 1) {
       MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
         }
 print FILE "$RealBin/mega_reads_assemble_nomatch.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{NANOPORE_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" -B 13 -D 0.02\n";
-  script_done;
+  print FILE "CA_DIR=`cat CA_dir.txt`\n";
+  print FILE "PLOIDY=`cat PLOIDY.txt`\n";
+  #script_done;
 }else{
   print FILE "createSuperReadsForDirectory.perl -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
   print FILE "if [[ ! -e work1/superReads.success ]];then\n";
@@ -408,7 +412,6 @@ print FILE "$RealBin/mega_reads_assemble_nomatch.sh -t $config{NUM_THREADS} -e \
   }
 ###done with super reads for PE###
   print FILE "\n";
-}
 
 if($config{STOP_AFTER_SR}) {
   print FILE "log 'Super reads done'\n";
@@ -430,21 +433,32 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
     }
     MasurcaCelera::runCA($rerun_pe,  $rerun_sj,*FILE, $list_frg_files, $tmplist, %config);
 }
-
+}
 #here we close gaps in scaffolds:  we use create_k_unitigs allowing to continue on count 1 sequence and then generate fake reads from the 
 #end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps for k=17...31
 if($config{CLOSE_GAPS}){
-
+    print FILE "if [ -s \$CA_DIR/9-terminator/genome.scf.fasta ];then\n";
     print FILE "log 'Gap closing'\n";
     my $reads_argument= join(" ", map { "--reads-file '$_'" } (@pe_files, @sj_files));
 
-    print FILE "closeGapsLocally.perl --max-reads-in-memory 1000000000 -s $config{JF_SIZE} --Celera-terminator-directory CA/9-terminator $reads_argument --output-directory CA/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $config{NUM_THREADS} --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 21 1>gapClose.err 2>&1\n";
-    print FILE "if [[ -e \"CA/10-gapclose/genome.ctg.fasta\" ]];then\n";
-    print FILE "  echo \"Gap close success. Output sequence is in CA/10-gapclose/genome.\{ctg,scf\}.fasta\"\n";
+    print FILE "closeGapsLocally.perl --max-reads-in-memory 1000000000 -s $config{JF_SIZE} --Celera-terminator-directory \$CA_DIR/9-terminator $reads_argument --output-directory \$CA_DIR/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $config{NUM_THREADS} --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 21 1>gapClose.err 2>&1\n";
+    print FILE "if [[ -e \"\$CA_DIR/10-gapclose/genome.ctg.fasta\" ]];then\n";
+    print FILE "  echo Gap close success.\n";
     print FILE "else\n";
-    print FILE "  fail Gap close failed, you can still use pre-gap close files under CA/9-terminator/. Check gapClose.err for problems.\n";
+    print FILE "  fail Gap close failed, you can still use pre-gap close files under \$CA_DIR/9-terminator/. Check gapClose.err for problems.\n";
+    print FILE "fi\n";
     print FILE "fi\n";
 }
+
+print FILE "if [ -s \$CA_DIR/10-gapclose/genome.scf.fasta ];then\n";
+print FILE "if [ ! -e \$CA_DIR/filter_map.contigs.success ];then\n";
+print FILE "    deduplicate_contigs.sh \$CA_DIR genome $config{NUM_THREADS} \$PLOIDY && echo \"Assembly complete, final scaffold sequences are in \$CA_DIR/dedup.genome.scf.fasta\"\n";
+print FILE "else\n";
+print FILE "echo \"Assembly complete, final scaffold sequences are in \$CA_DIR/dedup.genome.scf.fasta\"\n";
+print FILE "fi\n";
+print FILE "else\n";
+print FILE "echo \"Assembly stopped or failed, see \$CA_DIR.log\"\n";
+print FILE "fi\n";
 
 ###Done !!!! Hoorayyyy!!! :)###
 print FILE "log 'All done'\n";
