@@ -436,7 +436,9 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
 }
 #here we close gaps in scaffolds:  we use create_k_unitigs allowing to continue on count 1 sequence and then generate fake reads from the 
 #end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps for k=17...31
+my $terminator="9-terminator";
 if($config{CLOSE_GAPS}){
+$terminator="10-gapclose";
     print FILE "if [ -s \$CA_DIR/9-terminator/genome.scf.fasta ];then\n";
     print FILE "log 'Gap closing'\n";
     my $reads_argument= join(" ", map { "--reads-file '$_'" } (@pe_files, @sj_files));
@@ -450,9 +452,9 @@ if($config{CLOSE_GAPS}){
     print FILE "fi\n";
 }
 
-print FILE "if [ -s \$CA_DIR/10-gapclose/genome.scf.fasta ];then\n";
+print FILE "if [ -s \$CA_DIR/$terminator/genome.scf.fasta ];then\n";
 print FILE "if [ ! -e \$CA_DIR/filter_map.contigs.success ];then\n";
-print FILE "    deduplicate_contigs.sh \$CA_DIR genome $config{NUM_THREADS} \$PLOIDY && echo \"Assembly complete, final scaffold sequences are in \$CA_DIR/dedup.genome.scf.fasta\"\n";
+print FILE "    deduplicate_contigs.sh \$CA_DIR genome $config{NUM_THREADS} \$PLOIDY $terminator && echo \"Assembly complete, final scaffold sequences are in \$CA_DIR/dedup.genome.scf.fasta\"\n";
 print FILE "else\n";
 print FILE "echo \"Assembly complete, final scaffold sequences are in \$CA_DIR/dedup.genome.scf.fasta\"\n";
 print FILE "fi\n";

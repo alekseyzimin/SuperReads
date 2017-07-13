@@ -87,6 +87,8 @@ LIMIT_JUMP_COVERAGE = 300
 CA_PARAMETERS =  cgwErrorRate=0.15
 #minimum count k-mers used in error correction 1 means all k-mers are used.  one can increase to 2 if Illumina coverage >100
 KMER_COUNT_THRESHOLD = 1
+#whether to attempt to close gaps in scaffolds with Illumina data
+CLOSE_GAPS=1
 #auto-detected number of cpus to use
 NUM_THREADS = 16
 #this is mandatory jellyfish hash size -- a safe value is estimated_genome_size*estimated_coverage
