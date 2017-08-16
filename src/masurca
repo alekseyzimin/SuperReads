@@ -344,8 +344,18 @@ if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj=
 ###done build k-unitigs###
 print FILE "\n";
 ###super reads and filtering for jump###
-if( not(-e "sj.cor.clean2.fa") || $rerun_pe || $rerun_sj ) {
-  if(@{$config{JUMP_INFO}} > 0) {
+if(@{$config{JUMP_INFO}} > 0) {
+  my $all_present=1;
+  foreach my $v (@{$config{JUMP_INFO}}) {
+    my @f = @$v;
+    $all_present=0 if( not( -e "$f[0].cor.clean.frg" ));
+  }
+  if($all_present==1){
+    foreach my $v (@{$config{JUMP_INFO}}) {
+      my @f = @$v;
+      $list_frg_files .= "$f[0].cor.clean.frg ";
+    }
+  }else{
     print FILE "log 'Filtering JUMP.'\n";
     MasurcaSuperReads::filter_jump(*FILE, %config);
   }
@@ -366,7 +376,7 @@ if($rerun_pe==1|| not(-e "work1")) {
 print FILE "CA_DIR=\"CA\";\n";
 
 if(@{$config{REF_INFO}}){
-  print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+  print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
   MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
   print FILE "$RealBin/mega_reads_assemble_ref.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{REF_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\"\n";
     script_done;
@@ -374,7 +384,7 @@ if(@{$config{REF_INFO}}){
   print FILE "fail Unable to mix Pacbio and nanopore reads.\n";
   script_done;
 }elsif(@{$config{PACBIO_INFO}}) {
-  print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+  print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
   if($config{USE_LINKING_MATES} == 1) {
       MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
   }
@@ -383,7 +393,7 @@ if(@{$config{REF_INFO}}){
   print FILE "PLOIDY=`cat PLOIDY.txt`\n";
   #script_done;
 }elsif(@{$config{NANOPORE_INFO}}){
-  print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+  print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));;
   if($config{USE_LINKING_MATES} == 1) {
       MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
         }
@@ -392,7 +402,7 @@ print FILE "$RealBin/mega_reads_assemble_nomatch.sh -t $config{NUM_THREADS} -e \
   print FILE "PLOIDY=`cat PLOIDY.txt`\n";
   #script_done;
 }else{
-  print FILE "createSuperReadsForDirectory.perl -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n";
+  print FILE "createSuperReadsForDirectory.perl -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));;
   print FILE "if [[ ! -e work1/superReads.success ]];then\n";
   print FILE "fail Super reads failed, check super1.err and files in ./work1/\n";
   print FILE "fi\n";
