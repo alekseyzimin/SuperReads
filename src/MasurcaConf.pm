@@ -13,7 +13,7 @@ BEGIN {
 
 my $default_values = {
   # Parameters
-  EXTEND_JUMP_READS       => 1,
+  EXTEND_JUMP_READS       => 0,
   JF_SIZE                 => 100000000,
   KMER                    => "auto",
   KMER_COUNT_THRESHOLD    => 1,
