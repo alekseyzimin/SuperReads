@@ -433,6 +433,9 @@ if(@{$config{MOLECULO_INFO}} && not(-e "moleculo_shr.frg")){
          }
 }
 
+#force ploidy to 1 for Illumina-only assemblies
+print FILE "echo 1 > PLOIDY.txt";
+
 ###Celera Assembler###
 if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
     print FILE "\nlog 'Celera Assembler'\n";
