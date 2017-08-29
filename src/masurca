@@ -390,7 +390,6 @@ if(@{$config{REF_INFO}}){
   }
   print FILE "$RealBin/mega_reads_assemble_nomatch.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{PACBIO_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" -B 17 -D 0.029\n";
   print FILE "CA_DIR=`cat CA_dir.txt`\n";
-  print FILE "PLOIDY=`cat PLOIDY.txt`\n";
   #script_done;
 }elsif(@{$config{NANOPORE_INFO}}){
   print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));;
@@ -399,7 +398,6 @@ if(@{$config{REF_INFO}}){
         }
 print FILE "$RealBin/mega_reads_assemble_nomatch.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{NANOPORE_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" -B 13 -D 0.02\n";
   print FILE "CA_DIR=`cat CA_dir.txt`\n";
-  print FILE "PLOIDY=`cat PLOIDY.txt`\n";
   #script_done;
 }else{
   print FILE "createSuperReadsForDirectory.perl -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));;
@@ -477,6 +475,7 @@ if($config{CLOSE_GAPS}){
 
 print FILE "if [ -s \$CA_DIR/\$TERMINATOR/genome.scf.fasta ];then\n";
 print FILE "  if [ ! -e \$CA_DIR/filter_map.contigs.success ];then\n";
+print FILE "    PLOIDY=`cat PLOIDY.txt`\n";
 print FILE "    deduplicate_contigs.sh \$CA_DIR genome $config{NUM_THREADS} \$PLOIDY \$TERMINATOR && echo \"Assembly complete, final scaffold sequences are in \$CA_DIR/dedup.genome.scf.fasta\"\n";
 print FILE "  else\n";
 print FILE "  log \"Assembly complete, final scaffold sequences are in \$CA_DIR/dedup.genome.scf.fasta\"\n";
