@@ -240,13 +240,13 @@ print FILE "\n";
 print FILE "head -q -n 40000  $list_pe_files | grep --text -v '^\+' | grep --text -v '^\@' > pe_data.tmp\n";
 print FILE "export PE_AVG_READ_LENGTH=`awk '{if(length(\$1)>31){n+=length(\$1);m++;}}END{print int(n/m)}' pe_data.tmp`\n";
 print FILE "save PE_AVG_READ_LENGTH\n";
-print FILE "echo \"Average PE read length \$PE_AVG_READ_LENGTH\"\n";
+print FILE "log Average PE read length \$PE_AVG_READ_LENGTH\n";
 
 if(uc($config{KMER}) eq "AUTO"){
 #here we have to estimate gc content and recompute kmer length for the graph
      MasurcaCommon::estimate_optimal_kmer(*FILE, $list_pe_files,"KMER");
      print FILE "save KMER\n";
-     print FILE "echo \"choosing kmer size of \$KMER for the graph\"\n";
+     print FILE "log Using kmer size of \$KMER for the graph\n";
 }else{
      print FILE "KMER=$config{KMER}\n";
 }
@@ -267,7 +267,7 @@ print FILE "JF_SIZE=`ls -l *.fastq | awk '{n+=\$5}END{s=int(n/50); if(s>$config{
 print FILE "save JF_SIZE\n";
 print FILE "perl -e '{if(int('\$JF_SIZE')>$config{JF_SIZE}){print \"WARNING: JF_SIZE set too low, increasing JF_SIZE to at least '\$JF_SIZE', this automatic increase may be not enough!\\n\"}}'\n"; 
 if(not(-e "quorum_mer_db.jf") || $rerun_pe==1){
-    print FILE "log Creating mer database for Quorum.\n";
+    print FILE "log Creating mer database for Quorum\n";
     MasurcaCommon::count_kmers_for_quorum(*FILE, $list_pe_files, $config{NUM_THREADS}, 5);
     $rerun_pe=1;
     $rerun_sj=1;
