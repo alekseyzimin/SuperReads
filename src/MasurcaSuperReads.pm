@@ -38,17 +38,7 @@ sub filter_jump {
 
   #remove all chimeric and all redundant reads from sj.cor.fa
   if(not(-e "sj.cor.clean.rev.fa")||not(-e "sj.cor.clean.fa") || not(-e "sj.cor.clean2.fa")||$rerun_pe==1||$rerun_sj==1){
-    print $out "ufasta extract -f <(cat chimeric_sj.txt redundant_sj.txt | perl -e '{
-		while(\$line=<STDIN>){
-		chomp(\$line);
-		\$h{\$line}=1
-		}
-		open(FILE,\$ARGV[0]);
-		while(\$line=<FILE>){
-		chomp(\$line);
-		print \$line,\"\\n\" if(not(defined(\$h{\$line})));
-		}
-		}' <(awk '{
+    print $out "ufasta extract -v -f <(cat chimeric_sj.txt redundant_sj.txt) sj.cor.fa | ufasta extract -f <(awk '{
 			prefix=substr(\$1,1,2); 
 			readnumber=int(substr(\$1,3));  
 			if(readnumber\%2==0){
@@ -59,7 +49,7 @@ sub filter_jump {
 					print prefix\"\"last_readnumber\"\\n\"prefix\"\"readnumber;
 				}
 			}
-			}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt)) sj.cor.fa | awk '{print \$1}' | putReadsIntoGroupsBasedOnSuperReads --super-read-sequence-file work2/superReadSequences.fasta --read-placements-file work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt > sj.cor.clean.fa\n";
+			}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt) /dev/stdin | awk '{print \$1}' | putReadsIntoGroupsBasedOnSuperReads --super-read-sequence-file work2/superReadSequences.fasta --read-placements-file work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt > sj.cor.clean.fa\n";
 
     #here we perform another round of filtering bad mates now with variable k-mer size
     print $out "awk 'BEGIN{n=0}{if(\$1~/^>/){}else{print \">sr\"n\"\\n\"\$0;n+=2;}}' work2/superReadSequences.fasta.all > superReadSequences.fasta.in\n";
