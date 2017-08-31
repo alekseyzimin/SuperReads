@@ -27,12 +27,13 @@ int main (int argc, char **argv)
 	  superReadToReadList.push_back (emptyStringVector);
 //     infile = fopen ("/genome3/raid/tri/reduceReadsIntoCelera/assembly/sj.cor.clean.fa", "r");
      infile = stdin;
-     charb rname(100);
+     charb rname(12);
      std::map<std::string, std::string> readNamesToReadSequences;
      while (fgets (line, 100, infile)) {
 	  sscanf ((char *) line, ">%s", (char *) rname);
-	  for (int i=1; i<4; ++i)
-	       fgets_append (line, infile);
+	  for (int i=1; i<4; ++i){
+               fgets_append (line, infile);
+               }
 	  readNamesToReadSequences[std::string ((char *) rname)] = std::string(line);
      }
 //     fclose (infile);
