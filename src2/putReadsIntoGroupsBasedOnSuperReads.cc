@@ -29,11 +29,12 @@ int main (int argc, char **argv)
      infile = stdin;
      charb rname(12);
      std::map<std::string, std::string> readNamesToReadSequences;
+     //this assumes that all reads are paired with the forward read first and the reverse directly following it
      while (fgets (line, 100, infile)) {
 	  sscanf ((char *) line, ">%s", (char *) rname);
-	  for (int i=1; i<4; ++i){
-               fgets_append (line, infile);
-               }
+          fgets (line, 100, infile);//read sequence f
+	  fgets_append (line, infile);//read readname r
+          fgets_append (line, infile);//read sequence r
 	  readNamesToReadSequences[std::string ((char *) rname)] = std::string(line);
      }
 //     fclose (infile);
@@ -60,7 +61,7 @@ int main (int argc, char **argv)
      
      for (int i=0; i<=lastSuperReadNum; ++i)
 	  for (unsigned int j=0; j<superReadToReadList[i].size(); ++j)
-	       std::cout << readNamesToReadSequences[superReadToReadList[i][j]];
+	       std::cout <<">"<<superReadToReadList[i][j]<<std::endl<< readNamesToReadSequences[superReadToReadList[i][j]];
      
      return (0);
 }
