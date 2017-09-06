@@ -16,12 +16,13 @@ sub filter_jump {
     print $out "rm -rf work2\n";
     $rerun_sj=1;
   }
+  if(not(-e "work2/superReads.success")){
   print $out "createSuperReadsForDirectory.perl  -maxnodes 2000 -minreadsinsuperread 1 -l \$KMER_J -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.jump.fasta -t $config{NUM_THREADS} -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
-
   #check if the super reads pipeline finished successfully
   print $out "if [[ ! -e work2/superReads.success ]];then\n";
   print $out "fail Super reads failed, check super2.err and files in ./work2/\n";
   print $out "fi\n";
+  }
 
   #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
   if(not(-e "chimeric_sj.txt")||$rerun_pe==1||$rerun_sj==1){
