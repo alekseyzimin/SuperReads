@@ -314,17 +314,17 @@ print FILE "\n";
 my $k_u_arg="pe.cor.fa";
 $k_u_arg.=" sj.cor.fa" if(@{$config{JUMP_INFO}});
 
-print FILE "if [ -s ESTIMATED_GENOME_SIZE.txt ];then\n";
-print FILE "ESTIMATED_GENOME_SIZE=`head -n 1 ESTIMATED_GENOME_SIZE.txt`\n";
-print FILE "else\n";
-print FILE "log Estimating genome size.\n";
-if(not(-e "k_u_hash_0")||$rerun_pe==1||$rerun_sj==1){
+if( -e "ESTIMATED_GENOME_SIZE.txt" ){
+  print FILE "ESTIMATED_GENOME_SIZE=`head -n 1 ESTIMATED_GENOME_SIZE.txt`\n";
+}else{
+  print FILE "log Estimating genome size.\n";
+  if(not(-e "k_u_hash_0")||$rerun_pe==1||$rerun_sj==1){
     print FILE "jellyfish count -m 31 -t $config{NUM_THREADS} -C -s \$JF_SIZE -o k_u_hash_0 $k_u_arg\n";
+  }
+  print FILE "export ESTIMATED_GENOME_SIZE=`jellyfish histo -t $config{NUM_THREADS} -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
+  if($config{CA_PARAMETERS}=~ "cgwErrorRate=0.25" || $config{LIMIT_JUMP_COVERAGE} == 60) {print FILE "if [ \$ESTIMATED_GENOME_SIZE -ge 15000000 ]; then echo \"WARNING! CA_PARAMETERS = cgwErrorRate=0.25 and LIMIT_JUMP_COVERAGE = 60 in config file should only be used for bacterial genomes; set cgwErrorRate=0.15 and  LIMIT_JUMP_COVERAGE=300 for eukaryotes and plants!\";fi\n";}
+  print FILE "echo \$ESTIMATED_GENOME_SIZE > ESTIMATED_GENOME_SIZE.txt\n";
 }
-print FILE "export ESTIMATED_GENOME_SIZE=`jellyfish histo -t $config{NUM_THREADS} -h 1 k_u_hash_0 | tail -n 1 |awk '{print \$2}'`\n";
-if($config{CA_PARAMETERS}=~ "cgwErrorRate=0.25" || $config{LIMIT_JUMP_COVERAGE} == 60) {print FILE "if [ \$ESTIMATED_GENOME_SIZE -ge 15000000 ]; then echo \"WARNING! CA_PARAMETERS = cgwErrorRate=0.25 and LIMIT_JUMP_COVERAGE = 60 in config file should only be used for bacterial genomes; set cgwErrorRate=0.15 and  LIMIT_JUMP_COVERAGE=300 for eukaryotes and plants!\";fi\n";}
-print FILE "echo \$ESTIMATED_GENOME_SIZE > ESTIMATED_GENOME_SIZE.txt\n";
-print FILE "fi\n";
 print FILE "save ESTIMATED_GENOME_SIZE\n";
 print FILE "echo \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
 
