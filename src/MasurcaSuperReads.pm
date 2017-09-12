@@ -35,10 +35,10 @@ sub filter_jump {
     print $out "filter_redundancy.pl 2 < work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt > redundant_sj.txt\n";
     $rerun_sj=1;
   } 
-  print $out "echo 'Chimeric/Redundant jump reads:';wc -l  chimeric_sj.txt redundant_sj.txt;\n";
 
   #remove all chimeric and all redundant reads from sj.cor.fa
-  if(not(-e "sj.cor.clean.rev.fa")||not(-e "sj.cor.clean.fa") || not(-e "sj.cor.clean2.fa")||$rerun_pe==1||$rerun_sj==1){
+  if(not(-e "sj.cor.clean.fa")||$rerun_pe==1||$rerun_sj==1){
+    print $out "echo 'Chimeric/Redundant jump reads:';wc -l  chimeric_sj.txt redundant_sj.txt;\n";
     print $out "ufasta extract -v -f <(cat chimeric_sj.txt redundant_sj.txt) sj.cor.fa | ufasta extract -f <(awk '{
 			prefix=substr(\$1,1,2); 
 			readnumber=int(substr(\$1,3));  
@@ -51,10 +51,13 @@ sub filter_jump {
 				}
 			}
 			}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt) /dev/stdin | awk '{print \$1}' | putReadsIntoGroupsBasedOnSuperReads --super-read-sequence-file work2/superReadSequences.fasta --read-placements-file work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt > sj.cor.clean.fa\n";
+    $rerun_sj=1;
+    }
 
+    if(not(-e "sj.cor.clean.rev.fa") || not(-e "sj.cor.clean2.fa")||$rerun_pe==1||$rerun_sj==1){
     #here we perform another round of filtering bad mates now with variable k-mer size
     print $out "awk 'BEGIN{n=0}{if(\$1~/^>/){}else{print \">sr\"n\"\\n\"\$0;n+=2;}}' work2/superReadSequences.fasta.all > superReadSequences.fasta.in\n";
-    print $out "findReversePointingJumpingReads_bigGenomes.perl --jellyfish-hash-size \$JF_SIZE --kmer-step-size 10 --reads-file sj.cor.clean.fa --reads-for-kunitigs-file superReadSequences.fasta.in --reads-for-kunitigs-file sj.cor.fa --dir-to-change-to  work2.1 --dir-for-kunitigs work2.1 --min-kmer-len 31 --max-kmer-len 81 -t $config{NUM_THREADS} --maxnodes 1000 1>findReversePointingJumpingReads.err 2>&1 \n";
+    print $out "findReversePointingJumpingReads_bigGenomes.perl --kmer-step-size 10 --reads-file sj.cor.clean.fa --reads-for-kunitigs-file superReadSequences.fasta.in --dir-to-change-to  work2.1 --dir-for-kunitigs work2.1 --min-kmer-len 31 --max-kmer-len 81 -t $config{NUM_THREADS} --maxnodes 1000 1>findReversePointingJumpingReads.err 2>&1 \n";
     print $out "rm -f superReadSequences.fasta.in\n";
     print $out "if [ -s work2.1/readsToExclude.txt ];then\nufasta extract -v -f work2.1/readsToExclude.txt sj.cor.clean.fa > sj.cor.clean2.fa;\necho Found extra chimeric mates:;\nwc -l work2.1/readsToExclude.txt;\nelse\nln -s sj.cor.clean.fa sj.cor.clean2.fa;\nfi\n";
     print $out "rm -f sj.cor.clean.rev.fa\n";
@@ -65,7 +68,7 @@ sub filter_jump {
       print $out "grep --text -A 1 '^>$f[0]' sj.cor.clean2.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
     }
     $rerun_sj=1;
-  }
+    }
 
   #here we extend the jumping library reads if they are too short
   if(not($config{SOAP_ASSEMBLY})){
