@@ -51,7 +51,7 @@ runCommandAndExitIfBad ($cmd);
 
 $totInputSize = getReadFileSize (@readsForKUnitigsFiles);
 if (! $jellyfishHashSize) {
-    $jellyfishHashSize = $totInputSize; }
+    $jellyfishHashSize = $totInputSize*2; }
 $readPrefix = &getReadPrefix ($joiningEndPairs);
 $joiningEndPairNamesFile = "readsToExclude.txt";
 unlink ($joiningEndPairNamesFile);
@@ -100,7 +100,7 @@ sub runMainLoop
 		runCommandAndExitIfBad ($cmd);
 		goto afterKUnitigCreation; }
 	}
-	$cmd = "$exeDir/create_k_unitigs_large_k -q 1 -c $minContinuation -t $numThreads -m $k -n $jellyfishHashSize*2 -f 0.000001 -l $k @readsForKUnitigsFiles  |  grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGactg/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > $tempKUnitigsFile";
+	$cmd = "$exeDir/create_k_unitigs_large_k -q 2 -c $minContinuation -t $numThreads -m $k -n $jellyfishHashSize -f 0.000001 -l $k @readsForKUnitigsFiles  |  grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGactg/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > $tempKUnitigsFile";
 	if (runCommandAndReturnIfBad ($cmd)) {
 	    last; }
 	if (-s $tempKUnitigsFile == 0) {
