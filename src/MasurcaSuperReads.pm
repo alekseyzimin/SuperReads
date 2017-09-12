@@ -56,9 +56,7 @@ sub filter_jump {
 
     if(not(-e "sj.cor.clean.rev.fa") || not(-e "sj.cor.clean2.fa")||$rerun_pe==1||$rerun_sj==1){
     #here we perform another round of filtering bad mates now with variable k-mer size
-    print $out "awk 'BEGIN{n=0}{if(\$1~/^>/){}else{print \">sr\"n\"\\n\"\$0;n+=2;}}' work2/superReadSequences.fasta.all > superReadSequences.fasta.in\n";
-    print $out "findReversePointingJumpingReads_bigGenomes.perl --kmer-step-size 10 --reads-file sj.cor.clean.fa --reads-for-kunitigs-file superReadSequences.fasta.in --dir-to-change-to  work2.1 --dir-for-kunitigs work2.1 --min-kmer-len 31 --max-kmer-len 81 -t $config{NUM_THREADS} --maxnodes 1000 1>findReversePointingJumpingReads.err 2>&1 \n";
-    print $out "rm -f superReadSequences.fasta.in\n";
+    print $out "findReversePointingJumpingReads_bigGenomes.perl --kmer-step-size 10 --reads-file sj.cor.clean.fa --reads-for-kunitigs-file work2/superReadSequences.fasta.all --dir-to-change-to  work2.1 --dir-for-kunitigs work2.1 --min-kmer-len 31 --max-kmer-len 81 -t $config{NUM_THREADS} --maxnodes 1000 1>findReversePointingJumpingReads.err 2>&1 \n";
     print $out "if [ -s work2.1/readsToExclude.txt ];then\nufasta extract -v -f work2.1/readsToExclude.txt sj.cor.clean.fa > sj.cor.clean2.fa;\necho Found extra chimeric mates:;\nwc -l work2.1/readsToExclude.txt;\nelse\nln -s sj.cor.clean.fa sj.cor.clean2.fa;\nfi\n";
     print $out "rm -f sj.cor.clean.rev.fa\n";
     foreach my $v (@{$config{JUMP_INFO}}) {
