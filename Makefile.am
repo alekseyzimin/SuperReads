@@ -192,6 +192,8 @@ dist_bin_SCRIPTS += src2/closeGaps.perl src2/getEndSequencesOfContigs.perl \
 ##############################
 dist_bin_SCRIPTS += src2/closeGapsLocally.perl \
 	            src2/closeGaps.oneDirectory.perl \
+		    src2/closeGaps.oneDirectory.fromMinKmerLen.perl \
+		    src2/extractJoinableAndNextPassReadsFromJoinKUnitigs.perl \
 	            src2/getSequenceForLocallyClosedGaps.perl \
                     src2/getMeanAndStdevForGapsByGapNumUsingCeleraTerminatorDirectory.perl \
                     src2/createSuperReadSequenceAndPlacementFileFromCombined.perl \
@@ -206,12 +208,12 @@ YAGGO_SOURCES += src2/runByDirectory_cmdline.hpp
 ##############################
 # reversed jumping read library elimination
 ##############################
-dist_bin_SCRIPTS += src2/reportReadsToExclude.perl src2/outputMatedReadsAsReverseComplement.perl \
-	src2/findReversePointingJumpingReads.perl src2/closeGaps.oneDirectory.fromMinKmerLen.perl \
-	src2/findReversePointingJumpingReads_bigGenomes.perl src2/extractJoinableAndNextPassReadsFromJoinKUnitigs.perl
-bin_PROGRAMS += putReadsIntoGroupsBasedOnSuperReads
-putReadsIntoGroupsBasedOnSuperReads_SOURCES = src2/putReadsIntoGroupsBasedOnSuperReads.cc
-YAGGO_SOURCES += src2/putReadsIntoGroupsBasedOnSuperReads_cmdline.hpp
+#dist_bin_SCRIPTS += src2/reportReadsToExclude.perl src2/outputMatedReadsAsReverseComplement.perl \
+#	src2/findReversePointingJumpingReads.perl src2/closeGaps.oneDirectory.fromMinKmerLen.perl \
+#	src2/findReversePointingJumpingReads_bigGenomes.perl src2/extractJoinableAndNextPassReadsFromJoinKUnitigs.perl
+#bin_PROGRAMS += putReadsIntoGroupsBasedOnSuperReads
+#putReadsIntoGroupsBasedOnSuperReads_SOURCES = src2/putReadsIntoGroupsBasedOnSuperReads.cc
+#YAGGO_SOURCES += src2/putReadsIntoGroupsBasedOnSuperReads_cmdline.hpp
 
 ##############################
 # reversed jumping read library elimination

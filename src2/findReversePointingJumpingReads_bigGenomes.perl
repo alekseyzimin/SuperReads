@@ -51,7 +51,7 @@ runCommandAndExitIfBad ($cmd);
 
 $totInputSize = getReadFileSize (@readsForKUnitigsFiles);
 if (! $jellyfishHashSize) {
-    $jellyfishHashSize = $totInputSize*2; }
+    $jellyfishHashSize = $totInputSize; }
 $readPrefix = &getReadPrefix ($joiningEndPairs);
 $joiningEndPairNamesFile = "readsToExclude.txt";
 unlink ($joiningEndPairNamesFile);

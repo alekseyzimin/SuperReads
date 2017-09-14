@@ -27,14 +27,13 @@ int main (int argc, char **argv)
 	  superReadToReadList.push_back (emptyStringVector);
 //     infile = fopen ("/genome3/raid/tri/reduceReadsIntoCelera/assembly/sj.cor.clean.fa", "r");
      infile = stdin;
-     charb rname(12);
+     charb rname(100);
      std::map<std::string, std::string> readNamesToReadSequences;
-     //this assumes that all reads are paired with the forward read first and the reverse directly following it
      while (fgets (line, 100, infile)) {
 	  sscanf ((char *) line, ">%s", (char *) rname);
-          fgets (line, 100, infile);//read sequence f
-	  fgets_append (line, infile);//read readname r
-          fgets_append (line, infile);//read sequence r
+          fgets (line, 100, infile);
+	  for (int i=1; i<3; ++i)
+	       fgets_append (line, infile);
 	  readNamesToReadSequences[std::string ((char *) rname)] = std::string(line);
      }
 //     fclose (infile);
@@ -48,7 +47,8 @@ int main (int argc, char **argv)
 	  if (flds[0][strlen(flds[0])-1] % 2 == 0) {
 	       readNameHold = std::string(flds[0]);
 	       superReadHold = atoi (flds[1]);
-	       continue; }
+	       continue; 
+               }
 	  --flds[0][strlen(flds[0])-1];
 	  std::string readName = std::string(flds[0]);
 	  int superRead = atoi (flds[1]);
@@ -60,8 +60,9 @@ int main (int argc, char **argv)
      fclose (infile);
      
      for (int i=0; i<=lastSuperReadNum; ++i)
-	  for (unsigned int j=0; j<superReadToReadList[i].size(); ++j)
-	       std::cout <<">"<<superReadToReadList[i][j]<<std::endl<< readNamesToReadSequences[superReadToReadList[i][j]];
+	  for (unsigned int j=0; j<superReadToReadList[i].size(); ++j){
+	       std::cout ">"<<superReadToReadList[i][j]<<"\n"<< readNamesToReadSequences[superReadToReadList[i][j]];
+               }
      
      return (0);
 }

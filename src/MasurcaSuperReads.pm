@@ -16,17 +16,26 @@ sub filter_jump {
     print $out "rm -rf work2\n";
     $rerun_sj=1;
   }
-  if(not(-e "work2/superReads.success")){
-  print $out "createSuperReadsForDirectory.perl  -maxnodes 2000 -minreadsinsuperread 1 -l \$KMER_J -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.jump.fasta -t $config{NUM_THREADS} -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
-  #check if the super reads pipeline finished successfully
-  print $out "if [[ ! -e work2/superReads.success ]];then\n";
-  print $out "fail Super reads failed, check super2.err and files in ./work2/\n";
-  print $out "fi\n";
+
+  if(not(-e "work2/superReads.success") || not(-e "work2.1/superReads.success")){
+    print $out "createSuperReadsForDirectory.perl  -maxnodes 2000 -minreadsinsuperread 1 -l \$KMER_J -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.jump.fasta -t $config{NUM_THREADS} -mikedebug work2 sj.cor.fa 1> super2.err 2>&1\n";
+    print $out "if [[ ! -e work2/superReads.success ]];then\n";
+    print $out "fail Super reads failed, check super2.err and files in ./work2/\n";
+    print $out "fi\n";
+    print $out "if [ ! \$KMER_J -eq \$KMER ];then\n";
+    print $out "createSuperReadsForDirectory.perl  -maxnodes 2000 -minreadsinsuperread 1 -l \$KMER -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work2.1 sj.cor.fa 1> super2.1.err 2>&1\n";
+    print $out "if [[ ! -e work2.1/superReads.success ]];then\n";
+    print $out "fail Super reads failed, check super2.1.err and files in ./work2.1/\n";
+    print $out "fi\n";
+    print $out "fi\n";
   }
 
   #now, using read positions in super reads, we find out which mates got joined -- these are the ones that do not have the biotin in the middle, call them chimeric
   if(not(-e "chimeric_sj.txt")||$rerun_pe==1||$rerun_sj==1){
     print $out "filter_alt.pl outtie < work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt >  chimeric_sj.txt \n";
+    print $out "if [ ! \$KMER_J -eq \$KMER ];then\n";
+    print $out "filter_alt.pl outtie < work2.1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt >>  chimeric_sj.txt \n";
+    print $out "fi\n";
     $rerun_sj=1;
   }
 
@@ -50,20 +59,17 @@ sub filter_jump {
 					print prefix\"\"last_readnumber\"\\n\"prefix\"\"readnumber;
 				}
 			}
-			}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt) /dev/stdin | awk '{print \$1}' | putReadsIntoGroupsBasedOnSuperReads --super-read-sequence-file work2/superReadSequences.fasta --read-placements-file work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt > sj.cor.clean.fa\n";
+			}' work2/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt) /dev/stdin | awk '{print \$1}' > sj.cor.clean.fa\n";
     $rerun_sj=1;
     }
 
-    if(not(-e "sj.cor.clean.rev.fa") || not(-e "sj.cor.clean2.fa")||$rerun_pe==1||$rerun_sj==1){
-    #here we perform another round of filtering bad mates now with variable k-mer size
-    print $out "findReversePointingJumpingReads_bigGenomes.perl --kmer-step-size 20 --reads-file sj.cor.clean.fa --reads-for-kunitigs-file work2/superReadSequences.fasta.all --dir-to-change-to  work2.1 --dir-for-kunitigs work2.1 --min-kmer-len 31 --max-kmer-len 91 -t $config{NUM_THREADS} --maxnodes 1000 1>findReversePointingJumpingReads.err 2>&1 \n";
-    print $out "if [ -s work2.1/readsToExclude.txt ];then\nufasta extract -v -f work2.1/readsToExclude.txt sj.cor.clean.fa > sj.cor.clean2.fa;\necho Found extra chimeric mates:;\nwc -l work2.1/readsToExclude.txt;\nelse\nln -s sj.cor.clean.fa sj.cor.clean2.fa;\nfi\n";
+    if(not(-e "sj.cor.clean.rev.fa") ||$rerun_pe==1||$rerun_sj==1){
     print $out "rm -f sj.cor.clean.rev.fa\n";
     foreach my $v (@{$config{JUMP_INFO}}) {
       my @f        = @$v;
       my $if_innie = "";
       $if_innie    = " | reverse_complement " if($f[1]>0);
-      print $out "grep --text -A 1 '^>$f[0]' sj.cor.clean2.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
+      print $out "grep --text -A 1 '^>$f[0]' sj.cor.clean.fa | grep --text -v '^\\-\\-' $if_innie >> sj.cor.clean.rev.fa\n";
     }
     $rerun_sj=1;
     }
