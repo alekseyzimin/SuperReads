@@ -14,6 +14,9 @@ BEGIN {
 my $default_values = {
   # Parameters
   EXTEND_JUMP_READS       => 0,
+  USE_GRID                => 0,
+  GRID_QUEUE              => "all.q",
+  LHE_COVERAGE            => 30;
   JF_SIZE                 => 100000000,
   KMER                    => "auto",
   KMER_COUNT_THRESHOLD    => 1,
@@ -144,9 +147,18 @@ sub parse_parameters {
   } elsif($key eq "CLOSE_GAPS"){
     fail("bad value for CLOSE_GAPS, enter 0 or 1", $.) unless($param =~ /^[01]$/);
     $$res{CLOSE_GAPS} = int($param);
+  } elsif($key eq "USE_GRID"){
+    fail("bad value for USE_GRID, enter 0 or 1", $.) unless($param =~ /^[01]$/);
+    $$res{USE_GRID} = int($param);
+  } elsif($key eq "LHE_COVERAGE"){
+    fail("bad value for LHE_COVERAGE, it should be a positive integer", $.) unless($param =~ /^\d*$/);
+    $$res{LHE_COVERAGE} = int($param);
   } elsif($key eq "CA_PARAMETERS"){
     fail("bad value for CA_PARAMETERS", $.) if($param eq "");
     $$res{CA_PARAMETERS} = $param;
+  } elsif($key eq "GRID_QUEUE"){
+    fail("bad value for GRID_QUEUE", $.) if($param eq "");
+    $$res{GRID_QUEUE} = $param;
   } elsif($key eq "LIMIT_JUMP_COVERAGE"){
     fail("bad value for LIMIT_JUMP_COVERAGE, enter a number > 1", $.) if($param<=1);
     $$res{LIMIT_JUMP_COVERAGE} = int($param);
