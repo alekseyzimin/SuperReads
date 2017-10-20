@@ -83,6 +83,12 @@ GRAPH_KMER_SIZE = auto
 #set this to 1 if you have less than 20x long reads (454, Sanger, Pacbio) and less than 50x CLONE coverage by Illumina, Sanger or 454 mate pairs
 #otherwise keep at 0
 USE_LINKING_MATES = 0
+#specifies whether to run mega-reads correction on the grid
+USE_GRID=0
+#specifies queue to use when running on the grid
+GRID_QUEUE=all.q
+#X coverage by the longest Long reads to use
+LHE_COVERAGE=30
 #this parameter is useful if you have too many Illumina jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
 LIMIT_JUMP_COVERAGE = 300
 #these are the additional parameters to Celera Assembler.  do not worry about performance, number or processors or batch sizes -- these are computed automatically. 
