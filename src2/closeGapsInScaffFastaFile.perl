@@ -13,9 +13,10 @@
 use strict;
 use warnings;
 use File::Basename;
+use Cwd 'abs_path';
 use POSIX;
 
-my $exeDir = dirname ($0);
+my $exeDir = dirname(abs_path(__FILE__));
 my $scaffoldFastaFile;
 my $split=2;
 

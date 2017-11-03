@@ -42,8 +42,9 @@
 #
 # The flags may be in any order.
 use Cwd;
+use Cwd 'abs_path';
 use File::Basename;
-$exeDir = dirname ($0);
+$exeDir = dirname(abs_path(__FILE__));
 # Create absolute paths where necessary
 # Must allow one to specify the dir with the hash and input k-unitigs file
 # Must allow specification of the min k-unitig continuation values (default 2)
