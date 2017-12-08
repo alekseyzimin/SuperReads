@@ -78,6 +78,8 @@ OTHER=/FULL_PATH/file.frg
 END
 
 PARAMETERS
+#set this to 1 if your Illumina jumping library reads are shorter than 100bp
+EXTEND_JUMP_READS=0
 #this is k-mer size for deBruijn graph values between 25 and 127 are supported, auto will compute the optimal size based on the read data and GC content
 GRAPH_KMER_SIZE = auto
 #set this to 1 for all Illumina-only assemblies
@@ -86,9 +88,11 @@ GRAPH_KMER_SIZE = auto
 USE_LINKING_MATES = 0
 #specifies whether to run mega-reads correction on the grid
 USE_GRID=0
-#specifies queue to use when running on the grid
+#specifies queue to use when running on the grid MANDATORY
 GRID_QUEUE=all.q
-#X coverage by the longest Long reads to use
+#batch size in the amount of long read sequence for each batch on the grid
+GRID_BATCH_SIZE=300000000
+#coverage by the longest Long reads to use
 LHE_COVERAGE=30
 #this parameter is useful if you have too many Illumina jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
 LIMIT_JUMP_COVERAGE = 300
@@ -103,7 +107,7 @@ CLOSE_GAPS=1
 NUM_THREADS = 16
 #this is mandatory jellyfish hash size -- a safe value is estimated_genome_size*estimated_coverage
 JF_SIZE = 200000000
-#set this to 1 to use SOAPdenovo contigging/scaffolding module.  Assembly will be worse but will run faster. Useful for very large (>5Gbp) genomes
+#set this to 1 to use SOAPdenovo contigging/scaffolding module.  Assembly will be worse but will run faster. Useful for very large (>5Gbp) genomes from Illumina-only data
 SOAP_ASSEMBLY=0
 END
 EOS
