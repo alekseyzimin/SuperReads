@@ -170,6 +170,9 @@ sub parse_parameters {
   } elsif($key eq "GRID_QUEUE"){
     fail("bad value for GRID_QUEUE", $.) if($param eq "");
     $$res{GRID_QUEUE} = $param;
+  } elsif($key eq "GRID_BATCH_SIZE"){
+    fail("bad value for GRID_BATCH_SIZE", $.) unless($param =~ /^\d*$/);
+    $$res{GRID_BATCH_SIZE} = $param;        
   } elsif($key eq "LIMIT_JUMP_COVERAGE"){
     fail("bad value for LIMIT_JUMP_COVERAGE, enter a number > 1", $.) if($param<=1);
     $$res{LIMIT_JUMP_COVERAGE} = int($param);
