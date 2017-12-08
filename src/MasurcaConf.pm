@@ -16,6 +16,7 @@ my $default_values = {
   EXTEND_JUMP_READS       => 0,
   USE_GRID                => 0,
   GRID_QUEUE              => "all.q",
+  GRID_BATCH_SIZE         => 300000000,
   LHE_COVERAGE            => 30,
   JF_SIZE                 => 100000000,
   KMER                    => "auto",
