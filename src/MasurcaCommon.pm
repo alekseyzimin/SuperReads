@@ -36,8 +36,8 @@ sub rename_reads {
 #    print($out "run_bg rename_filter_fastq '$name' <(exec expand_fastq '$fr' | awk '{if(length(\$0>200)) print substr(\$0,1,200); else print \$0;}') ",
 #           ($fr eq $rr) ? "''" : "<(exec expand_fastq '$rr' | awk '{if(length(\$0>200)) print substr(\$0,1,200); else print \$0;}' )",
 #           " > '$renamed'\n");
-    print($out "rename_filter_fastq '$name' <(exec expand_fastq '$fr' | awk '{if(length(\$0>200)) print substr(\$0,1,200); else print \$0;}') ",
-               ($fr eq $rr) ? "''" : "<(exec expand_fastq '$rr' | awk '{if(length(\$0>200)) print substr(\$0,1,200); else print \$0;}' )",
+    print($out "rename_filter_fastq '$name' <(exec expand_fastq '$fr') ",
+               ($fr eq $rr) ? "''" : "<(exec expand_fastq '$rr')",
                " > '$renamed'\n");
   }
   return @res;
@@ -45,7 +45,7 @@ sub rename_reads {
 
 sub estimate_optimal_kmer{
   my ($out, $filelist, $name) = @_;
-  my $max_kmer=127;
+  my $max_kmer=151;
   
   if($name eq "KMER_J"){
     print $out "$name=31\n";
@@ -67,7 +67,7 @@ EOS
 sub count_kmers_for_quorum {
   my ($out, $filelist, $NUM_THREADS, $thresh) = @_;
   print $out <<"EOS";
-quorum_create_database -t $NUM_THREADS -s \$JF_SIZE -b 7 -m 24 -q \$((MIN_Q_CHAR + $thresh)) -o quorum_mer_db.jf.tmp $filelist && mv quorum_mer_db.jf.tmp quorum_mer_db.jf
+awk '{print substr(\$0,1,200)}' $filelist | quorum_create_database -t $NUM_THREADS -s \$JF_SIZE -b 7 -m 24 -q \$((MIN_Q_CHAR + $thresh)) -o quorum_mer_db.jf.tmp /dev/stdin && mv quorum_mer_db.jf.tmp quorum_mer_db.jf
 if [ $? != 0 ]; then
   fail Increase JF_SIZE in config file, the recommendation is to set this to genome_size*coverage/2
 fi
