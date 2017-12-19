@@ -33,12 +33,8 @@ sub rename_reads {
     $do_wait = 1;
     $rerun_pe = 1;
     $rerun_sj = 1;
-#    print($out "run_bg rename_filter_fastq '$name' <(exec expand_fastq '$fr' | awk '{if(length(\$0>200)) print substr(\$0,1,200); else print \$0;}') ",
-#           ($fr eq $rr) ? "''" : "<(exec expand_fastq '$rr' | awk '{if(length(\$0>200)) print substr(\$0,1,200); else print \$0;}' )",
-#           " > '$renamed'\n");
-    print($out "rename_filter_fastq '$name' <(exec expand_fastq '$fr') ",
-               ($fr eq $rr) ? "''" : "<(exec expand_fastq '$rr')",
-               " > '$renamed'\n");
+    print($out "run_bg rename_filter_fastq '$name' <(exec expand_fastq '$fr' | awk '{if(length(\$0>250)) print substr(\$0,1,250); else print \$0;}') ",($fr eq $rr) ? "''" : "<(exec expand_fastq '$rr' | awk '{if(length(\$0>250)) print substr(\$0,1,250); else print \$0;}' )"," > '$renamed'\n");
+#    print($out "rename_filter_fastq '$name' <(exec expand_fastq '$fr') ",($fr eq $rr) ? "''" : "<(exec expand_fastq '$rr')"," > '$renamed'\n");
   }
   return @res;
 }
