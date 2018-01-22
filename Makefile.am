@@ -59,7 +59,7 @@ YAGGO_SOURCES = # Append all file to be built by yaggo
 bin_PROGRAMS += error_corrected2frg reverse_complement reduce_sr	\
                 sorted_merge create_k_unitigs_large_k 			\
                 create_k_unitigs_large_k2 homo_trim bloom_query		\
-                filter_overlap_file rename_filter_fastq semaphore
+                filter_overlap_file rename_filter_fastq 
 
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl src/close_gaps.sh		\
@@ -169,8 +169,6 @@ makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_SOURCES = src2/makeAdjustmentF
 makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_v2_SOURCES = src2/makeAdjustmentFactorsForNumReadsForAStatBasedOnGC_v2.cc
 splitFileAtNs_SOURCES = src2/splitFileAtNs.cc
 
-semaphore_SOURCES = src/semaphore.cc
-YAGGO_SOURCES += src/semaphore_cmdline.hpp
 
 ##############################
 # GC bias programs

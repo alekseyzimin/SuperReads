@@ -194,14 +194,14 @@ trap signaled TERM QUIT INT
 rm -f environment.sh; touch environment.sh
 
 # To run tasks in parallel
-run_bg () {
-  semaphore -j $NUM_THREADS --id masurca_$$ -- "$@"
-}
-run_wait () {
-  semaphore -j $NUM_THREADS --id masurca_$$ --wait
-}
+#run_bg () {
+#  semaphore -j $NUM_THREADS --id masurca_$$ -- "$@"
+#}
+#run_wait () {
+#  semaphore -j $NUM_THREADS --id masurca_$$ --wait
+#}
 EOS
-    ;
+;
 
 if(@prep_path) {
   print FILE "export PATH=\"", join(":", @prep_path), ":\$PATH\"\n";
@@ -229,7 +229,6 @@ $list_frg_files    .= " ".$tmplist." ";
 
 @pe_files        = MasurcaCommon::rename_reads(*FILE, "pe", @{$config{PE_INFO}});
 @sj_files        = MasurcaCommon::rename_reads(*FILE, "sj", @{$config{JUMP_INFO}}) if(@{$config{JUMP_INFO}});
-#print FILE "run_wait\n";
 $list_pe_files   = join(" ", @pe_files);
 $list_jump_files = join(" ", @sj_files);
 
@@ -392,7 +391,7 @@ if(@{$config{REF_INFO}}){
   if($config{USE_LINKING_MATES} == 1) {
       MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
   }
-  print FILE "$RealBin/mega_reads_assemble_cluster.sh -Pb $config{GRID_BATCH_SIZE} -Sb ",int($config{GRID_BATCH_SIZE}/10)," -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{PACBIO_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" -B 17 -D 0.029\n";
+  print FILE "$RealBin/mega_reads_assemble_cluster.sh -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{PACBIO_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" -B 17 -D 0.029\n";
   print FILE "CA_DIR=`cat CA_dir.txt`\n";
   #script_done;
 }elsif(@{$config{NANOPORE_INFO}}){
@@ -400,7 +399,7 @@ if(@{$config{REF_INFO}}){
   if($config{USE_LINKING_MATES} == 1) {
       MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
         }
-print FILE "$RealBin/mega_reads_assemble_cluster.sh -Pb $config{GRID_BATCH_SIZE} -Sb ",int($config{GRID_BATCH_SIZE}/10)," -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{NANOPORE_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" -B 15 -D 0.02\n";
+print FILE "$RealBin/mega_reads_assemble_cluster.sh -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -p $config{NANOPORE_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" -B 15 -D 0.02\n";
   print FILE "CA_DIR=`cat CA_dir.txt`\n";
   #script_done;
 }else{
