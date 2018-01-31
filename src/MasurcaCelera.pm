@@ -58,7 +58,7 @@ rm -rf CA/5-consensus 5-consensus-coverage-stat 5-consensus-insert-sizes
 runCA -s runCA.spec stopAfter=consensusAfterUnitigger -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA1.out 2>&1
 
 if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then
-  echo \"Overlap/unitig success\"
+  log \"Overlap/unitig success\"
 else
   fail Overlap/unitig failed, check output under CA/ and runCA1.out
 fi
@@ -68,7 +68,7 @@ recompute_astat_superreads.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacement
 NUM_SUPER_READS=`cat superReadSequences_shr.frg $tmplist | grep -c --text '^{FRG' `
 save NUM_SUPER_READS
 if [ ! -e CA/overlapFilter.success ];then
-( cd CA &&  tigStore -g genome.gkpStore -t genome.tigStore 5 -d layout -U | tr -d '-' | awk 'BEGIN{print \">unique unitigs\"}{if(\$1 == \"cns\"){seq=\$2}else if(\$1 == \"data.unitig_coverage_stat\" && \$2>=5){print seq\"N\"}}' | jellyfish count -L 2 -C -m $ovlMerSize -s \$ESTIMATED_GENOME_SIZE -t $config{NUM_THREADS} -o unitig_mers /dev/fd/0 &&  cat <(overlapStore -b 1 -e \$NUM_SUPER_READS -d genome.ovlStore  | awk '{if(\$1<\$2 && \$1<'\$NUM_SUPER_READS' && \$2<'\$NUM_SUPER_READS') print \$0}'|filter_overlap_file -t $config{NUM_THREADS} <(gatekeeper  -dumpfragments -withsequence genome.gkpStore| grep -P '^fragmentIdent|^fragmentSequence' |perl -ane 'BEGIN{\$flag=1}{if(\$flag){print ">";}print "\$F[2]\\n";\$flag=1-\$flag;}') unitig_mers /dev/fd/0) <(overlapStore -d genome.ovlStore | awk '{if(\$1<\$2 && (\$1>='\$NUM_SUPER_READS' || \$2>='\$NUM_SUPER_READS')) print \$1\" \"\$2\" \"\$3\" \"\$4\" \"\$5\" \"\$6\" \"\$7}')  |convertOverlap -ovl |gzip -c > overlaps.ovb.gz &&  mkdir -p ovlStoreBackup && mv 4-unitigger 5-consensus 5-consensus-coverage-stat 5-consensus-insert-sizes genome.tigStore genome.ovlStore ovlStoreBackup && overlapStoreBuild -o genome.ovlStore -M 16384 -g genome.gkpStore overlaps.ovb.gz && rm overlaps.ovb.gz1>overlapstore.err 2>&1 && touch overlapFilter.success)
+( cd CA &&  tigStore -g genome.gkpStore -t genome.tigStore 5 -d layout -U | tr -d '-' | awk 'BEGIN{print \">unique unitigs\"}{if(\$1 == \"cns\"){seq=\$2}else if(\$1 == \"data.unitig_coverage_stat\" && \$2>=5){print seq\"N\"}}' | jellyfish count -L 2 -C -m $ovlMerSize -s \$ESTIMATED_GENOME_SIZE -t $config{NUM_THREADS} -o unitig_mers /dev/fd/0 &&  cat <(overlapStore -b 1 -e \$NUM_SUPER_READS -d genome.ovlStore  | awk '{if(\$1<\$2 && \$1<'\$NUM_SUPER_READS' && \$2<'\$NUM_SUPER_READS') print \$0}'|filter_overlap_file -t $config{NUM_THREADS} <(gatekeeper  -dumpfragments -withsequence genome.gkpStore| grep -P '^fragmentIdent|^fragmentSequence' |perl -ane 'BEGIN{\$flag=1}{if(\$flag){print ">";}print "\$F[2]\\n";\$flag=1-\$flag;}') unitig_mers /dev/fd/0) <(overlapStore -d genome.ovlStore | awk '{if(\$1<\$2 && (\$1>='\$NUM_SUPER_READS' || \$2>='\$NUM_SUPER_READS')) print \$1\" \"\$2\" \"\$3\" \"\$4\" \"\$5\" \"\$6\" \"\$7}')  |convertOverlap -ovl |gzip -c > overlaps.ovb.gz &&  mkdir -p ovlStoreBackup && mv 4-unitigger 5-consensus 5-consensus-coverage-stat 5-consensus-insert-sizes genome.tigStore genome.ovlStore ovlStoreBackup && overlapStoreBuild -o genome.ovlStore -M 16384 -g genome.gkpStore overlaps.ovb.gz 1>overlapstore.err 2>&1 && rm overlaps.ovb.gz && touch overlapFilter.success)
 fi
 
 runCA -s runCA.spec stopAfter=consensusAfterUnitigger -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA1.out 2>&1
@@ -81,7 +81,7 @@ EOS
   print $out <<"EOS";
 runCA -s runCA.spec $config{CA_PARAMETERS} -p genome -d CA $other_parameters 1>runCA3.out 2>&1
 if [[ -e \"CA/9-terminator/genome.qc\" ]];then
-  echo \"CA success\"
+  log \"CA success\"
 else
   fail CA failed, check output under CA/ and runCA3.out
 fi
