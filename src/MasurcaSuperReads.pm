@@ -139,7 +139,7 @@ grep --text -A 1 '^>$f[0]' pe.linking.fa | grep --text -v '^\\-\\-' | sample_mat
 EOS
     }
   }
-  print $out "echo \"Using linking mates\"\n";
+  print $out "log \"Using linking mates\"\n";
 }
 
 
