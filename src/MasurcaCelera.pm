@@ -12,11 +12,13 @@ sub runCA {
   print $out <<"EOS";
 rm -f CA/0-overlaptrim-overlap/overlap.sh CA/1-overlapper/overlap.sh
 echo "computeInsertSize=0
-cgwMergeMissingThreshold=-1
-cgwMergeFilterLevel=1
 cgwDemoteRBP=0
 cnsReuseUnitigs=1
-unitigger=bog
+unitigger=bogart
+utgGraphErrorLimit=1000
+utgGraphErrorRate=0.015
+utgMergeErrorLimit=1000
+utgMergeErrorRate=0.025
 utgErrorLimit=0
 cnsConcurrency=$config{NUM_THREADS}" >runCA.spec
 EOS
