@@ -109,7 +109,7 @@ fail("no read data files specified") if(@{$config{PE_INFO}} + @{$config{JUMP_INF
 if(@prep_path) {
   unshift(@PATH, @prep_path);
 } else {
-  unshift(@PATH, $RealBin, $RealBin . "/../CA8/Linux-amd64/bin");
+  unshift(@PATH, $RealBin . "/../CA8/Linux-amd64/bin",$RealBin);
 }
 unshift(@LD_LIBRARY_PATH, @prep_ld) if @prep_ld;
 
@@ -207,7 +207,7 @@ EOS
 if(@prep_path) {
   print FILE "export PATH=\"", join(":", @prep_path), ":\$PATH\"\n";
 } else {
-  print FILE "export PATH=\"$RealBin:$RealBin/../CA8/Linux-amd64/bin:\$PATH\"\n";
+  print FILE "export PATH=\"$RealBin/../CA8/Linux-amd64/bin:$RealBin:\$PATH\"\n";
 }
 print FILE "save PATH\n";
 
