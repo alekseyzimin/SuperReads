@@ -27,11 +27,13 @@ EOS
     if(not(-e "CA/5-consensus/consensus.success")|| $rerun_pe || $rerun_sj){
       if(not(-d "CA/genome.ovlStore")|| $rerun_pe || $rerun_sj){
         print $out <<"EOS";
-TOTAL_READS=`cat  *.frg | grep -c --text '^{FRG' `
+runCA -s runCA.spec stopAfter=initialStoreBuilding -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA0.out 2>&1
+
+TOTAL_READS=`gatekeeper -dumpinfo -lastfragiid CA/genome.gkpStore | awk '{print \$NF}'`
 save TOTAL_READS
-ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/8); if(\$s>100000){print \$s}else{print \"100000\"}'`
+ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/10); if(\$s>100000){print \$s}else{print \"100000\"}'`
 save ovlRefBlockSize
-ovlCorrBatchSize=`perl -e '\$s=int('\$TOTAL_READS'/80); if(\$s>10000){print \$s}else{print \"10000\"}'`
+ovlCorrBatchSize=`perl -e '\$s=int('\$TOTAL_READS'/100); if(\$s>10000){print \$s}else{print \"10000\"}'`
 save ovlCorrBatchSize
 cnsMinFrags=`perl -e 'print int('\$TOTAL_READS'/256)'`
 save cnsMinFrags
