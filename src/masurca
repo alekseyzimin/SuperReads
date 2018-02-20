@@ -356,7 +356,7 @@ if(@{$config{JUMP_INFO}} > 0) {
       $list_frg_files .= "$f[0].cor.clean.frg ";
     }
   }else{
-    print FILE "log 'Filtering JUMP.'\n";
+    print FILE "log 'Filtering mate pairs'\n";
     MasurcaSuperReads::filter_jump(*FILE, %config);
   }
 }
