@@ -16,14 +16,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 $rn="";
-$max_len=2047;
+$max_len=$ARGV[0];
 $shooting_index=0;
-if($ARGV[0] eq ""){
+if($ARGV[1] eq ""){
 $suffix="super-read";
 }else{
-$suffix=$ARGV[0];
+$suffix=$ARGV[1];
 }
-print "$rn\n";
 while($line=<STDIN>){
     if($line =~ /^>/){
 	if(not($rn eq "")){
@@ -35,6 +34,7 @@ while($line=<STDIN>){
 	    }else{
 		$max_len_local=int(($l-int($max_len/5))/$l*$max_len);
 		$offset=int(($max_len_local-1)/2);
+                $offset=$max_len_local-10000 if($max_len_local-$offset>10000);
 	    	for($i=0;$i<$l;$i+=$offset){
 			print "$rn.$max_len_local.$i\n",substr($seq,$i,$max_len_local),"\n";
 		}
@@ -64,6 +64,7 @@ $seq=$rev_seq lt $seq ? $rev_seq : $seq;
             }else{
                 $max_len_local=int(($l-int($max_len/5))/$l*$max_len);
                 $offset=int(($max_len_local-1)/2);
+                $offset=$max_len_local-10000 if($max_len_local-$offset>10000);
                     for($i=0;$i<$l;$i+=$offset){
                         print "$rn.$max_len_local.$i\n",substr($seq,$i,$max_len_local),"\n";
                     }   

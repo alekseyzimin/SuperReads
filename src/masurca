@@ -416,7 +416,7 @@ print FILE "$RealBin/mega_reads_assemble_cluster.sh -Pb $config{GRID_BATCH_SIZE}
   }
 #create frg file for super reads
   if(not(-e "superReadSequences_shr.frg")||$rerun_pe==1){
-    print FILE "create_sr_frg.pl < work1/superReadSequences.fasta 2>/dev/null | fasta2frg.pl super >  superReadSequences_shr.frg.tmp && mv superReadSequences_shr.frg.tmp superReadSequences_shr.frg\n";
+    print FILE "create_sr_frg.pl 2047 < work1/superReadSequences.fasta 2>/dev/null | fasta2frg.pl super >  superReadSequences_shr.frg.tmp && mv superReadSequences_shr.frg.tmp superReadSequences_shr.frg\n";
   }
 ###done with super reads for PE###
   print FILE "\n";
@@ -429,7 +429,7 @@ if($config{STOP_AFTER_SR}) {
 if(@{$config{MOLECULO_INFO}} && not(-e "moleculo_shr.frg")){
          my $i=0;
          foreach my $f(@{$config{MOLECULO_INFO}}){
-         print FILE "perl -e '\$n=0;while(\$line=<>){print \">moleculo$i.\$n\\n\";\$n++;\$line=<>;print \$line;\$line=<>;\$line=<>;}' $f  | create_sr_frg.pl 2>/dev/null | fasta2frg_m.pl moleculo$i >>  moleculo_shr.frg\n";
+         print FILE "perl -e '\$n=0;while(\$line=<>){print \">moleculo$i.\$n\\n\";\$n++;\$line=<>;print \$line;\$line=<>;\$line=<>;}' $f  | create_sr_frg.pl 2047 2>/dev/null | fasta2frg_m.pl moleculo$i >>  moleculo_shr.frg\n";
          }
 }
 
