@@ -126,6 +126,7 @@ sub create_pe_linking_mates {
   foreach my $v (@{$config{PE_INFO}}){
     my @f = @$v;
     next if($f[3] eq $f[4]);
+    $list_frg_files .= "$f[0].linking.frg ";
     if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
       $linking_missing++;
     }
@@ -141,7 +142,6 @@ sub create_pe_linking_mates {
     foreach my $v (@{$config{PE_INFO}}){
       my @f = @$v;
       next if($f[3] eq $f[4]);
-      $list_frg_files .= "$f[0].linking.frg ";
       if(not(-e "$f[0].linking.frg")||$rerun_pe==1){
         print $out <<"EOS";      
 grep --text -A 1 '^>$f[0]' pe.linking.fa | grep --text -v '^\\-\\-' | sample_mate_pairs.pl \$MAX_LINKING_MATES \$NUM_LINKING_MATES 1 > $f[0].tmp && error_corrected2frg $f[0] $f[1] $f[2] 2000000000 $f[0].tmp > $f[0].linking.frg.tmp && rm $f[0].tmp && mv $f[0].linking.frg.tmp $f[0].linking.frg
