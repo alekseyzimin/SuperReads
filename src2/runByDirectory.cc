@@ -203,26 +203,29 @@ int main (int argc, char **argv)
     }
     //	       fgets_append (threadArgs.fauxReadFileDataStr, contigEndSeqFile); }
 
-#if 0
-    if (dirNum == 28)
-	 asm ("int3;");
-#endif
     atEnd = true;
     fileIndex=0;
+    int nlines=0;
+    char *fgets_ret;
+    int num_eof=0;
     while (fileIndex < readSeqFilesByDir.size()) {
     int lineNum=0;
-    while (fgets (line, 100, readSeqFilesByDir[fileIndex])) {
+    while (fgets_ret=fgets (line, 100, readSeqFilesByDir[fileIndex])) {
 	 if (line[0] == '>') 
 	      break;
 	 if (lineNum % 2 == 0)
 	      strcat (threadArgs.readFileDataStr, ">");
 	 strcat (threadArgs.readFileDataStr, line);
 	 ++lineNum;
+         ++nlines;
     }
+    if(fgets_ret == NULL) num_eof++;
     ++fileIndex;
     }
-
+    
+    if(num_eof == readSeqFilesByDir.size()) continue;
     if(line[0] == '>') atEnd = false;
+    if(nlines == 0) continue;
 	 
     if (args.mean_and_stdev_file_given) {
       int dirNumTemp;
