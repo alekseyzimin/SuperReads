@@ -63,7 +63,7 @@ reverse_seq=$rev_seq
 asm_flags=2
 rank=2
 map_len=51
-p=../sj.cor.clean2.fa
+p=../sj.cor.clean.fa
 EOS
 }else{
   my %ranks;
