@@ -41,7 +41,7 @@ sub rename_reads {
 
 sub estimate_optimal_kmer{
   my ($out, $filelist, $name) = @_;
-  my $max_kmer=151;
+  my $max_kmer=127;
   
   if($name eq "KMER_J"){
     print $out "$name=31\n";
