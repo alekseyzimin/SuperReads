@@ -205,7 +205,7 @@ int main (int argc, char **argv)
 
     atEnd = true;
     fileIndex=0;
-    int nlines=0;
+    //int nlines=0;
     int num_eof=0;
     while (fileIndex < readSeqFilesByDir.size()) {
     int lineNum=0;
@@ -217,7 +217,7 @@ int main (int argc, char **argv)
 	      strcat (threadArgs.readFileDataStr, ">");
 	 strcat (threadArgs.readFileDataStr, line);
 	 ++lineNum;
-         ++nlines;
+      //   ++nlines;
     }
     if(line[0] != '>' && lineNum==0) num_eof++;
     ++fileIndex;
@@ -225,7 +225,7 @@ int main (int argc, char **argv)
     
     if(line[0] == '>') atEnd = false;
     if(num_eof == readSeqFilesByDir.size()) atEnd = true;
-    if(nlines==0) continue;
+    //if(nlines==0) continue;
 
     if (args.mean_and_stdev_file_given) {
       int dirNumTemp;
