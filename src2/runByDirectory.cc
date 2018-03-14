@@ -206,11 +206,11 @@ int main (int argc, char **argv)
     atEnd = true;
     fileIndex=0;
     int nlines=0;
-    char *fgets_ret;
     int num_eof=0;
     while (fileIndex < readSeqFilesByDir.size()) {
     int lineNum=0;
-    while (fgets_ret=fgets (line, 100, readSeqFilesByDir[fileIndex])) {
+    line[0]='\0';
+    while (fgets (line, 100, readSeqFilesByDir[fileIndex])) {
 	 if (line[0] == '>') 
 	      break;
 	 if (lineNum % 2 == 0)
@@ -219,14 +219,14 @@ int main (int argc, char **argv)
 	 ++lineNum;
          ++nlines;
     }
-    if(fgets_ret == NULL) num_eof++;
+    if(line[0] != '>' && lineNum==0) num_eof++;
     ++fileIndex;
     }
     
-    if(num_eof == readSeqFilesByDir.size()) continue;
     if(line[0] == '>') atEnd = false;
-    if(nlines == 0) continue;
-	 
+    if(num_eof == readSeqFilesByDir.size()) atEnd = true;
+    if(nlines==0) continue;
+
     if (args.mean_and_stdev_file_given) {
       int dirNumTemp;
       int scanned = fscanf (meanAndStdevFile, "%d %d %d\n",
