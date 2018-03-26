@@ -23,6 +23,12 @@ $suffix="super-read";
 }else{
 $suffix=$ARGV[1];
 }
+if($ARGV[2] eq ""){
+$overlap=5000;
+}else{
+$suffix=$ARGV[2];
+}
+
 while($line=<STDIN>){
     if($line =~ /^>/){
 	if(not($rn eq "")){
@@ -34,7 +40,7 @@ while($line=<STDIN>){
 	    }else{
                 $max_len_local=int($l/int($l/$max_len+1));
 		$offset=int(($max_len_local-1)/2);
-                $offset=$max_len_local-5000 if($max_len_local-$offset>5000);
+                $offset=$max_len_local-$overlap if($max_len_local-$offset>$overlap);
 	    	for($i=0;$i<$l;$i+=$offset){
 			print "$rn.$max_len_local.$i\n",substr($seq,$i,$max_len_local),"\n";
 		}
@@ -64,7 +70,7 @@ $seq=$rev_seq lt $seq ? $rev_seq : $seq;
             }else{
                 $max_len_local=int($l/int($l/$max_len+1));
                 $offset=int(($max_len_local-1)/2);
-                $offset=$max_len_local-5000 if($max_len_local-$offset>5000);
+                $offset=$max_len_local-$overlap if($max_len_local-$offset>$overlap);
                     for($i=0;$i<$l;$i+=$offset){
                         print "$rn.$max_len_local.$i\n",substr($seq,$i,$max_len_local),"\n";
                     }   

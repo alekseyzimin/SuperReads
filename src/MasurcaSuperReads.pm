@@ -22,7 +22,8 @@ sub filter_jump {
     print $out "if [[ ! -e work2/superReads.success ]];then\n";
     print $out "fail Super reads failed, check super2.err and files in ./work2/\n";
     print $out "fi\n";
-    print $out "if [ ! \$KMER_J -eq \$KMER ];then\n";
+    print $out "JUMP_READ_LEN=`head -n 100000 sj.cor.fa | grep -v '^\@' |awk '{BEGIN m=0}{if(length(\$1)>m) m=length(\$1);}END{print m}'`\n";
+    print $out "if [ ! \$KMER_J -eq \$KMER ] && [ \$JUMP_READ_LEN -ge \$KMER ];then\n";
     print $out "createSuperReadsForDirectory.perl  -maxnodes 2000 -minreadsinsuperread 1 -l \$KMER -join-aggressive 1 -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.sj.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work2.1 sj.cor.fa 1> super2.1.err 2>&1\n";
     print $out "if [[ ! -e work2.1/superReads.success ]];then\n";
     print $out "fail Super reads failed, check super2.1.err and files in ./work2.1/\n";
