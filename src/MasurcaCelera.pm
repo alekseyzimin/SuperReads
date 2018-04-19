@@ -89,8 +89,7 @@ else
   log \"Fixing unitig consensus...\"
   mkdir CA/fix_unitig_consensus
   ( cd CA/fix_unitig_consensus
-    cp `which fix_unitigs.sh` .
-    ./fix_unitigs.sh genome 
+    fix_unitigs.sh genome 
    )
 #last resort if fixing failed -- we simply delete the ones that were not fixed
 log \"Fixing unitig consensus... last resort\"
