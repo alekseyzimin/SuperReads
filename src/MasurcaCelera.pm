@@ -87,13 +87,13 @@ if [[ -e \"CA/5-consensus/consensus.success\" ]];then
   log \"Unitig consensus success\"
 else
   log \"Fixing unitig consensus...\"
-  mkdir CA/fix_unitig_consensus
+  mkdir -p CA/fix_unitig_consensus
   ( cd CA/fix_unitig_consensus
     fix_unitigs.sh genome 
    )
 #last resort if fixing failed -- we simply delete the ones that were not fixed
 log \"Fixing unitig consensus... last resort\"
-(cd CA && tigStore -g genome.gkpStore -t genome.tigStore 2 -U -d layout |grep -P '^unitig|^cns' |awk 'BEGIN{flag=0}{if(flag==0){unitig=\$2}else{if(length(\$2)==0) print \"tigStore -g genome.gkpStore -t genome.tigStore 2 -u \"unitig\" -d layout > layout.tmp && tigStore -g genome.gkpStore -t genome.tigStore 2 -R <(head -n 12 layout.tmp |awk \\47{if(\$1 ~ \\\"data.num_frags\\\") print \\\"data.num_frags 1\\\";else print \$0}\\47) && tail -n +13 layout.tmp |awk \\47{print \\\"frg iid \\\"\$5\\\" mateiid 0\\\"}\\47 > gkp.edits.msg && gatekeeper --edit gkp.edits.msg genome.gkpStore 1>gkp.out 2>&1 && awk \\47{if(\$5>0){print \\\"frg iid \\\"\$5\\\" mateiid 0\\\"}}\\47 gkp.out > gkp.edits1.msg && gatekeeper --edit gkp.edits1.msg genome.gkpStore 1>gkp1.out 2>&1\\n"; }flag=1-flag;}' > dump_delete_unitigs.sh && bash dump_delete_unitigs.sh && touch 5-consensus/consensus.success
+(cd CA && tigStore -g genome.gkpStore -t genome.tigStore 2 -U -d layout |grep -P '^unitig|^cns' |awk 'BEGIN{flag=0}{if(flag==0){unitig=\$2}else{if(length(\$2)==0) print \"tigStore -g genome.gkpStore -t genome.tigStore 2 -u \"unitig\" -d layout > layout.tmp && tigStore -g genome.gkpStore -t genome.tigStore 2 -R <(head -n 12 layout.tmp |awk \\47{if(\$1 ~ \\\"data.num_frags\\\") print \\\"data.num_frags 1\\\";else print \$0}\\47) && tail -n +13 layout.tmp |awk \\47{print \\\"frg iid \\\"\$5\\\" mateiid 0\\\"}\\47 > gkp.edits.msg && gatekeeper --edit gkp.edits.msg genome.gkpStore 1>gkp.out 2>&1 && awk \\47{if(\$5>0){print \\\"frg iid \\\"\$5\\\" mateiid 0\\\"}}\\47 gkp.out > gkp.edits1.msg && gatekeeper --edit gkp.edits1.msg genome.gkpStore 1>gkp1.out 2>&1\\n"; }flag=1-flag;}' > dump_delete_unitigs.sh && bash ./dump_delete_unitigs.sh && touch 5-consensus/consensus.success
 )
 fi
 
