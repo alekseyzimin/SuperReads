@@ -27,6 +27,7 @@ my $default_values = {
   NUM_THREADS             => 2,
   NUM_CNS_THREADS         => 2,
   LIMIT_JUMP_COVERAGE     => 300,
+  MEGA_READS_ONE_PASS     => "",
   USE_LINKING_MATES       => 0,
   DO_HOMOPOLYMER_TRIM     => 0,
   CLOSE_GAPS              => 1,
@@ -92,8 +93,10 @@ USE_GRID=0
 GRID_QUEUE=all.q
 #batch size in the amount of long read sequence for each batch on the grid
 GRID_BATCH_SIZE=300000000
-#coverage by the longest Long reads to use
+#use at most this much coverage by the longest Pacbio or Nanopore reads
 LHE_COVERAGE=30
+#set to 1 to only do one pass of mega-reads, for faster but worse quality assembly
+MEGA_READS_ONE_PASS=0
 #this parameter is useful if you have too many Illumina jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
 LIMIT_JUMP_COVERAGE = 300
 #these are the additional parameters to Celera Assembler.  do not worry about performance, number or processors or batch sizes -- these are computed automatically. 
@@ -158,6 +161,9 @@ sub parse_parameters {
   } elsif($key eq "CLOSE_GAPS"){
     fail("bad value for CLOSE_GAPS, enter 0 or 1", $.) unless($param =~ /^[01]$/);
     $$res{CLOSE_GAPS} = int($param);
+  } elsif($key eq "MEGA_READS_ONE_PASS"){
+    fail("bad value for MEGA_READS_ONE_PASS, enter 0 or 1", $.) unless($param =~ /^[01]$/);
+    $$res{MEGA_READS_ONE_PASS} = "--onepass" if(not($param==0)) ;
   } elsif($key eq "USE_GRID"){
     fail("bad value for USE_GRID, enter 0 or 1", $.) unless($param =~ /^[01]$/);
     $$res{USE_GRID} = int($param);
