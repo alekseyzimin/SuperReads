@@ -71,11 +71,18 @@ sub default_config {
 # converted into Celera Assembler compatible .frg files (see
 # http://wgs-assembler.sourceforge.com)
 DATA
-PE= pe 180 20  /FULL_PATH/frag_1.fastq  /FULL_PATH/frag_2.fastq
+#Illumina paired end reads supplied as <two-character prefix> <fragment mean> <fragment stdev> <forward_reads> <reverse_reads>
+#if single-end, do not specify <reverse_reads>
+#MUST HAVE Illumina paired end reads to use MaSuRCA
+PE= pe 500 50  /FULL_PATH/frag_1.fastq  /FULL_PATH/frag_2.fastq
+#Illumina mate pair reads supplied as <two-character prefix> <fragment mean> <fragment stdev> <forward_reads> <reverse_reads>
 JUMP= sh 3600 200  /FULL_PATH/short_1.fastq  /FULL_PATH/short_2.fastq
-#pacbio reads must be in a single fasta file! make sure you provide absolute path
-PACBIO=/FULL_PATH/pacbio.fa
-OTHER=/FULL_PATH/file.frg
+#pacbio OR nanopore reads must be in a single fasta or fastq file with absolute path, can be gzipped
+#if you have both types of reads supply them both as NANOPORE type
+#PACBIO=/FULL_PATH/pacbio.fa
+#NANOPORE=/FULL_PATH/nanopore.fa
+#Other reads (Sanger, 454, etc) one frg file, concatenate your frg files into one if you have many
+#OTHER=/FULL_PATH/file.frg
 END
 
 PARAMETERS
@@ -84,8 +91,7 @@ EXTEND_JUMP_READS=0
 #this is k-mer size for deBruijn graph values between 25 and 127 are supported, auto will compute the optimal size based on the read data and GC content
 GRAPH_KMER_SIZE = auto
 #set this to 1 for all Illumina-only assemblies
-#set this to 1 if you have less than 20x long reads (454, Sanger, Pacbio) and less than 50x CLONE coverage by Illumina, Sanger or 454 mate pairs
-#otherwise keep at 0
+#set this to 0 if you have more than 15x coverage by long reads (Pacbio or Nanopore) or any other long reads/mate pairs (Illumina MP, Sanger, 454, etc)
 USE_LINKING_MATES = 0
 #specifies whether to run mega-reads correction on the grid
 USE_GRID=0
