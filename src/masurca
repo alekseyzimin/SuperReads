@@ -282,7 +282,7 @@ my $mmap_flag = $config{NO_MMAP} ? "-M" : "";
 
 if(not(-e "pe.cor.fa")||$rerun_pe==1){
   print FILE <<"EOS";
-log Error correct PE.
+log Error correct PE
 
 quorum_error_correct_reads  -q \$((MIN_Q_CHAR + $config{RELIABLE_Q_PARAM})) --contaminant=$RealBin/../share/adapter.jf -m $config{KMER_COUNT_THRESHOLD} -s 1 -g 1 -a $config{KMER_RELIABLE_THRESHOLD} -t $config{NUM_THREADS} -w $WINDOW -e $MAX_ERR_PER_WINDOW $mmap_flag $homo_polymer_flag quorum_mer_db.jf $list_pe_files --no-discard -o pe.cor.tmp --verbose 1>quorum.err 2>&1 && mv pe.cor.tmp.fa pe.cor.fa || fail Error correction of PE reads failed. Check pe.cor.log.
 EOS
@@ -296,7 +296,7 @@ print FILE "\n";
 if(@{$config{JUMP_INFO}} > 0){
     if(not(-e "sj.cor.fa")||$rerun_sj==1){
       print FILE <<"EOS";
-log Error correct JUMP.
+log Error correct JUMP
 
 quorum_error_correct_reads -q \$((MIN_Q_CHAR + $config{RELIABLE_Q_PARAM})) --contaminant=$RealBin/../share/adapter.jf -m $config{KMER_COUNT_THRESHOLD} -s 1 -g 2 -a $config{KMER_RELIABLE_THRESHOLD} -t $config{NUM_THREADS} -w $WINDOW -e $MAX_ERR_PER_WINDOW $mmap_flag $homo_polymer_flag quorum_mer_db.jf $list_jump_files --no-discard -o sj.cor.tmp --verbose 1>quorum.err 2>&1 && mv sj.cor.tmp.fa sj.cor.fa || fail Error correction of JUMP reads failed. Check sj.cor.log.
 EOS
@@ -313,7 +313,7 @@ $k_u_arg.=" sj.cor.fa" if(@{$config{JUMP_INFO}});
 print FILE "if [ -s ESTIMATED_GENOME_SIZE.txt ];then\n";
 print FILE "ESTIMATED_GENOME_SIZE=`head -n 1 ESTIMATED_GENOME_SIZE.txt`\n";
 print FILE "else\n";
-print FILE "log Estimating genome size.\n";
+print FILE "log Estimating genome size\n";
 if(not(-e "k_u_hash_0")||$rerun_pe==1||$rerun_sj==1){
     print FILE "jellyfish count -m 31 -t $config{NUM_THREADS} -C -s \$JF_SIZE -o k_u_hash_0 $k_u_arg\n";
 }
@@ -454,18 +454,18 @@ if($config{CLOSE_GAPS}){
     print FILE "  NSCF=`grep --text '^>'  \$CA_DIR/9-terminator/genome.scf.fasta |wc -l`\n";
     print FILE "  NCTG=`grep --text '^>'  \$CA_DIR/9-terminator/genome.ctg.fasta |wc -l`\n";
     print FILE "  if [ \$NCTG -eq \$NSCF ];then\n";
-    print FILE "    log 'No gap closing possible.'\n";
+    print FILE "    log 'No gap closing possible'\n";
     print FILE "  else\n";
     print FILE "    TERMINATOR=\"10-gapclose\"\n";
     print FILE "    if [ -s \$CA_DIR/10-gapclose/genome.scf.fasta ];then\n";
     print FILE "      log 'Gap closing done'\n";
     print FILE "    else\n";
-    print FILE "      log 'Gap closing.'\n";
+    print FILE "      log 'Gap closing'\n";
     my $reads_argument= join(" ", map { "--reads-file '$_'" } (@pe_files, @sj_files));
 
     print FILE "      closeGapsLocally.perl --max-reads-in-memory 1000000000 -s $config{JF_SIZE} --Celera-terminator-directory \$CA_DIR/9-terminator $reads_argument --output-directory \$CA_DIR/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $config{NUM_THREADS} --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 21 1>gapClose.err 2>&1\n";
     print FILE "      if [[ -e \"\$CA_DIR/10-gapclose/genome.ctg.fasta\" ]];then\n";
-    print FILE "        log 'Gap close success.'\n";
+    print FILE "        log 'Gap close success'\n";
     print FILE "      else\n";
     print FILE "        fail Gap close failed, you can still use pre-gap close files under \$CA_DIR/9-terminator/. Check gapClose.err for problems.\n";
     print FILE "      fi\n";#if test completed
