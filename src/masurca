@@ -489,7 +489,7 @@ print FILE "fi\n";
 
 ###Done !!!! Hoorayyyy!!! :)###
 print FILE "log 'All done'\n";
-print FILE "log 'Final stats for \$CA_DIR/final.genome.scf.fasta'\n";
+print FILE "log \"Final stats for \$CA_DIR/final.genome.scf.fasta\"\n";
 print FILE "ufasta n50 -A -S -C -E -N50 \$CA_DIR/final.genome.scf.fasta\n";
 
 script_done
