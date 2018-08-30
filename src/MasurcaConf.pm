@@ -17,7 +17,7 @@ my $default_values = {
   USE_GRID                => 0,
   GRID_QUEUE              => "all.q",
   GRID_BATCH_SIZE         => 300000000,
-  LHE_COVERAGE            => 30,
+  LHE_COVERAGE            => 25,
   JF_SIZE                 => 100000000,
   KMER                    => "auto",
   KMER_COUNT_THRESHOLD    => 1,
@@ -100,7 +100,7 @@ GRID_QUEUE=all.q
 #batch size in the amount of long read sequence for each batch on the grid
 GRID_BATCH_SIZE=300000000
 #use at most this much coverage by the longest Pacbio or Nanopore reads, discard the rest of the reads
-LHE_COVERAGE=30
+LHE_COVERAGE=25
 #set to 1 to only do one pass of mega-reads, for faster but worse quality assembly
 MEGA_READS_ONE_PASS=0
 #this parameter is useful if you have too many Illumina jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
