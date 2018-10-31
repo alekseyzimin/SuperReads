@@ -59,7 +59,7 @@ YAGGO_SOURCES = # Append all file to be built by yaggo
 bin_PROGRAMS += error_corrected2frg reverse_complement reduce_sr	\
                 sorted_merge create_k_unitigs_large_k 			\
                 create_k_unitigs_large_k2 homo_trim bloom_query		\
-                filter_overlap_file rename_filter_fastq 
+                filter_overlap_file rename_filter_fastq samToDelta 
 
 dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/create_end_pairs.pl src/close_gaps.sh		\
@@ -85,6 +85,7 @@ noinst_HEADERS += src/aligned_simple_array.hpp				\
                   src/create_k_unitigs_common.hpp
 
 homo_trim_SOURCES = src/homo_trim.cc
+samToDelta_SOURCES = src/samToDelta.cpp
 error_corrected2frg_SOURCES = src/error_corrected2frg.cc 
 YAGGO_SOURCES              += src/error_corrected2frg_cmdline.hpp
 reverse_complement_SOURCES = src/reverse_complement.cc
