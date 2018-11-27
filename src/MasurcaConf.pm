@@ -17,6 +17,7 @@ my $default_values = {
   USE_GRID                => 0,
   GRID_QUEUE              => "all.q",
   GRID_BATCH_SIZE         => 300000000,
+  GRID_ENGINE             => "SGE",
   LHE_COVERAGE            => 25,
   JF_SIZE                 => 100000000,
   KMER                    => "auto",
@@ -184,7 +185,10 @@ sub parse_parameters {
     $$res{GRID_QUEUE} = $param;
   } elsif($key eq "GRID_BATCH_SIZE"){
     fail("bad value for GRID_BATCH_SIZE", $.) unless($param =~ /^\d*$/);
-    $$res{GRID_BATCH_SIZE} = $param;        
+    $$res{GRID_BATCH_SIZE} = $param;
+  } elsif($key eq "GRID_ENGINE"){
+    fail("bad value for GRID_ENGINE, only SGE or SLURM are allowed", $.) unless($param eq "SGE" || $param eq "SLURM");
+    $$res{GRID_ENGINE} = $param; 
   } elsif($key eq "LIMIT_JUMP_COVERAGE"){
     fail("bad value for LIMIT_JUMP_COVERAGE, enter a number > 1", $.) if($param<=1);
     $$res{LIMIT_JUMP_COVERAGE} = int($param);
