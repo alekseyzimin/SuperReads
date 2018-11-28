@@ -96,7 +96,9 @@ GRAPH_KMER_SIZE = auto
 USE_LINKING_MATES = 0
 #specifies whether to run mega-reads correction on the grid
 USE_GRID=0
-#specifies queue to use when running on the grid MANDATORY
+#specifies grid engine to use SGE or SLURM
+GRID_ENGINE=SGE
+#specifies queue (for SGE) or partition (for SLURM) to use when running on the grid MANDATORY
 GRID_QUEUE=all.q
 #batch size in the amount of long read sequence for each batch on the grid
 GRID_BATCH_SIZE=300000000
