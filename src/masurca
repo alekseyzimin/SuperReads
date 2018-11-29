@@ -445,6 +445,11 @@ if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
     MasurcaCelera::runCA($rerun_pe,  $rerun_sj,*FILE, $list_frg_files, $tmplist, %config);
 }
 }
+#if we got here and assembly has not even started yet, it is possible that we exited normally from the mega-reads for grid execution
+print FILE "if [ ! -d \$CA_DIR ];then\n";
+print FILE "  fail \"mega-reads exited before assembly\"\n";
+print FILE "fi\n";
+
 #here we close gaps in scaffolds:  we use create_k_unitigs allowing to continue on count 1 sequence and then generate fake reads from the 
 #end sequences of contigs that are next to each other in scaffolds, and then use super reads software to close the gaps for k=17...31
 print FILE "TERMINATOR=\"9-terminator\"\n";
@@ -476,6 +481,7 @@ if($config{CLOSE_GAPS}){
     print FILE "fi\n";#if scaffolding failed
 }
 
+#here we filter for redundant scaffolds
 print FILE "if [ -s \$CA_DIR/\$TERMINATOR/genome.scf.fasta ];then\n";
 print FILE "  if [ ! -e \$CA_DIR/filter_map.contigs.success ];then\n";
 print FILE "  log 'Removing redundant scaffolds'\n";
