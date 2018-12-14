@@ -70,13 +70,13 @@ if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then
 else
   fail Overlap/unitig failed, check output under CA/ and runCA1.out
 fi
-log \"recomputing A-stat for super-reads\"
+log \"Recomputing A-stat for super-reads\"
 recompute_astat_superreads_CA8.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt superReadSequences_shr.frg
 
 if [ ! -e CA/overlapFilter.success ];then
 NUM_SUPER_READS=`cat superReadSequences_shr.frg $tmplist | grep -c --text '^{FRG' `
 save NUM_SUPER_READS
-log \"filtering overlaps\"
+log \"Filtering overlaps\"
 ( cd CA && \
 tigStore -g genome.gkpStore -t genome.tigStore 5 -U -d consensus | \
 awk -F "=" 'BEGIN{print ">unique unitigs";flag=0}{if(\$1 ~ /^>/){if(\$6>=5){flag=1}}else{if(flag){print \$1"N"}flag=0}}' | \
@@ -91,15 +91,14 @@ touch overlapFilter.success
 )
 
 runCA -s runCA.spec stopAfter=consensusAfterUnitigger -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA2.out 2>&1
-log \"recomputing A-stat for super-reads\"
+log \"Recomputing A-stat for super-reads\"
 recompute_astat_superreads_CA8.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt superReadSequences_shr.frg
 fi
 
 EOS
     }
   }
-#here we do the scaffolding, but first we have to check and fix unitig consensus
-  print $out <<"EOS";
+print $out <<"EOS";
 runCA -s runCA.spec $config{CA_PARAMETERS} -p genome -d CA $other_parameters 1>runCA3.out 2>&1
 if [[ -e \"CA/9-terminator/genome.qc\" ]];then
   log \"CA success\"
