@@ -48,7 +48,7 @@ runCA -s runCA.spec stopAfter=initialStoreBuilding -p genome -d CA $config{CA_PA
 
 TOTAL_READS=`gatekeeper -dumpinfo -lastfragiid CA/genome.gkpStore | awk '{print \$NF}'`
 save TOTAL_READS
-ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/10); if(\$s>100000){print \$s}else{print \"100000\"}'`
+ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/5); if(\$s>100000){print \$s}else{print \"100000\"}'`
 save ovlRefBlockSize
 ovlHashBlockLength=10000000
 save ovlHashBlockLength
