@@ -69,7 +69,6 @@ int main(int argc, char *argv[])
   if(first_char != '>')
     err::die("Invalid fasta file: no header found at beginning");
 
-constantInsertSize
   if(args.mean_arg<5000){
     printf("{VER\nver:2\n}\n"
         "{LIB\n" "act:A\n" "acc:%s\n"
