@@ -69,14 +69,25 @@ int main(int argc, char *argv[])
   if(first_char != '>')
     err::die("Invalid fasta file: no header found at beginning");
 
-  printf("{VER\nver:2\n}\n"
-         "{LIB\n" "act:A\n" "acc:%s\n"
-         "ori:I\n" "mea:%.3g\n" "std:%.3g\n"
-         "src:\n.\n" "nft:1\n" "fea:\n"
-         "doNotOverlapTrim=1\n.\n"
-         "}\n",
-         args.lib_id_arg, args.mean_arg, args.stdev_arg);
-
+constantInsertSize
+  if(args.mean_arg<5000){
+    printf("{VER\nver:2\n}\n"
+        "{LIB\n" "act:A\n" "acc:%s\n"
+        "ori:I\n" "mea:%.3g\n" "std:%.3g\n"
+        "src:\n.\n" "nft:1\n" "fea:\n"
+        "doNotOverlapTrim=1\n.\n"
+        "}\n",
+        args.lib_id_arg, args.mean_arg, args.stdev_arg);
+  }else{
+    printf("{VER\nver:2\n}\n"
+        "{LIB\n" "act:A\n" "acc:%s\n"
+        "ori:I\n" "mea:%.3g\n" "std:%.3g\n"
+        "src:\n.\n" "nft:1\n" "fea:\n"
+        "doNotOverlapTrim=1\n"
+        "constantInsertSize=1\n.\n"
+        "}\n",
+        args.lib_id_arg, args.mean_arg, args.stdev_arg);
+  }
    // First pass through reads: mark reads with "good" length
   while(fgets(header, FP)) {
      // Find read number
