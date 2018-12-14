@@ -109,7 +109,7 @@ fail("no read data files specified") if(@{$config{PE_INFO}} + @{$config{JUMP_INF
 if(@prep_path) {
   unshift(@PATH, @prep_path);
 } else {
-  unshift(@PATH, $RealBin . "/../CA/Linux-amd64/bin",$RealBin);
+  unshift(@PATH, $RealBin . "/../CA8/Linux-amd64/bin",$RealBin);
 }
 unshift(@LD_LIBRARY_PATH, @prep_ld) if @prep_ld;
 
@@ -207,7 +207,7 @@ EOS
 if(@prep_path) {
   print FILE "export PATH=\"", join(":", @prep_path), ":\$PATH\"\n";
 } else {
-  print FILE "export PATH=\"$RealBin/../CA/Linux-amd64/bin:$RealBin:\$PATH\"\n";
+  print FILE "export PATH=\"$RealBin/../CA8/Linux-amd64/bin:$RealBin:\$PATH\"\n";
 }
 print FILE "save PATH\n";
 
@@ -416,7 +416,7 @@ print FILE "$RealBin/mega_reads_assemble_cluster.sh -E $config{GRID_ENGINE} $con
   }
 #create frg file for super reads
   if(not(-e "superReadSequences_shr.frg")||$rerun_pe==1){
-    print FILE "create_sr_frg.pl 2047 < work1/superReadSequences.fasta 2>/dev/null | fasta2frg.pl super >  superReadSequences_shr.frg.tmp && mv superReadSequences_shr.frg.tmp superReadSequences_shr.frg\n";
+    print FILE "create_sr_frg.pl 65535 < work1/superReadSequences.fasta 2>/dev/null | fasta2frg.pl super >  superReadSequences_shr.frg.tmp && mv superReadSequences_shr.frg.tmp superReadSequences_shr.frg\n";
   }
 ###done with super reads for PE###
   print FILE "\n";
