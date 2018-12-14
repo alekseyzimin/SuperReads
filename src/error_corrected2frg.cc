@@ -82,7 +82,7 @@ constantInsertSize
     printf("{VER\nver:2\n}\n"
         "{LIB\n" "act:A\n" "acc:%s\n"
         "ori:I\n" "mea:%.3g\n" "std:%.3g\n"
-        "src:\n.\n" "nft:1\n" "fea:\n"
+        "src:\n.\n" "nft:2\n" "fea:\n"
         "doNotOverlapTrim=1\n"
         "constantInsertSize=1\n.\n"
         "}\n",
