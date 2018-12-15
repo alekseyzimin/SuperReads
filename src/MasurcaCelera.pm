@@ -9,7 +9,6 @@ sub runCA {
     ($ovlMerSize, $other_parameters) = (22, "doFragmentCorrection=1 doOverlapBasedTrimming=1 doExtendClearRanges=1 ovlMerSize=22");
   }
 print $out <<"EOS";
-rm -f CA/0-overlaptrim-overlap/overlap.sh CA/1-overlapper/overlap.sh
 echo "gkpFixInsertSizes=0
 merylThreads=$config{NUM_THREADS}
 merylMemory=32768
@@ -41,11 +40,14 @@ cgwErrorRate=0.1" > runCA.spec
 EOS
 
   if(not(-d "CA/7-0-CGW")|| $rerun_pe || $rerun_sj){
-    if(not(-e "CA/5-consensus/consensus.success") || not( -e "CA/recompute_astat.success") || $rerun_pe || $rerun_sj){
-      if(not(-d "CA/genome.ovlStore")|| $rerun_pe || $rerun_sj){
-        print $out <<"EOS";
+    if(not(-e "CA/overlapFilter.success") || not(-e "CA/5-consensus/consensus.success") || not( -e "CA/recompute_astat.success") || $rerun_pe || $rerun_sj){
+      if(not(-d "CA/genome.gkpStore")|| $rerun_pe || $rerun_sj){
+print $out <<"EOS";
 runCA -s runCA.spec stopAfter=initialStoreBuilding -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA0.out 2>&1
+EOS
+      }
 
+print $out <<"EOS";
 TOTAL_READS=`gatekeeper -dumpinfo -lastfragiid CA/genome.gkpStore | awk '{print \$NF}'`
 save TOTAL_READS
 ovlRefBlockSize=`perl -e '\$s=int('\$TOTAL_READS'/5); if(\$s>100000){print \$s}else{print \"100000\"}'`
@@ -54,16 +56,13 @@ ovlHashBlockLength=10000000
 save ovlHashBlockLength
 ovlCorrBatchSize=`perl -e '\$s=int('\$TOTAL_READS'/100); if(\$s>10000){print \$s}else{print \"10000\"}'`
 save ovlCorrBatchSize
-
 echo "ovlRefBlockSize=\$ovlRefBlockSize 
 ovlHashBlockLength=\$ovlHashBlockLength
 ovlCorrBatchSize=\$ovlCorrBatchSize
 " >> runCA.spec
-EOS
-      }
 
-print $out <<"EOS"; 
-rm -f CA/5-consensus/consensus.sh
+rm -f CA/0-overlaptrim-overlap/overlap.sh CA/1-overlapper/overlap.sh CA/3-overlapcorrection/frgcorr.sh CA/3-overlapcorrection/ovlcorr.sh CA/5-consensus/consensus.sh
+
 runCA -s runCA.spec stopAfter=consensusAfterUnitigger -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA1.out 2>&1
 
 
