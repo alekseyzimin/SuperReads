@@ -41,7 +41,7 @@ cgwErrorRate=0.1" > runCA.spec
 EOS
 
   if(not(-d "CA/7-0-CGW")|| $rerun_pe || $rerun_sj){
-    if(not(-e "CA/5-consensus/consensus.success")|| $rerun_pe || $rerun_sj){
+    if(not(-e "CA/5-consensus/consensus.success") || not( -e "CA/recompute_astat.success") || $rerun_pe || $rerun_sj){
       if(not(-d "CA/genome.ovlStore")|| $rerun_pe || $rerun_sj){
         print $out <<"EOS";
 runCA -s runCA.spec stopAfter=initialStoreBuilding -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA0.out 2>&1
@@ -65,13 +65,17 @@ EOS
 print $out <<"EOS"; 
 runCA -s runCA.spec stopAfter=consensusAfterUnitigger -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA1.out 2>&1
 rm -f CA/5-consensus/consensus.sh
+
 if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then
   log \"Overlap/unitig success\"
 else
   fail Overlap/unitig failed, check output under CA/ and runCA1.out
 fi
+
+if [ ! -e CA/recompute_astat.success ];then
 log \"Recomputing A-stat for super-reads\"
 recompute_astat_superreads_CA8.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt superReadSequences_shr.frg
+fi
 
 if [ ! -e CA/overlapFilter.success ];then
 NUM_SUPER_READS=`cat superReadSequences_shr.frg $tmplist | grep -c --text '^{FRG' `
@@ -86,11 +90,13 @@ overlapStoreBuild -o genome.ovlStore.BUILDING -M 32768 -g genome.gkpStore overla
 rm -rf ovlStoreBackup && \
 mkdir ovlStoreBackup && \
 mv 4-unitigger 5-consensus 5-consensus-coverage-stat 5-consensus-insert-sizes genome.tigStore genome.ovlStore ovlStoreBackup && \
-mv genome.ovlStore.BUILDING genome.ovlStore && \
-touch overlapFilter.success
+mv genome.ovlStore.BUILDING genome.ovlStore && rm recompute_astat.success && touch overlapFilter.success
 )
+fi
 
-runCA -s runCA.spec stopAfter=consensusAfterUnitigger -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA2.out 2>&1
+runCA -s runCA.spec stopAfter=consensusAfterUnitigger -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA2.out 2>&1 
+
+if [ ! -e CA/recompute_astat.success ];then
 log \"Recomputing A-stat for super-reads\"
 recompute_astat_superreads_CA8.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt superReadSequences_shr.frg
 fi
