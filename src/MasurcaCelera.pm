@@ -94,10 +94,8 @@ mv 4-unitigger 5-consensus 5-consensus-coverage-stat 5-consensus-insert-sizes ge
 mv genome.ovlStore.BUILDING genome.ovlStore && rm recompute_astat.success && touch overlapFilter.success
 )
 runCA -s runCA.spec stopAfter=consensusAfterUnitigger -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA2.out 2>&1 
-  if [ ! -e CA/recompute_astat.success ];then
-    log \"Recomputing A-stat for super-reads\"
-    recompute_astat_superreads_CA8.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt superReadSequences_shr.frg
-  fi
+log \"Recomputing A-stat for super-reads\"
+recompute_astat_superreads_CA8.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt superReadSequences_shr.frg
 fi
 
 EOS
