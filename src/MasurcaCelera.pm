@@ -63,22 +63,22 @@ ovlCorrBatchSize=\$ovlCorrBatchSize
 
 rm -f CA/0-overlaptrim-overlap/overlap.sh CA/1-overlapper/overlap.sh CA/3-overlapcorrection/frgcorr.sh CA/3-overlapcorrection/ovlcorr.sh CA/5-consensus/consensus.sh
 
-runCA -s runCA.spec stopAfter=consensusAfterUnitigger -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA1.out 2>&1
+runCA -s runCA.spec stopBefore=scaffolder -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA1.out 2>&1
 
 if [ ! -d CA/1-overlapper ]; then
   rm -f CA/0-overlaptrim-overlap/overlap.sh CA/1-overlapper/overlap.sh && \
-  runCA -s runCA.spec -p genome -d CA stopAfter=consensusAfterUnitigger $other_parameters superReadSequences_shr.frg $frg_files   1>>runCA1.out 2>&1
+  runCA -s runCA.spec -p genome -d CA stopBefore=scaffolder $other_parameters superReadSequences_shr.frg $frg_files   1>>runCA1.out 2>&1
 fi
 
 if [ ! -d CA/3-overlapcorrection ]; then
   rm -f CA/0-overlaptrim-overlap/overlap.sh CA/1-overlapper/overlap.sh && \
-  runCA -s runCA.spec -p genome -d CA stopAfter=consensusAfterUnitigger $other_parameters superReadSequences_shr.frg $frg_files   1>>runCA1.out 2>&1
+  runCA -s runCA.spec -p genome -d CA stopBefore=scaffolder $other_parameters superReadSequences_shr.frg $frg_files   1>>runCA1.out 2>&1
 fi
 
 if [ ! -e CA/4-unitigger/unitigger.err ]; then
   rm -f CA/0-overlaptrim-overlap/overlap.sh CA/1-overlapper/overlap.sh CA/3-overlapcorrection/frgcorr.sh CA/3-overlapcorrection/ovlcorr.sh
   echo doFragmentCorrection=0 >> runCA.spec
-  runCA -s runCA.spec -p genome -d CA stopAfter=consensusAfterUnitigger $other_parameters superReadSequences_shr.frg $frg_files   1>>runCA1.out 2>&1
+  runCA -s runCA.spec -p genome -d CA stopBefore=scaffolder $other_parameters superReadSequences_shr.frg $frg_files   1>>runCA1.out 2>&1
 fi
 
 if [ -e CA/4-unitigger/unitigger.err ];then
@@ -107,7 +107,7 @@ mkdir ovlStoreBackup && \
 mv 4-unitigger 5-consensus 5-consensus-coverage-stat 5-consensus-insert-sizes genome.tigStore genome.ovlStore ovlStoreBackup && \
 mv genome.ovlStore.BUILDING genome.ovlStore && rm recompute_astat.success && touch overlapFilter.success
 )
-runCA -s runCA.spec stopAfter=consensusAfterUnitigger -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA2.out 2>&1 
+runCA -s runCA.spec stopBefore=scaffolder -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA2.out 2>&1 
 log \"Recomputing A-stat for super-reads\"
 recompute_astat_superreads_CA8.sh genome CA \$PE_AVG_READ_LENGTH work1/readPlacementsInSuperReads.final.read.superRead.offset.ori.txt superReadSequences_shr.frg
 fi
