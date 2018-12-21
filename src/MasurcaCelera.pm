@@ -65,11 +65,26 @@ rm -f CA/0-overlaptrim-overlap/overlap.sh CA/1-overlapper/overlap.sh CA/3-overla
 
 runCA -s runCA.spec stopAfter=consensusAfterUnitigger -p genome -d CA $config{CA_PARAMETERS} $other_parameters superReadSequences_shr.frg $frg_files   1> runCA1.out 2>&1
 
+if [ ! -d CA/1-overlapper ]; then
+  rm -f CA/0-overlaptrim-overlap/overlap.sh CA/1-overlapper/overlap.sh && \
+  runCA -s runCA.spec -p genome -d CA stopAfter=consensusAfterUnitigger $other_parameters superReadSequences_shr.frg $frg_files   1>>runCA1.out 2>&1
+fi
 
-if [[ -e \"CA/4-unitigger/unitigger.err\" ]];then
-  log \"Overlap/unitig success\"
+if [ ! -d CA/3-overlapcorrection ]; then
+  rm -f CA/0-overlaptrim-overlap/overlap.sh CA/1-overlapper/overlap.sh && \
+  runCA -s runCA.spec -p genome -d CA stopAfter=consensusAfterUnitigger $other_parameters superReadSequences_shr.frg $frg_files   1>>runCA1.out 2>&1
+fi
+
+if [ ! -e CA/4-unitigger/unitigger.err ]; then
+  rm -f CA/0-overlaptrim-overlap/overlap.sh CA/1-overlapper/overlap.sh CA/3-overlapcorrection/frgcorr.sh CA/3-overlapcorrection/ovlcorr.sh
+  echo doFragmentCorrection=0 >> runCA.spec
+  runCA -s runCA.spec -p genome -d CA stopAfter=consensusAfterUnitigger $other_parameters superReadSequences_shr.frg $frg_files   1>>runCA1.out 2>&1
+fi
+
+if [ -e CA/4-unitigger/unitigger.err ];then
+  log Overlap/unitig success
 else
-  fail Overlap/unitig failed, check output under CA/ and runCA1.out
+  fail Overlap/unitig failed, check output under CA/ and runCA1.out, try re-generating and re-running assemble.sh
 fi
 
 if [ ! -e CA/recompute_astat.success ];then
