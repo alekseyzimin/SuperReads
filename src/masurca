@@ -298,7 +298,7 @@ if(@{$config{JUMP_INFO}} > 0){
       print FILE <<"EOS";
 log Error correct JUMP
 
-quorum_error_correct_reads -q \$((MIN_Q_CHAR + $config{RELIABLE_Q_PARAM})) --contaminant=$RealBin/../share/adapter.jf -m $config{KMER_COUNT_THRESHOLD} -s 1 -g 2 -a $config{KMER_RELIABLE_THRESHOLD} -t $config{NUM_THREADS} -w $WINDOW -e $MAX_ERR_PER_WINDOW $mmap_flag $homo_polymer_flag quorum_mer_db.jf $list_jump_files --no-discard -o sj.cor.tmp --verbose 1>quorum.err 2>&1 && mv sj.cor.tmp.fa sj.cor.fa || fail Error correction of JUMP reads failed. Check sj.cor.log.
+quorum_error_correct_reads -q \$((\$MIN_Q_CHAR + $config{RELIABLE_Q_PARAM})) --contaminant=$RealBin/../share/adapter.jf -m $config{KMER_COUNT_THRESHOLD} -s 1 -g 2 -a $config{KMER_RELIABLE_THRESHOLD} -t $config{NUM_THREADS} -w $WINDOW -e $MAX_ERR_PER_WINDOW $mmap_flag $homo_polymer_flag quorum_mer_db.jf $list_jump_files --no-discard -o sj.cor.tmp --verbose 1>quorum.err 2>&1 && mv sj.cor.tmp.fa sj.cor.fa || fail Error correction of JUMP reads failed. Check sj.cor.log.
 EOS
       $rerun_sj=1;
     }

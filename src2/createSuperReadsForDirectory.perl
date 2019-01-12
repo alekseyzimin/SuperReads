@@ -196,10 +196,10 @@ if ($tempSize == 0) {
 else {
     if ($minReadsInSuperRead > 1) {
 	$minFileSizeToPass = 0;
-	$cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile | perl -ane '{print \$F[0]*20}'` -o $superReadCountsFile $joinerOutput"; }
+	$cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFileTwoPasses -n `cat $numKUnitigsFile | perl -ane '{print \$F[0]*50}'` -o $superReadCountsFile $joinerOutput"; }
     else {
 	$minFileSizeToPass = $normalFileSizeMinimum;
-	$cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFile -n `cat $numKUnitigsFile | perl -ane '{print \$F[0]*20}'` -o $superReadCountsFile -i $joinerOutput"; }
+	$cmd= "$exeDir/getSuperReadInsertCountsFromReadPlacementFile -n `cat $numKUnitigsFile | perl -ane '{print \$F[0]*50}'` -o $superReadCountsFile -i $joinerOutput"; }
     &runCommandAndExitIfBad ($cmd, $superReadCountsFile, $minFileSizeToPass, "getSuperReadInsertCounts", $superReadCountsFile);
 }
 
