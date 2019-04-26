@@ -36,6 +36,7 @@ my $default_values = {
   STOP_AFTER_SR           => 0,
   CA_PARAMETERS           => "",
   SOAP_ASSEMBLY           => 0,
+  FLYE_ASSEMBLY           => 0,
 
   # Data
   PE_INFO       => [],
@@ -101,7 +102,7 @@ GRID_ENGINE=SGE
 #specifies queue (for SGE) or partition (for SLURM) to use when running on the grid MANDATORY
 GRID_QUEUE=all.q
 #batch size in the amount of long read sequence for each batch on the grid
-GRID_BATCH_SIZE=300000000
+GRID_BATCH_SIZE=500000000
 #use at most this much coverage by the longest Pacbio or Nanopore reads, discard the rest of the reads
 LHE_COVERAGE=25
 #set to 1 to only do one pass of mega-reads, for faster but worse quality assembly
@@ -119,8 +120,10 @@ CLOSE_GAPS=1
 NUM_THREADS = 16
 #this is mandatory jellyfish hash size -- a safe value is estimated_genome_size*estimated_coverage
 JF_SIZE = 200000000
-#set this to 1 to use SOAPdenovo contigging/scaffolding module.  Assembly will be worse but will run faster. Useful for very large (>5Gbp) genomes from Illumina-only data
+#ILLUMINA ONLY. Set this to 1 to use SOAPdenovo contigging/scaffolding module.  Assembly will be worse but will run faster. Useful for very large (>5Gbp) genomes from Illumina-only data
 SOAP_ASSEMBLY=0
+#Hybrid Illumina+Nanopore/PacBio assembly ONLY.  Set this to 1 to use Flye assembler for final assembly of corrected mega-reads.  A lot faster than CA, at the expense of some contiguity
+FLYE_ASSEMBLY=0
 END
 EOS
 }
@@ -220,6 +223,9 @@ sub parse_parameters {
   } elsif($key eq "SOAP_ASSEMBLY") {
     fail("bad value for SOAP_ASSEMBLY, enter 0 or 1", $.) unless($param =~ /^[01]$/);
     $$res{SOAP_ASSEMBLY} = int($param);   
+  } elsif($key eq "FLYE_ASSEMBLY") {
+    fail("bad value for FLYE_ASSEMBLY, enter 0 or 1", $.) unless($param =~ /^[01]$/);
+    $$res{FLYE_ASSEMBLY} = int($param);
   } else {
     return 1;
   }
