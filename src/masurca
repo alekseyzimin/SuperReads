@@ -395,6 +395,14 @@ if(@{$config{REF_INFO}}){
   }
   if($config{FLYE_ASSEMBLY}){
   print FILE "$RealBin/mega_reads_assemble_cluster.sh  -F -E $config{GRID_ENGINE} $config{MEGA_READS_ONE_PASS} -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../Flye/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" $parameters\n";
+  print FILE "if [ ! -s flye/scaffolds.fasta ];then\n";
+  print FILE "  fail \"Assembly with flye failed, see files under flye/\"\n";\
+  print FILE "else\n"
+  print FILE "  log 'All done'\n";
+  print FILE "  log \"Final stats for flye/scaffolds.fasta\"\n";
+  print FILE "  ufasta n50 -a flye/scaffolds.fasta\n";
+  print FILE "fi\n";
+  script_done;
   }else{
   print FILE "$RealBin/mega_reads_assemble_cluster.sh  -E $config{GRID_ENGINE} $config{MEGA_READS_ONE_PASS} -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" $parameters\n";
   }
