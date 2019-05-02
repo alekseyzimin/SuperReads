@@ -85,6 +85,8 @@ JUMP= sh 3600 200  /FULL_PATH/short_1.fastq  /FULL_PATH/short_2.fastq
 #NANOPORE=/FULL_PATH/nanopore.fa
 #Other reads (Sanger, 454, etc) one frg file, concatenate your frg files into one if you have many
 #OTHER=/FULL_PATH/file.frg
+#synteny-assisted assembly, concatenate all reference genomes into one reference.fa; works for Illumina-only data
+#REFERENCE=/FULL_PATH/nanopore.fa
 END
 
 PARAMETERS
