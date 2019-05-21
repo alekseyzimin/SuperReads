@@ -90,6 +90,7 @@ JUMP= sh 3600 200  /FULL_PATH/short_1.fastq  /FULL_PATH/short_2.fastq
 END
 
 PARAMETERS
+#PLEASE READ all comments to essential parameters below, and set the parameters according to your project
 #set this to 1 if your Illumina jumping library reads are shorter than 100bp
 EXTEND_JUMP_READS=0
 #this is k-mer size for deBruijn graph values between 25 and 127 are supported, auto will compute the optimal size based on the read data and GC content
@@ -97,7 +98,7 @@ GRAPH_KMER_SIZE = auto
 #set this to 1 for all Illumina-only assemblies
 #set this to 0 if you have more than 15x coverage by long reads (Pacbio or Nanopore) or any other long reads/mate pairs (Illumina MP, Sanger, 454, etc)
 USE_LINKING_MATES = 0
-#specifies whether to run mega-reads correction on the grid
+#specifies whether to run the assembly on the grid
 USE_GRID=0
 #specifies grid engine to use SGE or SLURM
 GRID_ENGINE=SGE
@@ -106,25 +107,24 @@ GRID_QUEUE=all.q
 #batch size in the amount of long read sequence for each batch on the grid
 GRID_BATCH_SIZE=500000000
 #use at most this much coverage by the longest Pacbio or Nanopore reads, discard the rest of the reads
+#can increase this to 30 or 35 if your reads are short (N50<7000bp)
 LHE_COVERAGE=25
-#set to 1 to only do one pass of mega-reads, for faster but worse quality assembly
+#set to 0 (default) to do two passes of mega-reads for slower, but higher quality assembly, otherwise set to 1
 MEGA_READS_ONE_PASS=0
 #this parameter is useful if you have too many Illumina jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
 LIMIT_JUMP_COVERAGE = 300
 #these are the additional parameters to Celera Assembler.  do not worry about performance, number or processors or batch sizes -- these are computed automatically. 
-#set cgwErrorRate=0.25 for bacteria and 0.1<=cgwErrorRate<=0.15 for other organisms.
+#CABOG ASSEMBLY ONLY: set cgwErrorRate=0.25 for bacteria and 0.1<=cgwErrorRate<=0.15 for other organisms.
 CA_PARAMETERS =  cgwErrorRate=0.15
-#minimum count k-mers used in error correction 1 means all k-mers are used.  one can increase to 2 if Illumina coverage >100
-KMER_COUNT_THRESHOLD = 1
-#whether to attempt to close gaps in scaffolds with Illumina data
+#CABOG ASSEMBLY ONLY: whether to attempt to close gaps in scaffolds with Illumina  or long read data
 CLOSE_GAPS=1
-#auto-detected number of cpus to use
+#auto-detected number of cpus to use, set this to the number of CPUs/threads per node you will be using
 NUM_THREADS = 16
-#this is mandatory jellyfish hash size -- a safe value is estimated_genome_size*estimated_coverage
+#this is mandatory jellyfish hash size -- a safe value is estimated_genome_size*20
 JF_SIZE = 200000000
-#ILLUMINA ONLY. Set this to 1 to use SOAPdenovo contigging/scaffolding module.  Assembly will be worse but will run faster. Useful for very large (>5Gbp) genomes from Illumina-only data
+#ILLUMINA ONLY. Set this to 1 to use SOAPdenovo contigging/scaffolding module.  Assembly will be worse but will run faster. Useful for very large (>=8Gbp) genomes from Illumina-only data
 SOAP_ASSEMBLY=0
-#Hybrid Illumina+Nanopore/PacBio assembly ONLY.  Set this to 1 to use Flye assembler for final assembly of corrected mega-reads.  A lot faster than CA, at the expense of some contiguity
+#Hybrid Illumina paired end + Nanopore/PacBio assembly ONLY.  Set this to 1 to use Flye assembler for final assembly of corrected mega-reads.  A lot faster than CABOG, at the expense of some contiguity. Works well even when MEGA_READS_ONE_PASS is set to 1.  DO NOT use if you have less than 15x coverage by long reads.
 FLYE_ASSEMBLY=0
 END
 EOS
