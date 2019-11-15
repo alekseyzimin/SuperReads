@@ -49,6 +49,8 @@ my $skip_checking;
 my @prep_path;
 my @prep_ld;
 my $help;
+my $version_str="version 3.3.5";
+my $version;
 
 my $usage = "USAGE: $0 <config_file>";
 my $help_str = <<"EOS" ;
@@ -57,6 +59,7 @@ sample configuration file can be generated with the -g switch. The
 assembly script will run the assembly proper.
 
 Options:
+ -v, --version             Report version
  -o, --output              Assembly script ($assembly_script)
  -g, --generate            Generate example configuration file
  -p, --path                Prepend to PATH in assembly script
@@ -67,6 +70,7 @@ EOS
 
 GetOptions("o|output=s"          => \$assembly_script,
            "g|generate"          => \$generate_default,
+           "v|version"           => \$version,
            "p|path=s"            => \@prep_path,
            "l|ld-library-path=s" => \@prep_ld,
            "skip-checking"       => \$skip_checking,
@@ -74,6 +78,10 @@ GetOptions("o|output=s"          => \$assembly_script,
 
 if($help) {
   print "$help_str";
+  exit(0);
+}
+if($version){
+  print "$version_str\n";
   exit(0);
 }
 fail $usage if @ARGV != 1;
