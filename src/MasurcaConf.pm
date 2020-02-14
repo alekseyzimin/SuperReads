@@ -119,13 +119,18 @@ LIMIT_JUMP_COVERAGE = 300
 CA_PARAMETERS =  cgwErrorRate=0.15
 #CABOG ASSEMBLY ONLY: whether to attempt to close gaps in scaffolds with Illumina  or long read data
 CLOSE_GAPS=1
-#auto-detected number of cpus to use, set this to the number of CPUs/threads per node you will be using
+#number of cpus to use, set this to the number of CPUs/threads per node you will be using
 NUM_THREADS = 16
 #this is mandatory jellyfish hash size -- a safe value is estimated_genome_size*20
 JF_SIZE = 200000000
-#ILLUMINA ONLY. Set this to 1 to use SOAPdenovo contigging/scaffolding module.  Assembly will be worse but will run faster. Useful for very large (>=8Gbp) genomes from Illumina-only data
+#ILLUMINA ONLY. Set this to 1 to use SOAPdenovo contigging/scaffolding module.  
+#Assembly will be worse but will run faster. Useful for very large (>=8Gbp) genomes from Illumina-only data
 SOAP_ASSEMBLY=0
-#Hybrid Illumina paired end + Nanopore/PacBio assembly ONLY.  Set this to 1 to use Flye assembler for final assembly of corrected mega-reads.  A lot faster than CABOG, at the expense of some contiguity. Works well even when MEGA_READS_ONE_PASS is set to 1.  DO NOT use if you have less than 15x coverage by long reads.
+#If you are doing Hybrid Illumina paired end + Nanopore/PacBio assembly ONLY (no Illumina mate pairs or OTHER frg files).  
+#Set this to 1 to use Flye assembler for final assembly of corrected mega-reads.  
+#A lot faster than CABOG, AND QUALITY IS THE SAME OR BETTER. 
+#Works well even when MEGA_READS_ONE_PASS is set to 1.  
+#DO NOT use if you have less than 15x coverage by long reads.
 FLYE_ASSEMBLY=0
 END
 EOS
