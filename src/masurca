@@ -49,7 +49,7 @@ my $skip_checking;
 my @prep_path;
 my @prep_ld;
 my $help;
-my $version_str="version 3.3.8";
+my $version_str="version 3.4.0";
 my $version;
 
 my $usage = "USAGE: $0 <config_file>";
