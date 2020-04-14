@@ -336,7 +336,7 @@ print FILE "log \"Estimated genome size: \$ESTIMATED_GENOME_SIZE\"\n";
 print FILE "\n";
 ###build k-unitigs###
 
-if(not(-e "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
+if(not(-s "guillaumeKUnitigsAtLeast32bases_all.fasta")||$rerun_pe==1||$rerun_sj==1){
     print FILE "log Creating k-unitigs with k=\$KMER\n";
     print FILE "create_k_unitigs_large_k -c \$((\$KMER-1)) -t $config{NUM_THREADS} -m \$KMER -n \$((\$ESTIMATED_GENOME_SIZE*2)) -l \$KMER -f `perl -e 'print 1/'\$KMER'/1e5'` $k_u_arg  | grep --text -v '^>' | perl -ane '{\$seq=\$F[0]; \$F[0]=~tr/ACTGactg/TGACtgac/;\$revseq=reverse(\$F[0]); \$h{(\$seq ge \$revseq)?\$seq:\$revseq}=1;}END{\$n=0;foreach \$k(keys \%h){print \">\",\$n++,\" length:\",length(\$k),\"\\n\$k\\n\"}}' > guillaumeKUnitigsAtLeast32bases_all.fasta.tmp && mv guillaumeKUnitigsAtLeast32bases_all.fasta.tmp guillaumeKUnitigsAtLeast32bases_all.fasta\n";
     print FILE "if [[ \$KMER -eq \$KMER_J ]];then\n";
@@ -493,7 +493,7 @@ if($config{CLOSE_GAPS}){
     my $reads_argument= join(" ", map { "--reads-file '$_'" } (@pe_files, @sj_files));
 
     print FILE "      closeGapsLocally.perl --max-reads-in-memory 1000000000 -s $config{JF_SIZE} --Celera-terminator-directory \$CA_DIR/9-terminator $reads_argument --output-directory \$CA_DIR/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $config{NUM_THREADS} --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 21 1>gapClose.err 2>&1\n";
-    print FILE "      if [[ -e \"\$CA_DIR/10-gapclose/genome.ctg.fasta\" ]];then\n";
+    print FILE "      if [[ -s \"\$CA_DIR/10-gapclose/genome.ctg.fasta\" ]];then\n";
     print FILE "        log 'Gap close success'\n";
     print FILE "      else\n";
     print FILE "        fail Gap close failed, you can still use pre-gap close files under \$CA_DIR/9-terminator/. Check gapClose.err for problems.\n";
