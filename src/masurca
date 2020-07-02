@@ -393,16 +393,16 @@ if(@{$config{REF_INFO}}){
   script_done;
 }elsif(@{$config{NANOPORE_RNA_INFO}}){
   my $parameters;
-  $parameters=" -B 10 -D 0.01 -r $config{NANOPORE_RNA_INFO}[0] ";
+  $parameters=" -B 10 -D 0.02 -r $config{NANOPORE_RNA_INFO}[0] ";
   print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
   print FILE "$RealBin/mega_reads_assemble_cluster.sh  -1 -E $config{GRID_ENGINE}  -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../CA8/Linux-amd64/bin $parameters\n";
   script_done;
 }elsif(@{$config{PACBIO_INFO}} || @{$config{NANOPORE_INFO}}){
   my $parameters;
   if(@{$config{PACBIO_INFO}}){
-  $parameters=" -B 10 -D 0.01 -p $config{PACBIO_INFO}[0] ";
+  $parameters=" -B 10 -D 0.02 -p $config{PACBIO_INFO}[0] ";
   }else{
-  $parameters=" -B 10 -D 0.01 -n $config{NANOPORE_INFO}[0] ";
+  $parameters=" -B 10 -D 0.02 -n $config{NANOPORE_INFO}[0] ";
   }
   print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
   if($config{USE_LINKING_MATES} == 1) {
