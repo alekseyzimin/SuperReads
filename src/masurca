@@ -88,10 +88,13 @@ fail $usage if @ARGV != 1;
 $config_file = $ARGV[0];
 
 if($generate_default) {
-  fail "Refusing to overwrite existing configuration file '$config_file'" if(-e $config_file);
-  open(FILE, ">", $config_file) or fail "Error opening configuration file '$config_file': $!";
-  print(FILE MasurcaConf::default_config);
-  close(FILE);
+  if(-e $config_file){
+    print "Refusing to overwrite existing configuration file '$config_file'";
+  }else{
+    open(FILE, ">", $config_file);
+    print(FILE MasurcaConf::default_config);
+    close(FILE);
+  }
   exit(0);
 }
 
