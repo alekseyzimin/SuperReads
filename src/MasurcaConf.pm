@@ -84,7 +84,7 @@ JUMP= sh 3600 200  /FULL_PATH/short_1.fastq  /FULL_PATH/short_2.fastq
 #if you have both types of reads supply them both as NANOPORE type
 #PACBIO=/FULL_PATH/pacbio.fa
 #NANOPORE=/FULL_PATH/nanopore.fa
-#Other reads (Sanger, 454, etc) one frg file, concatenate your frg files into one if you have many
+#Legacy reads (Sanger, 454, etc) in one frg file, concatenate your frg files into one if you have many
 #OTHER=/FULL_PATH/file.frg
 #synteny-assisted assembly, concatenate all reference genomes into one reference.fa; works for Illumina-only data
 #REFERENCE=/FULL_PATH/nanopore.fa
@@ -114,7 +114,7 @@ LHE_COVERAGE=25
 MEGA_READS_ONE_PASS=0
 #this parameter is useful if you have too many Illumina jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
 LIMIT_JUMP_COVERAGE = 300
-#these are the additional parameters to Celera Assembler.  do not worry about performance, number or processors or batch sizes -- these are computed automatically. 
+#these are the additional parameters to Celera Assembler; do not worry about performance, number or processors or batch sizes -- these are computed automatically. 
 #CABOG ASSEMBLY ONLY: set cgwErrorRate=0.25 for bacteria and 0.1<=cgwErrorRate<=0.15 for other organisms.
 CA_PARAMETERS =  cgwErrorRate=0.15
 #CABOG ASSEMBLY ONLY: whether to attempt to close gaps in scaffolds with Illumina  or long read data
