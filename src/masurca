@@ -255,9 +255,13 @@ print FILE "log Average PE read length \$PE_AVG_READ_LENGTH\n";
 
 if(uc($config{KMER}) eq "AUTO"){
 #here we have to estimate gc content and recompute kmer length for the graph
-     MasurcaCommon::estimate_optimal_kmer(*FILE, $list_pe_files,"KMER");
-     print FILE "save KMER\n";
-     print FILE "log Using kmer size of \$KMER for the graph\n";
+  if(@{$config{POLISH_INFO}}){
+    print FILE "KMER=87\n";
+  }else{
+    MasurcaCommon::estimate_optimal_kmer(*FILE, $list_pe_files,"KMER");
+  }
+  print FILE "save KMER\n";
+  print FILE "log Using kmer size of \$KMER for the graph\n";
 }else{
      print FILE "KMER=$config{KMER}\n";
 }
@@ -386,18 +390,22 @@ if($rerun_pe==1|| not(-e "work1")) {
 
 print FILE "CA_DIR=\"CA\";\n";
 
-if(@{$config{REF_INFO}}){
-  print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
+if(@{$config{POLISH_INFO}}){
+  print FILE "$RealBin/createSuperReadsForDirectory.perl  -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
+  print FILE "$RealBin/mega_reads_assemble_polish.sh -t $config{NUM_THREADS} -l \$KMER -m work1 -A $config{POLISH_INFO}[0]\n";
+  script_done;
+}elsif(@{$config{REF_INFO}}){
+  print FILE "$RealBin/createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
   MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
   print FILE "$RealBin/mega_reads_assemble_ref.sh -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -r $config{REF_INFO}[0] -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\"\n";
-    script_done;
+  script_done;
 }elsif(@{$config{PACBIO_INFO}} && @{$config{NANOPORE_INFO}}){
-  print FILE "if you have a mix Pacbio and Nanopore reads, please concatenate them all into a singla fasta file and supply as NANOPORE= type.\n";
+  print FILE "if you have a mix Pacbio and Nanopore reads, please concatenate them all into a single fasta file and supply as NANOPORE= type.\n";
   script_done;
 }elsif(@{$config{NANOPORE_RNA_INFO}}){
   my $parameters;
   $parameters=" -B 10 -D 0.02 -r $config{NANOPORE_RNA_INFO}[0] ";
-  print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
+  print FILE "$RealBin/createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
   print FILE "$RealBin/mega_reads_assemble_cluster.sh  -1 -E $config{GRID_ENGINE}  -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../CA8/Linux-amd64/bin $parameters\n";
   script_done;
 }elsif(@{$config{PACBIO_INFO}} || @{$config{NANOPORE_INFO}}){
@@ -407,18 +415,19 @@ if(@{$config{REF_INFO}}){
   }else{
   $parameters=" -B 10 -D 0.02 -n $config{NANOPORE_INFO}[0] ";
   }
-  print FILE "createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
+  print FILE "$RealBin/createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
   if($config{USE_LINKING_MATES} == 1) {
       MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
   }
   if($config{FLYE_ASSEMBLY}){
   print FILE "$RealBin/mega_reads_assemble_cluster.sh  -F -E $config{GRID_ENGINE} $config{MEGA_READS_ONE_PASS} -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../Flye/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" $parameters\n";
-  print FILE "if [ ! -s flye/assembly.fasta ];then\n";
+  print FILE "FLYE_DIR=`cat FLYE_dir.txt`\n";
+  print FILE "if [ ! -s \$FLYE_DIR/assembly.fasta ];then\n";
   print FILE "  fail \"Assembly with flye failed, see files under flye/\"\n";
   print FILE "else\n";
   print FILE "  log 'All done'\n";
-  print FILE "  log \"Final stats for flye/assembly.fasta\"\n";
-  print FILE "  ufasta n50 -a flye/assembly.fasta\n";
+  print FILE "  log \"Final stats for \$FLYE_DIR/assembly.fasta\"\n";
+  print FILE "  ufasta n50 -a \$FLYE_DIR/assembly.fasta\n";
   print FILE "fi\n";
   script_done;
   }else{

@@ -47,6 +47,7 @@ my $default_values = {
   NANOPORE_INFO => [],
   NANOPORE_RNA_INFO => [],
   REF_INFO => [],
+  POLISH_INFO => [],
 };
 
 our $config_file;
@@ -283,6 +284,9 @@ sub parse_data {
   } elsif($key eq "REFERENCE") {
     can_read($param) or fail("invalid file for REFERENCE: '$param' $!", $.);
     push(@{$$res{REF_INFO}}, $param);
+  } elsif($key eq "POLISH") {
+    can_read($param) or fail("invalid file for POLISH: '$param' $!", $.);
+    push(@{$$res{POLISH_INFO}}, $param);
   } elsif($key eq "PACBIO") {
     can_read($param) or fail("invalid file for PACBIO: '$param' $!", $.);
     push(@{$$res{PACBIO_INFO}}, $param);
