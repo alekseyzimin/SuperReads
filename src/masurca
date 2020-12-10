@@ -405,36 +405,35 @@ if(@{$config{POLISH_INFO}}){
 }elsif(@{$config{NANOPORE_RNA_INFO}}){
   my $parameters;
   $parameters=" -B 10 -D 0.02 -r $config{NANOPORE_RNA_INFO}[0] ";
-  print FILE "$RealBin/createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
+  print FILE "$RealBin/createSuperReadsForDirectory.perl --onepass -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
   print FILE "$RealBin/mega_reads_assemble_cluster.sh  -1 -E $config{GRID_ENGINE}  -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../CA8/Linux-amd64/bin $parameters\n";
   script_done;
 }elsif(@{$config{PACBIO_INFO}} || @{$config{NANOPORE_INFO}}){
   my $parameters;
   if(@{$config{PACBIO_INFO}}){
-  $parameters=" -B 10 -D 0.02 -p $config{PACBIO_INFO}[0] ";
+    $parameters=" -B 15 -M 17 -D 0.02 -p $config{PACBIO_INFO}[0] ";
   }else{
-  $parameters=" -B 10 -D 0.02 -n $config{NANOPORE_INFO}[0] ";
+    $parameters=" -B 15 -M 17 -D 0.02 -n $config{NANOPORE_INFO}[0] ";
   }
   print FILE "$RealBin/createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
   if($config{USE_LINKING_MATES} == 1) {
-      MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
+    MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
   }
   if($config{FLYE_ASSEMBLY}){
-  print FILE "$RealBin/mega_reads_assemble_cluster.sh  -F -E $config{GRID_ENGINE} $config{MEGA_READS_ONE_PASS} -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../Flye/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" $parameters\n";
-  print FILE "FLYE_DIR=`cat FLYE_dir.txt`\n";
-  print FILE "if [ ! -s \$FLYE_DIR/assembly.fasta ];then\n";
-  print FILE "  fail \"Assembly with flye failed, see files under flye/\"\n";
-  print FILE "else\n";
-  print FILE "  log 'All done'\n";
-  print FILE "  log \"Final stats for \$FLYE_DIR/assembly.fasta\"\n";
-  print FILE "  ufasta n50 -a \$FLYE_DIR/assembly.fasta\n";
-  print FILE "fi\n";
-  script_done;
+    print FILE "$RealBin/mega_reads_assemble_cluster2.sh  -F -E $config{GRID_ENGINE} -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../Flye/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" $parameters\n";
+    print FILE "FLYE_DIR=`cat FLYE_dir.txt`\n";
+    print FILE "if [ ! -s \$FLYE_DIR/assembly.fasta ];then\n";
+    print FILE "  fail \"Assembly with flye failed, see files under flye/\"\n";
+    print FILE "else\n";
+    print FILE "  log 'All done'\n";
+    print FILE "  log \"Final stats for \$FLYE_DIR/assembly.fasta\"\n";
+    print FILE "  ufasta n50 -a \$FLYE_DIR/assembly.fasta\n";
+    print FILE "fi\n";
+    script_done;
   }else{
-  print FILE "$RealBin/mega_reads_assemble_cluster.sh  -E $config{GRID_ENGINE} $config{MEGA_READS_ONE_PASS} -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" $parameters\n";
+    print FILE "$RealBin/mega_reads_assemble_cluster2.sh  -E $config{GRID_ENGINE}  -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" $parameters\n";
   }
   print FILE "CA_DIR=`cat CA_dir.txt`\n";
-  #script_done;
 }else{
   print FILE "createSuperReadsForDirectory.perl -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));;
   print FILE "if [[ ! -e work1/superReads.success ]];then\n";
@@ -457,29 +456,29 @@ if(@{$config{POLISH_INFO}}){
 ###done with super reads for PE###
   print FILE "\n";
 
-if($config{STOP_AFTER_SR}) {
-  print FILE "log 'Super reads done'\n";
-  script_done
-}
+  if($config{STOP_AFTER_SR}) {
+    print FILE "log 'Super reads done'\n";
+    script_done
+  }
 
-if(@{$config{MOLECULO_INFO}} && not(-e "moleculo_shr.frg")){
-         my $i=0;
-         foreach my $f(@{$config{MOLECULO_INFO}}){
-         print FILE "perl -e '\$n=0;while(\$line=<>){print \">moleculo$i.\$n\\n\";\$n++;\$line=<>;print \$line;\$line=<>;\$line=<>;}' $f  | create_sr_frg.pl 2047 2>/dev/null | fasta2frg_m.pl moleculo$i >>  moleculo_shr.frg\n";
-         }
-}
+  if(@{$config{MOLECULO_INFO}} && not(-e "moleculo_shr.frg")){
+    my $i=0;
+    foreach my $f(@{$config{MOLECULO_INFO}}){
+      print FILE "perl -e '\$n=0;while(\$line=<>){print \">moleculo$i.\$n\\n\";\$n++;\$line=<>;print \$line;\$line=<>;\$line=<>;}' $f  | create_sr_frg.pl 2047 2>/dev/null | fasta2frg_m.pl moleculo$i >>  moleculo_shr.frg\n";
+    }
+  }
 
 #force ploidy to 1 for Illumina-only assemblies
-print FILE "echo 1 > PLOIDY.txt\n";
+  print FILE "echo 1 > PLOIDY.txt\n";
 
 ###Celera Assembler###
-if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
+  if(not(-e "CA/9-terminator/genome.qc")|| $rerun_pe || $rerun_sj){
     print FILE "\nlog 'Celera Assembler'\n";
     if($rerun_sj==1||$rerun_pe==1){
-	print FILE "rm -rf CA\n";
+      print FILE "rm -rf CA\n";
     }
     MasurcaCelera::runCA($rerun_pe,  $rerun_sj,*FILE, $list_frg_files, $tmplist, %config);
-}
+  }
 }
 #if we got here and assembly has not even started yet, it is possible that we exited normally from the mega-reads for grid execution
 print FILE "if [ ! -d \$CA_DIR ];then\n";
@@ -491,30 +490,30 @@ print FILE "fi\n";
 print FILE "TERMINATOR=\"9-terminator\"\n";
 if($config{CLOSE_GAPS}){
 
-    print FILE "if [ -s \$CA_DIR/9-terminator/genome.scf.fasta ];then\n";
-    print FILE "  NSCF=`grep --text '^>'  \$CA_DIR/9-terminator/genome.scf.fasta |wc -l`\n";
-    print FILE "  NCTG=`grep --text '^>'  \$CA_DIR/9-terminator/genome.ctg.fasta |wc -l`\n";
-    print FILE "  if [ \$NCTG -eq \$NSCF ];then\n";
-    print FILE "    log 'No gap closing possible'\n";
-    print FILE "  else\n";
-    print FILE "    TERMINATOR=\"10-gapclose\"\n";
-    print FILE "    if [ -s \$CA_DIR/10-gapclose/genome.scf.fasta ];then\n";
-    print FILE "      log 'Gap closing done'\n";
-    print FILE "    else\n";
-    print FILE "      log 'Gap closing'\n";
-    my $reads_argument= join(" ", map { "--reads-file '$_'" } (@pe_files, @sj_files));
+  print FILE "if [ -s \$CA_DIR/9-terminator/genome.scf.fasta ];then\n";
+  print FILE "  NSCF=`grep --text '^>'  \$CA_DIR/9-terminator/genome.scf.fasta |wc -l`\n";
+  print FILE "  NCTG=`grep --text '^>'  \$CA_DIR/9-terminator/genome.ctg.fasta |wc -l`\n";
+  print FILE "  if [ \$NCTG -eq \$NSCF ];then\n";
+  print FILE "    log 'No gap closing possible'\n";
+  print FILE "  else\n";
+  print FILE "    TERMINATOR=\"10-gapclose\"\n";
+  print FILE "    if [ -s \$CA_DIR/10-gapclose/genome.scf.fasta ];then\n";
+  print FILE "      log 'Gap closing done'\n";
+  print FILE "    else\n";
+  print FILE "      log 'Gap closing'\n";
+  my $reads_argument= join(" ", map { "--reads-file '$_'" } (@pe_files, @sj_files));
 
-    print FILE "      closeGapsLocally.perl --max-reads-in-memory 1000000000 -s $config{JF_SIZE} --Celera-terminator-directory \$CA_DIR/9-terminator $reads_argument --output-directory \$CA_DIR/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $config{NUM_THREADS} --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 21 1>gapClose.err 2>&1\n";
-    print FILE "      if [[ -s \"\$CA_DIR/10-gapclose/genome.ctg.fasta\" ]];then\n";
-    print FILE "        log 'Gap close success'\n";
-    print FILE "      else\n";
-    print FILE "        fail Gap close failed, you can still use pre-gap close files under \$CA_DIR/9-terminator/. Check gapClose.err for problems.\n";
-    print FILE "      fi\n";#if test completed
-    print FILE "    fi\n";#if done
-    print FILE "  fi\n";#if not possible 
-    print FILE "else\n";
-    print FILE "  fail \"Assembly stopped or failed, see \$CA_DIR.log\"\n";
-    print FILE "fi\n";#if scaffolding failed
+  print FILE "      closeGapsLocally.perl --max-reads-in-memory 1000000000 -s $config{JF_SIZE} --Celera-terminator-directory \$CA_DIR/9-terminator $reads_argument --output-directory \$CA_DIR/10-gapclose --min-kmer-len 17 --max-kmer-len \$((\$PE_AVG_READ_LENGTH-5)) --num-threads $config{NUM_THREADS} --contig-length-for-joining \$((\$PE_AVG_READ_LENGTH-1)) --contig-length-for-fishing 200 --reduce-read-set-kmer-size 21 1>gapClose.err 2>&1\n";
+  print FILE "      if [[ -s \"\$CA_DIR/10-gapclose/genome.ctg.fasta\" ]];then\n";
+  print FILE "        log 'Gap close success'\n";
+  print FILE "      else\n";
+  print FILE "        fail Gap close failed, you can still use pre-gap close files under \$CA_DIR/9-terminator/. Check gapClose.err for problems.\n";
+  print FILE "      fi\n";#if test completed
+  print FILE "    fi\n";#if done
+  print FILE "  fi\n";#if not possible 
+  print FILE "else\n";
+  print FILE "  fail \"Assembly stopped or failed, see \$CA_DIR.log\"\n";
+  print FILE "fi\n";#if scaffolding failed
 }
 
 #here we filter for redundant scaffolds
