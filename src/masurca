@@ -412,9 +412,9 @@ if(@{$config{POLISH_INFO}}){
 }elsif(@{$config{PACBIO_INFO}} || @{$config{NANOPORE_INFO}}){
   my $parameters;
   if(@{$config{PACBIO_INFO}}){
-    $parameters=" -B 15 -M 17 -D 0.02 -p $config{PACBIO_INFO}[0] ";
+    $parameters=" -B 12 -M 17 -D 0.02 -p $config{PACBIO_INFO}[0] ";
   }else{
-    $parameters=" -B 15 -M 17 -D 0.02 -n $config{NANOPORE_INFO}[0] ";
+    $parameters=" -B 12 -M 17 -D 0.02 -n $config{NANOPORE_INFO}[0] ";
   }
   print FILE "$RealBin/createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
   if($config{USE_LINKING_MATES} == 1) {
