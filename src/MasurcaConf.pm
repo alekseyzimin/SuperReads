@@ -111,8 +111,6 @@ GRID_BATCH_SIZE=500000000
 #use at most this much coverage by the longest Pacbio or Nanopore reads, discard the rest of the reads
 #can increase this to 30 or 35 if your reads are short (N50<7000bp)
 LHE_COVERAGE=25
-#set to 0 (default) to do two passes of mega-reads for slower, but higher quality assembly, otherwise set to 1
-MEGA_READS_ONE_PASS=0
 #this parameter is useful if you have too many Illumina jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
 LIMIT_JUMP_COVERAGE = 300
 #these are the additional parameters to Celera Assembler; do not worry about performance, number or processors or batch sizes -- these are computed automatically. 
