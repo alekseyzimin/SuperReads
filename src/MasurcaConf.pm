@@ -77,6 +77,7 @@ sub default_config {
 DATA
 #Illumina paired end reads supplied as <two-character prefix> <fragment mean> <fragment stdev> <forward_reads> <reverse_reads>
 #if single-end, do not specify <reverse_reads>
+#If mean/stdev are unknown use 500 and 50 -- these are safe values that will work for most runs
 #MUST HAVE Illumina paired end reads to use MaSuRCA
 PE= pe 500 50  /FULL_PATH/frag_1.fastq  /FULL_PATH/frag_2.fastq
 #Illumina mate pair reads supplied as <two-character prefix> <fragment mean> <fragment stdev> <forward_reads> <reverse_reads>
@@ -109,7 +110,7 @@ GRID_QUEUE=all.q
 #batch size in the amount of long read sequence for each batch on the grid
 GRID_BATCH_SIZE=500000000
 #use at most this much coverage by the longest Pacbio or Nanopore reads, discard the rest of the reads
-#can increase this to 30 or 35 if your reads are short (N50<7000bp)
+#can increase this to 30 or 35 if your long reads reads have N50<7000bp
 LHE_COVERAGE=25
 #this parameter is useful if you have too many Illumina jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
 LIMIT_JUMP_COVERAGE = 300
@@ -127,9 +128,8 @@ JF_SIZE = 200000000
 SOAP_ASSEMBLY=0
 #If you are doing Hybrid Illumina paired end + Nanopore/PacBio assembly ONLY (no Illumina mate pairs or OTHER frg files).  
 #Set this to 1 to use Flye assembler for final assembly of corrected mega-reads.  
-#A lot faster than CABOG, AND QUALITY IS THE SAME OR BETTER. 
-#Works well even when MEGA_READS_ONE_PASS is set to 1.  
-#DO NOT use if you have less than 15x coverage by long reads.
+#A lot faster than CABOG, AND QUALITY IS THE SAME OR BETTER.   
+#DO NOT use if you have less than 20x coverage by long reads.
 FLYE_ASSEMBLY=0
 END
 EOS
