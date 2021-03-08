@@ -407,7 +407,7 @@ if(@{$config{POLISH_INFO}}){
   $parameters=" -B 10 -D 0.02 -r $config{NANOPORE_RNA_INFO}[0] ";
   print FILE "$RealBin/createSuperReadsForDirectory.perl --onepass -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
   #never use grid for rna-seq correction
-  print FILE "$RealBin/mega_reads_assemble_cluster.sh  -1 -E $config{GRID_ENGINE}  -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G 0 -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../CA8/Linux-amd64/bin $parameters\n";
+  print FILE "$RealBin/mega_reads_assemble_cluster.sh -k \$KMER -1 -E $config{GRID_ENGINE}  -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G 0 -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../CA8/Linux-amd64/bin $parameters\n";
   script_done;
 }elsif(@{$config{PACBIO_INFO}} || @{$config{NANOPORE_INFO}}){
   my $parameters;
