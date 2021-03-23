@@ -51,8 +51,9 @@ my @prep_ld;
 my $help;
 my $version_str="version 4.0.2";
 my $version;
-my $threads="";
-my $run="";
+my $threads;
+my $longreads;
+my $illumina;
 
 my $usage = "USAGE: $0 <config_file>";
 my $help_str = <<"EOS" ;
@@ -73,14 +74,15 @@ this will run paired-ends Illumina or hybrid assembly with CABOG contigger and d
 This is suitable for small assembly projects.
 
 Options:
- -t, --threads             Number of threads, use with -r
- -r, --run                 Run assembly without creating configuration file, argument can be 
+ -t, --threads             ONLY to use with -i option, number of threads
+ -i, --illumina            Run assembly without creating configuration file, argument can be 
                               illumina_paired_end_forward 
                                 or 
                               illumina_paired_end_forward,illumina_paired_end_reverse 
-                                or 
-                              illumina_paired_end_forward,illumina_paired_end_reverse,long_read_file
-                           long_read_file is optional, files could be fasta or fastq, can be gzipped
+                           if you only have single-end Illumina data
+ -r, --reads               ONLY to use with -i option, single long reads file for hybrid assembly, can be Nanopore or PacBio, 
+                           fasta or fastq, can be gzipped
+
  -v, --version             Report version
  -o, --output              Assembly script ($assembly_script)
  -g, --generate            Generate example configuration file
@@ -92,7 +94,8 @@ EOS
 
 GetOptions("o|output=s"          => \$assembly_script,
            "t|threads=s"         => \$threads,
-           "r|run=s"             => \$run,
+           "i|illumina=s"        => \$illumina,
+           "r|reads=s"           => \$longreads,
            "g|generate"          => \$generate_default,
            "v|version"           => \$version,
            "p|path=s"            => \@prep_path,
@@ -100,8 +103,8 @@ GetOptions("o|output=s"          => \$assembly_script,
            "skip-checking"       => \$skip_checking,
            "h|help"              => \$help) or fail $usage;
 
-if($run) {
-  my @data=split(",",$run);
+if($illumina) {
+  my @data=split(",",$illumina);
   if($#data>=0) {
     open(FILE, ">", "config.txt");
     print FILE "# quick run configuration file\nDATA\n";
@@ -109,13 +112,15 @@ if($run) {
       print FILE "PE = pe 500 50 $data[0]\n";
     }elsif($#data==1){
       print FILE "PE = pe 500 50 $data[0] $data[1]\n";
-    }elsif($#data==2){
-      print FILE "PE = pe 500 50 $data[0] $data[1]\n";
-      print FILE "NANOPORE = $data[2]\n";
+    }else{
+      die("invalid argument $illumina for -i option, must be illumina_paired_end_forward_file or illumina_paired_end_forward_file,illumina_paired_end_referse_file");
+    }
+    if($longreads){
+      print FILE "NANOPORE = $longreads\n";
     }
     print FILE "END\n";
     print FILE "PARAMETERS\nEXTEND_JUMP_READS=0\nGRAPH_KMER_SIZE = auto\n";
-    if($#data==1){
+    if($#data==1 && not($longreads)){
       print FILE "USE_LINKING_MATES = 1\n";
     }else{
       print FILE "USE_LINKING_MATES = 0\n";
