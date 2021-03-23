@@ -130,7 +130,7 @@ SOAP_ASSEMBLY=0
 #Set this to 1 to use Flye assembler for final assembly of corrected mega-reads.  
 #A lot faster than CABOG, AND QUALITY IS THE SAME OR BETTER.   
 #DO NOT use if you have less than 20x coverage by long reads.
-FLYE_ASSEMBLY=0
+FLYE_ASSEMBLY=1
 END
 EOS
 }

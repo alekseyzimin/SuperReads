@@ -54,11 +54,31 @@ my $version;
 
 my $usage = "USAGE: $0 <config_file>";
 my $help_str = <<"EOS" ;
-Create the assembly script from a MaSuRCA configuration file. An
+Create the assembly script from a MaSuRCA configuration file. A
 sample configuration file can be generated with the -g switch. The
-assembly script will run the assembly proper.
+assembly script assemble.sh will run the assembly proper. For a 
+quick run without creating a configuration file, and with two Illumina 
+paired end reads files (forward/reverse) and (optionally) a 
+long reads (Nanopore/PacBio) file use -r switch, setting the number of threads with -t:
+
+masurca -r paired_ends_fwd.fastq.gz -t 32
+or
+masurca -r paired_ends_fwd.fastq.gz,paired_ends_rev.fastq.gz -t 32
+or
+masurca -r paired_ends_fwd.fastq.gz,paired_ends_rev.fastq.gz,nanopore.fa.gz -t 32
+
+this will run paired-ends Illumina or hybrid assembly with CABOG contigger and default settings.  
+This is suitable for small assembly projects.
 
 Options:
+ -t, --threads             Number of threads, use with -r
+ -r, --run                 Run assembly without creating configuration file, argument can be 
+                              illumina_paired_end_forward 
+                                or 
+                              illumina_paired_end_forward,illumina_paired_end_reverse 
+                                or 
+                              illumina_paired_end_forward,illumina_paired_end_reverse,long_read_file
+                           long_read_file is optional, files could be fasta or fastq, can be gzipped
  -v, --version             Report version
  -o, --output              Assembly script ($assembly_script)
  -g, --generate            Generate example configuration file
@@ -69,12 +89,54 @@ Options:
 EOS
 
 GetOptions("o|output=s"          => \$assembly_script,
+           "t|threads=s"         => \$threads,
+           "r|run=s"             => \$run,
            "g|generate"          => \$generate_default,
            "v|version"           => \$version,
            "p|path=s"            => \@prep_path,
            "l|ld-library-path=s" => \@prep_ld,
            "skip-checking"       => \$skip_checking,
            "h|help"              => \$help) or fail $usage;
+
+if($run) {
+  my @data=split("\,",$run_str);
+  if($#data>=0) {
+    open(FILE, ">", "config.txt");
+    print FILE "# quick run configuration file\nDATA\n";
+    if($#data==0){
+      print FILE "PE = pe 500 50 $data[0]\n";
+    }elsif($#data==1){
+      print FILE "PE = pe 500 50 $data[0] $data[1]\n";
+    }elsif($#data==2){
+      print FILE "PE = pe 500 50 $data[0] $data[1]\n";
+      print FILE "NANOPORE= = $data[2]\n";
+    }
+    print FILE "END\n";
+    print FILE "PARAMETERS\nEXTEND_JUMP_READS=0\nGRAPH_KMER_SIZE = auto\n";
+    if($#data==1){
+      print FILE "USE_LINKING_MATES = 1\n";
+    }else{
+      print FILE "USE_LINKING_MATES = 0\n";
+    }
+    print FILE "USE_GRID=0\nGRID_ENGINE=SGE\nGRID_QUEUE=all.q\nGRID_BATCH_SIZE=500000000\nLHE_COVERAGE=25\nLIMIT_JUMP_COVERAGE = 300\nCA_PARAMETERS =  cgwErrorRate=0.15\nCLOSE_GAPS=1\n"
+    if(int($threads_str)>0){
+      print FILE "NUM_THREADS = ",int($threads_str),"\n";
+    }else{
+      print FILE "NUM_THREADS = 16\n";
+    }
+    print FILE "JF_SIZE = 200000000\nSOAP_ASSEMBLY=0\nFLYE_ASSEMBLY=0\n";
+    close(FILE);
+    open(FILE, ">", "run.sh");
+    print FILE "#!/bin/bash\n";
+    print FILE "$RealBin/masurca config.txt\n";
+    print FILE "bash ./assemble.sh\n";
+    close(FILE);
+    system("run.sh");
+    exit(0);
+  }else{
+    die("no data specified for -r option");
+  }
+}
 
 if($help) {
   print "$help_str";
