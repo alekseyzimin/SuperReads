@@ -49,13 +49,13 @@ my $skip_checking;
 my @prep_path;
 my @prep_ld;
 my $help;
-my $version_str="version 4.0.2";
+my $version_str="version 4.0.3";
 my $version;
 my $threads;
 my $longreads;
 my $illumina;
 
-my $usage = "USAGE: $0 <config_file>";
+my $usage = "USAGE: $0 <config_file>\nUse -h or --help for options";
 my $help_str = <<"EOS" ;
 Create the assembly script from a MaSuRCA configuration file. A
 sample configuration file can be generated with the -g switch. The
