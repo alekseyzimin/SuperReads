@@ -62,13 +62,15 @@ sample configuration file can be generated with the -g switch. The
 assembly script assemble.sh will run the assembly proper. For a 
 quick run without creating a configuration file, and with two Illumina 
 paired end reads files (forward/reverse) and (optionally) a 
-long reads (Nanopore/PacBio) file use -r switch, setting the number of threads with -t:
+long reads (Nanopore/PacBio) file use -i switch, setting the number of threads with -t:
 
 masurca -r paired_ends_fwd.fastq.gz -t 32
 or
 masurca -r paired_ends_fwd.fastq.gz,paired_ends_rev.fastq.gz -t 32
-or
-masurca -r paired_ends_fwd.fastq.gz,paired_ends_rev.fastq.gz,nanopore.fa.gz -t 32
+
+,and for a hybrid assembly you can also add the long Nanopore or PacBio reads with -r switch:
+
+masurca -r paired_ends_fwd.fastq.gz,paired_ends_rev.fastq.gz -r nanopore.fa.gz -t 32
 
 this will run paired-ends Illumina or hybrid assembly with CABOG contigger and default settings.  
 This is suitable for small assembly projects.
