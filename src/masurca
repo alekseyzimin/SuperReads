@@ -495,12 +495,12 @@ if(@{$config{POLISH_INFO}}){
   if($config{FLYE_ASSEMBLY}){
     print FILE "$RealBin/mega_reads_assemble_cluster2.sh  -F -E $config{GRID_ENGINE} -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../Flye/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" $parameters\n";
     print FILE "FLYE_DIR=`cat FLYE_dir.txt`\n";
-    print FILE "if [ ! -s \$FLYE_DIR/assembly.fasta ];then\n";
+    print FILE "if [ ! -s \$FLYE_DIR/assembly.scaffolds.fasta ];then\n";
     print FILE "  fail \"Assembly with flye failed, see files under flye/\"\n";
     print FILE "else\n";
     print FILE "  log 'All done'\n";
-    print FILE "  log \"Final stats for \$FLYE_DIR/assembly.fasta\"\n";
-    print FILE "  ufasta n50 -a \$FLYE_DIR/assembly.fasta\n";
+    print FILE "  log \"Final stats for \$FLYE_DIR/assembly.scaffolds.fasta\"\n";
+    print FILE "  ufasta n50 -a \$FLYE_DIR/assembly.scaffolds.fasta\n";
     print FILE "fi\n";
     script_done;
   }else{
