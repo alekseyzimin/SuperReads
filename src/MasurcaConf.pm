@@ -81,7 +81,7 @@ DATA
 #MUST HAVE Illumina paired end reads to use MaSuRCA
 PE= pe 500 50  /FULL_PATH/frag_1.fastq  /FULL_PATH/frag_2.fastq
 #Illumina mate pair reads supplied as <two-character prefix> <fragment mean> <fragment stdev> <forward_reads> <reverse_reads>
-JUMP= sh 3600 200  /FULL_PATH/short_1.fastq  /FULL_PATH/short_2.fastq
+#JUMP= sh 3600 200  /FULL_PATH/short_1.fastq  /FULL_PATH/short_2.fastq
 #pacbio OR nanopore reads must be in a single fasta or fastq file with absolute path, can be gzipped
 #if you have both types of reads supply them both as NANOPORE type
 #PACBIO=/FULL_PATH/pacbio.fa
@@ -94,7 +94,7 @@ END
 
 PARAMETERS
 #PLEASE READ all comments to essential parameters below, and set the parameters according to your project
-#set this to 1 if your Illumina jumping library reads are shorter than 100bp
+#set this to 1 if your Illumina mate pair (jumping) library reads are shorter than 100bp
 EXTEND_JUMP_READS=0
 #this is k-mer size for deBruijn graph values between 25 and 127 are supported, auto will compute the optimal size based on the read data and GC content
 GRAPH_KMER_SIZE = auto
@@ -112,7 +112,7 @@ GRID_BATCH_SIZE=500000000
 #use at most this much coverage by the longest Pacbio or Nanopore reads, discard the rest of the reads
 #can increase this to 30 or 35 if your long reads reads have N50<7000bp
 LHE_COVERAGE=25
-#this parameter is useful if you have too many Illumina jumping library mates. Typically set it to 60 for bacteria and 300 for the other organisms 
+#this parameter is useful if you have too many Illumina jumping library reads. Typically set it to 60 for bacteria and 300 for the other organisms 
 LIMIT_JUMP_COVERAGE = 300
 #these are the additional parameters to Celera Assembler; do not worry about performance, number or processors or batch sizes -- these are computed automatically. 
 #CABOG ASSEMBLY ONLY: set cgwErrorRate=0.25 for bacteria and 0.1<=cgwErrorRate<=0.15 for other organisms.
@@ -120,7 +120,7 @@ CA_PARAMETERS =  cgwErrorRate=0.15
 #CABOG ASSEMBLY ONLY: whether to attempt to close gaps in scaffolds with Illumina  or long read data
 CLOSE_GAPS=1
 #number of cpus to use, set this to the number of CPUs/threads per node you will be using
-NUM_THREADS = 16
+NUM_THREADS = 32
 #this is mandatory jellyfish hash size -- a safe value is estimated_genome_size*20
 JF_SIZE = 200000000
 #ILLUMINA ONLY. Set this to 1 to use SOAPdenovo contigging/scaffolding module.  
