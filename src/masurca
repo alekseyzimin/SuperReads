@@ -199,7 +199,7 @@ unshift(@LD_LIBRARY_PATH, @prep_ld) if @prep_ld;
 unless($skip_checking) {
   print "Verifying PATHS...\n";
   my @progs=("jellyfish", "runCA", "createSuperReadsForDirectory.perl");
-  push(@progs,("nucmer","mega_reads_assemble_cluster.sh")) if(@{$config{PACBIO_INFO}});
+  push(@progs,("nucmer","mega_reads_assemble_cluster2.sh")) if(@{$config{PACBIO_INFO}});
   push(@progs, "SOAPdenovo-63mer") if($config{SOAP_ASSEMBLY});
   &check_exec(@progs);
 }
@@ -464,7 +464,7 @@ print FILE "CA_DIR=\"CA\";\n";
 
 if(@{$config{POLISH_INFO}}){
   print FILE "$RealBin/createSuperReadsForDirectory.perl  -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
-  print FILE "$RealBin/mega_reads_assemble_polish.sh -t $config{NUM_THREADS} -l \$KMER -m work1 -A $config{POLISH_INFO}[0]\n";
+  print FILE "$RealBin/mega_reads_assemble_polish.sh -t $config{NUM_THREADS} -k \$KMER -m work1 -A $config{POLISH_INFO}[0]\n";
   script_done;
 }elsif(@{$config{REF_INFO}}){
   print FILE "$RealBin/createSuperReadsForDirectory.perl -doSimpleMerge -l \$KMER -mean-and-stdev-by-prefix-file meanAndStdevByPrefix.pe.txt -kunitigsfile guillaumeKUnitigsAtLeast32bases_all.fasta -t $config{NUM_THREADS} -mikedebug work1 pe.cor.fa 1> super1.err 2>&1\n" if(not(-e "work1/superReads.success"));
@@ -493,7 +493,7 @@ if(@{$config{POLISH_INFO}}){
     MasurcaSuperReads::create_pe_linking_mates(*FILE, %config);
   }
   if($config{FLYE_ASSEMBLY}){
-    print FILE "$RealBin/mega_reads_assemble_cluster2.sh  -F -E $config{GRID_ENGINE} -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../Flye/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" $parameters\n";
+    print FILE "$RealBin/mega_reads_assemble_cluster2.sh  -k \$KMER -F -E $config{GRID_ENGINE} -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../Flye/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" $parameters\n";
     print FILE "FLYE_DIR=`cat FLYE_dir.txt`\n";
     print FILE "if [ ! -s \$FLYE_DIR/assembly.scaffolds.fasta ];then\n";
     print FILE "  fail \"Assembly with flye failed, see files under flye/\"\n";
@@ -504,7 +504,7 @@ if(@{$config{POLISH_INFO}}){
     print FILE "fi\n";
     script_done;
   }else{
-    print FILE "$RealBin/mega_reads_assemble_cluster2.sh  -E $config{GRID_ENGINE}  -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" $parameters\n";
+    print FILE "$RealBin/mega_reads_assemble_cluster2.sh  -k \$KMER -E $config{GRID_ENGINE}  -Pb $config{GRID_BATCH_SIZE} -q $config{GRID_QUEUE} -G $config{USE_GRID} -C $config{LHE_COVERAGE} -t $config{NUM_THREADS} -e \$ESTIMATED_GENOME_SIZE -m work1 -a $RealBin/../CA8/Linux-amd64/bin -o \"$list_frg_files $config{CA_PARAMETERS}\" $parameters\n";
   }
   print FILE "CA_DIR=`cat CA_dir.txt`\n";
 }else{
