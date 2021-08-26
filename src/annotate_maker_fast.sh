@@ -206,58 +206,10 @@ if [ ! -e maker1.success ] && [ -e split.success ] && [ -e stringtie.success ];t
     cp maker_bopts.ctl $f.dir
   done
 #running maker
-  ls -d *.dir | xargs -P $NUM_THREADS  -I % ./run_maker.sh % && touch maker1.success && rm -f snap.success && rm -rf /dev/shm/tmp_$PID
+  ls -d *.dir | xargs -P $NUM_THREADS  -I % ./run_maker.sh % && touch maker1.success && rm -rf /dev/shm/tmp_$PID
 fi
 
-if [ ! -e snap.success ] && [ -e maker1.success ];then
-  log "training gene models"
-  echo "#!/bin/bash" > run_snap.sh
-  echo "cd \$1 && echo \"running SNAP in \$PWD\" && \\" >> run_snap.sh && \
-  echo "f=\`echo \$1 | awk -F '.' '{print \$1}'\` && \\" >> run_snap.sh && \
-  echo "rm -rf snap && mkdir -p snap && cd snap && \\" >> run_snap.sh && \
-  echo "gff3_merge -d ../$GENOME.maker.output/${GENOME}_master_datastore_index.log -o \$f.gff && \\" >> run_snap.sh && \
-  echo "maker2zff \$f.gff && \\" >> run_snap.sh && \
-  echo "$SNAP_PATH/fathom -categorize 1000 genome.ann genome.dna && \\" >> run_snap.sh && \
-  echo "$SNAP_PATH/fathom -export 1000 -plus uni.ann uni.dna && \\" >> run_snap.sh && \
-  echo "$SNAP_PATH/forge export.ann export.dna && \\" >> run_snap.sh && \
-  echo "$SNAP_PATH/hmm-assembler.pl \$f . > ../\$f.hmm.tmp && \\" >> run_snap.sh && \
-  echo "mv ../\$f.hmm.tmp ../\$f.hmm \\" >> run_snap.sh && \
-  chmod 0755 run_snap.sh && \
-  ls -d *.dir | xargs -P $NUM_THREADS  -I % ./run_snap.sh % && touch snap.success && rm -f maker2.success
-fi
-
-if [ ! -e maker2.success ] && [ -e snap.success ] && [ -e maker1.success ];then
-  log "running maker with gene models"
-#first we create a script to run
-  maker -CTL
-  mkdir -p /dev/shm/tmp_$PID
-  echo "#!/bin/bash" > run_maker2.sh
-  echo "cd \$1 && echo \"running maker in \$PWD\" && if [ -e $GENOME.maker.output ];then mv $GENOME.maker.output $GENOME.maker.output_pass1; fi && maker -cpus 4 -base $GENOME 1>maker.log 2>&1" >> run_maker2.sh && \
-  chmod 0755 run_maker2.sh
-  NUM_BATCHES=`ls batch.* |wc -l`
-#let's create the appropriate maker ctl files
-  for f in $(seq 1 $NUM_BATCHES);do
-    sed s,^genome=,genome=$PWD/$f.dir/$f.fa, maker_opts.ctl | \
-    sed s,^maker_gff=,maker_gff=$PWD/$f.dir/snap/$f.gff, | \
-    sed s,^snaphmm=,snaphmm=$PWD/$f.dir/$f.hmm, | \
-    sed s,^est_pass=0,est_pass=1, | \
-    sed s,^protein_pass=0,protein_pass=1, | \
-    sed s,^repeat_protein=,"repeat_protein= #", | \
-    sed s,^model_org=,"model_org= #", | \
-    sed s,^rm_pass=0,rm_pass=1, | \
-    sed s,^TMP=,TMP=/dev/shm/tmp_$PID, | \
-    sed s,^max_dna_len=100000,max_dna_len=1000000, | \
-    sed s,^cpus=1,cpus=4, | \
-    sed s,^min_contig=1,min_contig=1000, > $f.dir/maker_opts.ctl && \
-    cp maker_exe.ctl $f.dir && \
-    cp maker_bopts.ctl $f.dir
-  done
-#running maker
-  ls -d *.dir | xargs -P $NUM_THREADS  -I % ./run_maker2.sh % && touch maker2.success && rm -f functional.success && rm -rf /dev/shm/tmp_$PID
-fi
-
-
-if [ -e maker2.success ] && [ ! -e functional.success ];then 
+if [ -e maker1.success ] && [ ! -e functional.success ];then 
   log "concatenating outputs"
   NUM_BATCHES=`ls batch.* |wc -l`
   for f in $(seq 1 $NUM_BATCHES);do
