@@ -197,6 +197,7 @@ if [ ! -e maker1.success ] && [ -e split.success ] && [ -e stringtie.success ];t
     sed s,^est=,est=$PWD/$f.dir/$f.transcripts.fa, | \
     sed s,^est2genome=0,est2genome=1, | \
     sed s,^protein2genome=0,protein2genome=1, | \
+    sed s,^single_exon=0,single_exon=1, | \
     sed s,^TMP=,TMP=/dev/shm/tmp_$PID, | \
     sed s,^max_dna_len=100000,max_dna_len=1000000, | \
     sed s,^cpus=1,cpus=4, | \
