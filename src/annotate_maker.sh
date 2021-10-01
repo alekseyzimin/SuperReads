@@ -266,9 +266,9 @@ if [ -e maker2.success ] && [ ! -e functional.success ];then
   log "concatenating outputs"
   NUM_BATCHES=`ls batch.* |wc -l`
   for f in $(seq 1 $NUM_BATCHES);do
-    (cd $f.dir/$GENOME.maker.output && gff3_merge -g -n -d ${GENOME}_master_datastore_index.log -o ../$f.gff && fasta_merge -d ${GENOME}_master_datastore_index.log -o ../$f.fasta )
+    (cd $f.dir/$GENOME.maker.output && gff3_merge -g -d ${GENOME}_master_datastore_index.log -o ../$f.gff && fasta_merge -d ${GENOME}_master_datastore_index.log -o ../$f.fasta )
   done
-  cat *.dir/*.gff > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff && \
+  gff3_merge -o $GENOME.gff.tmp *.dir/*.gff && mv $GENOME.gff.tmp $GENOME.gff && \
   cat *.dir/*.all.maker.proteins.fasta > $GENOME.proteins.fasta.tmp  && mv $GENOME.proteins.fasta.tmp $GENOME.proteins.fasta && \
   cat *.dir/*.all.maker.transcripts.fasta > $GENOME.transcripts.fasta.tmp && mv $GENOME.transcripts.fasta.tmp $GENOME.transcripts.fasta && \
   log "maker output is in $GENOME.gff $GENOME.proteins.fasta $GENOME.transcripts.fasta" && \
