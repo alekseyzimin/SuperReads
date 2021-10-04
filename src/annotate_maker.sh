@@ -262,8 +262,8 @@ if [ ! -e maker2.success ] && [ -e snap1.success ];then
   ls -d *.dir | xargs -P $NUM_THREADS  -I % ./run_maker2.sh % && touch maker2.success && rm -f functional.success && rm -rf /dev/shm/tmp_$PID
 fi
 
-if [ -e maker2.success ] && [ ! -e functional.success ];then 
-  log "concatenating outputs"
+if [ -e maker2.success ] && [ ! -e functional.success ];then
+  log "concatenating outputs and performing functional annotation"
   NUM_BATCHES=`ls batch.* |wc -l`
   for f in $(seq 1 $NUM_BATCHES);do
     (cd $f.dir/$GENOME.maker.output && gff3_merge -g -d ${GENOME}_master_datastore_index.log -o ../$f.gff && fasta_merge -d ${GENOME}_master_datastore_index.log -o ../$f.fasta )
@@ -278,12 +278,19 @@ if [ -e maker2.success ] && [ ! -e functional.success ];then
   maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.gff > $GENOME.functional_note.gff.tmp && mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
   maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp  && mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta && \
   maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
-  touch functional.success
+  touch functional.success && rm -rf pseudo_detect.success
 fi
 
-if [ -e functional.success ];then
-  log "Output annotation is in $GENOME.functional_note.gff $GENOME.functional_note.proteins.fasta $GENOME.functional_note.transcripts.fasta" 
+if [ -e functional.success ] && [ ! -e pseudo_detect.success ];then
+  log "detectring pseudogenes"
+  ufasta extract -v -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
+  ufasta extract -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
+  makeblastdb -dbtype prot  -input_type fasta -in  $GENOME.proteins.mex.fasta -out $GENOME.proteins.mex && \
+  blastp -db $GENOME.proteins.mex -query $GENOME.proteins.sex.fasta -out  $GENOME.sex2mex.blastp -evalue 0.000001 -outfmt "6 qseqid qlen length pident bitscore" -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS && \
+  perl -ane '{if($F[3]>99 && $F[2]/($F[1]+1)>0.98){$pseudo{$F[0]}=1;}}END{open(FILE,"'$GENOME'.gff");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);print $line; ($id,$junk)=split(/;/,$f[8]);if($f[2] eq "gene" && defined($pseudo{substr($id,3)."-mRNA-1"})){ print ";pseudo=true\n";}else{print "\n"}}}' $GENOME.sex2mex.blastp > $GENOME.functional_note.pseudo_label.gff.tmp && mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && touch pseudo_detect.success
 fi
 
-
+if [ -e functional.success ] && [ -e pseudo_detect.success ];then
+  log "Output annotation is in $GENOME.functional_note.pseudo_label.gff $GENOME.functional_note.proteins.fasta $GENOME.functional_note.transcripts.fasta"
+fi
 
