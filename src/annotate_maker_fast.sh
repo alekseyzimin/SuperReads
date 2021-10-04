@@ -94,13 +94,12 @@ done
 
 GENOME=`basename $GENOMEFILE`
 #checking is dependencies are installed
-for prog in $(echo "ufasta hisat2 stringtie maker gffread gff3_merge snap");do
+for prog in $(echo "ufasta hisat2 stringtie maker gffread gff3_merge");do
   which $prog
   if [ $? -gt 0 ];then error_exit "$prog not found the the PATH";fi
 done
 
 export SNAP_PATH=`which maker`
-export SNAP_PATH=`dirname $SNAP_PATH`/../exe/snap/
 
 #checking inputs
 if [ ! -s $RNASEQ_PAIRED ] && [ ! -s $RNASEQ_UNPAIRED ];then
@@ -129,10 +128,10 @@ if [ ! -e align.success ];then
   log "aligning RNAseq reads"
   echo "#!/bin/bash" >hisat2.sh
   if [ -s $RNASEQ_PAIRED ];then
-    awk 'BEGIN{n=0}{print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}' $RNASEQ_PAIRED >> hisat2.sh
+    awk 'BEGIN{n=0}{if($3=="fasta"){print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}else{print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}}' $RNASEQ_PAIRED >> hisat2.sh
   fi
   if [ -s $RNASEQ_UNPAIRED ];then
-    awk 'BEGIN{n=0}{print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}' $RNASEQ_UNPAIRED >> hisat2.sh
+    awk 'BEGIN{n=0}{if($2=="fasta") {print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}else {print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}}' $RNASEQ_UNPAIRED >> hisat2.sh
   fi
   bash ./hisat2.sh && touch align.success && rm -f sort.success
 fi
