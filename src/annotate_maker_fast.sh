@@ -5,6 +5,7 @@ PROT="proteins.fa"
 GENOMEFILE="genome.fa"
 RNASEQ_PAIRED="paired"
 RNASEQ_UNPAIRED="unpaired"
+ALT_EST="altest"
 BATCH_SIZE=1000000
 UNIPROT="uniprot.fa"
 MYPATH="`dirname \"$0\"`"
@@ -65,6 +66,10 @@ do
             RNASEQ_PAIRED="$2"
             shift
             ;;
+        -e|--est)
+            ALT_EST="$2"
+            shift
+            ;;
         -r|--proteins)
             PROT="$2"
             shift
@@ -102,8 +107,8 @@ done
 export SNAP_PATH=`which maker`
 
 #checking inputs
-if [ ! -s $RNASEQ_PAIRED ] && [ ! -s $RNASEQ_UNPAIRED ];then
-  error_exit "Must specify at lease one non-empty file with filenames of RNAseq reads with -p or -u"
+if [ ! -s $RNASEQ_PAIRED ] && [ ! -s $RNASEQ_UNPAIRED ]  && [ ! -s $ALT_EST ];then
+  error_exit "Must specify at lease one non-empty file with filenames of RNAseq reads with -p or -u or a file with ESTs from the same or closely related species with -e"
 fi
 
 if [ ! -s $UNIPROT ];then
@@ -117,6 +122,9 @@ fi
 if [ ! -s $PROT ];then
   error_exit "File with proteing sequences for related species is missing, please supply it with -r <proteins_file.fa>"
 fi
+
+
+if [ -s $RNASEQ_PAIRED ] || [ -s $RNASEQ_UNPAIRED ];then
 
 #first we align
 if [ ! -e align-build.success ];then
@@ -162,7 +170,10 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
   rm -f split.success
 fi
 
-if [ ! -e split.success ] && [ -e stringtie.success ];then 
+fi #ifpaired or unpaired file specified 
+
+if [ ! -e split.success ];then 
+  log "setting up directories and files"
 #now to set up parallel maker we need to split fasta files and transcript files split filenames into batches batch.number
   ufasta sizes -H $GENOMEFILE | perl -ane 'BEGIN{$fn="batch";$index=1;$batch_size=int("'$BATCH_SIZE'");open(FILE,">$fn.$index");$n=0;}{if($n > $batch_size){close(FILE);$index++;open(FILE,">$fn.$index");$n=$F[1];}else{$n+=$F[1];}print FILE $F[0],"\n";}' 
  NUM_BATCHES=`ls batch.* |wc -l`
@@ -171,17 +182,19 @@ if [ ! -e split.success ] && [ -e stringtie.success ];then
     mkdir -p $f.dir
     rm -rf $f.dir/$f.transcripts.fa*
     ufasta extract -f batch.$f $GENOMEFILE > $f.dir/$f.fa
-    for t in $(ls tissue*.bam.sorted.bam.gtf);do
-      perl -ane 'BEGIN{open(FILE,"batch.'$f'");while($line=<FILE>){chomp($line);$h{$line}=1;}}{print if defined($h{$F[0]})}' $t | gffread -g $f.dir/$f.fa -w $f.dir/$f.transcripts.fa.$t /dev/stdin
-    done
-    cat $f.dir/$f.transcripts.fa.* | awk 'BEGIN{n=0}{if($1 ~ /^>/){print $1"_"n;n++}else{print $0}}' > $f.dir/$f.transcripts.all.fa.tmp && \
-    rm $f.dir/$f.transcripts.fa.* && \
-    mv $f.dir/$f.transcripts.all.fa.tmp $f.dir/$f.transcripts.fa
+    if [ -e tissue0.bam.sorted.bam.gtf ];then
+      for t in $(ls tissue*.bam.sorted.bam.gtf);do
+        perl -ane 'BEGIN{open(FILE,"batch.'$f'");while($line=<FILE>){chomp($line);$h{$line}=1;}}{print if defined($h{$F[0]})}' $t | gffread -g $f.dir/$f.fa -w $f.dir/$f.transcripts.fa.$t /dev/stdin
+      done
+      cat $f.dir/$f.transcripts.fa.* | awk 'BEGIN{n=0}{if($1 ~ /^>/){print $1"_"n;n++}else{print $0}}' > $f.dir/$f.transcripts.all.fa.tmp && \
+      rm $f.dir/$f.transcripts.fa.* && \
+      mv $f.dir/$f.transcripts.all.fa.tmp $f.dir/$f.transcripts.fa
+    fi
   done
   touch split.success && rm -f maker1.success
 fi
 
-if [ ! -e maker1.success ] && [ -e split.success ] && [ -e stringtie.success ];then
+if [ ! -e maker1.success ] && [ -e split.success ];then
   log "running maker"
 #first we create a script to run
   maker -CTL
@@ -193,7 +206,6 @@ if [ ! -e maker1.success ] && [ -e split.success ] && [ -e stringtie.success ];t
 #let's create the appropriate maker ctl files
   for f in $(seq 1 $NUM_BATCHES);do
     sed s,^genome=,genome=$PWD/$f.dir/$f.fa, maker_opts.ctl | \
-    sed s,^est=,est=$PWD/$f.dir/$f.transcripts.fa, | \
     sed s,^est2genome=0,est2genome=1, | \
     sed s,^protein2genome=0,protein2genome=1, | \
     sed s,^single_exon=0,single_exon=1, | \
@@ -201,9 +213,18 @@ if [ ! -e maker1.success ] && [ -e split.success ] && [ -e stringtie.success ];t
     sed s,^max_dna_len=100000,max_dna_len=1000000, | \
     sed s,^cpus=1,cpus=4, | \
     sed s,^min_contig=1,min_contig=1000, |\
-    sed s,^protein=,protein=$PROT, > $f.dir/maker_opts.ctl && \
-    cp maker_exe.ctl $f.dir && \
-    cp maker_bopts.ctl $f.dir
+    sed s,^protein=,protein=$PROT, > $f.dir/maker_opts.ctl 
+    if [ -s $ALT_EST ];then
+      mv $f.dir/maker_opts.ctl $f.dir/maker_opts.ctl.bak && \
+      sed s,^altest=,altest=$ALT_EST, $f.dir/maker_opts.ctl.bak > $f.dir/maker_opts.ctl && \
+      rm $f.dir/maker_opts.ctl.bak
+    fi
+    if [ -s "$f.dir/$f.transcripts.fa" ];then
+      mv $f.dir/maker_opts.ctl $f.dir/maker_opts.ctl.bak && \
+      sed s,^est=,est=$PWD/$f.dir/$f.transcripts.fa, $f.dir/maker_opts.ctl.bak > $f.dir/maker_opts.ctl && \
+      rm $f.dir/maker_opts.ctl.bak
+    fi
+    cp maker_exe.ctl $f.dir && cp maker_bopts.ctl $f.dir
   done
 #running maker
   ls -d *.dir | xargs -P $NUM_THREADS  -I % ./run_maker.sh % && touch maker1.success && rm -rf /dev/shm/tmp_$PID
