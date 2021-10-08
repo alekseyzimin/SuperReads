@@ -14,7 +14,7 @@ PID=$$
 export PATH=$MYPATH:$PATH;
 set -o pipefail
 NUM_THREADS=1
-usage="Usage: annotate_maker.sh -t <number of threads> -g <genome fasta file with full path> -p <file containing list of filenames paired Illumina reads from RNAseq experiment, one pair of filenames per line> -u <file containing list of filenames of unpaired Illumina reads from RNAseq experiment, one filename per line> -r <fasta file of protein sequences> -s <uniprot proteins> -v <verbose flag>"
+usage="Usage: annotate_maker.sh -t <number of threads> -g <MANDATORY:genome fasta file with full path> -p <file containing list of filenames paired Illumina reads from RNAseq experiment, one pair of filenames per line> -u <file containing list of filenames of unpaired Illumina reads from RNAseq experiment, one filename per line> -e <fasta files with transcripts from related species> -r <MANDATORY:fasta file of protein sequences> -s <MANDATORY:uniprot proteins> -v <verbose flag>;\nOne or more of the -p -u or -e must be supplied."
 GC=
 RC=
 NC=
@@ -107,22 +107,22 @@ done
 export SNAP_PATH=`which maker`
 
 #checking inputs
+mkdir -p tttt && cd tttt
 if [ ! -s $RNASEQ_PAIRED ] && [ ! -s $RNASEQ_UNPAIRED ]  && [ ! -s $ALT_EST ];then
-  error_exit "Must specify at lease one non-empty file with filenames of RNAseq reads with -p or -u or a file with ESTs from the same or closely related species with -e"
+  cd .. && error_exit "Must specify at least one non-empty file with filenames of RNAseq reads with -p or -u or a file with ESTs from the same or closely related species with -e.  Paths for ALL files must be ABSOLUTE."
 fi
-
 if [ ! -s $UNIPROT ];then
-  error_exit "File with uniprot sequences is missing, please supply it with -s <uniprot_file.fa>"
+  cd  .. && error_exit "File with uniprot sequences is missing or specified improperly, please supply it with -s </path_to/uniprot_file.fa> with an ABSOLUTE Path"
 fi
-
-if [ ! -s $GENOMEFILE ];then
-  error_exit "File with genome sequence is missing, please supply it with -g <genome_file.fa>"
-fi
-
 if [ ! -s $PROT ];then
-  error_exit "File with proteing sequences for related species is missing, please supply it with -r <proteins_file.fa>"
+  cd .. && error_exit "File with proteing sequences for related species is missing or specified improperly, please supply it with -r </path_to/proteins_file.fa> with an ABSOLUTE Path"
 fi
+cd .. && rm -rf tttt
 
+#path to genome does not have to be absolute
+if [ ! -s $GENOMEFILE ];then
+  cd .. && error_exit "File with genome sequence is missing or specified improperly, please supply it with -g </path_to/genome_file.fa>"
+fi
 
 if [ -s $RNASEQ_PAIRED ] || [ -s $RNASEQ_UNPAIRED ];then
 
@@ -139,14 +139,18 @@ if [ ! -e align.success ];then
     awk 'BEGIN{n=0}{if($3=="fasta"){print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}else{print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}}' $RNASEQ_PAIRED >> hisat2.sh
   fi
   if [ -s $RNASEQ_UNPAIRED ];then
-    awk 'BEGIN{n=0}{if($2=="fasta") {print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}else {print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}}' $RNASEQ_UNPAIRED >> hisat2.sh
+    START=0;
+    if [ -s $RNASEQ_PAIRED ];then
+      START=`wc -l $RNASEQ_PAIRED | awk '{print $1}'`
+    fi
+    awk 'BEGIN{n=int("'$START'");}{if($2=="fasta") {print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}else {print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}}' $RNASEQ_UNPAIRED >> hisat2.sh
   fi
   bash ./hisat2.sh && touch align.success && rm -f sort.success
 fi
 
 if [ ! -e sort.success ];then
   log "sorting alignment files"
-  for f in $(ls tissue*.bam);do
+  for f in $(ls tissue[0-9]?([0-9])?([0-9]).bam);do
     if [ ! -s $f.sorted.bam ];then
       samtools sort -@ $NUM_THREADS -m 1G $f $f.sorted.tmp && mv $f.sorted.tmp.bam $f.sorted.bam
     fi
@@ -155,13 +159,13 @@ if [ ! -e sort.success ];then
 fi
 
 if [ ! -e stringtie.success ] && [ -e sort.success ];then
-  for f in $(ls tissue*.bam.sorted.bam);do
+  for f in $(ls tissue[0-9]?([0-9])?([0-9]).bam.sorted.bam);do
     if [ ! -s $f.gtf ];then
       stringtie -p $NUM_THREADS $f -o $f.gtf.tmp && mv $f.gtf.tmp $f.gtf
     fi
   done
-  INCOUNT=`ls tissue*.bam.sorted.bam|wc -l`
-  OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
+  INCOUNT=`ls tissue[0-9]?([0-9])?([0-9]).bam.sorted.bam|wc -l`
+  OUTCOUNT=`ls tissue[0-9]?([0-9])?([0-9]).bam.sorted.bam.gtf|wc -l`
   if [ $INCOUNT -eq $OUTCOUNT ];then
     touch stringtie.success
   else
@@ -183,7 +187,7 @@ if [ ! -e split.success ];then
     rm -rf $f.dir/$f.transcripts.fa*
     ufasta extract -f batch.$f $GENOMEFILE > $f.dir/$f.fa
     if [ -e tissue0.bam.sorted.bam.gtf ];then
-      for t in $(ls tissue*.bam.sorted.bam.gtf);do
+      for t in $(ls tissue[0-9]?([0-9])?([0-9]).bam.sorted.bam.gtf);do
         perl -ane 'BEGIN{open(FILE,"batch.'$f'");while($line=<FILE>){chomp($line);$h{$line}=1;}}{print if defined($h{$F[0]})}' $t | gffread -g $f.dir/$f.fa -w $f.dir/$f.transcripts.fa.$t /dev/stdin
       done
       cat $f.dir/$f.transcripts.fa.* | awk 'BEGIN{n=0}{if($1 ~ /^>/){print $1"_"n;n++}else{print $0}}' > $f.dir/$f.transcripts.all.fa.tmp && \
@@ -231,16 +235,18 @@ if [ ! -e maker1.success ] && [ -e split.success ];then
 fi
 
 if [ -e maker1.success ] && [ ! -e functional.success ];then
-  log "concatenating outputs and performing functional annotation"
+  log "concatenating outputs"
   NUM_BATCHES=`ls batch.* |wc -l`
   for f in $(seq 1 $NUM_BATCHES);do
-    (cd $f.dir/$GENOME.maker.output && gff3_merge -g -d ${GENOME}_master_datastore_index.log -o ../$f.gff && fasta_merge -d ${GENOME}_master_datastore_index.log -o ../$f.fasta )
+    if [ -e $f.dir/$GENOME.maker.output ];then
+      (cd $f.dir/$GENOME.maker.output && gff3_merge -g -d ${GENOME}_master_datastore_index.log -o ../$f.gff && fasta_merge -d ${GENOME}_master_datastore_index.log -o ../$f.fasta )
+    fi
   done
   gff3_merge -o $GENOME.gff.tmp *.dir/*.gff && mv $GENOME.gff.tmp $GENOME.gff && \
   cat *.dir/*.all.maker.proteins.fasta > $GENOME.proteins.fasta.tmp  && mv $GENOME.proteins.fasta.tmp $GENOME.proteins.fasta && \
   cat *.dir/*.all.maker.transcripts.fasta > $GENOME.transcripts.fasta.tmp && mv $GENOME.transcripts.fasta.tmp $GENOME.transcripts.fasta && \
   log "maker output is in $GENOME.gff $GENOME.proteins.fasta $GENOME.transcripts.fasta" && \
-  log "Performing functional annotation" && \
+  log "performing functional annotation" && \
   makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot && \
   blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS && \
   maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.gff > $GENOME.functional_note.gff.tmp && mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
@@ -250,7 +256,7 @@ if [ -e maker1.success ] && [ ! -e functional.success ];then
 fi
 
 if [ -e functional.success ] && [ ! -e pseudo_detect.success ];then
-  log "detectring pseudogenes"
+  log "detecting and annotating pseudogenes"
   ufasta extract -v -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
   ufasta extract -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
   makeblastdb -dbtype prot  -input_type fasta -in  $GENOME.proteins.mex.fasta -out $GENOME.proteins.mex && \
