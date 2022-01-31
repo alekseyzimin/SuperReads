@@ -106,7 +106,7 @@ GetOptions("o|output=s"          => \$assembly_script,
            "h|help"              => \$help) or fail $usage;
 
 if($illumina) {
-  my @data=split(",",$illumina);
+  my @data=split(/,|\s+/,$illumina);
   if($#data>=0) {
     open(FILE, ">", "config.txt");
     print FILE "# quick run configuration file\nDATA\n";

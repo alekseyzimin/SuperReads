@@ -75,7 +75,7 @@ dist_bin_SCRIPTS += src/getNumBasesPerReadInFastaFile.perl		\
                     src/filter_redundancy.pl src/expand_fastq		\
                     src/sample_mate_pairs.pl src/fasta2frg_m.pl		\
                     src/splitFileByPrefix.pl src/restore_ns.pl		\
-                    src/masurca-superreads src/splitLongKUnitigs.pl src/annotate_maker.sh src/annotate_maker_fast.sh
+                    src/masurca-superreads src/splitLongKUnitigs.pl
 
 noinst_HEADERS += src/aligned_simple_array.hpp				\
                   src/diskBasedUnitigger.h src/fibonacci_coding.hpp	\
