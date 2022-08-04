@@ -49,7 +49,7 @@ my $skip_checking;
 my @prep_path;
 my @prep_ld;
 my $help;
-my $version_str="version 4.0.5";
+my $version_str="version 4.1.0";
 my $version;
 my $threads;
 my $longreads;
@@ -498,7 +498,7 @@ if(@{$config{POLISH_INFO}}){
     print FILE "if [ ! -s \$FLYE_DIR/assembly.scaffolds.fasta ];then\n";
     print FILE "  fail \"Assembly with flye failed, see files under flye/\"\n";
     print FILE "else\n";
-    print FILE "  log 'All done'\n";
+    print FILE "  log \"All done, final assembly is in \$FLYE_DIR/assembly.scaffolds.fasta\"\n";
     print FILE "  log \"Final stats for \$FLYE_DIR/assembly.scaffolds.fasta\"\n";
     print FILE "  ufasta n50 -a \$FLYE_DIR/assembly.scaffolds.fasta\n";
     print FILE "fi\n";
@@ -603,7 +603,7 @@ print FILE "  fail \"Assembly stopped or failed, see \$CA_DIR.log\"\n";
 print FILE "fi\n";
 
 ###Done !!!! Hoorayyyy!!! :)###
-print FILE "log 'All done'\n";
+print FILE "log \"All done, final assembly is in \$CA_DIR/primary.genome.scf.fasta\"\n";
 print FILE "log \"Final stats for \$CA_DIR/primary.genome.scf.fasta\"\n";
 print FILE "ufasta n50 -a \$CA_DIR/primary.genome.scf.fasta\n";
 
