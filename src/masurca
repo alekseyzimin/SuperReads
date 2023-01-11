@@ -64,13 +64,13 @@ quick run without creating a configuration file, and with two Illumina
 paired end reads files (forward/reverse) and (optionally) a 
 long reads (Nanopore/PacBio) file use -i switch, setting the number of threads with -t:
 
-masurca -r paired_ends_fwd.fastq.gz -t 32
+masurca -i paired_ends_fwd.fastq.gz -t 32
 or
-masurca -r paired_ends_fwd.fastq.gz,paired_ends_rev.fastq.gz -t 32
+masurca -i paired_ends_fwd.fastq.gz,paired_ends_rev.fastq.gz -t 32
 
 ,and for a hybrid assembly you can also add the long Nanopore or PacBio reads with -r switch:
 
-masurca -r paired_ends_fwd.fastq.gz,paired_ends_rev.fastq.gz -r nanopore.fa.gz -t 32
+masurca -i paired_ends_fwd.fastq.gz,paired_ends_rev.fastq.gz -r nanopore.fa.gz -t 32
 
 this will run paired-ends Illumina or hybrid assembly with CABOG contigger and default settings.  
 This is suitable for small assembly projects.
@@ -81,6 +81,7 @@ Options:
                               illumina_paired_end_forward_reads 
                                 or 
                               illumina_paired_end_forward_reads,illumina_paired_end_reverse_reads
+                           Illumina read file names must be comma-separated, without a space in the middle.
                            if you only have single-end Illumina data. Reads file(s) could be fasta or fastq, can be gzipped.
  -r, --reads               ONLY to use with -i option, single long reads file for hybrid assembly, can be Nanopore or PacBio, 
                            fasta or fastq, can be gzipped
