@@ -51,7 +51,7 @@ my @prep_ld;
 my $help;
 my $version_str="version 4.1.0";
 my $version;
-my $threads;
+my $threads= 16;
 my $longreads;
 my $illumina;
 
@@ -82,7 +82,7 @@ Options:
                                 or 
                               illumina_paired_end_forward_reads,illumina_paired_end_reverse_reads
                            Illumina read file names must be comma-separated, without a space in the middle.
-                           if you only have single-end Illumina data. Reads file(s) could be fasta or fastq, can be gzipped.
+                           Illumina read files must be fastq, with valid quality values, can be gzipped.
  -r, --reads               ONLY to use with -i option, single long reads file for hybrid assembly, can be Nanopore or PacBio, 
                            fasta or fastq, can be gzipped
 
