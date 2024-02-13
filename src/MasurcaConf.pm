@@ -199,7 +199,7 @@ sub parse_parameters {
     fail("bad value for GRID_BATCH_SIZE", $.) unless($param =~ /^\d*$/);
     $$res{GRID_BATCH_SIZE} = $param;
   } elsif($key eq "GRID_ENGINE"){
-    fail("bad value for GRID_ENGINE, only SGE or SLURM are allowed", $.) unless($param eq "SGE" || $param eq "SLURM");
+    fail("bad value for GRID_ENGINE, only SGE or SLURM are allowed", $.) unless($param eq "SGE" || $param eq "SLURM" || $param eq "MANUAL");
     $$res{GRID_ENGINE} = $param; 
   } elsif($key eq "LIMIT_JUMP_COVERAGE"){
     fail("bad value for LIMIT_JUMP_COVERAGE, enter a number > 1", $.) if($param<=1);
