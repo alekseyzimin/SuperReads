@@ -103,7 +103,11 @@ GRAPH_KMER_SIZE = auto
 USE_LINKING_MATES = 0
 #specifies whether to run the assembly on the grid
 USE_GRID=0
-#specifies grid engine to use SGE or SLURM
+#specifies grid engine to use SGE, SLURM or MANUAL.  Fully automated run is only supported on SGE.
+#SLURM, if specified, will be used for the error correction of long reads only, not for assembly.  
+#The assembler will produce a script and command to submit the job array. Job array will have to be submitted manually. After all jobs are done, you can re-generate assemble.sh and re-run.
+#MANUAL will produce a script to run long read correction jobs manually on multiple computers. Re-generate assemble.sh and re-run assemble.sh when all jobs are complete.
+#with shared access to assembly folder.  This is useful for very large assemblies.
 GRID_ENGINE=SGE
 #specifies queue (for SGE) or partition (for SLURM) to use when running on the grid MANDATORY
 GRID_QUEUE=all.q
