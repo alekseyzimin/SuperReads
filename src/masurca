@@ -322,7 +322,7 @@ print FILE "\n";
 
 ###compute minimum and average PE read length and gc content, and kmer size###
 print FILE "head -q -n 40000  $list_pe_files | grep --text -v '^\+' | grep --text -v '^\@' > pe_data.tmp\n";
-print FILE "export PE_AVG_READ_LENGTH=`awk '{if(length(\$1)>31){n+=length(\$1);m++;}}END{print int(n/m)}' pe_data.tmp`\n";
+print FILE "export PE_AVG_READ_LENGTH=`awk '{if(length(\$1)>31){n+=length(\$1);m++;}}END{print int(n/m)}' pe_data.tmp && rm -f pe_data.tmp`\n";
 print FILE "save PE_AVG_READ_LENGTH\n";
 print FILE "log Average PE read length \$PE_AVG_READ_LENGTH\n";
 
